@@ -1,0 +1,395 @@
+---
+title: Breadcrumbs
+description: The small "Home › Camping › Tents" trail above a page title. Learn location-based vs path-based breadcrumbs, the right markup, collapsing on small screens, and the stale-path, 404 and screen reader bugs testers find in them.
+category: navigation
+aka: [Breadcrumb trail, Path navigation]
+platforms: [web]
+minutes: 35
+order: 6
+---
+
+import Anatomy from '@/components/demos/breadcrumbs/Anatomy';
+import VariantsGallery from '@/components/demos/breadcrumbs/VariantsGallery';
+import Playground from '@/components/demos/breadcrumbs/Playground';
+import { BuggyOutdoorShop } from '@/components/demos/breadcrumbs/BuggyOutdoorShop';
+
+You search an outdoor shop for "lantern" and open the Storm Lantern. Above the title it says **Home › Camping › Tents**. A lantern, filed under tents? You tap **Camping** to look around and get a "Page not found". Two clicks, two bugs, and you haven't even looked at the product yet.
+
+Breadcrumbs are one line of small text, so nobody tests them on purpose. But every level is a **link that must work**, the trail is a **promise about the site's structure**, and on a phone the whole thing has to fit in about 330 pixels.
+
+## What is it?
+
+A **breadcrumb** is a row of links that shows where the current page sits in the site's hierarchy: **Home › Camping › Tents › Trailhead 2P Tent**. Each level is a link to a parent page, and the last item is the page you're on. It answers two questions at a glance: *Where am I?* and *How do I get one level up?*
+
+The name comes from Hansel and Gretel, who dropped breadcrumbs to find their way home. You'll find breadcrumbs on web shops, documentation sites, help centers, government sites and admin tools: anywhere with a **deep hierarchy** of pages.
+
+### Anatomy
+
+<Anatomy />
+
+### Location-based or path-based?
+
+There are two very different ideas behind the same-looking trail:
+
+| Type | Shows | Example |
+| --- | --- | --- |
+| **Location-based** | Where the page **lives** in the site's hierarchy. Always the same for a page. | Home › Lighting › Lanterns › Storm Lantern |
+| **Path-based** (history) | The pages the user **visited** to get here. Different every time. | Home › Search "lantern" › Storm Lantern |
+
+**Location-based** is what people almost always mean by "breadcrumbs" and what you should expect. Path-based trails just repeat the browser's **Back** button, and they produce confusing results when users arrive from search, an email or another site. A third kind, **attribute-based**, shows the filters that narrowed a list (Tents › 2-person › Under $200); it often looks like a row of removable chips.
+
+<Callout type="bug" title="The half-and-half bug">
+Many breadcrumb bugs happen when a team *means* location-based but builds the trail from **session history**: "the last category the user browsed". The product then appears in a category it isn't in. That's exactly the lantern-under-tents bug from the introduction.
+</Callout>
+
+### A web pattern
+
+Breadcrumbs belong to **websites** (desktop and mobile web). Native iOS and Android apps don't use them: the [navigation bar](/components/navigation-bar) shows a **back button** with the previous screen's title, and Android adds the system Back gesture. If you see a breadcrumb in a native app, it's usually a web view, or a design copied from the website. Test whether it still behaves like the app's back navigation.
+
+## Designs & variants
+
+Click the links in each example. The last two are the usual answers to "what do we do on a phone?":
+
+<VariantsGallery client:visible />
+
+- **Separators:** `›`, `/` or `>`. Purely decorative, whichever the design system picks, as long as it's consistent.
+- **Home as an icon:** a little house instead of the word "Home". Needs an accessible name ("Home"), or a screen reader just says "link".
+- **With a dropdown per level:** some large shops let you open a level to jump to a sibling category (Tents ▾ → Stoves). Each dropdown is a [dropdown](/components/dropdown) with all its own tests.
+
+## When to use it
+
+- The site has a **hierarchy of three or more levels**: category › subcategory › product, or docs section › chapter › article.
+- Users often **land deep** in the site from search engines, ads or shared links, and need a quick way up.
+- Users want to **browse siblings**: from one tent, go up to *Tents* and compare.
+
+## Good and bad uses
+
+<Compare>
+<Do title="A deep shop or docs site">
+
+Home › Camping › Tents › Trailhead 2P Tent. Four levels, and many visitors arrive straight on the product from a search engine.
+
+</Do>
+<Dont title="A flat site">
+
+Home › Contact. Two levels that the main menu already shows. The breadcrumb only adds noise.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Back button in a native app">
+
+The iOS navigation bar says **‹ Tents**. One tap goes back, and the system handles the rest.
+
+</Do>
+<Dont title="Breadcrumbs for steps">
+
+Cart › Shipping › Payment › Review in a checkout. Those are **steps in a process**, not places in a hierarchy. Use a [wizard / stepper](/components/wizard).
+
+</Dont>
+</Compare>
+
+## How good breadcrumbs behave
+
+### They match the real hierarchy and the URL
+
+The trail should mirror how the site is actually organized, and usually the URL too: `shop.example.com/c/camping/tents` → **Home › Camping › Tents**. Every level must open a real page (200, not a 404 or a redirect loop). When the catalog changes (a category is renamed, merged or moved), the breadcrumbs must change with it. Old category names in the trail are a classic sign of a stale cache or a hard-coded trail.
+
+A product that lives in **several categories** (a lantern in *Lighting* and in *Camping › Essentials*) needs a rule: usually one **primary** category is always shown. What must never happen is a trail that shows a category the product **isn't in**.
+
+### The current page is not a link
+
+The last item shows where you are. A link to the page you're already on is useless at best; at worst it reloads the page, throws away what the user typed or scrolled, and adds a duplicate entry to the browser history. Expect plain text, marked with `aria-current="page"`.
+
+### Long names and small screens
+
+Real category names are long: "Outdoor & Camping Equipment", "Backpacking Tents (1–2 person)", and product names longer still. On a 360 px phone, a full trail can wrap over three lines and push the page title out of view. Good designs pick a strategy on purpose:
+
+| Strategy | Watch out for |
+| --- | --- |
+| **Wrap** to several lines | Takes too much height; the trail looks like body text |
+| **Collapse** the middle into "…" | The "…" must be a real button that reveals the hidden levels |
+| **Parent only** ("‹ Tents") | Users lose the sense of depth; check it's the right parent |
+| **Horizontal scroll** | Hidden levels are easy to miss; scroll position should start at the end |
+
+Whatever the strategy, check the <Term id="truncation" />: a cut-off label needs the full text available somewhere (in the menu, a tooltip on desktop, or the page title).
+
+### Filters and sorting
+
+Breadcrumbs point to **category pages**, not to the exact list the user saw. That's normal, but many shops promise more: "the category level takes you back to the list as you left it". If the ticket says so, coming from `?people=2&sort=price` must keep that <Term id="query-parameter" />. Ask what was agreed, and test it.
+
+### Structured data (SEO)
+
+Web pages often describe their breadcrumb to search engines with a small block of JSON-LD (schema.org `BreadcrumbList`). Search engines can then show the trail in results instead of a raw URL:
+
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Camping", "item": "https://shop.example.com/c/camping" },
+    { "@type": "ListItem", "position": 2, "name": "Tents", "item": "https://shop.example.com/c/camping/tents" },
+    { "@type": "ListItem", "position": 3, "name": "Trailhead 2P Tent" }
+  ]
+}
+```
+
+As a tester, check that it **matches the visible trail** (same levels, same order, working URLs) and that Google's **Rich Results Test** reports no errors. A copied template that says "Shoes › Sneakers" on every page of an outdoor shop is a real bug.
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Wrong category (stale path)** | A product appears under the category the user browsed last, not its own | Medium |
+| 2 | **A level is a 404** | Clicking a level opens "Page not found" | Medium–High |
+| 3 | **Current page is a link** | Clicking it reloads the page and adds a history entry | Low |
+| 4 | **Separators read aloud** | Screen reader says "slash" between levels | Low–Medium |
+| 5 | **Unreachable levels on phones** | "…" is not clickable, middle levels can't be reached | Medium |
+| 6 | **Trail doesn't match the URL or menu** | Old category names, wrong order, missing level | Low–Medium |
+| 7 | **Filters lost** | Category level drops the filters the ticket says it keeps | Low–Medium |
+| 8 | **Layout breaks** | Long names overflow the screen or overlap the title | Medium |
+| 9 | **Structured data mismatch** | Search results show a different trail than the page | Low |
+
+## Stress-test it
+
+A correct breadcrumb. Switch between **Desktop** and **Phone**, **Short** and **Long** names, and the four small-screen strategies. Then switch the separators to **Text "/"** and watch the screen reader panel. Click a level to go up the hierarchy.
+
+<Playground client:visible />
+
+## Find the bug
+
+The TrailBase outdoor shop has **six breadcrumb bugs**. The acceptance criteria are in the panel below the shop. Explore like a tester:
+
+- Open **Camping › Tents**, filter by **Sleeps 2** and sort by price, open a tent, then click each level of the trail.
+- Browse **Tents** first, then **search for "lantern"** (or use *Popular right now* on the home page) and open a lantern.
+- Click the **last** item of the trail. Then press the browser's **Back**.
+- Switch to **Phone width** on a product page.
+- Press **Read the breadcrumb** and listen.
+
+<BugHunt
+  title="TrailBase outdoor shop"
+  bugs={[
+    {
+      title: 'A lantern shows up under Camping › Tents',
+      hint: 'Open the Tents list, then search for "lantern" and open the Storm Lantern.',
+      detail: 'The trail is built from the <strong>last category the user browsed</strong>, not from the product\'s own category. The Storm Lantern lives in <em>Lighting › Lanterns</em>. Users who arrive from search see a wrong hierarchy, and the Tents link takes them somewhere unrelated. Expected: a location-based trail that is the same for a product no matter how the user got there.',
+    },
+    {
+      title: 'The Camping (and Lighting) level opens a 404',
+      hint: 'On a product or the Tents list, click the second level of the trail. Watch the Network log.',
+      detail: 'The level links to <code>/camping</code>, but the category page is <code>/c/camping</code>. The Network log shows <code>GET /camping → 404 Not Found</code>. The same happens for Lighting. Clicking the Camping tile on the home page works, so only the breadcrumb builds the wrong URL.',
+    },
+    {
+      title: 'The current page is a link to itself',
+      hint: 'Click the last item of the trail, then press the browser Back button.',
+      detail: 'The last item is an <code>&lt;a&gt;</code> to the same URL. Clicking it reloads the page (a new request in the Network log) and adds a duplicate history entry, so Back seems to do nothing the first time. Screen readers also announce it as a link instead of “current page”. Expected: plain text with <code>aria-current="page"</code>.',
+    },
+    {
+      title: 'Screen readers read "slash" between every level',
+      hint: 'Open a product and press "Read the breadcrumb".',
+      detail: 'The separators are real <code>/</code> characters in the HTML, so a screen reader reads “Home, link, slash, Camping, link, slash…”. Separators are decoration: draw them with CSS or mark them <code>aria-hidden="true"</code>. (Notice the last item is announced as a link too, which is bug 3.)',
+    },
+    {
+      title: 'On phones, the middle levels cannot be reached',
+      hint: 'Open a product, switch to Phone width and try to get to Camping from the trail.',
+      detail: 'The trail collapses to <strong>Home / … / Tents / product</strong>, but the “…” is plain text, not a button. Camping is gone, and the screen reader reads “dot dot dot”. Expected (per the ticket): “…” is a button that opens a menu with the hidden levels.',
+    },
+    {
+      title: 'The Tents level forgets the filters you came from',
+      hint: 'On Tents, choose Sleeps 2 and sort by price. Open a tent, then click Tents in the trail.',
+      detail: 'You came from <code>/c/camping/tents?people=2&amp;sort=price</code>, but the breadcrumb links to <code>/c/camping/tents</code>: all 5 tents, sorted by popularity. The acceptance criteria say the category level returns to the list with its filters and sort. Browser Back still works, which is why this bug often survives until a tester reads the ticket.',
+    },
+  ]}
+>
+  <BuggyOutdoorShop client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Product breadcrumb shows the last browsed category instead of the product's category
+
+**Steps:** 1. Open shop.example.com/c/camping/tents. 2. Search for "lantern". 3. Open "Storm Lantern".
+
+**Expected:** Breadcrumb reads Home › Lighting › Lanterns › Storm Lantern (the product's category), the same as when opened from the Lighting category.
+**Actual:** Breadcrumb reads Home › Camping › Tents › Storm Lantern. Opening the same product with a fresh session shows the correct trail.
+
+**Severity:** Medium (wrong navigation and confusing hierarchy, no data loss) · **Reproducible:** 10/10 · **Environment:** Chrome 141, staging
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Breadcrumb test checklist"
+  storageKey="breadcrumbs"
+  items={[
+    'The trail matches the site hierarchy, the main menu and (usually) the URL',
+    'A product shows the same trail no matter how you arrived: category, search, home page, external link',
+    'Products in several categories always show their primary category, never one they are not in',
+    'Every level opens a working page (no 404, no redirect loop) and the label matches that page\'s title',
+    'The current page is plain text, not a link, and is marked aria-current="page"',
+    'Long category and product names wrap, truncate or collapse neatly at 360 px, with no horizontal page scroll',
+    'Collapsed levels ("…") are reachable with tap, mouse and keyboard',
+    'Category levels keep filters and sorting if the requirements say so',
+    'Renamed or moved categories show up correctly in the trail (no stale names)',
+    'Screen reader: "Breadcrumb" navigation landmark, a list, levels, "current page", separators not read',
+    'Keyboard: every link reachable with Tab in order, visible focus, Enter opens it',
+    'Structured data (BreadcrumbList) matches the visible trail and passes the Rich Results Test',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-BC-001',
+      title: 'Trail matches the product\'s real category',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['"Storm Lantern" is in Lighting › Lanterns'],
+      steps: ['Open the product from the Lanterns list', 'Open it again from search results', 'Open it again from a direct link in a new private window'],
+      expected: 'All three times the breadcrumb reads Home › Lighting › Lanterns › Storm Lantern.',
+    },
+    {
+      id: 'TC-BC-002',
+      title: 'Every level opens a working page',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open a product four levels deep', 'Click each breadcrumb level in turn (use Back between clicks)'],
+      expected: 'Each level opens its category page with HTTP 200, and the page title matches the breadcrumb label.',
+    },
+    {
+      id: 'TC-BC-003',
+      title: 'Current page is not a link',
+      priority: 'low',
+      type: 'negative',
+      steps: ['Open a product page', 'Hover and click the last breadcrumb item', 'Inspect it in DevTools'],
+      expected: 'It is plain text with aria-current="page". Nothing happens on click, no new request, no new history entry.',
+    },
+    {
+      id: 'TC-BC-004',
+      title: 'Collapsed trail on a phone',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Viewport 360 × 800', 'Category names longer than 25 characters'],
+      steps: ['Open a product five levels deep', 'Tap the "…" item', 'Tap a hidden level'],
+      expected: 'The trail fits without horizontal page scroll, "…" opens a list of the hidden levels, and the chosen level opens.',
+    },
+    {
+      id: 'TC-BC-005',
+      title: 'Screen reader announcement',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Turn on VoiceOver or NVDA', 'Jump to the Breadcrumb landmark', 'Read through the trail'],
+      expected: 'Announced as "Breadcrumb, navigation", a list with N items, each level as a link, the last one as "current page". No "slash" or "greater than".',
+    },
+    {
+      id: 'TC-BC-006',
+      title: 'Renamed category',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Admin renames "Lighting" to "Lights & Lanterns"'],
+      steps: ['Open a lantern product page (after cache expiry, if any)'],
+      expected: 'The breadcrumb, the category page title, the menu and the structured data all show "Lights & Lanterns".',
+    },
+  ]}
+/>
+
+### Tools
+
+- **DevTools › Elements** (see [DevTools for testers](/web/devtools-for-testers)): check `<nav aria-label="Breadcrumb">`, the `<ol>`, `aria-current="page"` and that separators are CSS or `aria-hidden`.
+- **DevTools › Network** or a link checker: click every level and confirm a **200** <Term id="http-status-code" />, not 404 or 301 → 301 → 301.
+- **Device toolbar** (responsive mode) at 360 px with the longest category names you can find. See [responsive design testing](/web/responsive-design-testing).
+- **Google Rich Results Test** or the Schema Markup Validator for the `BreadcrumbList` JSON-LD.
+- **A screen reader**: VoiceOver on Mac (<kbd>Cmd</kbd>+<kbd>F5</kbd>), NVDA on Windows, TalkBack in Chrome on Android.
+
+## Accessibility
+
+- **Landmark and label.** Wrap the trail in `<nav aria-label="Breadcrumb">` so <Term id="screen-reader" /> users can jump to it, and so it's not confused with the main menu (another `nav`). This is the <Term id="aria" /> breadcrumb pattern.
+- **An ordered list.** Put the levels in an `<ol>`. Screen readers then announce "list, 4 items", which tells users how deep they are.
+- **Current page.** Plain text with `aria-current="page"`, read as "current page". Make it visually different too (bold, not a link color), not by color alone.
+- **Separators are decoration.** Screen reader users shouldn't hear "slash" or "greater than" between every level.
+  <DevNote>Use CSS (`::before` content, a background image) or `aria-hidden="true"`.</DevNote>
+- **Icon-only Home** needs an accessible name. **Collapsed levels** need a real button with a name like "Show 2 more levels" and `aria-expanded`.
+- **<Term id="keyboard-navigation">Keyboard</Term>.** Every link reachable with <kbd>Tab</kbd>, visible focus, <kbd>Esc</kbd> closes the "…" menu and returns focus to its button.
+- **<Term id="touch-target">Touch targets</Term>.** At least 44×44 pt on iOS and 48×48 dp on Android. On the web, WCAG 2.5.8 (AA) asks for at least 24×24 CSS px; 44×44 px (2.5.5, AAA) is the comfortable target. Breadcrumb links are often 12 px text crammed together, so check the spacing between them on phones.
+- **Contrast.** Links and the current page text need 4.5:1 for normal text; the separators are decorative, but keep them visible.
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- No breadcrumb component. Hierarchy is shown by the **navigation stack**: the back button in the [navigation bar](/components/navigation-bar) carries the previous screen's title ("‹ Tents"). Long-pressing it shows the whole stack.
+- Test that the back title is right after arriving via a <Term id="deep-link" /> or a push notification: does it go back to a sensible parent, or close the app?
+- A breadcrumb inside the app is usually a **web view**: test it with the web checks and make sure its links don't open a second copy of the app in a browser.
+
+</Tab>
+<Tab>
+
+- No breadcrumb component either. Use the **top app bar** Up arrow and the system **Back** gesture/button.
+- Up (in the app bar) should go to the logical parent screen; Back goes to the previous screen. After a deep link they can differ, so test both.
+- Large-screen apps (tablets, Chromebooks) sometimes show a breadcrumb-like path in file managers. Test long folder names and rotation.
+
+</Tab>
+<Tab>
+
+- This is breadcrumbs' home. Test **desktop and mobile web**: at 360 px, does the trail wrap, collapse, scroll or overflow?
+- Check the **URL**, the **main menu** and the **trail** agree, and that every level returns 200.
+- Arrive at deep pages from **search, emails and external links** in a fresh session: the trail must not depend on what you browsed before.
+- Check the **structured data** and the page `<title>` use the same names as the trail.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A user browses Tents, then searches for "lantern" and opens a lantern. The breadcrumb says Home › Camping › Tents › Storm Lantern. What is the bug?',
+      options: ['Nothing, that was the user\'s path', 'The trail is built from history instead of the product\'s real category', 'The lantern is missing a price', 'The separator is wrong'],
+      answer: 1,
+      explain: 'A location-based breadcrumb shows where the product lives, no matter how the user arrived. Mixing in session history puts products in categories they are not in.',
+    },
+    {
+      q: 'How should the last item of a breadcrumb (the current page) be built?',
+      options: ['As a link to the current URL', 'As plain text with aria-current="page"', 'As a button that reloads the page', 'It should be left out'],
+      answer: 1,
+      explain: 'A link to the page you are on does nothing useful and may reload the page. Plain text with aria-current="page" is announced as "current page".',
+    },
+    {
+      q: 'A screen reader reads "Home, link, slash, Camping, link, slash, Tents". What should the fix be?',
+      options: ['Use > instead of /', 'Hide the separators from assistive technology (CSS or aria-hidden)', 'Remove the breadcrumb on mobile', 'Add more links'],
+      answer: 1,
+      explain: 'Any separator character in the markup gets read. Separators are decoration, so draw them with CSS or mark them aria-hidden="true".',
+    },
+    {
+      q: 'On a 360 px phone, the trail is collapsed to Home › … › Tents › Trailhead 2P. What must you test?',
+      options: ['That "…" opens the hidden levels and they work', 'That the font is bold', 'That the trail is hidden completely', 'Nothing, collapsing is always fine'],
+      answer: 0,
+      explain: 'Collapsing is fine only if the hidden levels stay reachable. A "…" that is plain text cuts users off from the middle levels.',
+    },
+    {
+      q: 'Which app should show a back button in the navigation bar instead of a breadcrumb?',
+      options: ['A documentation website', 'A native iOS shopping app', 'A desktop admin tool', 'A government website'],
+      answer: 1,
+      explain: 'Breadcrumbs are a web pattern. Native apps show hierarchy through the navigation stack: the back button carries the previous screen\'s title.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Breadcrumbs show **where a page lives** in a hierarchy: Home › Category › Subcategory › Page. They're a **web** pattern; native apps use a back button.
+- Expect **location-based** trails: the same for a page however the user arrived. Trails built from history put products in the wrong category.
+- **Every level must work** (no 404s) and the **current page is plain text** with `aria-current="page"`.
+- On phones, choose a strategy (wrap, collapse, parent only, scroll), and make sure **hidden levels stay reachable**.
+- Markup: `<nav aria-label="Breadcrumb">`, an `<ol>`, and **separators hidden** from screen readers.
+- Check the trail **matches the URL, menu and structured data**, and ask whether category links should keep **filters**.
+
+</KeyTakeaways>

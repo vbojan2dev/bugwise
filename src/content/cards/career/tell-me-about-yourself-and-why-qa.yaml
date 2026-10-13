@@ -1,0 +1,42 @@
+teaser: "'Tell me about yourself' is the most predictable interview question, and the one people ramble through most. Want a structure that fits in 90 seconds?"
+cards:
+  - type: flip
+    front: "What structure works for 'Tell me about yourself'?"
+    back: "Present (who you are now), past (one relevant strength with an example), future (what you want and why this role)."
+  - type: flip
+    front: "How long should the answer be?"
+    back: "About 60 to 90 seconds, roughly 140 to 210 words spoken calmly. Then stop and let them pick a thread."
+  - type: quiz
+    q: "Which 'Why QA?' answer is strongest?"
+    options: ["QA is an easy way into IT", "A true moment, plus what I did", "I like computers"]
+    answer: 1
+    explain: "A real story shows you understand the work and chose it on purpose. The others raise doubts."
+  - type: quiz
+    q: "First recruiter call: 'What are your salary expectations?' What's a good first response?"
+    options: ["Ask for their budgeted range", "Say any number is fine", "Name the highest figure you've heard"]
+    answer: 0
+    explain: "Asking for their range early is common and polite. If they insist, give the range you researched."
+  - type: truefalse
+    statement: "It's fine to mention a competing offer you don't have, to raise the salary."
+    answer: false
+    explain: "Invented numbers or offers can be checked and destroy trust. Be honest and rely on your research."
+  - type: truefalse
+    statement: "Using the company's app before the interview helps you answer 'Why us?'"
+    answer: true
+    explain: "It gives you something specific and genuine to mention, instead of generic praise."
+  - type: thisorthat
+    prompt: "The interviewer says: 'You have no testing experience.'"
+    left: "Apologize, explain"
+    right: "Agree, show evidence"
+    answer: right
+    explain: "Agree calmly, then point to your practice project, transferable skills and how fast you learn. Apologies weaken real evidence."
+  - type: thisorthat
+    prompt: "You're preparing your opening pitch for tomorrow's interview."
+    left: "Memorize a script"
+    right: "Practice from bullets"
+    answer: right
+    explain: "Three bullet points keep it natural. A word-for-word script sounds recited and falls apart if you lose a line."
+  - type: spotbug
+    screen: ["'Sorry, I know I only did", "a course and don't really", "have experience, but...'"]
+    bug: "Opens with apologies and weak words."
+    explain: "Words like 'only' and 'sorry' undersell real work. State facts with confidence: the course, the project, the deliverables."

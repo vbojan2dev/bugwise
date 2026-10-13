@@ -1,0 +1,46 @@
+teaser: "A checkout passes every automated test, yet a blind customer can't pay. How can a page be broken without anything crashing?"
+cards:
+  - type: flip
+    front: "What do the four WCAG principles, POUR, stand for?"
+    back: "Perceivable, Operable, Understandable, Robust. Every WCAG success criterion belongs to one of them."
+  - type: quiz
+    q: "What is the minimum contrast ratio for normal-size body text at WCAG level AA?"
+    options: ["3:1", "4.5:1", "7:1"]
+    answer: 1
+    explain: "Normal text needs 4.5:1. Large text and UI parts like input borders need 3:1. 7:1 is the stricter AAA level."
+  - type: spotbug
+    screen: ["Sign up", "[ Full name     ]", "Screen reader: \"edit text, blank\""]
+    bug: "The field has no connected label."
+    explain: "Without a label tied to the input, assistive tech has no name to announce. The user can't tell what to type."
+  - type: quiz
+    q: "Lighthouse gives a page an accessibility score of 100. What can you conclude?"
+    options: ["Automated checks passed, manual testing still needed", "The page meets WCAG AA", "Screen readers will work perfectly"]
+    answer: 0
+    explain: "Tools catch only part of the failures. Focus order, keyboard flows, meaningful alt text and helpful errors need a human."
+  - type: spotbug
+    screen: ["Email     [ anna@example ]", "(border turns red)", "No message, no icon"]
+    bug: "The error is shown only by color."
+    explain: "Color-blind and screen reader users can't tell what's wrong. Errors need a text message that says how to fix it."
+  - type: thisorthat
+    prompt: "A decorative background swirl on a landing page. What alt text should it get?"
+    left: "alt=\"decorative image\""
+    right: "Empty alt=\"\""
+    answer: right
+    explain: "Empty alt tells screen readers to skip the image. Words like 'image' add noise, and no alt at all may read the file name."
+  - type: truefalse
+    statement: "Accessibility only helps people with permanent disabilities."
+    answer: false
+    explain: "It also helps temporary and situational cases: a broken wrist, bright sunlight, holding a baby in one arm, a noisy train."
+  - type: thisorthat
+    prompt: "A Terms checkbox is a div. Tab skips it, so keyboard users can never create an account."
+    left: "Blocker"
+    right: "Cosmetic"
+    answer: left
+    explain: "Rate severity by impact on affected users. If keyboard users can't sign up at all, it's a blocker for them."
+  - type: truefalse
+    statement: "Removing the focus outline with outline: none is a WCAG failure if nothing replaces it."
+    answer: true
+    explain: "Keyboard users then can't see where they are. WCAG 2.4.7 Focus Visible requires a clear indicator."
+  - type: tip
+    title: "Learn to turn it off"
+    text: "Before you start a screen reader, learn how to turn it off. Lower the speech rate and start with short sessions."

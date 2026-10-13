@@ -1,0 +1,45 @@
+teaser: "When you unlock your banking app with Face ID, does the bank ever see your face? And what should happen when someone taps Cancel?"
+cards:
+  - type: quiz
+    q: "What does the server receive when you unlock a banking app with Face ID?"
+    options: ["A photo of your face", "A token from secure storage", "Your fingerprint data"]
+    answer: 1
+    explain: "The face check happens on the phone. A match only releases a token or key saved earlier, and the server checks it like after a password login."
+  - type: spotbug
+    screen: ["Face ID sheet: [Cancel]", "User taps Cancel", "Home: Balance €4,218.55"]
+    bug: "Cancel unlocked the app."
+    explain: "Anyone holding the phone can tap Cancel. Cancel, failure and errors must all keep the app locked."
+  - type: flip
+    front: "Why must biometric login be opt-in?"
+    back: "The user should decide after a password login. Switching it on silently surprises people, especially on shared phones."
+  - type: truefalse
+    statement: "After a new fingerprint is added to the phone, a banking app should ask for the password."
+    answer: true
+    explain: "The new finger may belong to someone else. Sensitive apps tie their secret to the current set of biometrics."
+  - type: thisorthat
+    prompt: "After five non-matching faces, the app shows 'Face ID is locked. Try again later.' and nothing else."
+    left: "Expected"
+    right: "Report a bug"
+    answer: right
+    explain: "The OS lockout is correct, but the app must offer a password or passcode fallback, not a dead end."
+  - type: quiz
+    q: "How do you send a non-matching face on the iOS Simulator?"
+    options: ["Features › Face ID › Non-matching Face", "Hold up a photo to the webcam", "It can't be done"]
+    answer: 0
+    explain: "With Face ID enrolled, the Features menu sends a matching or non-matching face while the app's Face ID sheet is open."
+  - type: spotbug
+    screen: ["App reopened", "Face ID sheet is scanning…", "Behind it: €4,218.55 · Rent −€1,240"]
+    bug: "Account data is visible before unlocking."
+    explain: "Nothing sensitive may show behind the prompt or in the app switcher until the user is authenticated."
+  - type: thisorthat
+    prompt: "On one Android phone the bank accepts fingerprint but never offers face unlock. Requirements say Class 3 only."
+    left: "Likely by design"
+    right: "Clear bug"
+    answer: left
+    explain: "Many camera-based face unlocks are Class 2 (weak). If the app requires Class 3, ignoring them is correct."
+  - type: flip
+    front: "Which command touches the Android emulator's fingerprint sensor?"
+    back: "adb -e emu finger touch 1. Use a different finger number to simulate a non-enrolled finger."
+  - type: tip
+    title: "Test biometric changes on real devices"
+    text: "Simulators can't add an alternate appearance or a second finger. Do that on a real phone, then check the new biometric doesn't unlock the app."

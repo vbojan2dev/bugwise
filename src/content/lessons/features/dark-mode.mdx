@@ -1,0 +1,398 @@
+---
+title: Dark Mode
+description: How system and in-app themes work on iOS, Android and the web, what breaks when the colors flip, and how to test dark mode properly.
+order: 8
+level: beginner
+minutes: { short: 35 }
+platform: both
+tags: [dark mode, themes, contrast, accessibility, ui]
+---
+
+import ThemeLab from '@/components/demos/dark-mode/ThemeLab';
+import ColorExample from '@/components/demos/dark-mode/ColorExample';
+import { BuggyDarkModeApp } from '@/components/demos/dark-mode/BuggyDarkModeApp';
+
+It's 11 p.m. A customer opens their banking app in bed to check a payment. The phone is in dark mode, the app is in dark mode... except for one card in the middle of the screen, where the **"Pending: €1,250"** text is black on dark grey. The customer can't read it, assumes the money is gone, and calls support in a panic.
+
+Nothing "crashed". No test case failed. The app simply was never checked with the lights off. <Term id="dark-mode" /> looks like a cosmetic setting, but a lot of people keep it on all day, and it touches **every screen, every color and every image** in your product. That makes it one of the easiest places for a new tester to find real, visible bugs.
+
+## How it works
+
+A theme is just a set of colors. Light mode uses dark text on light backgrounds, dark mode flips that. The interesting part for testers is **who decides** which theme the user gets, and **when** it changes.
+
+<Steps>
+
+1. **The system has a setting.** iOS (Settings › Display & Brightness), Android 10+ (Settings › Display › Dark theme) and desktop operating systems all have Light, Dark and often an **Automatic** option that switches at sunset or on a schedule.
+2. **The app reads the system setting.** On launch, the app asks the OS "light or dark?" and picks its colors. Well-built apps use **semantic colors** like "label" or "background" that have a light and a dark value, instead of fixed colors like `#000000`.
+3. **The app may have its own setting.** Many apps offer **Settings › Appearance: System / Light / Dark**. "System" follows the phone. "Light" or "Dark" overrides it, and the choice must be **saved** so it survives a restart.
+4. **The theme can change while the app is open.** Automatic mode flips at sunset, or the user opens Control Center or Quick Settings and taps Dark mode. The app must redraw every visible screen without losing what the user was doing.
+5. **Websites follow the browser.** A site reads the CSS media feature `prefers-color-scheme`, which the browser takes from the operating system (some sites also offer their own toggle). If the theme is applied too late, the page **flashes white** before turning dark.
+
+</Steps>
+
+### Who wins: system or app?
+
+| Phone setting | In-app setting | The user should see |
+| --- | --- | --- |
+| Light | System | Light |
+| Dark | System | Dark |
+| Dark | Light | **Light** (the app overrides the phone) |
+| Light | Dark | **Dark** |
+
+That's four combinations already, and each one should survive a restart, a theme change while the app is open, and a fresh install. Try them in the lab below.
+
+### Switching while the app is open
+
+This is where the platform differences show up:
+
+- **Android** treats a dark theme change as a <Term id="configuration-change" />, just like rotating the phone. By default, the visible screen is **destroyed and recreated**. If the app doesn't save its state, a half-written review or a scroll position disappears the moment the theme flips. It's the same family of bugs as in [Orientation and screen sizes](/mobile/orientation-and-screen-sizes).
+- **iOS** keeps the screen alive and sends a **trait change** (the "user interface style" trait goes from light to dark). Semantic colors update automatically, but anything the developer drew once and cached (a custom chart, a generated image, a color stored in a variable) can stay in the old theme until you leave the screen.
+- **Web:** the page doesn't reload. CSS using `prefers-color-scheme` updates live. Colors set by JavaScript only update if the code listens for the change.
+
+<Callout type="tip" title="Increase contrast is a third switch">
+iOS has **Settings › Accessibility › Display & Text Size › Increase Contrast**, and Android has **High contrast text** in its Accessibility settings. Users with low vision often turn these on together with dark mode. A good app uses stronger colors when they're on. Check at least your main screens with them.
+</Callout>
+
+### Try it: the theme lab
+
+Flip the phone's appearance, the in-app setting and Increase contrast. The badge shows which theme the user actually gets. Then pick an element and measure its <Term id="contrast-ratio" /> in both themes. The sample screen has a few realistic flaws in its default colors. Can you find which elements fail, and in which theme?
+
+<ThemeLab client:visible />
+
+<Callout type="info" title="Why the same grey fails in dark mode">
+The caption uses `#6B7280` in **both** themes. On white it scores about 4.8:1 and passes. On black it drops below 4.5:1 and fails <Term id="wcag" /> AA. Designers often pick a grey once and forget to check it on the other background. Read more in [Accessibility basics](/web/accessibility-basics).
+</Callout>
+
+## Example requirements
+
+<Callout type="example" title="User story: Choose the app's appearance">
+
+**As a** PulseFit user who works out early in the morning, **I want** the app to support a dark theme and let me choose it **so that** it doesn't blind me and stays easy to read.
+
+**Acceptance criteria**
+
+1. By default, the app follows the system appearance (Light or Dark).
+2. **Settings › Appearance** offers System, Light and Dark. The choice applies **immediately** and is **remembered** after the app is closed, restarted or updated.
+3. When the system appearance changes while the app is open, every visible screen updates **without losing input or scroll position**.
+4. All text meets <Term id="wcag" /> AA contrast in both themes: **4.5:1** for normal text, **3:1** for large text, icons and field borders.
+5. Selected, disabled and focused states are clearly distinguishable in both themes.
+6. Logos, illustrations and charts are visible in both themes.
+7. Embedded web content (help pages, offers, emails) matches the app theme.
+8. The status bar and navigation bar icons are readable in both themes.
+9. The website follows `prefers-color-scheme` and shows the correct theme **from the first frame**, without a white flash.
+
+</Callout>
+
+Notice criteria 3 and 9: they're about *timing*, not colors. Many teams test the "steady state" of each theme and never the **moment of switching**.
+
+## What usually goes wrong
+
+<Compare>
+<Dont title="Hard-coded text color">
+
+<div class="not-prose my-3"><ColorExample variant="bad" /></div>
+
+The card background follows the theme, but the text was set to a fixed near-black. In dark mode the most important line on the screen disappears.
+
+</Dont>
+<Do title="Semantic color">
+
+<div class="not-prose my-3"><ColorExample variant="good" /></div>
+
+A semantic color like "label" (iOS) or `?attr/colorOnSurface` (Android) has a light and a dark value, so the text flips together with the card.
+
+</Do>
+</Compare>
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Hard-coded colors** | Black text on a dark card, or a white box on a black screen | High (text unreadable) |
+| 2 | **Images with baked-in colors** | A black logo on a transparent PNG vanishes; an icon with a white rectangle behind it | Medium |
+| 3 | **Shadows instead of borders** | Cards separated only by a shadow blend into the dark background | Low–Medium |
+| 4 | **Low-contrast greys** | Captions, placeholders and disabled text pass in light, fail in dark | Medium–High |
+| 5 | **Selected state disappears** | Selected tab, chip or day looks like all the others | High |
+| 6 | **Status bar icons** | Black clock and battery on a black header | Medium |
+| 7 | **Web views and emails** | Help pages, receipts, ads or HTML emails stay bright white | Medium |
+| 8 | **Charts** | Gridlines, labels or a dark series line vanish | Medium |
+| 9 | **Brand colors** | A dark navy button or link becomes unreadable on black | Medium |
+| 10 | **Third-party screens** | Payment, login or chat SDK screens stay light or mix themes | Low–Medium |
+| 11 | **In-app setting not saved** | "Light" is selected in Settings, but the app is dark after a restart | Medium |
+| 12 | **State lost on switch** | Android: typed text or scroll position reset when the theme changes | High |
+| 13 | **Web flash of wrong theme** | The page shows white for a moment before turning dark | Low–Medium |
+
+<Callout type="bug" title="The transparent logo trap">
+Designers love PNG or SVG logos with a **transparent background**. In light mode the black wordmark looks perfect. In dark mode the background behind it is now black, and so is the logo. The fix is a light version of the logo (or a semantic fill color), not a white box behind it. The opposite trap: images with a **baked-in white background** look like glowing stickers on a dark screen.
+</Callout>
+
+Don't forget the places outside the app's own screens: **screenshots** in the help center or app store listing (do you need dark versions?), **push notification** images, and **widgets**, which follow the system theme even when the app has its own setting.
+
+## Find the bug
+
+PulseFit, a fitness app, just shipped dark mode. The app and its website below have **six bugs**. Explore like a tester:
+
+- Switch the **system appearance** to Dark and look carefully at every part of the Today screen.
+- Tap the Today / Week / Month chips in both themes.
+- In **Settings**, choose Light or Dark, then **Restart app**.
+- Open the **Website** in dark mode and **reload** it. Watch closely.
+
+<BugHunt
+  title="PulseFit dark mode"
+  bugs={[
+    {
+      title: 'Weekly summary text is invisible in dark mode',
+      hint: 'Switch the system to Dark and read every card on the Today screen.',
+      detail: 'The card background follows the theme (<code>#1C1C1E</code>), but the body text is hard-coded to <code>#1A1A1A</code>. Contrast is barely above 1:1, so the text is practically invisible. Expected: a semantic text color that passes 4.5:1 in both themes.',
+    },
+    {
+      title: 'Logo wordmark vanishes on the dark header',
+      hint: 'Look at the top-left corner in dark mode.',
+      detail: 'The logo is a near-black wordmark on a <strong>transparent</strong> background. In dark mode only the pink pulse icon is visible. Expected: a light version of the logo (or a semantic fill) in dark mode. Notice the splash screen and the website already do this right.',
+    },
+    {
+      title: 'Selected chip looks the same as the others in dark mode',
+      hint: 'Tap Today, Week and Month with the system set to Dark.',
+      detail: 'In light mode the selected chip is black with white text. In dark mode all three chips use the same grey background and white text. Only the numbers change, so the user cannot tell which range they are looking at. Expected: a clear selected style (fill, border or checkmark) in both themes, not just a slightly bolder font.',
+    },
+    {
+      title: 'Sponsored web view stays bright white',
+      hint: 'Scroll to the Sponsored block in dark mode.',
+      detail: 'The partner offer is embedded web content with no dark styles, so a glaring white box sits in the middle of a black screen. Expected: the web content supports <code>prefers-color-scheme</code> (or the app passes the theme to it), or at least uses a dark-friendly surface.',
+    },
+    {
+      title: 'In-app Light or Dark setting is ignored after a restart',
+      hint: 'In Settings choose Light while the system is Dark, then tap Restart app.',
+      detail: 'The choice applies immediately and is saved (Settings still shows the checkmark on <strong>Light</strong>), but on a cold start the app follows the system again and opens dark. The saved preference is never read on launch. Expected: the app starts in the theme the user chose.',
+    },
+    {
+      title: 'Website flashes white before turning dark',
+      hint: 'Open the Website with the system set to Dark, then tap Reload page.',
+      detail: 'The dark theme is applied by a script <em>after</em> the page has rendered, so each load shows the light page for a moment. On a dark phone at night this is a bright flash. Expected: the theme is set before first paint, for example with a CSS <code>prefers-color-scheme</code> media query and a tiny inline script in the <code>&lt;head&gt;</code> for a saved user choice.',
+    },
+  ]}
+>
+  <BuggyDarkModeApp client:visible />
+</BugHunt>
+
+<Callout type="tip" title="Notice what works">
+The status bar adapts, the stats card, tab bar and Settings screen are fine in both themes, and switching the theme while the app is open updates everything instantly. That contrast helps your bug report: "Settings and the stats card follow the theme, the Weekly summary text does not" points the developer straight at a hard-coded color.
+</Callout>
+
+<Callout type="example" title="How would you report bug #5?">
+
+**Title:** Appearance: in-app "Light" setting is ignored after app restart (app follows system Dark)
+
+**Steps:** 1. Set the phone to Dark mode. 2. Open PulseFit › Settings › Appearance and choose **Light** (the app turns light). 3. Close the app completely and open it again.
+
+**Expected:** The app opens in Light, as chosen. **Actual:** The app opens in Dark. Settings still shows **Light** as selected.
+
+**Severity:** Medium · **Reproducible:** Always · **Device:** iPhone 15, iOS 18 (also check Android)
+
+</Callout>
+
+## Test scenarios
+
+### Functional
+
+- With the in-app setting on **System**, switch the phone between Light and Dark: the app follows.
+- Choose **Light** and **Dark** in the app's settings: the change applies immediately, on every screen, including ones further back in the navigation stack.
+- Close, restart and **update** the app: the in-app choice is remembered (this is <Term id="state-persistence" />).
+- **Automatic** mode: set a schedule a minute ahead and wait for the switch while the app is open.
+- The website follows the system theme and, if it has its own toggle, remembers the choice after a reload.
+
+### Switching at the worst moment
+
+- Change the theme while **typing** in a form, with a **modal** or bottom sheet open, mid-scroll in a long list, and during a video or animation.
+- On Android, check that nothing is lost: the theme switch is a <Term id="configuration-change" />, so typed text, selections and scroll position must survive.
+- On iOS, check custom drawings: charts, maps, generated images and gradients update without leaving the screen.
+- Switch the theme while the app is in the **background**, then return to it.
+
+### Visual and contrast
+
+- Walk through **every screen** in both themes, including empty, loading, error and disabled states. Use the [Accessibility basics](/web/accessibility-basics) contrast rules: 4.5:1 for text, 3:1 for icons, borders and focus rings.
+- Selected tabs, chips, toggles, radio buttons and calendar days are clearly different from unselected ones (compare with the [segmented control](/components/segmented-control) page).
+- Logos, illustrations, avatars and product photos: nothing vanishes, nothing sits in a white box.
+- Cards and sheets are still separated from the background (shadows barely show on black).
+- Charts: lines, labels, gridlines and legends are readable.
+- Status bar and Android navigation bar icons are readable on every screen.
+
+### Embedded and external content
+
+- Web views (help, terms, offers), in-app emails and receipts, rich push notifications and home screen widgets.
+- Third-party screens: payment sheets, social login, chat support, maps, ads. Write down which ones you can't change, and report them anyway so the team can decide.
+- Screenshots and images in the help center and store listing.
+
+### Accessibility
+
+- Turn on **Increase Contrast** (iOS) or **High contrast text** (Android) together with dark mode.
+- Combine dark mode with **large text** (Dynamic Type or font size): nothing overlaps or gets cut off.
+- The focus ring on the web is visible on dark backgrounds.
+- Information is never shown by color alone (a red/green status needs text or an icon too).
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-DARK-001',
+      title: 'App follows the system theme by default',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Fresh install', 'In-app Appearance is "System"'],
+      steps: ['Set the phone to Light and open the app', 'Switch the phone to Dark from Control Center / Quick Settings', 'Return to the app'],
+      expected: 'The app is light first, then dark on every visible screen. No restart is needed.',
+    },
+    {
+      id: 'TC-DARK-002',
+      title: 'In-app Light override survives a restart',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Phone is set to Dark'],
+      steps: ['Open Settings › Appearance and choose Light', 'Force close the app', 'Open the app again'],
+      expected: 'The app opens in Light. Settings shows Light as selected.',
+    },
+    {
+      id: 'TC-DARK-003',
+      title: 'Typed text survives a theme change',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['In-app Appearance is "System"'],
+      steps: ['Open Write a review and type two sentences', 'Scroll the screen down a little', 'Switch the phone to Dark mode', 'Return to the app'],
+      data: 'Android: also try adb shell cmd uimode night yes',
+      expected: 'The screen is dark. The text, cursor position and scroll position are unchanged.',
+    },
+    {
+      id: 'TC-DARK-004',
+      title: 'Text contrast in dark mode',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Phone is set to Dark'],
+      steps: ['Open the Home screen', 'Measure body text, captions, links and button labels with a contrast checker'],
+      expected: 'Every text element is at least 4.5:1 (3:1 for large text). Icons and field borders are at least 3:1.',
+    },
+    {
+      id: 'TC-DARK-005',
+      title: 'Selected state is visible in both themes',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['In Light mode, tap Week in the range selector', 'Switch to Dark mode', 'Tap Month'],
+      expected: 'In both themes the selected chip is clearly different (fill, border or checkmark) from the others.',
+    },
+    {
+      id: 'TC-DARK-006',
+      title: 'Embedded web content matches the theme',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Phone is set to Dark'],
+      steps: ['Open Help, Terms and the Sponsored offer', 'Open an order receipt'],
+      expected: 'All embedded pages use a dark background with readable text. No full-white panels.',
+    },
+    {
+      id: 'TC-DARK-007',
+      title: 'Website shows the right theme from the first frame',
+      priority: 'low',
+      type: 'edge',
+      preconditions: ['OS (or DevTools emulation) set to dark', 'Network throttled to Slow 4G'],
+      steps: ['Open the home page in a new tab', 'Reload with the cache disabled', 'Watch the first frames (or record a performance profile with screenshots)'],
+      expected: 'The page is dark from the very first frame. No white flash.',
+    },
+  ]}
+/>
+
+## Mobile vs web
+
+<Tabs labels={['Mobile app', 'Website']}>
+<Tab>
+
+- **Switch fast:** iOS Control Center (long-press brightness › Dark Mode), Android Quick Settings tile **Dark theme**. You'll switch dozens of times, so put the tile where you can reach it.
+- **Simulators and emulators:** in the iOS Simulator use **Features › Toggle Appearance** (Shift+Cmd+A). From a terminal: `xcrun simctl ui booted appearance dark`. On Android: `adb shell cmd uimode night yes` (and `no` to go back). See [Simulators and emulators](/mobile/simulators-and-emulators).
+- **Android recreates the screen** on a theme change, so it's your best tool for finding lost-state bugs. Fill in forms, then switch.
+- **iOS Automatic mode** switches at sunset. Developers rarely test the switch happening *while the app is open*.
+- **Status bar:** if the app forces dark status bar content, the clock and battery become invisible on dark headers. Check every screen, especially full-screen images and video.
+- **Widgets and notifications** follow the system theme, even if the app has its own setting.
+- **Third-party SDKs** (payments, chat, maps) may not support dark mode, or may follow the system while your app is forced to Light. Mixed themes look broken to users.
+- Compare platforms: on Android, check both a Pixel and a Samsung device. Manufacturer skins can add their own dark options (see [iOS vs Android](/mobile/ios-vs-android)).
+
+</Tab>
+<Tab>
+
+- **Emulate without changing your OS:** Chrome DevTools › More tools › **Rendering** › "Emulate CSS media feature prefers-color-scheme". Firefox's Inspector has light and dark simulation buttons. See [DevTools for testers](/web/devtools-for-testers).
+- **Flash of the wrong theme:** reload with the cache disabled and a throttled network. Pages that apply the theme with JavaScript after load, or read a saved choice from <Term id="local-storage" /> too late, flash white first.
+- **Native controls:** scrollbars, checkboxes, date pickers and dropdowns can stay light on a dark page.
+  <DevNote>That happens without the `color-scheme` CSS property (or meta tag).</DevNote>
+- **Site toggle vs system:** if the site has its own Light/Dark/System switch, test all combinations, a reload, and a second tab.
+- **Emails** in Gmail, Outlook and Apple Mail each darken HTML emails differently: logos with transparent backgrounds and dark text in images are common casualties.
+- **Cross-browser:** check Chrome, Safari and Firefox, and phone browsers in dark mode ([Cross-browser testing](/web/cross-browser-testing)).
+- **Print** a page from dark mode: it should print with a light background, not a page of black ink.
+
+</Tab>
+</Tabs>
+
+## Checklist
+
+<Checklist
+  title="Dark mode checklist"
+  storageKey="dark-mode"
+  items={[
+    'The app follows the system theme when the in-app setting is System',
+    'In-app Light and Dark apply immediately and survive a restart and an update',
+    'Switching the theme while the app is open updates every visible screen',
+    'No typed text, selection or scroll position is lost when the theme changes (Android!)',
+    'All text passes 4.5:1 contrast; icons, borders and focus rings pass 3:1, in both themes',
+    'Selected, disabled and focused states are clear in both themes',
+    'No hard-coded black text or white boxes on dark screens',
+    'Logos and images have no vanishing transparent parts or baked-in white backgrounds',
+    'Cards and sheets are separated from the background without relying on shadows',
+    'Charts, maps and custom drawings are readable and update when the theme changes',
+    'Status bar and navigation bar icons are readable on every screen',
+    'Web views, emails, receipts and third-party screens match the theme',
+    'Increase Contrast / High contrast text and large text work together with dark mode',
+    'The website follows prefers-color-scheme without a white flash on load',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'The phone is set to Dark. In the app, Settings › Appearance is set to Light. What should the user see?',
+      options: ['Dark, the system always wins', 'Light, the in-app choice overrides the system', 'Whatever the app used last time', 'Light only on the Settings screen'],
+      answer: 1,
+      explain: '"System" means follow the phone. An explicit Light or Dark choice in the app overrides it, and must still apply after a restart.',
+    },
+    {
+      q: 'On Android, you switch to dark mode while writing a review and the text disappears. Why is this common?',
+      options: ['Dark mode deletes drafts to save battery', 'A theme change is a configuration change that recreates the screen', 'The keyboard is reset by the system', 'It only happens on emulators'],
+      answer: 1,
+      explain: 'Like rotation, a dark theme change recreates the Activity by default. If the app does not save its state, the input is lost.',
+    },
+    {
+      q: 'A grey caption has 4.8:1 contrast on white and 4.3:1 on black. Which statement is true?',
+      options: ['It passes, the light theme is what counts', 'It fails WCAG AA in dark mode for normal text', 'It passes, 3:1 is enough for text', 'Contrast does not apply to captions'],
+      answer: 1,
+      explain: 'Normal-size text needs at least 4.5:1 in every theme the product offers. The same grey can pass on one background and fail on the other.',
+    },
+    {
+      q: 'The company logo disappears in dark mode, but the app looks fine otherwise. What is the most likely cause?',
+      options: ['The image failed to download', 'A dark logo on a transparent background', 'The screen brightness is too low', 'The logo is too small'],
+      answer: 1,
+      explain: 'The transparent background shows the dark screen through it, so a black wordmark vanishes. The fix is a light version of the logo for dark mode.',
+    },
+    {
+      q: 'Which tool lets you test a website in dark mode without changing your computer settings?',
+      options: ['The Network tab', 'Lighthouse', 'Chrome DevTools Rendering: emulate prefers-color-scheme', 'Private browsing'],
+      answer: 2,
+      explain: 'The Rendering panel can emulate prefers-color-scheme: dark for the current tab. Firefox has similar buttons in the Inspector.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Dark mode has **two switches**: the system setting and (often) an in-app **System / Light / Dark** setting. The in-app choice wins and must be **remembered**.
+- Test the **moment of switching**, not just each theme: Android recreates the screen (a configuration change), iOS sends a trait change, the web updates through `prefers-color-scheme`.
+- The classic bugs: **hard-coded colors, vanishing transparent logos, low-contrast greys, invisible selected states, white web views, unreadable status bars and a white flash on websites**.
+- Measure **contrast in both themes**: 4.5:1 for text, 3:1 for icons, borders and focus rings.
+- Don't forget content you didn't build: **web views, emails, charts, widgets and third-party screens**.
+
+</KeyTakeaways>

@@ -1,0 +1,10 @@
+---
+/*
+ * Astro wrapper so MDX can place the SQL playground with a client directive.
+ * client:visible: the island (and the sql.js engine + .wasm it loads) is only fetched
+ * once the playground scrolls into view.
+ */
+import SqlPlaygroundIsland from './SqlPlayground';
+---
+
+<SqlPlaygroundIsland client:visible />

@@ -1,0 +1,46 @@
+teaser: "You click a link to the Returns section, the page scrolls there... and the section is still closed. How many bugs can hide in a list of headers?"
+cards:
+  - type: flip
+    front: "What is an accordion?"
+    back: "A vertical stack of sections. Each header opens or closes its content in place, so a long page becomes a short, scannable list."
+  - type: spotbug
+    screen: ["Delivery  ▼", "Delivered Mon 6 Oct to locker 41", "Payment  ▼", "Returns  ▼"]
+    question: "Delivery is open. What's wrong?"
+    bug: "The chevron points down on an open section."
+    explain: "The chevron must always match the real state: down when closed, up when open. Here it's driven by its own variable and drifts out of sync."
+  - type: quiz
+    q: "A user clicks the title of a closed section and nothing happens. Only the arrow works. What should happen?"
+    options: ["Nothing, the arrow is the control", "The whole header toggles the section", "The title opens a new page"]
+    answer: 1
+    explain: "Users tap the title, not the arrow. The whole header row is the button, with a touch target of at least 44 pt / 48 dp."
+  - type: truefalse
+    statement: "A link to /help#returns only needs to scroll to the Returns header."
+    answer: false
+    explain: "A deep link must also open the section it points to. Scrolling to a closed header makes users think the content is missing."
+  - type: thisorthat
+    prompt: "A flight booking page puts the total price incl. taxes in a closed accordion section."
+    left: "Fine, saves space"
+    right: "Design finding"
+    answer: right
+    explain: "Prices, fees, deadlines and errors are need-to-know. They belong on the page, not behind a tap."
+  - type: quiz
+    q: "VoiceOver says 'Payment, button, collapsed' while the section is open. What is most likely wrong?"
+    options: ["aria-expanded is never updated", "The animation is too slow", "The title is too long"]
+    answer: 0
+    explain: "Screen readers announce the state from aria-expanded on the button. If the code never changes it, blind users get the wrong state."
+  - type: spotbug
+    screen: ["Single-open FAQ", "Long answer above: open", "You tap the next question", "Its header jumps off the top"]
+    bug: "The tapped header scrolls out of view."
+    explain: "Closing the long section above removes its height, so everything moves up. Good accordions keep the tapped header where it was."
+  - type: flip
+    front: "What does hidden=\"until-found\" do?"
+    back: "Hides a panel but lets the browser's find-in-page (Ctrl+F) search it. On a match it fires beforematch, so the page can open the section."
+  - type: thisorthat
+    prompt: "All five sections are open after manual taps, but the button still says 'Expand all'."
+    left: "Bug"
+    right: "Expected"
+    answer: left
+    explain: "The label must be derived from the sections' real state. When everything is open it should say 'Collapse all'."
+  - type: tip
+    title: "Test the longest section"
+    text: "Open the longest panel at the largest text size. Fixed max-heights used for animation often cut off long or translated content."

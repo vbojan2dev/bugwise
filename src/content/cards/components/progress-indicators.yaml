@@ -1,0 +1,43 @@
+teaser: "A spinner that blinks for 60 ms can make an app feel slower than no spinner at all. When should a loader appear, and when should it stay hidden?"
+cards:
+  - type: flip
+    front: "Determinate vs indeterminate: what's the difference?"
+    back: "Determinate shows how far the work is (38%, 3 of 8). Indeterminate only says it's working, like a spinner."
+  - type: flip
+    front: "Which two timers stop a spinner from flashing?"
+    back: "A delay before showing (about 300–500 ms) and a minimum display time (about 500 ms) once it's visible."
+  - type: quiz
+    q: "An export takes about two minutes and can be measured. What should users see?"
+    options: ["A spinner only", "Nothing, run it silently", "A progress bar with Cancel"]
+    answer: 2
+    explain: "Long, measurable work needs real progress, a label and a way out. After 30 seconds of spinning, people can't tell working from stuck."
+  - type: quiz
+    q: "An upload bar sits at 99% forever after the final request fails. What's the likely cause?"
+    options: ["The bar is faked on a timer", "The file is too small", "Dark mode is on"]
+    answer: 0
+    explain: "Many apps animate to 99% and wait for the server. Without error handling, a failed answer leaves the bar stuck."
+  - type: truefalse
+    statement: "A progress percentage may go down if the app finds more work."
+    answer: false
+    explain: "Progress must only move forward. A drop from 46% to 31% looks like the work restarted, so estimate the total up front."
+  - type: truefalse
+    statement: "Screen reader users should hear when a long export finishes."
+    answer: true
+    explain: "Results are status messages (WCAG 4.1.3). Announce Export complete or the error, without moving focus, or blind users keep waiting."
+  - type: thisorthat
+    prompt: "Liking a photo takes 80 ms. What should the heart button show while the request runs?"
+    left: "A spinner"
+    right: "Update instantly"
+    answer: right
+    explain: "Under about a second, a spinner only flashes. Update the heart right away and revert with a message if the request fails."
+  - type: spotbug
+    screen: ["Balance: €2,481.36", "Network log: GET /balance  500", "Refresh icon: still spinning", "Message: (none)"]
+    bug: "The spinner never stops after an error."
+    explain: "Every indicator needs an exit for errors: stop spinning, keep the old value with its time, and say what went wrong with Retry."
+  - type: spotbug
+    screen: ["Exporting statements", "46% · about 1 min left", "...two seconds later...", "31% · about 1 min left"]
+    bug: "The percentage goes backwards."
+    explain: "The app divides by a total that grows during the export. Users read the drop as a restart or a failure."
+  - type: tip
+    title: "Throttle, then break it"
+    text: "Fast Wi-Fi hides loading bugs. Slow the network to see the indicator, then fail or hold the request with a proxy to see how it ends."

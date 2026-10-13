@@ -1,0 +1,45 @@
+teaser: "A brand-new user opens Orders and the spinner never stops. Why do so many apps break on the screens with nothing on them?"
+cards:
+  - type: flip
+    front: "What are the four states of a data screen?"
+    back: "Loading, data, empty and error. Exactly one of them should be visible at a time."
+  - type: spotbug
+    screen: ["Orders", "Loading…", "Network: GET /api/orders 200 []"]
+    bug: "Endless spinner when the list is empty."
+    explain: "The request succeeded with zero items. The app should show the empty state, but it only stops loading when items arrive."
+  - type: quiz
+    q: "Which error message is best?"
+    options: ["Error 500", "We couldn't load your orders. Try again", "You did something wrong"]
+    answer: 1
+    explain: "It says what happened and offers a way to recover. No codes, no blame."
+  - type: thisorthat
+    prompt: "Team orders exist, but this user isn't an admin. What should the screen say?"
+    left: "No orders yet"
+    right: "Only admins can see these"
+    answer: right
+    explain: "Showing 'empty' for a permission problem makes users think their data is gone. Explain the access and who can help."
+  - type: flip
+    front: "What should a good empty or error state tell the user?"
+    back: "What happened, why, and what to do next, with one clear action like Retry, Browse restaurants or Clear filters."
+  - type: quiz
+    q: "How can a tester make the Orders API return a 500 on demand?"
+    options: ["Wait for an outage", "Restart the phone", "Proxy tool Map Local or a breakpoint"]
+    answer: 2
+    explain: "Proxy tools like Charles or Proxyman can return any status or body, such as a 500, an empty list or a slow response."
+  - type: truefalse
+    statement: "Seeing 'No orders yet' for half a second before your orders load is fine."
+    answer: false
+    explain: "That empty flash tells users they have nothing. The screen should show loading first, then the data."
+  - type: spotbug
+    screen: ["Orders", "Something went wrong.", "(no buttons)"]
+    bug: "Dead-end error with no Retry or explanation."
+    explain: "The user has no way to recover except killing the app. Expected: a clear message plus a working Retry."
+  - type: thisorthat
+    prompt: "Your orders loaded fine, but the recommendations widget below them failed. How do you show its error?"
+    left: "Inline, in the widget"
+    right: "Full-screen error"
+    answer: left
+    explain: "Match the message to the size of the problem. A failed widget shouldn't hide content that loaded fine."
+  - type: tip
+    title: "Always test the way back"
+    text: "After forcing an error, fix the cause: reconnect or turn off Map Local. The screen should fully recover without restarting the app."

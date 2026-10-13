@@ -1,0 +1,46 @@
+teaser: "Twelve tiny thumbnails, 40 MB of data. How does a photo grid get that heavy, and how would you catch it?"
+cards:
+  - type: flip
+    front: "What are the two parts of an image gallery?"
+    back: "A thumbnail grid of small, cropped previews, and a viewer (lightbox) that shows one photo whole and sharp."
+  - type: quiz
+    q: "A grid of 12 thumbnails downloads 40 MB. What is the most likely cause?"
+    options: ["Lazy loading is on", "A slow server", "Originals used as thumbnails"]
+    answer: 2
+    explain: "Camera originals are 3 to 5 MB each. Thumbnails should be small resized files, lazy-loaded further down."
+  - type: spotbug
+    screen: ["Filter: Outside", "Tapped: Balcony photo", "Viewer shows: Living room"]
+    bug: "After filtering, a thumbnail opens a different photo."
+    explain: "The tapped position in the filtered grid is looked up in the unfiltered list. Always test the viewer after filtering or sorting."
+  - type: truefalse
+    statement: "After closing the viewer, focus should return to the thumbnail of the photo last viewed."
+    answer: true
+    explain: "If you swiped from photo 3 to 7, you continue from thumbnail 7, at the same scroll position."
+  - type: spotbug
+    screen: ["Viewer: first photo", "Counter: 0 of 12", "Last photo: 11 of 12"]
+    bug: "The counter is off by one."
+    explain: "The 0-based array index is shown instead of index + 1. Expected: 1 of 12 up to 12 of 12."
+  - type: thisorthat
+    prompt: "You zoom into photo 3 and tap Next. How should photo 4 open?"
+    left: "Fit to screen"
+    right: "Same zoom as photo 3"
+    answer: left
+    explain: "Zoom resets for each photo. Carrying it over shows a random corner of the next photo."
+  - type: quiz
+    q: "A viewer only supports pinch and swipe. Which WCAG criterion does it fail?"
+    options: ["1.4.3 Contrast", "2.5.1 Pointer Gestures", "2.2.2 Pause, Stop, Hide"]
+    answer: 1
+    explain: "Multi-point and path-based gestures need simple tap alternatives: zoom buttons, double-tap, Previous and Next."
+  - type: thisorthat
+    prompt: "On Android, a photo viewer is open. The user presses Back. What should close?"
+    left: "The whole listing"
+    right: "Only the viewer"
+    answer: right
+    explain: "System Back closes the viewer first and leaves the user on the listing, at the same place."
+  - type: truefalse
+    statement: "The viewer should crop photos to fill the screen, like the grid does."
+    answer: false
+    explain: "The grid may crop, but the viewer shows the whole photo. Panoramas and portraits must not lose their edges."
+  - type: tip
+    title: "Swipe past the last photo"
+    text: "On the last photo, swipe and tap Next once more. Expect a bounce or a seamless loop, never an empty black slide."

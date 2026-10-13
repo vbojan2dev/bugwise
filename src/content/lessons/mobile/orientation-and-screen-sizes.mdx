@@ -1,0 +1,426 @@
+---
+title: Orientation and Screen Sizes
+description: Portrait, landscape, notches, tablets and foldables. What really happens when a phone rotates, why data gets lost, and how to test layouts on every screen your users own.
+order: 4
+level: beginner
+minutes: { short: 35 }
+platform: mobile
+tags: [mobile, orientation, screen sizes, layout, safe area, tablets, foldables]
+---
+
+import DeviceSimulator from '@/components/demos/mobile-gestures/DeviceSimulator';
+import { BuggyHotelApp } from '@/components/demos/mobile-gestures/BuggyHotelApp';
+
+Maria is booking a hotel for a weekend in Porto on the train. She fills in her name, email and the guests, then turns the phone sideways to watch the hotel's video tour. The video starts from the beginning. She turns the phone back to finish the booking. The form is **empty**. She sighs, closes the app and books on a competitor's site instead.
+
+Nobody on the team had rotated the phone in the middle of the form. On their test devices the screen looked fine in both orientations. It just forgot everything in between.
+
+## Why it matters
+
+Users rotate their phones all the time: to watch a video, to see a wide photo, to type on a bigger keyboard, or simply because they put the phone down on a table. They also use **many different screens**: a small iPhone SE, a huge Pro Max, an iPad, a foldable that turns from phone to tablet mid-session, or a split screen next to another app.
+
+Every one of these changes the space the app has. Two kinds of bugs appear:
+
+- **Layout bugs:** content hidden behind the notch or home indicator, buttons pushed off screen, text stretched into unreadable lines, dialogs cut off.
+- **State bugs:** on Android, rotation **re-creates** the screen. Anything the app didn't save (a half-filled form, a scroll position, a playing video) is gone. This is a classic <Term id="state-persistence" /> bug.
+
+## Portrait, landscape and rotation lock
+
+<Term id="orientation">Orientation</Term> is simply how the user holds the device: **portrait** (upright) or **landscape** (sideways). What the app does about it depends on three settings:
+
+| Setting | Who controls it | What it does |
+| --- | --- | --- |
+| **Rotation lock / Auto-rotate off** | The user (iOS Control Center, Android Quick Settings) | The screen stays in portrait no matter how the phone is held. Android shows a small rotate button in the navigation bar so users can rotate once. Landscape-only apps (some games, video players) still open in landscape |
+| **Supported orientations** | The app (Info.plist on iOS, `screenOrientation` in the Android manifest) | Many phone apps are **portrait only**: banking, food delivery, social apps. Rotating the phone does nothing in those apps |
+| **Upside down** | The app and OS | Face ID iPhones don't support upside-down portrait; many Android apps don't either. Tablets usually support all four orientations |
+
+<Callout type="info" title="Portrait-only isn't always allowed">
+iPad apps that support multitasking are expected to support all orientations. And starting with **Android 16**, apps targeting that version can no longer lock orientation or resizability on **large screens** (tablets, unfolded foldables): the system ignores the restriction. A "portrait-only" app suddenly shows up in landscape on a tablet, so those layouts need testing too.
+</Callout>
+
+## What happens when the phone rotates
+
+The platforms handle rotation very differently, and that difference explains most rotation bugs.
+
+<Tabs labels={['Android', 'iOS']}>
+<Tab>
+
+By default, rotating the device is a **configuration change**. Android **destroys the current screen (the Activity) and creates it again** with the new size. It's like closing and reopening the screen in a fraction of a second.
+
+- Data the app keeps or saves for re-creation survives.
+  <DevNote>Data kept in a **ViewModel** or saved with **onSaveInstanceState** (`rememberSaveable` in Jetpack Compose).</DevNote>
+- Standard text fields restore their text automatically, but custom views, timers, video players and network calls started by the screen are lost or restarted unless the developer saved them.
+  <DevNote>Text fields need an ID for this. Compose `remember` state is lost as well.</DevNote>
+- The same re-creation happens for other configuration changes: **folding/unfolding**, entering **split screen**, changing **dark mode**, **font size** or **language**, and connecting a keyboard. One test, many triggers.
+
+Some apps handle rotation themselves. That avoids re-creation but can cause layouts that never update.
+
+<DevNote>They opt out with `android:configChanges`.</DevNote>
+
+</Tab>
+<Tab>
+
+iOS does **not** re-create the screen. The same view controller stays alive, and the system tells it that its **size** and **size classes** changed. The layout is recalculated.
+
+<DevNote>With Auto Layout or SwiftUI.</DevNote>
+
+- Data loss is rare, but **layout** bugs are common: constraints that only work in portrait, scroll views that jump, keyboards and dialogs that don't fit.
+- iOS describes space with **size classes**: *compact* or *regular* width and height. Most iPhones are compact width in portrait and compact **height** in landscape; the larger "Max/Plus" models get regular width in landscape. iPads are regular in both directions, until they are put into a split screen.
+- The status bar is hidden in landscape on iPhone, and the safe area moves to the sides.
+
+</Tab>
+</Tabs>
+
+## Safe areas: the parts of the screen you can't fully use
+
+Modern screens aren't simple rectangles. They have **rounded corners**, a **notch** or **Dynamic Island** for the cameras, a **home indicator** at the bottom, and system bars. The <Term id="safe-area" /> is the rectangle where content won't be covered or clipped. Backgrounds and images can extend beyond it, but text and buttons should stay inside.
+
+| Device and orientation | Typical safe-area insets |
+| --- | --- |
+| iPhone SE, portrait | Top 20 pt (status bar), nothing else |
+| iPhone SE, landscape | None at all (status bar hidden, no home indicator) |
+| iPhone 16 Pro Max, portrait | Top 62 pt (Dynamic Island + status bar), bottom 34 pt (home indicator) |
+| iPhone 16 Pro Max, landscape | Left **and** right 62 pt, bottom 21 pt, top 0 |
+| iPad with Face ID | Top 24 pt, bottom 20 pt, in both orientations |
+| Android phone | Status bar on top (often 24–48 dp, more around a camera hole), navigation bar or gesture handle at the bottom; since Android 15, apps targeting it draw **edge-to-edge** and must handle these insets themselves |
+
+Notice that in landscape the iPhone's island is on **one** side, yet iOS insets **both** sides, so content stays centered whichever way the phone is turned.
+
+## Points, pixels and dp
+
+Screens have very different pixel densities, so apps don't measure in pixels. They use **logical units** that look roughly the same size on every screen:
+
+| Unit | Platform | Meaning |
+| --- | --- | --- |
+| **px** (physical pixel) | All | One dot on the screen. A Pro Max has 1320 × 2868 of them |
+| **pt** (point) | iOS | Logical unit. 1 pt = 2 px on @2x screens, 3 px on @3x screens. The Pro Max is 440 × 956 pt |
+| **dp** (density-independent pixel) | Android | Logical unit. 1 dp = 1 px at 160 dpi; px = dp × (dpi ÷ 160) |
+| **sp** (scale-independent pixel) | Android | Like dp, but also scales with the user's font size setting. Used for text |
+| **CSS px** | Web | Logical unit in browsers, similar to pt and dp. See <Term id="viewport" /> |
+
+For testers this matters because **requirements, designs and bug reports speak in logical units**. "The button is 40 pt tall" is a fact you can check against the 44 × 44 pt minimum <Term id="touch-target" />; "the button is 120 px tall" means nothing until you know the density.
+
+Users can also change the logical size: **Display Zoom** on iPhone (Settings › Display & Brightness › Display Zoom › Larger Text) makes a big iPhone behave like a smaller one, and **Display size** on Android (Settings › Display) changes the dp width of the screen. Together with font size (<Term id="dynamic-type">Dynamic Type</Term> on iOS), these are some of the most common sources of cut-off text.
+
+## Tablets, foldables and split screen
+
+- **Tablets** have room for more: two panes (list + detail), sidebars, grids. A stretched phone layout on a tablet is a usability bug.
+- **Foldables** change size **while the app is running**. A Galaxy Z Fold goes from a tall, narrow cover screen to an almost square inner screen. Flip-style phones have a tiny cover screen. The app must keep its state and switch layout, and avoid putting buttons right on the **hinge**.
+- **Split screen and windows.** On iPad (Split View and Slide Over on older versions, Stage Manager, and the freely resizable, tileable windows of iPadOS 26) and Android (split screen, free-form windows on tablets), the app gets only part of the screen. A tablet app in a 50/50 split is suddenly phone-sized.
+
+Android groups widths into **window size classes**: *compact* (under 600 dp: phones in portrait), *medium* (600–839 dp: tablets in portrait, unfolded foldables) and *expanded* (840 dp and up: tablets in landscape; newer guidance splits very wide windows further into *large*, from 1200 dp, and *extra-large*, from 1600 dp). Heights under 480 dp are *compact* (phones in landscape). These are good test buckets.
+
+## Try it: the device simulator
+
+Switch devices, rotate, fold and turn the safe-area overlay on. Then switch off **App respects safe areas** to see what a careless app looks like, and add a few pizzas to the basket before you rotate: the basket should survive everything.
+
+<DeviceSimulator client:visible />
+
+<Callout type="tip" title="Tester mindset">
+Don't only check that each orientation **looks** right. Check what happens **during** the change: type something, scroll halfway, start a video, open a dialog, **then** rotate. That's where the bugs live.
+</Callout>
+
+## The keyboard and video in landscape
+
+Two features get very tight in landscape:
+
+- **The keyboard.** In landscape the on-screen keyboard can cover more than half of the screen. The focused field must stay visible, dialogs must move up or scroll, and the action button (Send, Apply, Log in) must be reachable. Some Android keyboards switch to a full-screen editing mode in landscape, which hides your app entirely while typing.
+- **Video.** Users expect a playing video to go **full screen** when they rotate to landscape and return when they rotate back, **without restarting** and without losing the playback position, subtitles or quality setting. Picture-in-picture and AirPlay/Cast add more transitions to try.
+
+## What to test
+
+**Rotation and state**
+
+- Rotate on every screen with input, scroll position, selection, a playing video, an open dialog or menu, and during loading.
+- Rotate several times quickly, and rotate while a network request is running (is it sent twice?).
+- Change other configurations too: fold/unfold, split screen, dark mode, font size. See also [Background and Foreground](/mobile/background-and-foreground).
+
+**Layout**
+
+- Nothing important under the notch, Dynamic Island, camera hole, rounded corners or home indicator, in **both** landscape directions.
+- Landscape uses the extra width sensibly; text lines stay readable (roughly 45–75 characters).
+- Smallest supported phone, largest phone, tablet, foldable (folded and unfolded), split screen.
+- Largest font size and Display Zoom / Display size, which together shrink the available space a lot.
+
+**Keyboard, dialogs and media**
+
+- With the keyboard open in landscape, the focused field and its buttons are visible or reachable by scrolling.
+- Videos go full screen and keep playing across rotation.
+
+**Locked orientation**
+
+- With rotation lock on, rotating does nothing. In portrait-only apps, check that rotation can't sneak in (for example through a video player or a web view).
+
+### Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **State lost on rotation** | Form fields empty, selection reset, wizard back to step 1 | High |
+| 2 | **Content under the notch / island** | Title, back button or first list item hidden or untappable in landscape | Medium–High |
+| 3 | **Content under the home indicator** | Bottom button overlaps the home indicator; swiping up to go home taps the button instead | Medium |
+| 4 | **Video restarts or stays small** | Rotating jumps back to 0:00, or the video doesn't go full screen | Medium |
+| 5 | **Stretched layout** | Phone layout scaled up to a tablet or landscape: 120-character lines, giant buttons, empty space | Low–Medium |
+| 6 | **Keyboard hides input** | In landscape the focused field or dialog buttons are covered and can't be scrolled to | High |
+| 7 | **Scroll position reset** | Rotate halfway down a long list and you're back at the top | Medium |
+| 8 | **Duplicate requests** | Rotating re-sends a request (two orders, two messages) | High |
+| 9 | **Cut-off dialogs and sheets** | A dialog is taller than the landscape screen and has no scrolling | Medium |
+| 10 | **Crash on rotation** | The app closes when rotated during loading or with a dialog open | Critical |
+
+## Find the bug
+
+This hotel booking screen supports both orientations, and it has **six orientation bugs**. Use the **Rotate phone** button below the device. Before each rotation, change something: type in the form, scroll, play the video, open the promo code dialog.
+
+<BugHunt
+  title="Hotel booking"
+  bugs={[
+    {
+      title: 'Form data is lost after rotation',
+      hint: 'Fill in your name and email, then rotate.',
+      detail: 'The <strong>Full name</strong> and <strong>Email</strong> fields are empty after rotating. The screen was re-created and the values were never saved (the guests count, by contrast, survives). Expected: all entered data is kept across rotation and other configuration changes.',
+    },
+    {
+      title: 'Previous-photo arrow is hidden behind the Dynamic Island in landscape',
+      hint: 'Rotate to landscape and try to go back to the previous photo.',
+      detail: 'In landscape the gallery fills the whole width and ignores the safe area, so the left arrow sits exactly under the Dynamic Island: you can\'t see it or tap it. Expected: controls stay inside the safe area (62 pt on both sides on a real iPhone 16 Pro Max).',
+    },
+    {
+      title: 'Video restarts and does not go full screen on rotation',
+      hint: 'Play the video tour for a few seconds, then rotate to landscape.',
+      detail: 'The video jumps back to <strong>0:00</strong>, stops playing and stays small. Expected: the video keeps playing from the same position and switches to full screen in landscape.',
+    },
+    {
+      title: 'Landscape layout does not use the extra width',
+      hint: 'Rotate to landscape and read the hotel description.',
+      detail: 'The text simply stretches across the screen, giving lines of about 90 characters that are tiring to read, while the video stays small. Expected: a limited text width (about 45–75 characters per line) or a two-column landscape layout.',
+    },
+    {
+      title: 'Promo code dialog is cut off by the keyboard in landscape',
+      hint: 'In landscape, open "Have a promo code?" and tap the code field.',
+      detail: 'The dialog stays centered on the full screen, so the keyboard covers the field and the <strong>Apply</strong> button, and the dialog can\'t scroll. You have to close the keyboard to apply the code. Expected: the dialog moves above the keyboard or becomes scrollable.',
+    },
+    {
+      title: 'Scroll position resets on rotation',
+      hint: 'Scroll down to "Your details" and rotate.',
+      detail: 'After rotating, the screen is back at the top and you have to find your place again. Expected: the same content stays in view after rotation.',
+    },
+  ]}
+>
+  <BuggyHotelApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Hotel details: name and email are cleared when the device is rotated
+
+**Steps:** 1. Open any hotel. 2. Enter "Anna Smith" in Full name and "anna@example.com" in Email. 3. Rotate the device to landscape.
+
+**Expected:** Both fields still contain the entered values.
+**Actual:** Both fields are empty. The guests count (2) is kept.
+
+**Severity:** High (users lose input and may abandon the booking) · **Reproducible:** 10/10 · **Device:** Pixel 8, Android 15 (also on rotate back to portrait)
+
+**Note:** Probably also happens on other configuration changes (fold/unfold, dark mode, split screen). Not checked yet.
+
+</Callout>
+
+## Tools and how-to
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+**Xcode Simulator**
+
+- Rotate with **Device › Rotate Left / Rotate Right** (⌘← / ⌘→).
+- Use **File › Open Simulator** (or **Window › Devices and Simulators**) to add the smallest and largest supported iPhones and an iPad. Check the app's minimum supported iOS version to know which devices matter.
+- Test iPad multitasking: on iPadOS 26, resize and tile windows with the window controls in the top-left corner; on older versions, use the "…" multitasking control at the top center.
+- Change **Display Zoom** and **Larger Text** in the Simulator's Settings app; **I/O › Keyboard › Toggle Software Keyboard** (⌘K) brings the on-screen keyboard back if a hardware keyboard hides it.
+
+**Real devices**
+
+- Toggle **Portrait Orientation Lock** in Control Center to test both modes.
+- Rotate in both directions: landscape left and landscape right put the Dynamic Island on opposite sides.
+
+</Tab>
+<Tab>
+
+**Android Emulator**
+
+- Rotate with the toolbar buttons or **Ctrl+←/→** (⌘ on a Mac).
+- Create a **Resizable** emulator, or the Pixel Fold and Pixel Tablet images, to switch between phone, foldable and tablet sizes and to fold/unfold from the extended controls.
+
+**<Term id="adb" /> commands**
+
+```bash
+# Lock rotation and force landscape (0 = portrait, 1 = landscape, 3 = reverse landscape)
+adb shell settings put system accelerometer_rotation 0
+adb shell settings put system user_rotation 1
+
+# Pretend to be a smaller or denser screen, then reset
+adb shell wm size 1080x1920
+adb shell wm density 480
+adb shell wm size reset
+adb shell wm density reset
+```
+
+**Developer options**
+
+- **Don't keep activities** destroys every screen when you leave it, a quick way to find the same lost-state bugs as rotation.
+- **Force activities to be resizable** lets you put even "portrait-only" apps into split screen.
+
+</Tab>
+<Tab>
+
+Mobile websites have orientation and safe-area bugs too.
+
+- In Chrome <Term id="devtools">DevTools</Term>, open the device toolbar (Ctrl/⌘+Shift+M) and use the **rotate** button next to the device size.
+- On iPhone, a page only draws under the notch if it uses `viewport-fit=cover`; it must then pad content with `env(safe-area-inset-left)` and friends. Test in Safari on a real iPhone or the Simulator in both landscape directions.
+- Rotation doesn't reload a web page, but `orientationchange` or `resize` handlers can reset forms, carousels or scroll position. See <Term id="responsive-design" />.
+
+</Tab>
+</Tabs>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-ORI-001',
+      title: 'Entered form data survives rotation',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open hotel details', 'Enter name and email', 'Rotate to landscape', 'Rotate back to portrait'],
+      data: 'Name: Anna Smith / Email: anna@example.com',
+      expected: 'Both fields keep their values after each rotation, and the cursor stays in the same field.',
+    },
+    {
+      id: 'TC-ORI-002',
+      title: 'Controls stay inside the safe area in both landscape directions',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['iPhone with Dynamic Island'],
+      steps: ['Open hotel details', 'Rotate to landscape left', 'Check gallery arrows, back button and Book now', 'Rotate to landscape right and repeat'],
+      expected: 'No text or control is hidden by the Dynamic Island, the rounded corners or the home indicator. All controls can be tapped.',
+    },
+    {
+      id: 'TC-ORI-003',
+      title: 'Playing video continues in full screen after rotation',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Start the video tour', 'Wait until 0:10', 'Rotate to landscape', 'Rotate back to portrait'],
+      expected: 'In landscape the video plays full screen from about 0:10 without restarting; in portrait it returns inline and keeps playing.',
+    },
+    {
+      id: 'TC-ORI-004',
+      title: 'Dialog with keyboard is usable in landscape',
+      priority: 'high',
+      type: 'edge',
+      steps: ['Rotate to landscape', 'Tap "Have a promo code?"', 'Tap the code field', 'Type WELCOME10'],
+      expected: 'The field and the Apply button remain visible (or reachable by scrolling) while the keyboard is open. Tapping Apply applies the code.',
+    },
+    {
+      id: 'TC-ORI-005',
+      title: 'Scroll position is kept after rotation',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Scroll to the "Your details" section', 'Rotate the device'],
+      expected: 'The "Your details" section is still visible after rotation.',
+    },
+    {
+      id: 'TC-ORI-006',
+      title: 'Unfolding a foldable keeps the basket and switches layout',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Foldable device or Pixel Fold emulator', 'Two items in the basket'],
+      steps: ['Open the restaurant menu on the cover screen', 'Scroll halfway', 'Unfold the device'],
+      expected: 'The basket still contains two items, the same part of the menu is visible, and the layout switches to the two-column version without restarting the screen visibly.',
+    },
+    {
+      id: 'TC-ORI-007',
+      title: 'Portrait-only app ignores rotation on phones',
+      priority: 'low',
+      type: 'negative',
+      preconditions: ['Auto-rotate is on'],
+      steps: ['Open the app on a phone', 'Rotate to landscape on every main screen, including video and web views'],
+      expected: 'The UI stays in portrait on every screen. No flicker, re-load or lost state.',
+    },
+    {
+      id: 'TC-ORI-008',
+      title: 'Layout works at the smallest size with large text',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['iPhone SE (or smallest supported device)', 'Display Zoom: Larger Text', 'Text size: largest'],
+      steps: ['Open each main screen in portrait and landscape'],
+      expected: 'No text is cut off or overlapping, and every primary button is reachable (by scrolling if needed).',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="Orientation and screen size checklist"
+  storageKey="orientation-and-screen-sizes"
+  items={[
+    'Every screen works in all supported orientations (and stays put when orientation is locked)',
+    'Input, selections, scroll position and open dialogs survive rotation',
+    'Rotation during loading does not crash, duplicate requests or lose results',
+    'Nothing important is hidden by the notch, Dynamic Island, camera hole, rounded corners or home indicator',
+    'Both landscape directions were tested (the cut-out switches sides)',
+    'Landscape and tablet layouts use the extra space; text lines stay readable',
+    'With the keyboard open in landscape, the focused field and its buttons are reachable',
+    'Videos go full screen in landscape and keep their position across rotation',
+    'Tested on the smallest and largest supported phones, a tablet and a foldable (folded and unfolded)',
+    'Split screen / multi-window layouts work and keep state when resized',
+    'Display Zoom / Display size and the largest font size do not break layouts',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'On Android, why can rotating the phone clear a half-filled form?',
+      options: ['Rotation logs the user out', 'By default the screen (Activity) is destroyed and re-created, and unsaved state is lost', 'The keyboard deletes the text', 'Android does not support landscape'],
+      answer: 1,
+      explain: 'Rotation is a configuration change. Unless the app saves its state (ViewModel, onSaveInstanceState, rememberSaveable), it is gone after re-creation.',
+    },
+    {
+      q: 'An iPhone 16 Pro Max is in landscape. Where are the safe-area insets?',
+      options: ['Only at the top', 'On the left and right sides, plus a small one at the bottom', 'Nowhere, landscape has no insets', 'Only on the side with the Dynamic Island'],
+      answer: 1,
+      explain: 'iOS insets both sides (62 pt) so content stays centered, and adds 21 pt at the bottom for the home indicator.',
+    },
+    {
+      q: 'A design says a button is 120 px tall on a @3x iPhone. How tall is it in points?',
+      options: ['120 pt', '360 pt', '40 pt', '60 pt'],
+      answer: 2,
+      explain: 'On a @3x screen, 1 pt = 3 px, so 120 px = 40 pt, which is below the 44 pt minimum touch target.',
+    },
+    {
+      q: 'Which situation can turn a tablet app into a phone-sized app?',
+      options: ['Dark mode', 'Split screen or multitasking next to another app', 'Low battery', 'Airplane mode'],
+      answer: 1,
+      explain: 'In a 50/50 split the app may get less than 600 dp/pt of width and should use its compact layout.',
+    },
+    {
+      q: 'What is the best way to find rotation bugs?',
+      options: ['Open each screen once in portrait and once in landscape', 'Change something on the screen (type, scroll, play, open a dialog) and then rotate', 'Only test on the Simulator', 'Rotate the phone with the app closed'],
+      answer: 1,
+      explain: 'Most rotation bugs are lost state. A screen that looks fine in both orientations can still forget everything during the change.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Rotation is a **change of size**. On Android it also **re-creates the screen** by default, so test that input, scroll position, video and dialogs survive it.
+- Keep content inside the **safe area**: notch, Dynamic Island, camera holes, rounded corners and the home indicator. Test **both** landscape directions.
+- Think in **logical units** (pt, dp), not pixels. Display Zoom, display size and font size change the space too.
+- Landscape, tablets, foldables and split screen each need a layout that **uses the space**, not a stretched phone screen.
+- The keyboard and full-screen video are the classic landscape trouble spots.
+- Always **change something, then rotate**. And repeat the same checks for folding, split screen and other configuration changes.
+
+</KeyTakeaways>
+
+Related: [Gestures](/mobile/gestures) · [Device Fragmentation](/mobile/device-fragmentation) · [Simulators and Emulators](/mobile/simulators-and-emulators) · [adb Basics](/mobile/adb-basics)

@@ -1,0 +1,471 @@
+---
+title: Login and Sign Up
+description: How login, sign up, password reset, 2FA, social login and biometrics work, what usually breaks, and exactly how to test them on mobile and web.
+order: 1
+level: beginner
+minutes: { short: 35 }
+platform: both
+tags: [authentication, login, sign up, security, test scenarios]
+---
+
+import AuthFlow from '@/components/demos/login/AuthFlow';
+import LoginErrorExample from '@/components/demos/login/LoginErrorExample';
+import { BuggyLoginApp } from '@/components/demos/login/BuggyLoginApp';
+
+Your banking app, your food delivery app, your email, your gym's booking site: almost every product starts with the same two screens. **Log in** and **Sign up**. They're the front door. If the door is stuck, nobody gets in. If the lock is weak, the wrong people do.
+
+That's why login is often the **first feature a new tester is asked to test**, and why it's a favorite interview question ("How would you test a login page?"). By the end of this lesson you'll have a confident, structured answer, and you'll have found real bugs in a broken login screen.
+
+## How it works
+
+Logging in is called <Term id="authentication" />: proving **who you are**. It's different from <Term id="authorization" />, which decides **what you're allowed to do** once you're in (for example, only admins can issue refunds).
+
+Here's what happens behind the screen when you tap **Log in**:
+
+<AuthFlow />
+
+<Steps>
+
+1. **You enter your credentials.** Usually an email (or username or phone number) and a password.
+2. **The app sends them to the server.** Always over an encrypted HTTPS connection, and inside the request *body*, never in the URL.
+3. **The server checks them.** It looks up the account and compares the password with a stored **hash** (a scrambled version). A good server never stores your actual password.
+4. **The server starts a <Term id="session" />.** It sends back a **token**: a long random string that works like a wristband at a festival. You showed your ticket once, and now the wristband gets you in.
+5. **The app stores the token.** Mobile apps use secure storage (iOS Keychain, Android Keystore). Websites usually use a <Term id="cookie" />.
+6. **Every next request carries the token.** "Show my orders" works because the server sees the token and knows it's you.
+7. **Logging out (or expiry) ends the session.** The server invalidates the token, so even a copied token stops working.
+
+</Steps>
+
+<Callout type="tip" title="Why testers care about this flow">
+Every step is a place where bugs hide. Step 2: is the password leaking into a URL or a log? Step 3: is the email compared case-insensitively? Step 4: what if you tap twice? Step 7: does the session *really* end, or does the Back button bring the account back? Keep this flow in your head and you'll find bugs other people miss.
+</Callout>
+
+### The family of login features
+
+"Login" is rarely just one screen. Here's what you'll meet in real projects:
+
+| Feature | What it does | What to watch out for |
+| --- | --- | --- |
+| **Sign up** (registration) | Creates a new account: name, email, password, maybe terms checkbox | Password rules really enforced, duplicate emails, confirmation email |
+| **Log in** (sign in) | Proves you own an existing account | Wrong-credential handling, lockout, "remember me", sessions |
+| **[Password reset](/features/password-reset)** | "Forgot password?" sends a one-time link or code by email or SMS | Link expires, works only once, old password stops working, generic message |
+| **[Two-factor authentication (2FA)](/features/two-factor-authentication)** | After the password, asks for a second proof: SMS code, authenticator app code, or a push approval | Wrong or expired codes, resend limits, "trust this device" |
+| **Social login** | "Sign in with Apple" or "Sign in with Google" lets another company vouch for you | Canceling halfway, Apple's "Hide My Email", linking to an existing account |
+| **[Biometrics](/features/biometric-login)** | Face ID, Touch ID or fingerprint unlocks a saved login on the device | Fallback to password, new fingerprint added, biometrics turned off |
+| **Logout** | Ends the session on this device (sometimes "log out everywhere") | Back button, cached screens, other tabs and devices |
+
+<Callout type="info" title="Biometrics don't replace the password">
+Face ID and fingerprint unlock happen **on the device**. The phone confirms it's you, then releases a token or saved password from secure storage. The server never sees your face or fingerprint. That's why there must always be a **fallback** (password or device passcode) when biometrics fail.
+</Callout>
+
+## Example requirements
+
+Before you test, you need to know what "correct" means. Here's a realistic <Term id="user-story" /> for a grocery delivery app, with <Term id="acceptance-criteria" />:
+
+<Callout type="example" title="User story: Log in with email and password">
+
+**As a** returning FreshCart customer, **I want to** log in with my email and password **so that** I can see my orders and check out quickly.
+
+**Acceptance criteria**
+
+1. The user can log in with a registered email and the correct password and lands on the Home screen.
+2. The email is **case-insensitive** and leading/trailing spaces are ignored (`Anna@Test.com ` works for `anna@test.com`).
+3. Passwords must be **at least 8 characters** (checked at sign up and on the server).
+4. Wrong email or wrong password shows the **same generic message**: "Email or password is incorrect."
+5. After **5 failed attempts** in a row, the account is locked for 15 minutes and the user sees how to recover.
+6. The password field is masked and has a **show/hide** button.
+7. The **Log in** button is disabled while the request is in progress.
+8. With **"Remember me"** on, the user stays logged in for 30 days. With it off, the session ends when the app or browser is closed.
+9. Credentials are sent only over **HTTPS**, in the request body. Never in the URL.
+10. After **logout**, protected screens can't be reached with Back, and the session token no longer works.
+
+</Callout>
+
+Notice how many criteria are about things *other* than "it logs in". Criteria 2, 4, 5, 7, 9 and 10 each prevent a real bug that teams ship all the time.
+
+### Why "generic error message" matters
+
+If the app says "No account with this email" for one address and "Wrong password" for another, an attacker can feed it a list of emails and learn **which people have accounts**. That's called <Term id="account-enumeration" />. They can then target those people with phishing or password guessing.
+
+<Compare>
+<Dont title="Reveals which emails exist">
+
+<div class="not-prose demo-screen my-3"><LoginErrorExample email="maria@example.com" message="No account found with this email." /></div>
+
+An attacker now knows maria@example.com is *not* a customer, and will happily try the next address.
+
+</Dont>
+<Do title="Same message for both cases">
+
+<div class="not-prose demo-screen my-3"><LoginErrorExample email="maria@example.com" message="Email or password is incorrect." /></div>
+
+The attacker learns nothing. A real customer still knows what to do: check both and try again.
+
+</Do>
+</Compare>
+
+<Callout type="note">
+The same rule applies to **password reset**: "If an account exists for this email, we've sent a link" is safer than "No account found". Sign up is harder (people need to know their email is taken), so teams protect it with rate limits and CAPTCHAs, or show a neutral "Check your inbox" message and email the existing owner instead.
+</Callout>
+
+## What usually goes wrong
+
+These bugs appear in login features again and again. Learn them once and you'll recognize them everywhere.
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Case-sensitive or untrimmed email** | `Anna@test.com` or `anna@test.com ` (with a space from autofill or the keyboard) says "no account" | High |
+| 2 | **Account enumeration** | Different messages for "unknown email" and "wrong password" | Medium–High (security) |
+| 3 | **Lockout missing or bypassable** | Unlimited password guesses, or the counter resets when you reload or switch screens | High (security) |
+| 4 | **Password leaks** | Password in the URL, in logs, in analytics events, or visible in a screenshot of the app switcher | Critical (security) |
+| 5 | **<Term id="double-submit" />** | Tapping **Log in** twice creates two sessions or two accounts | Medium |
+| 6 | **Rules not enforced** | The UI says "at least 8 characters" but `1234` is accepted (often only the client checks, or the wrong number) | Medium–High |
+| 7 | **Session not really ended** | After logout, Back shows the account screen, or the old token still works | High (security) |
+| 8 | **Session expires badly** | User is kicked out mid-checkout and loses their basket, or never expires at all | Medium |
+| 9 | **Autofill and password managers break** | The keyboard doesn't offer saved passwords, or autofill fills the wrong field | Medium |
+| 10 | **Unhelpful <Term id="error-message">error messages</Term>** | "Error 500" or "Something went wrong" with no next step, or errors that never clear | Low–Medium |
+| 11 | **Reset link problems** | Link works twice, never expires, or opens the browser instead of the app | High |
+| 12 | **Accessibility gaps** | Fields without labels, errors not announced by screen readers, show-password icon with no name | High (for affected users) |
+
+<Callout type="bug" title="Why bug #1 is so common on mobile">
+Phone keyboards **capitalize the first letter** of a text field unless the developer turns it off, and autocorrect or autofill can add a **trailing space**. So `anna@test.com` easily becomes `Anna@test.com `. If the server compares emails exactly, real customers get locked out of their own accounts and blame themselves.
+</Callout>
+
+## Find the bug
+
+Time to practice. FreshCart's login and sign up screens below have **six bugs**. Explore them like a tester:
+
+- Log in with the test account. Then try variations of the same email.
+- Try a wrong password, and an email that doesn't exist. Compare the messages.
+- Watch the **server log** for every request.
+- Tap buttons quickly, more than once.
+- Create a new account and read the password rule.
+- Log out, then use **Swipe back**.
+
+<BugHunt
+  title="FreshCart login"
+  bugs={[
+    {
+      title: 'Email is case-sensitive and spaces are not trimmed',
+      hint: 'Log in as Anna@test.com, or add a space after the email.',
+      detail: '<code>Anna@test.com</code> and <code>anna@test.com </code> both fail with "No account found", although it is the same account. The server log shows the raw value (<code>Anna%40test.com</code>, <code>%20</code> at the end). Expected: the email is trimmed and compared case-insensitively.',
+    },
+    {
+      title: 'Error messages reveal which emails are registered',
+      hint: 'Compare a wrong password for anna@test.com with any unknown email.',
+      detail: 'Unknown email shows <strong>"No account found with this email"</strong>, a wrong password shows <strong>"Incorrect password"</strong>. This is <em>account enumeration</em>: an attacker can test a list of emails and find real customers. Expected: one generic message such as "Email or password is incorrect".',
+    },
+    {
+      title: 'Password is sent in the URL',
+      hint: 'Read the first line of each login request in the server log.',
+      detail: 'Login is a <code>GET /api/login?email=…&amp;password=Secret123!</code> request. URLs end up in server logs, proxies, analytics and browser history, so the password leaks in plain text. Expected: a <code>POST</code> request with credentials in the body (sign up already does this correctly).',
+    },
+    {
+      title: 'Double tap on Log in creates two sessions',
+      hint: 'Tap Log in twice quickly with the correct password, then look at Active sessions.',
+      detail: 'The button shows a spinner but stays enabled, so each tap sends a new request. The account screen lists <strong>two active sessions</strong>, and logging out only ends one of them. Expected: the button is disabled while the request is in progress and only one session is created.',
+    },
+    {
+      title: 'Sign up accepts passwords shorter than 8 characters',
+      hint: 'Create an account with the password "abcd".',
+      detail: 'The helper text says "At least 8 characters", but a 4-character password is accepted and the server returns <code>201</code>. A 3-character password is rejected, so the check uses the wrong number (a classic boundary bug). Expected: 7 characters rejected, 8 accepted, on the client <em>and</em> the server.',
+    },
+    {
+      title: 'Swipe back after logout shows the account again',
+      hint: 'Log in, log out, then use Swipe back.',
+      detail: 'Logout puts the Log in screen <em>on top of</em> the account screen instead of replacing the history, and the cached profile is not cleared. Swiping back shows Anna\'s name, address and card again without logging in. Expected: after logout the history is reset and personal data is cleared from memory.',
+    },
+  ]}
+>
+  <BuggyLoginApp client:visible />
+</BugHunt>
+
+<Callout type="tip" title="Notice what works">
+Some things in this demo are correct on purpose: the lockout after 5 failed attempts, the generic message on **Forgot password?**, and the sign up button that disables itself while loading. Comparing the good and bad parts of the same app is a great way to explain a bug to a developer: "Reset password already does it right, login should do the same."
+</Callout>
+
+<Callout type="example" title="How would you report bug #3?">
+
+**Title:** Login: password sent as URL query parameter in GET /api/login
+
+**Steps:** 1. Open the app. 2. Enter `anna@test.com` / `Secret123!`. 3. Tap **Log in**. 4. Check the server log (or a proxy tool such as Charles).
+
+**Expected:** Credentials are sent in the body of a `POST` request over HTTPS.
+**Actual:** The request puts the password in the URL, so it is stored in plain text wherever URLs are logged:
+
+```http
+GET /api/login?email=anna%40test.com&password=Secret123!&remember=false
+```
+
+**Severity:** Critical (security) · **Reproducible:** Always
+
+</Callout>
+
+## Test scenarios
+
+A <Term id="test-scenario" /> is a one-line idea of *what* to check. Group them by type so you don't forget whole areas. Here's a strong starting set for login and sign up. For the sign up form itself (field rules, real-world names and addresses, error messages), see [Forms and Validation](/features/forms-and-validation).
+
+### Functional
+
+The happy paths, the core of <Term id="positive-testing" />:
+
+- Log in with a valid email and password and land on the Home screen.
+- Sign up with valid data, then log out and log in with the new account.
+- **Remember me** on: close and reopen the app (or browser), you're still logged in. Off: you have to log in again.
+- **Forgot password:** the email arrives, the link opens the reset screen, the new password works, the old one doesn't.
+- **2FA:** a correct code logs you in; "Resend code" sends a new one and the old code stops working.
+- **Social login:** Sign in with Apple and Google create an account on first use and log in to the *same* account next time.
+- **Biometrics:** after enabling Face ID or fingerprint, the next login only needs a glance or a touch.
+- **Logout** ends the session and returns to the Log in screen.
+
+### Negative
+
+<Term id="negative-testing" />: the app should refuse politely, and never crash or leak information.
+
+- Wrong password for an existing email.
+- Email that has no account.
+- Empty email, empty password, both empty.
+- Badly formatted email: `anna@`, `anna.test.com`, `anna@@test.com`.
+- Sign up with an email that's already registered.
+- Sign up with a password that breaks the rules (too short, or missing a required number).
+- Expired or already-used password reset link.
+- Wrong, expired or reused 2FA code.
+- Cancel the Apple or Google sheet halfway through.
+
+### Edge cases
+
+<Term id="edge-case">Edge cases</Term> are where the interesting bugs live:
+
+- **Email case:** `ANNA@TEST.COM` and `Anna@Test.com` should log in to the same account as `anna@test.com`.
+- **Spaces:** a leading or trailing space in the email (very common with autofill). Spaces *inside* a password must be kept, since they can be part of it.
+- **Password length boundaries:** with a minimum of 8, try 7, 8 and 9 characters. That's <Term id="boundary-value-analysis" />. Also try the maximum (e.g. 64 or 128) and one more.
+- **Very long input:** paste 1,000 characters into each field. Does the layout break, does the app freeze, does the server answer with a 500?
+- **Unicode:** names like `Zoë`, `José`, `Łukasz` or `王芳`; passwords with emoji or `ü`. A password set on the web must also work in the app.
+- **Special characters** in passwords: `" ' < > & % \ ;` (they also catch basic <Term id="sql-injection" /> and <Term id="xss" /> problems).
+- **Plus addressing:** `anna+groceries@test.com` is a valid email and must be accepted.
+- **Lockout boundaries:** 4 wrong attempts then a correct one (should work and reset the counter); exactly 5 wrong (locked); a correct password while locked (still locked).
+- **Slow or lost network** while tapping Log in: clear loading state, no frozen spinner, no double session.
+- **Double tap** on Log in or Create account.
+- **Password changed on another device:** the old session should end.
+
+### UI & usability
+
+- Every field has a visible **label**, not only a <Term id="placeholder" /> that disappears when you type.
+- **Show/hide password** toggles the masking and keeps the cursor position.
+- The **keyboard type** fits the field: email keyboard with `@`, no auto-capitalization or autocorrect on email and password fields.
+- **Password managers and autofill** work: iOS offers saved passwords above the keyboard, Android Autofill and browsers fill the right fields, and "suggest strong password" works on sign up.
+- Pressing **Return/Enter** on the keyboard moves to the next field or submits.
+- Error messages are **clear, near the field, and tell the user what to do**. They disappear once the problem is fixed.
+- Password rules are shown **before** the user types, not only after a failure.
+- The **Log in** button shows a <Term id="loading-state" /> and is disabled while waiting.
+- The screen works in **landscape**, with **large text**, in **dark mode**, and on small phones (the button isn't hidden behind the keyboard).
+
+### Security basics
+
+You don't need to be a security expert to catch these. <Term id="security-testing" /> at this level is mostly careful observation (see [Security basics](/web/security-basics) for more):
+
+- **Generic error messages** for wrong email and wrong password (no account enumeration). Same for password reset.
+- **Lockout or rate limiting** after the agreed number of failed attempts, enforced on the **server** (refreshing or reinstalling must not reset it).
+- **Password never in the URL**, logs or analytics. Check with <Term id="devtools" /> (Network tab) on the web or a [proxy tool](/mobile/proxy-tools) on mobile.
+- **HTTPS only.** Try `http://` on the web: it should redirect to `https://`.
+- **Logout really logs out:** Back button, browser history and reopened tabs must not show protected pages. An old token copied before logout must be rejected.
+- **Session expiry:** after the agreed idle time, the next action asks you to log in again, and returns you to where you were afterwards.
+- **Password field is masked** and its value is not copyable (Copy is disabled on masked fields).
+- **Reset links** expire and work only once. Changing the password ends other sessions.
+- The app switcher on mobile shouldn't reveal sensitive data (many banking apps blur the screen).
+
+### Accessibility
+
+<Term id="accessibility-testing" /> for login matters a lot: if someone can't log in, they can't use anything else.
+
+- With a <Term id="screen-reader" /> (VoiceOver, TalkBack), every field announces its label, e.g. "Email, text field".
+- The show-password button has a name ("Show password") and announces its state.
+- **Error messages are announced** when they appear, and focus moves to or near the first error.
+- On the web, you can complete the whole flow with the **keyboard only**, with a visible focus ring, in a logical order.
+- Text contrast is at least **4.5:1**, and errors aren't shown by red color alone (add text or an icon).
+- <Term id="touch-target">Touch targets</Term> for the eye icon and links are at least 44×44 pt (iOS) / 48×48 dp (Android).
+- **No time limit** that's too short to type a password or a 2FA code, and pasting into fields is allowed (people who use password managers rely on it).
+
+## Example test cases
+
+Scenarios become <Term id="test-case">test cases</Term> once you add exact steps, <Term id="test-data" /> and expected results:
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-LOGIN-001',
+      title: 'Log in with valid email and password',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Account anna@test.com exists and is not locked', 'User is logged out'],
+      steps: ['Open the app', 'Enter the email', 'Enter the password', 'Tap "Log in"'],
+      data: 'email: anna@test.com / password: Secret123!',
+      expected: 'Home screen opens and shows "Hi, Anna". Exactly one new session is created.',
+    },
+    {
+      id: 'TC-LOGIN-002',
+      title: 'Email is case-insensitive and trimmed',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Account anna@test.com exists'],
+      steps: ['Enter "Anna@Test.COM " (capital letters, trailing space)', 'Enter the correct password', 'Tap "Log in"'],
+      data: 'password: Secret123!',
+      expected: 'User is logged in to the anna@test.com account.',
+    },
+    {
+      id: 'TC-LOGIN-003',
+      title: 'Same generic error for wrong password and unknown email',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Log in with anna@test.com and password "Wrong123!"', 'Note the message', 'Log in with nobody@test.com and password "Wrong123!"', 'Compare the messages'],
+      expected: 'Both attempts show exactly "Email or password is incorrect." The response time and status code are also the same.',
+    },
+    {
+      id: 'TC-LOGIN-004',
+      title: 'Account locks after 5 failed attempts',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Account anna@test.com is not locked'],
+      steps: ['Enter anna@test.com with a wrong password 5 times', 'Enter the correct password', 'Restart the app and try the correct password again'],
+      expected: 'After the 5th failure a lockout message is shown. The correct password is rejected while the lock lasts, also after a restart.',
+    },
+    {
+      id: 'TC-LOGIN-005',
+      title: 'Log in button cannot be submitted twice',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Network throttled to a slow connection'],
+      steps: ['Enter valid credentials', 'Tap "Log in" twice quickly'],
+      expected: 'The button is disabled after the first tap. Only one login request is sent and one session is created.',
+    },
+    {
+      id: 'TC-LOGIN-006',
+      title: 'Credentials are not sent in the URL',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Proxy tool or browser DevTools is recording traffic'],
+      steps: ['Log in with valid credentials', 'Inspect the login request'],
+      expected: 'The request is a POST over HTTPS. Email and password are only in the request body, never in the URL or query string.',
+    },
+    {
+      id: 'TC-SIGNUP-001',
+      title: 'Password length boundary at sign up',
+      priority: 'high',
+      type: 'edge',
+      steps: ['Open Sign up and fill in name and a new email', 'Enter a 7-character password and submit', 'Change it to 8 characters and submit'],
+      data: '7 chars: Abcde12 / 8 chars: Abcde123',
+      expected: '7 characters: error "Password must be at least 8 characters." and no account is created. 8 characters: account is created.',
+    },
+    {
+      id: 'TC-LOGOUT-001',
+      title: 'Back after logout does not show protected screens',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['User is logged in'],
+      steps: ['Tap "Log out"', 'Swipe back (iOS) / press Back (Android) / press the browser Back button'],
+      expected: 'The Log in screen stays (or the app closes on Android). No personal data is shown. Any protected request returns 401.',
+    },
+  ]}
+/>
+
+## Mobile vs web
+
+The idea is the same everywhere, but the details, and the bugs, differ a lot.
+
+<Tabs labels={['Mobile app', 'Website']}>
+<Tab>
+
+- **Biometrics:** test enabling and disabling Face ID / Touch ID / fingerprint, failed scans and the fallback to passcode or password. Also what happens if a **new fingerprint or face** is added in device settings (many banking apps then require the password again).
+- **Keychain and Autofill:** iOS Password AutoFill and Android Autofill should offer saved passwords and "suggest strong password" on sign up. If they don't, the fields are probably missing the right content type hints.
+- **Keyboard types:** email keyboard with `@`, no auto-capitalization or autocorrect on email and password. Check that the keyboard doesn't cover the Log in button.
+- **App backgrounding:** put the app in the background during login (or while the 2FA SMS arrives) and come back. The form should keep its data, the session shouldn't break, and the app switcher shouldn't show sensitive data.
+- **Staying logged in:** mobile apps usually keep you logged in for weeks. Test restarting the app, restarting the phone, updating the app, and **reinstalling** (the iOS Keychain can survive a reinstall, so check whether you're unexpectedly still logged in).
+- **Deep links from emails:** a password reset or "confirm your email" link should open **the app** (a <Term id="deep-link" />, see [Deep links](/features/deep-links)), not the browser. Test with the app installed, not installed, and logged in as a different user.
+- **2FA codes:** iOS and Android can autofill SMS codes from messages. Check that the code field supports it.
+- **Back button (Android):** after logout, the system Back button must not return to the account.
+
+</Tab>
+<Tab>
+
+- **Browser autofill and password managers:** Chrome, Safari, Firefox and tools like 1Password should detect the fields and offer to save the password after sign up. Check that they fill the right fields.
+- **Remember me cookies:** with "Remember me", closing and reopening the browser keeps you logged in. Without it, the session should end. Look at the <Term id="cookie" /> in DevTools (Application tab): expiry date, and flags like `Secure` and `HttpOnly`.
+- **Multiple tabs:** log out in one tab, then click something in another. The second tab should send you to the login page, not keep working. Log in as a different user in a new tab and check the first tab doesn't mix up data.
+- **Back button and history:** after logout, the browser Back button must not show cached account pages. The password must never appear in browser history (which happens with GET forms).
+- **HTTPS:** `http://` should redirect to `https://`, and the browser should show no "Not secure" warning on the login page.
+- **Network tab:** in <Term id="devtools" />, check that login is a `POST`, that the password isn't in the URL, and what the error responses contain.
+- **Cross-browser:** test login in Chrome, Safari and Firefox, including private/incognito windows (cookies behave differently there).
+- **Keyboard only:** Tab through the form, submit with Enter, and check the focus ring is always visible.
+
+</Tab>
+</Tabs>
+
+## Checklist
+
+<Checklist
+  title="Login and sign up checklist"
+  storageKey="login-and-sign-up"
+  items={[
+    'Valid email and password log in and open the Home screen',
+    'Email is case-insensitive and leading/trailing spaces are ignored',
+    'Wrong email and wrong password show the same generic message',
+    'Account locks after the agreed number of failed attempts, enforced on the server',
+    'Password rules from the spec are enforced at sign up (test the boundaries: 7, 8, 9 characters)',
+    'Log in and Create account buttons cannot be submitted twice',
+    'Password is masked, has a show/hide button, and is never sent in the URL',
+    'All traffic uses HTTPS',
+    'Remember me keeps you logged in after a restart; without it the session ends',
+    'Password reset link arrives, works once, expires, and shows a generic message for unknown emails',
+    'Logout ends the session: Back, history and other tabs cannot show account data',
+    'Session expiry asks you to log in again without losing your work',
+    'Autofill and password managers fill the right fields; keyboard types are correct',
+    '2FA, social login and biometrics work, including cancel and fallback paths',
+    'Labels, error announcements and keyboard navigation work with a screen reader',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'Which error message is the safest for a failed login?',
+      options: ['"No account found with this email."', '"Incorrect password for anna@test.com."', '"Email or password is incorrect."', '"Error 401."'],
+      answer: 2,
+      explain: 'A generic message does not reveal whether the email is registered (no account enumeration) and still tells the user what to check.',
+    },
+    {
+      q: 'Your login works with "anna@test.com" but fails with "Anna@test.com". What kind of bug is this?',
+      options: ['A cosmetic bug, nobody types capitals', 'An input handling bug: emails should be compared case-insensitively', 'A performance bug', 'Expected behavior, emails are case-sensitive'],
+      answer: 1,
+      explain: 'Phone keyboards often capitalize the first letter automatically. Real users would be locked out of their own account.',
+    },
+    {
+      q: 'The rule says "at least 8 characters". Which set of password lengths gives the best boundary test?',
+      options: ['1, 50, 100', '7, 8, 9', '8 only', '4 and 12'],
+      answer: 1,
+      explain: 'Boundary value analysis tests just below, on, and just above the limit. That is exactly where off-by-one bugs hide.',
+    },
+    {
+      q: 'In DevTools you see: GET /api/login?email=anna%40test.com&password=Secret123!. What is the problem?',
+      options: ['Nothing, it uses HTTPS', 'The email is URL-encoded', 'The password is in the URL, so it ends up in logs and history', 'GET is slower than POST'],
+      answer: 2,
+      explain: 'URLs are stored in server logs, proxies, analytics and browser history. Credentials belong in the body of a POST request.',
+    },
+    {
+      q: 'After tapping Log out, you press Back and see the account screen with the user\'s address. What should you do?',
+      options: ['Ignore it, the user chose to press Back', 'Report it as a security bug: logout must clear the history and cached data', 'Report it as a low-priority UI glitch', 'Clear the app cache and retest'],
+      answer: 1,
+      explain: 'Anyone who picks up the phone after logout could see personal data. Logout must reset navigation and clear the session.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Login is <Term id="authentication" />: credentials go to the server once, and a **session token** proves who you are after that.
+- Test the whole family: **sign up, log in, password reset, 2FA, social login, biometrics and logout**.
+- The classic bugs: **case-sensitive emails, account enumeration, missing lockout, passwords in URLs, double submit, rules not enforced, and logout that doesn't really log out**.
+- Use **boundary values** for password rules and lockout counts, and always try uppercase, spaces, long input and unicode.
+- Watch the **network** (DevTools or a proxy) and check **Back, other tabs and app restarts** after logout.
+
+</KeyTakeaways>

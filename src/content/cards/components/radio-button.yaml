@@ -1,0 +1,45 @@
+teaser: "Two payment methods selected at once? It happens more often than you'd think, and one attribute is usually to blame."
+cards:
+  - type: flip
+    front: "What is a radio button group?"
+    back: "A small set of round options where exactly one can be selected. Picking one unselects the others."
+  - type: flip
+    front: "Can a radio group go back to nothing selected?"
+    back: "No. Tapping a selected radio does nothing. If no answer is valid, the group needs an option like None or Prefer not to say."
+  - type: quiz
+    q: "On a web checkout, Card and Pay on delivery can both be selected. Most likely cause?"
+    options: ["Different name attributes", "Slow server", "Long labels"]
+    answer: 0
+    explain: "Native radios only unselect each other when they share the same name. A different name makes a separate group."
+  - type: quiz
+    q: "What should the arrow keys do inside a web radio group?"
+    options: ["Scroll the page", "Submit the form", "Move focus and selection"]
+    answer: 2
+    explain: "Tab enters the group once. The arrow keys move between options and select them."
+  - type: thisorthat
+    prompt: "Choosing a country from 27 options in a sign-up form."
+    left: "Radio buttons"
+    right: "Dropdown"
+    answer: right
+    explain: "Radio buttons are for a small set the user can see at once. A long list belongs in a dropdown or searchable list."
+  - type: thisorthat
+    prompt: "Delivery options: Standard (free) and Express (€6.99), each with an arrival date."
+    left: "Radio buttons"
+    right: "Checkboxes"
+    answer: left
+    explain: "Exactly one delivery option can apply, and users compare dates and prices side by side."
+  - type: spotbug
+    screen: ["( ) Standard          Free", "(o) Express           €6.99", "Shoes: €54.00", "Total: €54.00"]
+    bug: "Total ignores the selected Express shipping price."
+    explain: "Everything calculated from the choice must follow it. A total that lags behind gets customers charged the wrong amount."
+  - type: truefalse
+    statement: "Preselecting paid travel insurance in a radio group is a good, safe default."
+    answer: false
+    explain: "A default that costs money is a decision made for the user. Preselect only safe, free, common options."
+  - type: spotbug
+    screen: ["Payment *", "( ) Card   ( ) PayPal", "[Place order]", "Order placed. Payment: (none)"]
+    bug: "The order went through without a payment method."
+    explain: "Having no default is fine, but then the form and the server must require a choice before placing the order."
+  - type: tip
+    title: "Tap the description too"
+    text: "On radio cards, tap the name, the description and the price. If only the tiny circle reacts, the touch target is too small."

@@ -1,0 +1,47 @@
+teaser: "A switch has only two states. So how can it say on while the server says off?"
+cards:
+  - type: flip
+    front: "What makes a toggle switch different from a checkbox?"
+    back: "A switch takes effect immediately, with no Save button. A checkbox is applied only after the user submits the form."
+  - type: thisorthat
+    prompt: "A sign-up form has \"I agree to the Terms\" and a Create account button."
+    left: "Toggle switch"
+    right: "Checkbox"
+    answer: right
+    explain: "Nothing happens until the form is submitted, which is exactly what a checkbox communicates. A switch suggests it applies now."
+  - type: thisorthat
+    prompt: "Users choose between kilometers and miles."
+    left: "Segmented control"
+    right: "\"Metric units\" switch"
+    answer: left
+    explain: "Both options have names and neither is \"off\". If metric is off, is it miles? Feet? Show both choices."
+  - type: spotbug
+    screen: ["Order updates   [ off ]", "Network log:", "PATCH /api/settings  500", "(no message shown)"]
+    bug: "The failed save wasn't rolled back or reported."
+    explain: "The server still has on, the screen says off. With optimistic UI the switch must roll back and show an error."
+  - type: spotbug
+    screen: ["Turn off personalized ads  [ off ]"]
+    question: "What's wrong with this setting?"
+    bug: "Double-negative label: off here means ads are on."
+    explain: "Users must solve a logic puzzle to know their own privacy setting. Use a positive label like \"Personalized ads\"."
+  - type: quiz
+    q: "What's the most reliable way to check a switch setting really saved?"
+    options: ["Look at the switch color", "Tap it again", "Restart the app or use another device"]
+    answer: 2
+    explain: "The screen can lie. Reloading from the server shows what was actually stored."
+  - type: quiz
+    q: "You tap Offers on then off quickly. A moment later it jumps back on. What is this?"
+    options: ["A race condition", "A wrong default", "A missing label"]
+    answer: 0
+    explain: "The slow on response arrived after the fast off response and overwrote it. The final state must match the last tap."
+  - type: truefalse
+    statement: "Marketing and tracking switches may safely default to on."
+    answer: false
+    explain: "Defaulting them to on without consent is a legal risk under GDPR. Privacy and marketing switches should be off by default."
+  - type: truefalse
+    statement: "When Push notifications is off, its child switches should be disabled or hidden."
+    answer: true
+    explain: "If they still look active, users change settings that can't do anything, since no notifications will be sent."
+  - type: tip
+    title: "Read labels with on and off"
+    text: "Say each label aloud with on and off after it. \"Dark theme: on\" makes sense. If you need to think twice, report a usability issue."

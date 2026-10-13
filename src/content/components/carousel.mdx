@@ -1,0 +1,430 @@
+---
+title: Carousel
+description: A strip of slides you swipe or click through, from rotating hero banners to product photo galleries. Learn when carousels work, the autoplay and accessibility rules, and the swipe, dot and loading bugs testers find in almost every one.
+category: content
+aka: [Slider (images), Slideshow, Image carousel, Pager]
+platforms: [ios, android, web]
+minutes: 35
+order: 5
+---
+
+import Anatomy from '@/components/demos/carousel/Anatomy';
+import VariantsGallery from '@/components/demos/carousel/VariantsGallery';
+import Playground from '@/components/demos/carousel/Playground';
+import CropLab from '@/components/demos/carousel/CropLab';
+import { BuggyHomeApp } from '@/components/demos/carousel/BuggyHomeApp';
+
+You open a shopping app and start reading the banner: "Free delivery on orders over..." and it slides away. You tap a dot to bring it back and get a different slide. You try to scroll down past it and the page doesn't move. Meanwhile, the app has quietly downloaded 12 MB of pictures you'll never see.
+
+A carousel is one of the most common components on the web and in apps, and one of the most argued about. For testers it's a goldmine: it moves by itself, reacts to **gestures**, loads **images**, and has to stay usable for keyboard and **screen reader** users.
+
+## What is it?
+
+A carousel shows **one slide (or a few) at a time** from a set, in a horizontal strip. Users move through it by **swiping**, clicking **arrows**, or tapping **dots**. Some carousels move by themselves (**autoplay**).
+
+You'll meet three main kinds:
+
+- **Hero carousels:** big rotating banners at the top of a home page ("Summer sale", "New collection").
+- **Product image galleries:** several photos of one product, swiped on a product page.
+- **Content rows:** a horizontally scrolling row of cards, like "Popular near you" in a food delivery app or "Continue watching" on a streaming site.
+
+### Anatomy
+
+<Anatomy />
+
+## Designs & variants
+
+The three kinds behave differently and break differently. Try each one: swipe with a finger or drag with the mouse, use the arrows and dots, hover over the hero and watch it pause.
+
+<VariantsGallery client:visible />
+
+<Callout type="info" title="Same word, different things">
+"Slider" can mean an image carousel **or** the [slider](/components/slider) input for picking a value (volume, price range). On Android, "pager" usually means swipeable full-screen pages, like the tab content in [Tabs](/components/tabs). Check which one a bug report or ticket means.
+</Callout>
+
+## When to use it
+
+Carousels have a bad reputation, and part of it is earned. Be fair to both sides:
+
+- **The critique:** hero banners get very little engagement. A widely quoted 2013 measurement from the University of Notre Dame website found that only about 1% of homepage visitors clicked a carousel slide, and most of those clicks (about 84%) went to the first slide. Usability studies (for example by the Nielsen Norman Group) also found users often skip banners because they look like ads, and get annoyed when text moves before they finish reading.
+- **Where carousels do work:** when the **user is in control** and the slides are **the same kind of thing**: photos of a product, a row of restaurants or films, onboarding screens. Product image galleries are used heavily because people actively want to see more photos.
+
+So carousels are a good choice when:
+
+- The items are **similar and browsable** (photos, cards), and users choose to see more.
+- Space is limited and **a peek** of the next item invites swiping.
+- The first slide still works on its own, because many users never see the others.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Important info, visible">
+
+Put "Free delivery over €50" as a static banner or text near the cart, where everyone sees it.
+
+</Do>
+<Dont title="Important info on slide 4">
+
+Hiding delivery terms, a safety recall or a price change on slide 4 of an auto-rotating hero. Most users will never see it.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="User-controlled gallery">
+
+Five photos of one backpack, no autoplay, a counter "2 / 5", swipe and arrows.
+
+</Do>
+<Dont title="Auto-rotating wall of unrelated promos">
+
+Eight banners about different topics, changing every 3 seconds, with no pause button.
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Tester mindset">
+You're not the designer, but you can raise a finding: "Slide 4 contains the only mention of the new return policy. Since carousels' later slides are rarely seen, consider showing it elsewhere." That's a valid usability observation, backed by evidence.
+</Callout>
+
+## How good carousels behave
+
+### Autoplay can always be stopped
+
+If slides move by themselves for **more than 5 seconds**, users must be able to **pause, stop or hide** them. That's <Term id="wcag" /> success criterion **2.2.2 Pause, Stop, Hide** (Level A, the minimum level). In practice a good carousel:
+
+- Has a **visible Pause/Play button**, not a hidden gesture.
+- **Pauses on hover** (mouse) and while **keyboard focus is inside** it.
+- **Stops for good** once the user takes control (swipes, clicks an arrow or dot).
+- Gives each slide enough time to **read it**: at least 5 seconds, more for longer text.
+- **Doesn't autoplay** when the user has asked for **reduced motion** (see below).
+
+### Swipe, arrows and dots all work, on every input
+
+- **Swipe** on touch, and **drag** or **arrows** with a mouse. A desktop user without a trackpad can't swipe, so arrows (or visible scroll buttons) are needed.
+- A swipe needs a small threshold before it counts (the <Term id="touch-slop" />), so a slightly wobbly tap isn't a swipe.
+- **Vertical swipes must scroll the page.** A carousel only owns horizontal gestures. If you can't scroll the page when your finger starts on the carousel, that's a bug (a classic <Term id="nested-scrolling" /> problem).
+- **Dots** are tiny on purpose, but their **tap area** must not be. Aim for 44×44 pt (iOS) / 48×48 dp (Android); on the web, WCAG 2.2 asks for at least 24×24 CSS px (2.5.8, level AA). Tiny targets close together cause wrong taps.
+
+### Looping or clear ends
+
+Either works, but be consistent:
+
+- **Looping** carousels go from the last slide straight to the first, *seamlessly*. A visible "rewind" through all slides, a flash or a duplicated slide is a bug.
+- **Non-looping** carousels (product galleries) have clear ends: the Previous arrow is hidden or disabled on slide 1, Next on the last slide, and a swipe past the end bounces back.
+
+### The counter and dots always tell the truth
+
+"2 / 5", the active dot and the slide shown must agree after a swipe, an arrow, a dot tap, autoplay, rotation and coming back from another screen. Screen readers should hear the same: "slide, 2 of 5".
+
+### Images load smart
+
+Carousels are heavy: five 2 MB banners is 10 MB, often on a mobile connection.
+
+- **<Term id="lazy-loading">Lazy-load</Term>** slides that aren't visible yet (load the next one just before it's needed).
+- But **never lazy-load the first slide**: it's often the biggest thing on the page, and delaying it hurts the Largest Contentful Paint (one of the <Term id="core-web-vitals" />).
+- Serve **sized images**: a phone doesn't need a 2400 px desktop banner.
+  <DevNote>On the web that's `srcset`.</DevNote>
+- Show a **placeholder** with the right size while an image loads, so the page doesn't jump.
+
+### Aspect ratio and cropping
+
+The same image is shown in very different shapes: wide on desktop, square on a phone. Images are usually **cropped to fill** the slide. Text "baked into" a banner image, or a product near the edge, gets cut off. Try it:
+
+<DevNote>CSS `object-fit: cover`.</DevNote>
+
+<CropLab client:visible />
+
+Things to check: is the important part (product, face, headline) visible at **every breakpoint**? Is the image **sharp** on high-density screens, or a small file stretched up? Do all slides have the **same height**, or does the page jump when slides change?
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Autoplay can't be paused** | Slides keep moving while you read, hover or tab into it | Medium–High (accessibility: fails WCAG 2.2.2) |
+| 2 | **Tiny or overlapping dot targets** | Tapping a dot opens a different slide | Medium |
+| 3 | **Vertical scroll blocked** | Page won't scroll when the swipe starts on the carousel | High |
+| 4 | **Counter or dots out of sync** | "1 / 5" on every slide, wrong dot active | Low–Medium |
+| 5 | **Visible loop jump** | Rewinds through all slides, flashes, or shows a slide twice | Low |
+| 6 | **All images loaded up front** | Slow first load, many MB of data on mobile | Medium |
+| 7 | **Bad crop or blurry image** | Headline cut off on phones, pixelated banner | Medium |
+| 8 | **Focus lost in hidden slides** | Tab goes to links on invisible slides | Medium |
+| 9 | **Swipe triggers a click** | Dragging a slide opens the promo link | Medium |
+| 10 | **Layout jump** | Page content jumps when slides of different heights load | Low–Medium |
+
+## Stress-test it
+
+This is a correct carousel. Switch features on and off and watch the **Autoplay** status, the **screen reader** text and the **network log**. Hover over the carousel, Tab into it, drag a slide, turn on **Reduced motion**, and compare **lazy loading** and **sized images** on and off. **Show touch targets** draws the real tap areas.
+
+<Playground client:visible />
+
+<Callout type="info" title="What reduced motion means">
+Users who get dizzy or distracted by motion can turn on **Reduce Motion** (iOS: *Settings › Accessibility › Motion*; Android: *Settings › Accessibility › Remove animations*; macOS and Windows have similar settings). Websites see this as the CSS media query `prefers-reduced-motion: reduce`. A good carousel then **doesn't autoplay** and replaces sliding animations with an instant change or a gentle fade. You can emulate it in Chrome DevTools: *More tools › Rendering › Emulate CSS media feature prefers-reduced-motion*.
+</Callout>
+
+## Find the bug
+
+This shopping app's home screen has a hero carousel with **six bugs**. Explore it like a tester:
+
+- Watch it for a while, then try to **read** a slide, **hover** it, and stop it.
+- Tap each **dot** and check which slide opens.
+- Try to **scroll the page** by dragging (mouse) or swiping (touch) **starting on the banner**, then starting below it.
+- Watch the **counter** and the VoiceOver text. Let it reach the **last slide** and see how it gets back to the first.
+- Read the **Network** log.
+
+<BugHunt
+  title="ShopNow home"
+  bugs={[
+    {
+      title: 'Autoplay cannot be paused',
+      hint: 'Try to read a slide. Hover over it. Look for a pause button.',
+      detail: 'Slides change every 3 seconds, there is no Pause button, and it keeps moving on hover and right after you swipe. This fails WCAG 2.2.2 <em>Pause, Stop, Hide</em> and makes the text hard to read. Expected: a visible Pause button, pause on hover and focus, and autoplay stops once the user interacts.',
+    },
+    {
+      title: 'Tapping a dot opens the slide next to it',
+      hint: 'Tap the first dot, then the second. Which slide appears?',
+      detail: 'The dots are 8 px. The developer gave each one a bigger invisible hit area, but anchored it on the wrong side, so it covers the dot on its <strong>left</strong>. Tapping dot 1 opens slide 2, and so on (only the last dot works). Expected: each dot has its own tap area of at least 24×24 px (better 44×44 pt) that doesn’t overlap its neighbors. You can see the hit areas in DevTools by inspecting the buttons.',
+    },
+    {
+      title: 'Page does not scroll when the swipe starts on the banner',
+      hint: 'Drag (or swipe) upwards starting on the banner, then starting on the products.',
+      detail: 'The carousel sets <code>touch-action: none</code> and swallows the pointer, so vertical gestures that start on it are lost. On a phone, the banner can fill much of the screen, so the page feels “stuck”. Expected: the carousel only handles horizontal swipes (<code>touch-action: pan-y</code>); vertical swipes scroll the page.',
+    },
+    {
+      title: 'The counter always says 1 / 5',
+      hint: 'Watch the counter in the corner and the VoiceOver text while slides change.',
+      detail: 'The counter and the slides’ accessible names were set once and never updated: every slide is “1 of 5”, visually and for screen readers. Expected: the counter, the active dot and the announcement all match the slide shown.',
+    },
+    {
+      title: 'Looping rewinds visibly through all slides',
+      hint: 'Wait for the last slide (Gift cards) and watch the next change.',
+      detail: 'Instead of moving on to slide 1, the strip slides backwards through slides 4, 3, 2 to 1 in one fast sweep. It looks like a glitch. Expected: a seamless loop (continue to the right) or a carousel with clear ends.',
+    },
+    {
+      title: 'All banner images are downloaded at full size on launch',
+      hint: 'Read the Network log right after starting the app.',
+      detail: 'All five banners are requested immediately at 2400×1350 px, about <strong>12.4 MB</strong> before the user has seen slide 2, on a 290 px wide phone screen. Expected: load the first slide in a phone-sized version (around 100–200 KB), and lazy-load the others just before they are shown.',
+    },
+  ]}
+>
+  <BuggyHomeApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #3?">
+
+**Title:** Home: page cannot be scrolled when a vertical swipe starts on the hero carousel
+
+**Steps:** 1. Open the app on an iPhone 15 (iOS 26). 2. On Home, put your finger on the banner and swipe up.
+
+**Expected:** The page scrolls down to Categories and Popular now.
+**Actual:** Nothing moves. Swiping up below the banner scrolls normally. On smaller phones the banner covers about a third of the screen, so most swipes fail.
+
+**Severity:** High (core navigation of the home screen) · **Reproducible:** 10/10 · **Also on:** Pixel 8 (Android 16), Safari on iPhone (mobile web)
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Carousel test checklist"
+  storageKey="carousel"
+  items={[
+    'Autoplay (if any) has a visible Pause button and pauses on hover and keyboard focus',
+    'Autoplay stops after the user swipes, taps an arrow or a dot',
+    'Each slide stays long enough to read (at least 5 seconds)',
+    'With Reduce Motion / prefers-reduced-motion on, nothing moves by itself and animations are minimal',
+    'Swipe works on touch, arrows (or drag) work with a mouse, and a short wobbly tap is not a swipe',
+    'Vertical swipes starting on the carousel scroll the page',
+    'Each dot opens its own slide; tap areas are big enough and do not overlap',
+    'Counter, active dot and screen reader announcement match the slide after every kind of navigation',
+    'Loop is seamless, or the ends are clear (arrows disabled, swipe bounces back)',
+    'Dragging a slide does not trigger its link; tapping a slide opens the right link',
+    'Only the first slide loads up front (not lazy); others load just in time; images are sized for the screen',
+    'Important content is not cropped at any breakpoint; images are sharp on high-density screens',
+    'Keyboard: Pause, arrows and dots reachable with Tab; links on hidden slides are not focusable',
+    'Screen reader: region named (e.g. "Featured offers, carousel"), slides announced "2 of 5", controls labeled',
+    'Works after rotation, resizing the window, and coming back from another screen',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-CAR-001',
+      title: 'Autoplay can be paused with the Pause button',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open Home and watch the hero carousel change once', 'Tap the Pause button', 'Wait 20 seconds'],
+      expected: 'The slide stays the same. The button changes to Play with the label "Start automatic slide show".',
+    },
+    {
+      id: 'TC-CAR-002',
+      title: 'Autoplay pauses on hover and keyboard focus (web)',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Hover the mouse over the carousel for 15 seconds', 'Move the mouse away', 'Press Tab until focus reaches a carousel control and wait 15 seconds'],
+      expected: 'The carousel does not move while hovered or focused, and resumes only after hover or focus leaves it (unless the user paused it).',
+    },
+    {
+      id: 'TC-CAR-003',
+      title: 'Vertical swipe on the carousel scrolls the page',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Real phone, Home screen at the top'],
+      steps: ['Put a finger on the carousel and swipe up', 'Swipe up diagonally (mostly vertical)'],
+      expected: 'The page scrolls both times. The carousel does not change slide on a mostly vertical swipe.',
+    },
+    {
+      id: 'TC-CAR-004',
+      title: 'Each dot opens its own slide',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Pause autoplay', 'Tap dot 1, 2, 3, 4, 5 in turn, with a finger'],
+      expected: 'Each tap shows the matching slide, the dot becomes active and the counter matches.',
+    },
+    {
+      id: 'TC-CAR-005',
+      title: 'Seamless loop from last to first',
+      priority: 'low',
+      type: 'edge',
+      steps: ['Go to the last slide', 'Tap Next (or swipe left)'],
+      expected: 'Slide 1 slides in from the right, like any other step. No rewind, flash or duplicate slide.',
+    },
+    {
+      id: 'TC-CAR-006',
+      title: 'Only the needed images load on first view',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['DevTools › Network, filter "Img", cache disabled, Fast 4G throttling'],
+      steps: ['Load the home page', 'Do not touch the carousel', 'Then go to slide 2 and 3'],
+      expected: 'On load only slide 1 (and at most slide 2) is requested, in a size close to the displayed width. Later slides are requested as you approach them.',
+    },
+    {
+      id: 'TC-CAR-007',
+      title: 'Reduced motion disables autoplay',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['iOS: Settings › Accessibility › Motion › Reduce Motion on'],
+      steps: ['Open Home', 'Wait 20 seconds', 'Swipe to the next slide'],
+      expected: 'Slides do not change by themselves. Swiping still works, without a long sliding animation.',
+    },
+    {
+      id: 'TC-CAR-008',
+      title: 'Screen reader announces slide position',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Turn on VoiceOver or TalkBack', 'Move to the carousel', 'Go to the next slide'],
+      expected: 'The carousel is announced with its name ("Featured offers") and each slide as "slide, 2 of 5". Content of hidden slides is not read.',
+    },
+  ]}
+/>
+
+### Tools
+
+- **Real devices:** gestures, scrolling conflicts and tap accuracy only show up with a real finger. See [Gestures](/mobile/gestures).
+- **DevTools › Network** (filter *Img*) with <Term id="network-throttling" />: count the requests and MB on first load. **Lighthouse** flags oversized images and a lazy-loaded LCP image. See [Performance basics](/web/performance-basics).
+- **DevTools › Rendering:** emulate `prefers-reduced-motion`. **Elements:** inspect the dot buttons to see their real size.
+- **Responsive mode** ([Responsive design testing](/web/responsive-design-testing)): check the crop at 360, 768 and 1440 px wide.
+- **Screen readers:** VoiceOver (iOS/macOS), TalkBack (Android), NVDA (Windows).
+
+## Accessibility
+
+- **Name and role.** The container is a region announced as a carousel with a label. Each slide is a group announced as "slide" with its position ("2 of 5").
+  <DevNote>For example `<section aria-roledescription="carousel" aria-label="Featured offers">`. This follows the WAI-ARIA Authoring Practices carousel pattern (<Term id="aria" />).</DevNote>
+- **Pause control first.** The Pause/Play button should come first in the <Term id="focus-order" />, so keyboard and screen reader users can stop the motion before anything else.
+- **Don't move focus unexpectedly.** Changing slides (by autoplay or a click) must not move keyboard focus. Links and buttons on **hidden slides** must not be focusable.
+  <DevNote>Use `inert` or `tabindex="-1"` plus `aria-hidden`.</DevNote>
+- **Announce changes only when the user caused them.** Otherwise screen readers interrupt the user every few seconds.
+  <DevNote>Use `aria-live="polite"` on the slides while autoplay is off, and `aria-live="off"` while it runs.</DevNote>
+- **Labeled controls.** "Previous slide", "Next slide", "Go to slide 3" (or the slide's name), "Stop automatic slide show".
+- **<Term id="alt-text">Alt text</Term>** for every meaningful image, including text that is baked into a banner ("Summer sale: up to 40% off sandals").
+- **<Term id="touch-target">Touch targets</Term>:** arrows and dots at least 44×44 pt / 48×48 dp. **Swiping is optional:** every slide must be reachable with a tap or a key.
+- **Contrast:** text over images needs 4.5:1 against the *actual* pixels behind it, on every slide. A gradient overlay usually helps.
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- No ready-made "carousel" control.
+  <DevNote>Apps build it with a paging `UICollectionView` / `UIScrollView`, or SwiftUI `TabView` with `.tabViewStyle(.page)`, plus `UIPageControl` for the dots.</DevNote>
+- Test the **edge swipe**: on a carousel at the left edge, swiping right may trigger the system *Back* gesture instead.
+- Test **Reduce Motion**, **VoiceOver** (can you reach and hear every slide? Is the position announced?) and **Dynamic Type** on slide text.
+
+</Tab>
+<Tab>
+
+- Material 3 has a **Carousel** component (multi-browse, uncontained, hero and full-screen layouts).
+  <DevNote>Older apps use `ViewPager2` or Compose `HorizontalPager`.</DevNote>
+- Test inside **nested scrolling** containers (a carousel inside a vertical list inside tabs): which one wins the gesture?
+- Test **Remove animations**, **TalkBack**, **rotation** (does it keep the slide?) and **process death**.
+
+</Tab>
+<Tab>
+
+- Quality of web carousels varies a lot, so check the accessibility basics yourself.
+  <DevNote>Usually a JavaScript library (Swiper, Splide, Slick, Embla...) or CSS **scroll snap**.</DevNote>
+- Test with **mouse only** (no horizontal wheel): can you reach every slide? With **keyboard only**: Tab order, visible focus, no hidden focus traps.
+- Check **image loading** in DevTools, the **crop** at several widths, and `prefers-reduced-motion`.
+- Check **layout shift**: does content below jump when the carousel's images load?
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A hero carousel changes slide every 4 seconds and has no way to stop it. Which WCAG criterion does it fail?',
+      options: ['1.4.3 Contrast (Minimum)', '2.2.2 Pause, Stop, Hide', '2.4.7 Focus Visible', 'None, it is just a design choice'],
+      answer: 1,
+      explain: 'Moving content that starts automatically and lasts more than 5 seconds needs a way to pause, stop or hide it.',
+    },
+    {
+      q: 'You swipe up on a banner carousel to scroll the page, but nothing moves. What is this?',
+      options: ['Correct: the carousel owns all gestures', 'A gesture conflict bug: vertical swipes should scroll the page', 'A performance problem', 'A screen reader issue'],
+      answer: 1,
+      explain: 'A horizontal carousel should only handle horizontal swipes. Vertical swipes belong to the page.',
+    },
+    {
+      q: 'Which slide image should NOT be lazy-loaded?',
+      options: ['The first, visible slide', 'The last slide', 'All slides should be lazy-loaded'],
+      answer: 0,
+      explain: 'The first slide is visible immediately and is often the largest element on the page. Lazy-loading it delays the Largest Contentful Paint.',
+    },
+    {
+      q: 'Which carousel type do users engage with the most?',
+      options: ['Auto-rotating hero banners with unrelated promos', 'A product photo gallery they swipe themselves', 'A carousel with 10 slides changing every 2 seconds'],
+      answer: 1,
+      explain: 'Carousels work best when users are in control and want more of the same kind of content, like more photos of a product.',
+    },
+    {
+      q: 'Tapping the first dot of a carousel opens slide 2. What should you check first?',
+      options: ['The server response', 'The dot buttons’ real tap areas (size and position)', 'The image sizes', 'The autoplay interval'],
+      answer: 1,
+      explain: 'Tiny or misplaced tap areas make taps land on the wrong control. Inspect the buttons in DevTools to see their real hit areas.',
+    },
+    {
+      q: 'The user has turned on Reduce Motion. What should an autoplaying carousel do?',
+      options: ['Play faster so it finishes sooner', 'Not autoplay, and keep animations minimal', 'Hide itself completely'],
+      answer: 1,
+      explain: 'Reduced motion means: nothing should move on its own. Users can still change slides themselves.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Carousels work when **users are in control** (product galleries, content rows). Auto-rotating hero banners get little engagement, so don't hide important info on later slides.
+- Autoplay needs a **visible Pause button**, must **pause on hover and focus**, stop after interaction, and stay off with **reduced motion** (WCAG 2.2.2).
+- A carousel owns only **horizontal** gestures: vertical swipes must still **scroll the page**.
+- **Counter, dots and slide** must always match, for eyes and for screen readers ("2 of 5").
+- Test **dot tap areas**, **loop behavior** and **ends**, with a real finger.
+- Images: **lazy-load** later slides, never the first; serve **sized** images; check the **crop** at every width.
+
+</KeyTakeaways>

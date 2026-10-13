@@ -1,0 +1,402 @@
+---
+title: Stepper (+/−)
+description: Two buttons and a number in between, for small exact quantities. Learn limits and steps, typing into the value, long-press, the quirks of the web's number input, and the network and accessibility bugs testers find in cart steppers.
+category: input
+aka: [Quantity stepper, Number stepper, Spin button, Counter]
+platforms: [ios, android, web]
+minutes: 35
+order: 11
+---
+
+import Anatomy from '@/components/demos/stepper/Anatomy';
+import VariantsGallery from '@/components/demos/stepper/VariantsGallery';
+import NumberInputQuirks from '@/components/demos/stepper/NumberInputQuirks';
+import SyncLab from '@/components/demos/stepper/SyncLab';
+import { BuggyGroceryCart } from '@/components/demos/stepper/BuggyGroceryCart';
+
+Two bunches of bananas. Three guests at the table. One adult, two children on the flight. Every time an app asks "how many?", there's a good chance it answers with a **stepper**: a minus, a number, a plus.
+
+It's the simplest control on the screen, and one of the most expensive to get wrong: the number in a cart stepper becomes **money**. Let's see where it breaks.
+
+## What is a stepper?
+
+A stepper is a control that **changes a number by a fixed step** (usually 1) with a **decrease (−)** and an **increase (+)** button. The value stays between a **minimum** and a **maximum**.
+
+You'll find steppers in:
+
+- **Shopping carts**: quantity of each product.
+- **Bookings**: guests, rooms, adults/children, nights.
+- **Recipes and fitness**: servings, sets, reps.
+- **Settings**: number of copies to print, reminder minutes.
+
+### Anatomy
+
+<Anatomy />
+
+### What to know about the value
+
+- **Min and max.** At the limit, the matching button must be **disabled** (and look it). Common limits: 1 for a cart line (0 means "remove"), the **stock** reported by the server, "max 8 guests", "max 9 travellers in total".
+- **Step size.** Usually 1, but not always: 0.5 kg of cheese, packs of 6, 15-minute slots. Check the value can't land between steps.
+- **Typing.** Some steppers let you tap the number and type "12". Then everything from [text fields](/components/text-field) applies: validation, the keyboard type, what happens to "05", "1e2", "-3" or an empty field.
+- **Long-press.** Many steppers **repeat** while you hold the button and speed up after a while. It must stop at the limit and stop when you let go.
+  <DevNote>iOS `UIStepper` repeats by default.</DevNote>
+
+### Stepper vs slider vs text field
+
+| Component | Best for | Weak at |
+| --- | --- | --- |
+| **Stepper** | Small exact numbers, small changes (1–10) | Big jumps: 1 → 50 needs 49 taps |
+| **[Slider](/components/slider)** | Rough values in a range (volume, price range) | Exact values |
+| **[Text field](/components/text-field)** (number) | Any exact number, big ranges | Quick +1 changes, limits are invisible |
+
+A good rule: if users usually change the value by **one or two**, use a stepper. If the value can be **large**, let users type (an editable stepper or a plain field).
+
+## Designs & variants
+
+<VariantsGallery client:visible />
+
+<Callout type="dev" title="One name, many implementations">
+iOS has a native `UIStepper` (SwiftUI: `Stepper`). **Material Design has no stepper component**, so Android apps build their own from icon buttons, and Android's older `NumberPicker` is a scroll wheel instead. On the web you get `<input type="number">` or, more often, a custom component. Custom means every team makes slightly different decisions, and that's where bugs hide.
+</Callout>
+
+### The web's number input and its quirks
+
+`<input type="number">` looks like the perfect stepper: arrows, min, max, step. But it has surprises every web tester should know:
+
+<NumberInputQuirks client:visible />
+
+- **"e" is allowed**, because `1e2` (= 100) is a valid number in scientific notation. "e" on its own makes the value **empty**, not an error the app can see.
+- **The mouse wheel can change the value** in Chromium browsers when the field is focused. Users scroll the page and silently order 7 instead of 2.
+- **min, max and step are only hints.** The browser flags invalid values (`validity`), but nothing stops the app from sending them unless the form is validated.
+- **Leading zeros** stay in the text ("05"), and code that treats the value as a string can do `"05" + 1 = "051"`.
+
+<DevNote>That's why many shops use `type="text" inputmode="numeric"` with their own validation instead.</DevNote>
+
+## When to use it
+
+A stepper is a good choice when:
+
+- The number is **small** and **exact**: 1–10 items, guests, tickets.
+- Users usually change it by **one or two** from a sensible default.
+- The **limits** are known and meaningful (stock, max guests), and can be shown.
+- The change is easy to see and to undo: the number and the total update right away.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Small exact counts">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><div class="flex items-center justify-between rounded-xl bg-white px-3 py-2.5 text-black"><span class="text-[15px]">Guests</span><span class="flex items-center gap-0.5 rounded-full border border-[#c7c7cc] p-0.5 text-[#007aff]"><span class="grid size-8 place-items-center text-[18px]">−</span><span class="w-5 text-center text-[16px] font-semibold text-black">2</span><span class="grid size-8 place-items-center text-[18px]">+</span></span></div></div>
+
+Usually 1–4, rarely more than 8. One or two taps, and you can see the value.
+
+</Do>
+<Dont title="Large values">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><div class="flex items-center justify-between rounded-xl bg-white px-3 py-2.5 text-black"><span class="text-[15px]">Amount to transfer</span><span class="flex items-center gap-0.5 rounded-full border border-[#c7c7cc] p-0.5 text-[#007aff]"><span class="grid size-8 place-items-center text-[18px]">−</span><span class="w-12 text-center text-[16px] font-semibold text-black">€250</span><span class="grid size-8 place-items-center text-[18px]">+</span></span></div></div>
+
+Getting from €0 to €250 takes 250 taps (or a very long press). Use a text field with a number keyboard.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Show the limit">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><div class="flex items-center justify-between rounded-xl bg-white px-3 py-2.5 text-black"><div><p class="text-[15px] font-semibold">Oat milk</p><p class="text-[12px] text-[#c2410c]">Max 4 per order</p></div><span class="flex items-center gap-0.5 rounded-full border border-[#c7c7cc] p-0.5"><span class="grid size-8 place-items-center text-[18px] text-[#007aff]">−</span><span class="w-5 text-center text-[16px] font-semibold">4</span><span class="grid size-8 place-items-center text-[18px] text-[rgba(60,60,67,.3)]">+</span></span></div></div>
+
++ is greyed out and the text says why. No surprise error later.
+
+</Do>
+<Dont title="A silent wall">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><div class="flex items-center justify-between rounded-xl bg-white px-3 py-2.5 text-black"><p class="text-[15px] font-semibold">Oat milk</p><span class="flex items-center gap-0.5 rounded-full border border-[#c7c7cc] p-0.5 text-[#007aff]"><span class="grid size-8 place-items-center text-[18px]">−</span><span class="w-5 text-center text-[16px] font-semibold text-black">4</span><span class="grid size-8 place-items-center text-[18px]">+</span></span></div></div>
+
++ looks active, but tapping it does nothing, or fails only at checkout. Users think the app is broken.
+
+</Dont>
+</Compare>
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **+ enabled at the stock limit** | Tap + at the limit, the server refuses, the number jumps back (or checkout fails) | Medium–High |
+| 2 | **Typed value not validated** | "05", "1e2", "-3" or an empty field break the total or reach the server | High |
+| 3 | **Shown and saved quantity differ** | After quick taps the field says 6, the order is for 3 | Critical (money) |
+| 4 | **− at 1 removes without warning** | One tap too many and the item is gone, no undo | Medium |
+| 5 | **Long-press doesn't stop** | Value keeps running after release, or runs past the max | Medium |
+| 6 | **Disabled state lies** | − looks disabled at 1 but still works (or the other way round) | Low–Medium |
+| 7 | **Silent for screen readers** | "Button, button", and the new value is never announced | High (for affected users) |
+| 8 | **Mouse wheel changes the number** | Scrolling the page over a focused field changes the quantity | Medium |
+| 9 | **Tiny buttons** | − and + are 24 px apart; users hit the wrong one | Medium |
+
+<Callout type="bug" title="Why #3 happens: rapid taps vs the network">
+Each tap sends a request to update the cart. Requests travel over a real network, so **they don't always arrive or come back in order**. If the app trusts whatever reply arrives last, or the server saves whatever request arrives last, an older value wins. Good apps **debounce** (wait until you stop tapping, then send once), send the **absolute** value ("set to 6", not "add 1"), and **ignore stale replies**, ideally with a version number the server checks too. The cart math itself is covered in [Shopping cart & checkout](/features/shopping-cart-and-checkout).
+</Callout>
+
+## Stress-test it
+
+Tap + as fast as you can, or hold it, and then wait. Switch between the three sync strategies and compare what the cart shows with what the server saved.
+
+<SyncLab client:visible />
+
+<Callout type="tip" title="How to do this on a real app">
+Turn on <Term id="network-throttling" /> (or a proxy with random delays, like Charles or Proxyman), then tap + quickly 5–10 times. Wait until all requests finish, **reload the cart**, and compare the quantity and the total with what you saw before. A <Term id="race-condition" /> often only shows up on slow or unstable networks.
+</Callout>
+
+## Find the bug
+
+This grocery web shop has a basket with **six bugs**. Explore it like a real tester:
+
+- Push every quantity to its **limit**, and past it.
+- **Type** into the quantity field: "05", "1e2", nothing at all. Then press +.
+- Tap + **quickly** several times, wait, then compare the field with the subtotal. Watch the network log.
+- Bring a quantity down to 1, and press − once more.
+- Turn on the **screen reader** captions and Tab through a row, then press Enter on +.
+- Click into a quantity field, then **scroll the page** with the mouse wheel.
+
+<BugHunt
+  title="Grocery basket"
+  bugs={[
+    {
+      title: '+ stays enabled at the stock limit',
+      hint: 'Oat milk has only 4 left. Press + until you pass 4.',
+      detail: 'At 4, + still looks and works like a normal button. Going to 5 sends <code>qty=5</code>, the server answers <strong>409</strong>, a toast appears and the number jumps back. Expected: + is disabled at the stock limit, with a hint like "Max 4", so the request never happens.',
+    },
+    {
+      title: 'Typed quantities are not validated',
+      hint: 'Type 05 into the bananas field and press Enter, then press +. Then try 1e2.',
+      detail: 'The field keeps whatever you type as text. "05" stays "05", and + then makes it <strong>"051"</strong> (string + 1), which the server rejects. "1e2" is sent as <code>qty=1e2</code>; the server answers <strong>400</strong>, the app ignores the error, the field keeps "1e2" and the row shows the price of <strong>100 bananas</strong>, while the subtotal still uses the old quantity. Expected: digits only, normalized ("05" → 5), clamped to the limits, invalid input rejected with a message.',
+    },
+    {
+      title: 'Rapid taps: the order is for a different quantity than shown',
+      hint: 'Tap + on bananas four times quickly, wait two seconds, then compare the field with "Subtotal (N items)".',
+      detail: 'Every tap sends a request, and later requests are answered faster, so the replies arrive <strong>in reverse order</strong>. The subtotal uses the last reply that arrived, which is for an <em>older</em> quantity: the field says 6, the subtotal is for 3. The user pays for something other than what they see. Expected: debounce taps and send one absolute value, ignore stale replies, and show the server-confirmed quantity.',
+    },
+    {
+      title: '− at 1 removes the item with no confirmation or undo',
+      hint: 'Bring the sourdough to 1 and press − once more.',
+      detail: 'The item disappears immediately and a <code>DELETE</code> is sent. One accidental tap loses the item, and there\'s no way back except finding it in the shop again. Expected: at 1 the − becomes a trash icon (so removing is deliberate), or there is a confirmation or an <strong>Undo</strong> snackbar.',
+    },
+    {
+      title: 'Screen reader hears only "button" and never the new value',
+      hint: 'Turn on the screen reader captions, Tab to a − or + button, then press Enter.',
+      detail: 'The − and + buttons are icon-only with no accessible name, so VoiceOver says just <strong>"button"</strong>. After pressing them, nothing is announced, so a blind user doesn\'t know the quantity changed or what it is now. Expected: names like "Decrease quantity of Organic bananas", and the new value announced ("Quantity 3"), for example via <code>role="spinbutton"</code> with <code>aria-valuenow</code> or a live region.',
+    },
+    {
+      title: 'Mouse wheel changes the quantity while scrolling',
+      hint: 'Click into a quantity field, keep the mouse over it and scroll the page with the wheel.',
+      detail: 'Each wheel notch changes the quantity (and sends a request) while the page scrolls on. Users who click the field and then scroll silently end up with 7 bananas. This mimics the native <code>&lt;input type="number"&gt;</code> behavior in Chromium browsers. Expected: the wheel scrolls the page and never changes the value (blur on wheel, or use <code>type="text" inputmode="numeric"</code>).',
+    },
+  ]}
+>
+  <BuggyGroceryCart client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #3?">
+
+**Title:** Basket: after quick taps on +, the subtotal uses an older quantity than the one shown
+
+**Steps:** 1. Open the basket (bananas: 2). 2. Tap + on bananas 4 times within about a second. 3. Wait 2 seconds.
+
+**Expected:** The field shows 6, "Subtotal (10 items)" includes 6 bananas, and reloading the basket still shows 6.
+**Actual:** The field shows 6, but the subtotal counts 3 bananas (€5.97). The network log shows the replies arriving in reverse order (qty=6 first, qty=3 last).
+
+**Severity:** Critical (the user pays for a different quantity than shown) · **Reproducible:** 9/10 with fast taps · **Note:** not reproducible with slow taps (more than 1 s apart)
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Stepper test checklist"
+  storageKey="stepper"
+  items={[
+    'The default value is sensible (1 item, 2 guests) and the label says what is being counted',
+    '− is disabled (or becomes "remove") at the minimum; + is disabled at the maximum, with a hint why',
+    'Limits from the server (stock, max per order) are respected before the request, not only after',
+    'The value always lands on a valid step (packs of 6, 0.5 kg)',
+    'Typed values: digits only, leading zeros, empty field, "e", negative and huge numbers are handled',
+    'Long-press repeats, stops at the limit, and stops immediately on release',
+    'Going below the minimum (e.g. − at 1 in a cart) asks, offers undo, or uses a clear trash icon',
+    'Rapid taps on a slow network end with the same quantity on screen, in the total and after reload',
+    'Totals, badges and "N items" update together with the stepper',
+    'Buttons are at least 44×44 pt (iOS) / 48×48 dp (Android) and not too close together',
+    'Web: the mouse wheel doesn\'t change a number field while scrolling the page',
+    'Keyboard: Tab reaches the control; arrows (and Home/End) change an editable value; focus ring visible',
+    'Screen reader: buttons have names ("Increase quantity") and the new value is announced',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-STP-001',
+      title: '+ is disabled at the stock limit',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Oat milk has stock 4 on the server'],
+      steps: ['Add Oat milk to the basket', 'Tap + until the value stops increasing'],
+      expected: 'The value stops at 4, + looks disabled, a hint says "Max 4" and no request with qty=5 is sent.',
+    },
+    {
+      id: 'TC-STP-002',
+      title: 'Invalid typed values are rejected',
+      priority: 'high',
+      type: 'negative',
+      data: '05 · 1e2 · -3 · (empty) · 999',
+      steps: ['Tap the quantity field', 'Enter each value and confirm', 'Check the field, the line total and the request'],
+      expected: '"05" becomes 5; "1e2", "-3" and empty are rejected and the previous value stays; 999 is clamped to the max (or rejected with a message).',
+    },
+    {
+      id: 'TC-STP-003',
+      title: 'Rapid taps end in a consistent quantity',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Network throttling: slow 3G or a proxy adding random delay'],
+      steps: ['Tap + 6 times as fast as possible', 'Wait until all requests have finished', 'Reload the basket'],
+      expected: 'Field, subtotal and the reloaded basket all show the same quantity (start + 6).',
+    },
+    {
+      id: 'TC-STP-004',
+      title: 'Removing the last unit',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Sourdough quantity is 1'],
+      steps: ['Tap − (or the trash icon)'],
+      expected: 'The item is removed only with a clear action (trash icon or confirmation), and an Undo option is offered.',
+    },
+    {
+      id: 'TC-STP-005',
+      title: 'Long-press repeats and stops',
+      priority: 'low',
+      type: 'positive',
+      steps: ['Press and hold + on a stepper with max 20', 'Release after 2 seconds', 'Hold again until the value reaches 20'],
+      expected: 'The value increases while held and stops instantly on release; it never goes past 20.',
+    },
+    {
+      id: 'TC-STP-006',
+      title: 'Screen reader names and value',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['VoiceOver or TalkBack is on'],
+      steps: ['Swipe to the + of Organic bananas', 'Double-tap'],
+      expected: 'Hears "Increase quantity of Organic bananas, button", then the new value, e.g. "3".',
+    },
+    {
+      id: 'TC-STP-007',
+      title: 'Mouse wheel does not change the quantity (web)',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Click into a quantity field', 'Move the mouse over it and scroll down 3 notches'],
+      expected: 'The page scrolls; the quantity stays the same and no request is sent.',
+    },
+  ]}
+/>
+
+## Accessibility
+
+A stepper is two tiny icon buttons and a number. For screen reader users, all three need words.
+
+| Key (web, editable value) | What it should do |
+| --- | --- |
+| <kbd>↑</kbd> / <kbd>↓</kbd> | Increase / decrease by one step |
+| <kbd>Page Up</kbd> / <kbd>Page Down</kbd> | Bigger step (optional) |
+| <kbd>Home</kbd> / <kbd>End</kbd> | Jump to min / max (if they exist) |
+| Typing digits | Sets the value directly |
+
+- **The <Term id="aria" /> spinbutton pattern:** the value has a name ("Quantity of Oat milk") and, when the number needs a unit, a text value: "2 guests", "30 minutes".
+  <DevNote>The value is an element with `role="spinbutton"` (a native `<input type="number">` has it already), with `aria-valuenow`, `aria-valuemin` and `aria-valuemax`. Add `aria-valuetext` for the unit.</DevNote>
+- **Named buttons:** "Increase quantity" / "Decrease quantity", ideally with the product name. Icon-only buttons with no name are read as "button".
+- **Announce the new value** after each press. With a spinbutton that has focus, screen readers do this automatically; when the focus stays on the + button, use a polite live region.
+- **Disabled at the limits:** keyboard focus must not be lost when + becomes disabled under your finger.
+  <DevNote>Use `aria-disabled` (or keep focus somewhere sensible).</DevNote>
+- **<Term id="touch-target">Touch targets</Term>:** each button needs at least 44×44 pt (iOS) / 48×48 dp (Android), with enough space between − and +. On the web, WCAG 2.5.8 (AA) asks for at least 24×24 CSS px; 44×44 px (2.5.5, AAA) is the comfortable target.
+- **On iOS**, VoiceOver reads the native stepper's two halves as buttons ("Increment", "Decrement" by default). Make sure the label with the value next to it is announced too, or give the stepper a meaningful accessibility value.
+  <DevNote>That's `UIStepper`.</DevNote>
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- Ask about the limits, the step, long-press repeat (on by default) and wrapping (going past max back to min, off by default).
+  <DevNote>Native: `UIStepper` (UIKit) or `Stepper` (SwiftUI). Properties: `minimumValue`, `maximumValue`, `stepValue`, `autorepeat` and `wraps`.</DevNote>
+- The native stepper shows **no number itself**. Check the label next to it updates on every change, including during long-press.
+- Cart steppers in shopping apps are almost always **custom**. Test them like a web component.
+- Test with **VoiceOver**, **Dynamic Type** (the number must not be cut off: "10" vs "1") and **external keyboards** on iPad.
+
+</Tab>
+<Tab>
+
+- No Material stepper: apps build their own. Ask how limits, long-press and disabled states were built.
+  <DevNote>Apps combine `IconButton`s with a `Text` (Compose) or views.</DevNote>
+- `NumberPicker` is a different control: a scrolling wheel. It's still used for timers and old-style forms.
+- Test **TalkBack** names (an icon button without a description is read as "Button" or "Unlabelled"), **font scale**, and **configuration changes**: rotate the phone and check the quantity survives.
+  <DevNote>An `ImageButton` without `contentDescription`.</DevNote>
+- Watch rapid taps on slow networks: the same race conditions apply.
+
+</Tab>
+<Tab>
+
+- `<input type="number">`: free arrows and keyboard support, but **"e" is allowed**, **the wheel can change it** in Chromium browsers, invalid input reads as **empty**, and min/max/step are not enforced on their own.
+- Mobile browsers show the **numeric keyboard** only with the right `type` or `inputmode`. Check it on iOS Safari and Chrome on Android.
+- Custom steppers: check **keyboard** support, **focus** after + becomes disabled, and the **requests** in <Term id="devtools" /> (one per tap? debounced? what does the server answer?).
+- Open the cart in **two tabs**, change the quantity in one, reload the other: which value wins?
+
+</Tab>
+</Tabs>
+
+Related pages: the cart math around the stepper (totals, discounts, tax) is in [Shopping cart & checkout](/features/shopping-cart-and-checkout), limits are a perfect case for [boundary value analysis](/fundamentals/boundary-value-analysis), and for rough values a [slider](/components/slider) may be the better control.
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A product has 4 items in stock. The cart quantity is 4. What should the + button do?',
+      options: ['Increase to 5 and let the server decide', 'Be disabled, with a hint like "Max 4"', 'Reset the quantity to 1', 'Disappear completely'],
+      answer: 1,
+      explain: 'The app knows the limit, so it should prevent the invalid request and explain why + stopped working.',
+    },
+    {
+      q: 'Which of these can a user type into a native <input type="number"> without the browser blocking it?',
+      options: ['Only digits', '1e2', 'Nothing, it only has arrows', 'Only values between min and max'],
+      answer: 1,
+      explain: '"e" is allowed because 1e2 (100) is valid scientific notation. min and max are only checked when the form is validated.',
+    },
+    {
+      q: 'After tapping + quickly five times, the field shows 7 but the order total is for 4. What is the most likely cause?',
+      options: ['A rounding error', 'Out-of-order network responses (a race condition)', 'A wrong price in the database', 'The stepper step size is 2'],
+      answer: 1,
+      explain: 'Each tap sent a request; an older reply arrived last and overwrote the newer value. Debounce and ignore stale replies.',
+    },
+    {
+      q: 'What is the best behavior when the user presses − on a cart item with quantity 1?',
+      options: ['Remove it silently', 'Do nothing and give no feedback', 'Remove with a clear trash icon, confirmation or Undo', 'Set the quantity to 0 and keep it in the cart'],
+      answer: 2,
+      explain: 'Removing is a bigger action than decreasing. Make it deliberate (trash icon) or reversible (Undo).',
+    },
+    {
+      q: 'A screen reader says only "button" on the + of a quantity stepper. What is missing?',
+      options: ['A bigger icon', 'An accessible name like "Increase quantity"', 'A different color', 'Haptic feedback'],
+      answer: 1,
+      explain: 'Icon-only buttons need a name. The new value should also be announced after each press.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A stepper changes a **small exact number** by a fixed step between a **min** and a **max**. For large values, let users type.
+- At the limits, the matching button is **disabled with a reason**. Server limits like **stock** belong in the UI before the request.
+- Typed values need **validation**: "05", "1e2", "-3" and empty. The web's `<input type="number">` allows "e" and can change on **mouse wheel**.
+- Rapid taps + network = **race conditions**: debounce, send absolute values, ignore stale replies, and check that screen, total and server agree.
+- Going below the minimum (removing an item) needs **confirmation or undo**, and screen readers need **named buttons** and the **new value** announced.
+
+</KeyTakeaways>

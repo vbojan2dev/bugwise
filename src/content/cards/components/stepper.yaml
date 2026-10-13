@@ -1,0 +1,45 @@
+teaser: "You tap + five times fast. The cart says 7, but you're charged for 4. Where did the other three go?"
+cards:
+  - type: flip
+    front: "What is a stepper?"
+    back: "A − and + button around a number. It changes a small exact value by a fixed step, between a minimum and a maximum."
+  - type: thisorthat
+    prompt: "A banking app asks for the amount to transfer, from €1 to €5,000."
+    left: "Stepper"
+    right: "Number field"
+    answer: right
+    explain: "Getting to €250 would take 250 taps. Steppers suit small counts; large values need typing."
+  - type: spotbug
+    screen: ["Oat milk · only 4 left", "[ − ]  4  [ + ]", "+ looks active", "Tap + → \"Couldn't update\""]
+    bug: "+ is still enabled at the stock limit."
+    explain: "The app knows the limit, so + should be disabled with a hint like \"Max 4\", instead of letting the server reject it."
+  - type: quiz
+    q: "Which value can a user type into a native web number input without the browser blocking it?"
+    options: ["Only digits", "Nothing, arrows only", "1e2"]
+    answer: 2
+    explain: "\"e\" is allowed because 1e2 (100) is valid scientific notation. min and max are only hints until the form is validated."
+  - type: quiz
+    q: "After quick taps, the field shows 6 but the subtotal is for 3. What's the likely cause?"
+    options: ["Out-of-order network replies", "A wrong product price", "A rounding error"]
+    answer: 0
+    explain: "Each tap sent a request and an older reply arrived last. Debounce taps, send the absolute value and ignore stale replies."
+  - type: truefalse
+    statement: "Pressing − on a cart item at quantity 1 should remove it instantly, with no undo."
+    answer: false
+    explain: "Removing is bigger than decreasing. Use a trash icon, a confirmation or an Undo option so one extra tap can't lose the item."
+  - type: spotbug
+    screen: ["Quantity field: 05", "Tap +", "Quantity field: 051"]
+    bug: "The typed value is treated as text, not a number."
+    explain: "\"05\" + 1 joins strings into \"051\". Typed values must be validated and converted to numbers first."
+  - type: thisorthat
+    prompt: "You click into a web quantity field, then scroll the page with the mouse wheel. What should happen?"
+    left: "Quantity changes"
+    right: "Page just scrolls"
+    answer: right
+    explain: "In Chromium, a focused number input changes on wheel. Users scroll and silently order more. The wheel should only scroll."
+  - type: flip
+    front: "What should a screen reader say on a stepper's + button?"
+    back: "A name like \"Increase quantity of Oat milk, button\", and the new value after each press, not just \"button\"."
+  - type: tip
+    title: "Tap fast, then reload"
+    text: "Throttle the network, tap + quickly several times, wait, and reload the cart. Field, total and server must all agree."

@@ -1,0 +1,43 @@
+teaser: "A scanner saves SCAN_0042.PDF and the app says PDFs aren't allowed. How can one capital letter break an upload?"
+cards:
+  - type: flip
+    front: "What does the accept attribute on a file input do?"
+    back: "It filters what the picker shows. It's only a hint: users can pick All files or drop files, so the server must still check."
+  - type: flip
+    front: "Why truncate long file names in the middle?"
+    back: "The start and the extension stay visible, so users can still recognize the file, and the Remove button keeps its place."
+  - type: quiz
+    q: "The size limit is 10 MB. Which files test the boundary best?"
+    options: ["1 MB and 50 MB", "9.9 MB, 10 MB, 10.1 MB, 0 bytes", "Only a 10 MB file"]
+    answer: 1
+    explain: "Just under, exactly at and just over the limit catch off-by-one bugs. The empty file is a classic edge case."
+  - type: quiz
+    q: "A PNG renamed to holiday-photo.pdf passes the app's check. Who should catch it?"
+    options: ["The server, by reading the content", "The browser's accept filter", "Nobody, it ends in .pdf"]
+    answer: 0
+    explain: "Extension and File.type are both guesses from the name. Only the server, looking at the actual bytes, can tell it's an image."
+  - type: truefalse
+    statement: "A drop zone without a Browse button is fine if it looks clear."
+    answer: false
+    explain: "Keyboard, screen reader and most phone users can't drag files. A real, labelled button must do the same job."
+  - type: truefalse
+    statement: "Checking the file size in the app before uploading saves users time, but the server must check it too."
+    answer: true
+    explain: "Client checks give instant feedback. Anyone can skip them with DevTools or a proxy, so the server is the real gatekeeper."
+  - type: thisorthat
+    prompt: "One of three receipts fails on a weak network. What should the list do with it?"
+    left: "Remove it quietly"
+    right: "Keep it with Retry"
+    answer: right
+    explain: "A silently dropped file means the claim is sent without it. Failed files stay visible with a reason and a Retry button."
+  - type: spotbug
+    screen: ["Receipts: PDF, DOCX, XLSX or CSV", "Hotel_folio_scan.pdf 14.2 MB", "Uploading… 100%", "Upload failed: max 10 MB"]
+    bug: "The size limit is revealed only after the full upload."
+    explain: "Users wasted time and data. Show the limit up front and reject big files before any upload starts."
+  - type: spotbug
+    screen: ["Flight_LH1234.pdf   [x]", "Taxi_receipt.pdf    [x]", "Tap x on Flight_LH1234.pdf", "Left: Flight_LH1234.pdf"]
+    bug: "Remove deleted the other file."
+    explain: "The list is shown newest first, but Remove used a position in the original list. Remove must use the file's id."
+  - type: tip
+    title: "Build a file name kit"
+    text: "Keep files with uppercase extensions, very long names, spaces, umlauts, emoji and the same name twice. File names break more uploads than file contents."

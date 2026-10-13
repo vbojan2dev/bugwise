@@ -1,0 +1,46 @@
+teaser: "You've used an app for a year. You update it, and it greets you like a stranger. How does a tester catch that before release?"
+cards:
+  - type: flip
+    front: "What is onboarding?"
+    back: "Everything an app shows a new user the first time: welcome slides, tips, setup steps and permission requests, to explain the app and set it up."
+  - type: quiz
+    q: "Existing users see the welcome slides again after an app update. Most likely cause?"
+    options: ["The user cleared the cache", "The 'done' flag is tied to the app version", "It's normal after updates"]
+    answer: 1
+    explain: "A flag like onboarding_done_v2.3.0 makes every update look like a first launch. Existing users should go straight to Home."
+  - type: spotbug
+    screen: ["Hi, undefined", "Your plan: undefined · undefined", "[ Start today's workout ]", "Error: plan_not_found"]
+    question: "The user tapped Skip on the first slide. What's wrong?"
+    bug: "Skip jumped over the required setup."
+    explain: "Skip should skip only optional parts like the welcome slides. Without a name and plan, the rest of the app breaks."
+  - type: thisorthat
+    prompt: "A fitness app wants to send workout reminders. When should it show the system permission dialog?"
+    left: "On the first screen"
+    right: "After explaining, in context"
+    answer: right
+    explain: "After the user picks workout days, the benefit is obvious. On iOS the system dialog appears only once, so don't waste it."
+  - type: truefalse
+    statement: "Pressing Back in a setup wizard should keep the answers the user already gave."
+    answer: true
+    explain: "Back goes one step back. Losing the name, goal and level because you pressed Back is a classic and very annoying bug."
+  - type: spotbug
+    screen: ["Slide 3 of 3: Celebrate your streaks", "Dots: ● ● ● ○", "[ Get started ]"]
+    bug: "Four progress dots for three slides."
+    explain: "The empty last dot makes users think there's one more page. Progress indicators must match the real number of steps."
+  - type: quiz
+    q: "Which of these is the most important onboarding test after a release build?"
+    options: ["Update from the previous version", "Measure the server CPU", "Test checkout coupons"]
+    answer: 0
+    explain: "First-run detection breaks easily. Install the old build, finish onboarding, update, and check users land on Home."
+  - type: flip
+    front: "Why test reinstalling the app on both iOS and Android?"
+    back: "iOS Keychain data can survive an uninstall, and Android Auto Backup can restore app data. Either can bring back old flags unexpectedly."
+  - type: thisorthat
+    prompt: "With the largest text size, the welcome slide text stops mid-sentence."
+    left: "Accessibility bug"
+    right: "Fine, it's rare"
+    answer: left
+    explain: "People who need large text can't read what the app is about. Text should wrap or scroll, never be clipped."
+  - type: tip
+    title: "Interrupt the setup"
+    text: "Halfway through onboarding, take a call, switch apps or rotate the phone. You should return to the same step with your answers."

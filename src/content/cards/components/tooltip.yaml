@@ -1,0 +1,46 @@
+teaser: "It works perfectly with a mouse. So why does the little ⓘ do nothing at all on your phone?"
+cards:
+  - type: flip
+    front: "What is a tooltip?"
+    back: "A small, temporary bubble of plain text that describes an element. It appears on hover, keyboard focus or long-press, and hides when you move away."
+  - type: truefalse
+    statement: "Tapping an icon on a phone counts as hovering, so hover tooltips work on touch screens."
+    answer: false
+    explain: "Touch screens have no hover. A hover-only tooltip never appears on a phone, so need-to-know information must be visible or open with a tap."
+  - type: quiz
+    q: "A tooltip vanishes when you move the mouse onto it. Which WCAG 1.4.13 rule fails?"
+    options: ["Dismissible", "Persistent", "Hoverable"]
+    answer: 2
+    explain: "Hoverable means the pointer can move over the tooltip without it disappearing, for example so screen magnifier users can read it."
+  - type: spotbug
+    screen: ["Icon button: trash can", "Tooltip on hover: Delete", "VoiceOver says: button"]
+    bug: "The icon button has no accessible name."
+    explain: "A visual tooltip is not the button's name unless the code links them. Add aria-label, accessibilityLabel or contentDescription."
+  - type: thisorthat
+    prompt: "A hint needs a 'Learn more' link and a 'Got it' button."
+    left: "Tooltip"
+    right: "Toggletip / popover"
+    answer: right
+    explain: "Tooltips hide when the pointer or focus leaves, so links inside are hard or impossible to reach. A click-opened popover stays open."
+  - type: quiz
+    q: "How do Android apps usually show a toolbar icon's tooltip?"
+    options: ["On long-press", "On a single tap", "Never"]
+    answer: 0
+    explain: "Android shows tooltips on long-press (and mouse hover). A single tap runs the button's action."
+  - type: spotbug
+    screen: ["Fee  €0.00  ⓘ", "Tooltip: Standard SEPA transf…", "(rest cut off at the screen edge)"]
+    bug: "The tooltip is clipped at the right edge."
+    explain: "Near an edge a tooltip must shift or flip to stay fully visible, with its arrow still pointing at the trigger."
+  - type: truefalse
+    statement: "Pressing Esc should hide a tooltip without moving the pointer or focus."
+    answer: true
+    explain: "WCAG 1.4.13 requires tooltips to be dismissible, so they don't block the content or the next field underneath."
+  - type: thisorthat
+    prompt: "Password rules users must follow before they can sign up."
+    left: "Inline help"
+    right: "Tooltip"
+    answer: left
+    explain: "Need-to-know rules belong on the page, visible on every device. Hidden in a tooltip, phone users only learn them from the error."
+  - type: tip
+    title: "Pick up your phone, press Tab"
+    text: "A tooltip that works with your mouse isn't done. Check it with only the keyboard, then on a real phone."

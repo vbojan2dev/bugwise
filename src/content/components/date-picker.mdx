@@ -1,0 +1,483 @@
+---
+title: Date & Time Picker
+description: Calendars, wheels and typed fields for choosing dates and times. Learn the variants, when a picker is overkill, and how locales, time zones and leap years break them.
+category: input
+aka: [Date picker, Calendar, Time picker, Date range picker]
+platforms: [ios, android, web]
+minutes: 35
+order: 5
+---
+
+import Anatomy from '@/components/demos/date-picker/Anatomy';
+import VariantsGallery from '@/components/demos/date-picker/VariantsGallery';
+import Playground from '@/components/demos/date-picker/Playground';
+import { BuggyHotelBooking } from '@/components/demos/date-picker/BuggyHotelBooking';
+import { BirthDateFields, BirthDateCalendar, TypedWithFormat, AmbiguousDate, RangeTogether, RangeSeparate, TimeWithZone, TimeWithoutZone } from '@/components/demos/date-picker/Snippets';
+
+Booking a hotel, scheduling a food delivery, setting an alarm, filtering bank transactions by month: they all need a date or a time. The control you use to choose it is a <Term id="date-picker">date picker</Term> (or time picker), and it is one of the **most bug-prone components** in any app.
+
+Why? Because dates look simple but aren't. Months have 28 to 31 days. Some years have a February 29th. Half the world writes 03/04 for the 3rd of April, the other half for March 4th. Clocks jump forward and back once a year. And a server in one <Term id="time-zone">time zone</Term> talks to phones in all the others. Each of those facts has caused real bugs in real products. Let's learn how to find them.
+
+## What is a date picker?
+
+A date picker is any control that lets the user **choose a calendar date**, and a time picker lets them **choose a time of day**. Many apps combine the two. They come in a few shapes:
+
+- **Calendar grid**: a month view where you tap a day. The most common shape on every platform.
+- **Wheels**: spinning columns for month, day and year (or hour and minute). The classic iOS look.
+- **Clock dial**: tap the hour on a clock face, then the minutes (Android).
+- **Typed input**: a <Term id="text-field">text field</Term> with a format such as `DD/MM/YYYY`, often with a calendar button next to it.
+- **Range picker**: one calendar for a *start* and *end* date, such as check-in and check-out on a hotel site.
+
+### Anatomy
+
+Here is a Material 3 modal date picker, because it has every part. Other designs leave some out.
+
+<Anatomy />
+
+### How it differs from similar input methods
+
+There are many ways to ask for a date, and choosing the **wrong one** is a real usability finding.
+
+| Input method | Best for | Weak at | Example |
+| --- | --- | --- | --- |
+| **Calendar grid** | Dates close to today, where the weekday matters | Dates far away (birth dates) | Delivery date, appointment |
+| **Range picker** | A start and an end that belong together | Single dates | Hotel stay, car rental, report period |
+| **Wheel picker** | Times; dates when the exact weekday doesn't matter | Seeing the month as a whole; speed | Alarm time, reminder |
+| **Typed field** | Dates users know by heart; power users | Ambiguous formats, typos | Card expiry, date of birth |
+| **Three separate fields** | Memorable dates (birth, passport issue) | Picking relative to today | Date of birth in a government form |
+| **Dropdowns** | A short list of fixed options | Anything with 31 options per field | "Next 7 days" delivery slots |
+
+<Callout type="dev" title="Platform names">
+Apple calls it a **date picker** (`UIDatePicker` / SwiftUI `DatePicker`) with styles **compact**, **inline** (graphical) and **wheels**. Google's Material 3 has **date pickers** (docked, modal, modal input) and **time pickers** (dial and input). On the web there is the native `<input type="date">` and countless custom calendar libraries.
+</Callout>
+
+## Designs & variants
+
+Every platform does it differently, and each design has its own weak spots. All eight demos below are live.
+
+<VariantsGallery client:visible />
+
+<Callout type="tip" title="Typing vs picking">
+Picking is safer (you can't pick February 30th) but slow for dates far away. Typing is fast but invites format mistakes. The best pickers offer **both**: Material's pencil icon, a text field next to a calendar, or the native web input, which lets you type each part. When both exist, **test both paths**. They often run different validation code.
+</Callout>
+
+## When to use it
+
+A calendar or wheel picker is a good choice when:
+
+- The date is **close to today** (next week's delivery, a table reservation this weekend).
+- The **weekday matters**: users want to see that the 23rd is a Friday.
+- Some dates are **unavailable** and should be visibly blocked (sold-out nights, past dates, closed days).
+- You need a **range** where the user wants to see both ends together.
+- For times: the choice is **one of a limited set** (every 15 minutes) or a familiar clock face helps.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Memorable date: three fields">
+
+<div class="not-prose demo-screen my-3"><BirthDateFields /></div>
+
+Everyone knows their birth date. Three labeled fields are the fastest way to enter it, and nothing is ambiguous.
+
+</Do>
+<Dont title="Calendar for a birth date">
+
+<div class="not-prose demo-screen my-3"><BirthDateCalendar /></div>
+
+A calendar opens on today's month. Reaching 1991 means hundreds of taps (or finding a hidden year view).
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Typed, with the format shown">
+
+<div class="not-prose demo-screen my-3"><TypedWithFormat /></div>
+
+A card expiry date is copied from the card itself. A short field with a visible format beats any calendar.
+
+</Do>
+<Dont title="Ambiguous format">
+
+<div class="not-prose demo-screen my-3"><AmbiguousDate /></div>
+
+No hint, no month name. An American reads March 4th, a Brit reads 3 April. Show the format, or show the month as a word.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="One range picker">
+
+<div class="not-prose demo-screen my-3"><RangeTogether /></div>
+
+Check-in and check-out in one calendar, the stay highlighted, and the night count spelled out.
+
+</Do>
+<Dont title="Two unconnected pickers">
+
+<div class="not-prose demo-screen my-3"><RangeSeparate /></div>
+
+Each picker has no idea what the other one holds, so impossible ranges are easy to create.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Time with its time zone">
+
+<div class="not-prose demo-screen my-3"><TimeWithZone /></div>
+
+Flight times are shown in the **local time of each airport** and labeled. No guessing.
+
+</Do>
+<Dont title="Silent conversion">
+
+<div class="not-prose demo-screen my-3"><TimeWithoutZone /></div>
+
+The departure was quietly converted to the phone's zone. The traveler arrives at the airport six hours off.
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Tester mindset">
+A picker is **overkill** when users already know the date (birth date, card expiry, passport dates). Designers love calendars; users with a 1950s birth date do not. Raise it as a **usability** finding early, while the design can still change.
+</Callout>
+
+## Common bugs
+
+Date and time bugs are so common that many teams keep a dedicated checklist for them. These are the classics:
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Impossible range** | Check-out before check-in, or an end date before the start date, is accepted | High |
+| 2 | **Off-by-one count** | "2 nights" for a one-night stay; a 7-day report includes 8 days | High (wrong price) |
+| 3 | **Impossible dates accepted** | Typed 31/04 or 29/02/2027 is accepted, or silently becomes 1 May / 1 March | Medium–High |
+| 4 | **Day shifts by one** | The saved date is one day earlier or later than chosen, often only for users east or west of UTC, or around midnight | High |
+| 5 | **Wrong format for the locale** | A UK user sees 03/04/2026 meaning March 4th; dates are typed one way and parsed another | High |
+| 6 | **Wrong first day of week** | The week starts on Sunday for European users, or weekday labels don't line up with the dates | Medium |
+| 7 | **Month navigation skips** | From January 31st, "next" jumps to March because "February 31st" doesn't exist | Medium |
+| 8 | **Past or blocked dates selectable** | Sold-out or past days look disabled but can still be tapped or typed | High |
+| 9 | **DST problems** | A 02:30 alarm on the day clocks spring forward never rings, or a 01:30 reminder fires twice in autumn | Medium–High |
+| 10 | **12h / 24h mix-ups** | "12:30 AM" stored as midday, or the device's 24-hour setting is ignored | Medium |
+| 11 | **Leap year bugs** | February 29th missing in 2028, or yearly renewals of Feb 29 crash in 2029 | Medium |
+| 12 | **Cancel doesn't cancel** | In a modal picker, the date changes even after tapping Cancel | Medium |
+
+<Callout type="bug" title="Why #4 happens: dates are not instants">
+A *calendar date* ("October 20") is not a moment in time. Many apps turn it into "midnight on October 20 **in the phone's time zone**", save that as a UTC timestamp, and later turn it back into a date. Midnight in Belgrade is still October 19 in UTC and in New York. If any step uses a different zone, the date moves by a day. To catch it: pick a date, change the device <Term id="time-zone" />, and look again. Also try times near midnight.
+</Callout>
+
+## Stress-test it: locales and time zones
+
+Most date bugs live in three places: **formats**, **time zones** and **boundary dates**. A little theory first, then the playground.
+
+### The same date, written four ways
+
+The **4th of March 2026** in the short date format of four <Term id="locale">locales</Term> (exact punctuation can vary slightly between browsers):
+
+| Locale | Short date | Long date | 9:30 in the evening |
+| --- | --- | --- | --- |
+| **en-US** (United States) | 3/4/26 | Wednesday, March 4, 2026 | 9:30 PM |
+| **en-GB** (United Kingdom) | 04/03/2026 | Wednesday, 4 March 2026 | 21:30 |
+| **de-DE** (Germany) | 04.03.26 | Mittwoch, 4. März 2026 | 21:30 |
+| **sr-Latn** (Serbia) | 4. 3. 2026. | sreda, 4. mart 2026. | 21:30 |
+
+Notice that **en-US and en-GB use the same digits in a different order**. "03/04" is March 4th in one and April 3rd in the other. A date that is typed in one format and parsed in another is a classic, high-severity <Term id="localization" /> bug, because it doesn't crash: it books the wrong day.
+
+### First day of the week
+
+The US calendar starts on **Sunday**. Most of Europe, including the UK, Germany and Serbia, starts on **Monday** (the ISO 8601 standard). Some countries in the Middle East start on **Saturday**. A calendar that ignores this isn't broken, but it feels wrong to users and causes mis-taps. A calendar where the **labels and the dates don't line up** is broken.
+
+### 12-hour vs 24-hour clock
+
+The locale picks a default, but users can override it (iOS: *Settings › General › Date & Time › 24-Hour Time*, Android: *Use 24-hour format*). Test both. Watch out for **12:00 AM** (midnight) and **12:00 PM** (noon): they are easy to get backwards.
+
+### Time zones and daylight saving time
+
+A time is only meaningful together with a time zone. "23:30 in Belgrade" is already the next day in Tokyo and still the same afternoon in New York. On top of that, many zones use **daylight saving time (DST)**:
+
+- In **spring** the clocks jump forward (in the EU on the last Sunday of March, in the US on the second Sunday of March). One hour, such as 02:00–02:59, **doesn't exist** that night.
+- In **autumn** they go back (EU: last Sunday of October, US: first Sunday of November). One hour **happens twice**.
+- Some zones have **no DST** (Tokyo, Kolkata), some are offset by **half an hour** (Kolkata is UTC+5:30), and in the southern hemisphere (Auckland) the seasons, and so the changes, are reversed.
+
+<Callout type="example" title="Boundary dates every tester should know">
+These are the <Term id="boundary-value-analysis">boundary values</Term> of dates: **the last day of each month** (28, 29, 30, 31), **February 29 in a leap year** (2028) and **February 28 in a normal year** (2027), **December 31 → January 1**, **DST change days**, and **times around midnight**. The playground marks them with colored dots.
+</Callout>
+
+Now play. Switch between **en-US** and **en-GB** and watch the short date. Set 23:30 and move the device time zone around the world. Jump to a DST day and pick the hour that doesn't exist.
+
+<Playground client:visible />
+
+## Find the bug
+
+Time to practice. This hotel booking screen has **six bugs**. The simulated "today" is **Monday, 12 October 2026**, so the results are always the same. Explore it like a tester:
+
+- Pick dates in different orders, and count the nights yourself.
+- **Type** dates into the fields, including impossible ones.
+- Move between months, starting from different check-in dates.
+- Change the **Region** and **Time zone** in the device settings, and compare the calendar with the summary.
+
+<BugHunt
+  title="Hotel booking"
+  bugs={[
+    {
+      title: 'Check-out can be before check-in',
+      hint: 'Tap a later date first, then an earlier one.',
+      detail: 'Tap 20 Oct, then 15 Oct: the app saves check-out <strong>before</strong> check-in and shows a negative night count and price. Expected: tapping a date before check-in starts a new selection (or makes it the new check-in), and an impossible range can never be booked.',
+    },
+    {
+      title: 'Night count is one too high',
+      hint: 'Book a single night and read the summary.',
+      detail: 'Check-in 20 Oct, check-out 21 Oct is <strong>one night</strong>, but the app says 2 nights and charges €240. It counts calendar days (<code>diff + 1</code>) instead of nights (<code>diff</code>). This is a classic off-by-one bug with real money attached.',
+    },
+    {
+      title: 'Impossible typed dates silently roll over',
+      hint: 'Type 31/04/2027 or 29/02/2027 into Check-in.',
+      detail: 'April has 30 days and 2027 is not a leap year, but the field accepts both and quietly turns them into <strong>01/05/2027</strong> and <strong>01/03/2027</strong>. Validation only checks <code>day ≤ 31</code>. Expected: an error message such as "April has only 30 days".',
+    },
+    {
+      title: 'Next month skips a month from the 31st',
+      hint: 'Pick 31 October as check-in, then press the next-month arrow.',
+      detail: 'The calendar jumps from October straight to <strong>December</strong>. The code adds one to the month of the check-in date and keeps the day: "31 November" does not exist, so it becomes 1 December. Expected: navigation moves exactly one month, whatever date is selected.',
+    },
+    {
+      title: 'Dates move one day back when the time zone changes',
+      hint: 'Select a stay, then change the device time zone to New York (or London).',
+      detail: 'Both dates jump one day earlier, and the booking request sends the wrong dates. The app stores each date as <em>midnight in the device time zone</em> and converts it back with the new zone. Expected: a calendar date stays the same date everywhere. Store it as a plain date (<code>2026-10-20</code>), not a timestamp.',
+    },
+    {
+      title: 'Weekday labels don’t match the dates',
+      hint: 'Compare the weekday letters in the calendar with the weekday in the summary. Then try Region: United States.',
+      detail: 'For UK and Serbia the header correctly starts on <strong>Monday</strong>, but the days are still laid out Sunday-first, so every date sits under the wrong weekday (12 October, a Monday, appears under "T"). With the US region it looks fine, which is why this slips through when only one locale is tested.',
+    },
+  ]}
+>
+  <BuggyHotelBooking client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #5?">
+
+**Title:** Booking: check-in and check-out move one day earlier after changing the device time zone to New York
+
+**Preconditions:** Region United Kingdom, time zone Belgrade.
+
+**Steps:** 1. Open Hotel Adria. 2. Tap 20 Oct, then 23 Oct. 3. Change the device time zone to New York. 4. Return to the app.
+
+**Expected:** Check-in 20/10/2026, check-out 23/10/2026.
+**Actual:** Check-in 19/10/2026, check-out 22/10/2026. Tapping Reserve sends `"checkIn":"2026-10-19"`.
+
+**Severity:** High (the guest arrives on a day with no booking) · **Reproducible:** 10/10
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Date & time picker test checklist"
+  storageKey="date-picker"
+  items={[
+    'The picker opens on a sensible month (today, or the selected date), and today is marked',
+    'Past, blocked and sold-out dates look disabled and cannot be picked by tap, keyboard or typing',
+    'Typed dates are validated: 31 April, 29 February in a non-leap year and 13 as a month are rejected with a clear message',
+    'The date format matches the locale, and the expected format is shown next to the field',
+    'Ranges: the end can never be before the start; the night or day count is correct',
+    'Month and year navigation moves exactly one step, also from the 29th, 30th and 31st',
+    'The first day of the week matches the locale, and weekday labels line up with the dates',
+    'Boundary dates work: month ends, Feb 29 (leap year), Dec 31 to Jan 1, ranges crossing a month or year',
+    'Selected dates do not shift after changing the device time zone, or when used around midnight',
+    'Times on DST change days behave sensibly (skipped and repeated hours)',
+    '12-hour and 24-hour device settings are respected; 12:00 AM and 12:00 PM are not swapped',
+    'Cancel in a modal picker keeps the old value; OK saves the new one',
+    'The value sent to the server matches what the user picked (check the network request)',
+    'Screen readers announce the full date (weekday, day, month, year) and the selected state',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-DATE-001',
+      title: 'Book a one-night stay',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Today is 12 Oct 2026', 'Hotel has availability'],
+      steps: ['Open the hotel page', 'Tap 20 Oct as check-in', 'Tap 21 Oct as check-out'],
+      data: 'Price: €120 per night',
+      expected: 'Summary shows "1 night" and a total of €120. The stay is highlighted from 20 to 21 Oct.',
+    },
+    {
+      id: 'TC-DATE-002',
+      title: 'Choosing an earlier date after check-in does not create a reversed range',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Tap 20 Oct as check-in', 'Tap 15 Oct'],
+      expected: '15 Oct becomes the new check-in and the app waits for a check-out. Check-out is never before check-in.',
+    },
+    {
+      id: 'TC-DATE-003',
+      title: 'Impossible typed dates are rejected',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Region: United Kingdom (format DD/MM/YYYY)'],
+      steps: ['Type 31/04/2027 into Check-in and press Enter', 'Type 29/02/2027 and press Enter', 'Type 29/02/2028 and press Enter'],
+      expected: 'The first two show an error and keep the field unchanged. 29/02/2028 is accepted, because 2028 is a leap year.',
+    },
+    {
+      id: 'TC-DATE-004',
+      title: 'Past dates cannot be selected',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Today is 12 Oct 2026'],
+      steps: ['Tap 11 Oct in the calendar', 'Type 11/10/2026 into Check-in'],
+      expected: 'The tap does nothing (the day looks disabled), and typing shows "Check-in can\'t be in the past".',
+    },
+    {
+      id: 'TC-DATE-005',
+      title: 'Month navigation from the 31st',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Select 31 Oct as check-in', 'Tap the next-month arrow', 'Tap it again'],
+      expected: 'The calendar shows November 2026, then December 2026. No month is skipped.',
+    },
+    {
+      id: 'TC-DATE-006',
+      title: 'Selected dates survive a time zone change',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Device time zone: Europe/Belgrade'],
+      steps: ['Select 20 Oct to 23 Oct', 'Change the device time zone to America/New_York', 'Return to the app', 'Tap Reserve'],
+      expected: 'The app still shows 20–23 Oct, and the request contains "checkIn":"2026-10-20" and "checkOut":"2026-10-23".',
+    },
+    {
+      id: 'TC-DATE-007',
+      title: 'Date format and first day of week follow the region',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Set Region to United States and open the picker', 'Note the format and first weekday', 'Set Region to United Kingdom and repeat'],
+      expected: 'US: 10/20/2026, week starts on Sunday. UK: 20/10/2026, week starts on Monday. In both, 12 Oct appears under Monday.',
+    },
+    {
+      id: 'TC-DATE-008',
+      title: 'Reminder on the day clocks go forward',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Device time zone: Europe/Belgrade'],
+      steps: ['Create a reminder for 29 Mar 2026 at 02:30', 'Save it and reopen it'],
+      expected: 'The app either warns that 02:30 does not exist that night or moves it to 03:30, and tells the user. It does not crash or silently save a different day.',
+    },
+    {
+      id: 'TC-DATE-009',
+      title: 'Cancel keeps the previous date',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['A date of 20 Oct is already saved'],
+      steps: ['Open the modal date picker', 'Tap 25 Oct', 'Tap Cancel'],
+      expected: 'The field still shows 20 Oct.',
+    },
+  ]}
+/>
+
+<Callout type="tip" title="Use equivalence partitions for dates">
+You can't test all 365 days. Split them into <Term id="equivalence-partitioning">partitions</Term> (past, today, near future, far future, beyond the booking window) and test one date from each, plus the boundaries between them: yesterday, today, the last bookable day, and the day after it.
+</Callout>
+
+## Accessibility
+
+Calendars are hard to use without sight or a mouse. Check these:
+
+- **Every day has a full name.** A <Term id="screen-reader" /> should say "Tuesday, 20 October 2026", not just "20". Today and the selected state must be announced too ("today", "selected").
+- **Keyboard (web):** a calendar grid should support the arrow keys (day and week), Home/End (start and end of the week) and Page Up/Page Down (month). Try it in the gallery and playground above.
+- **Typing must always be possible.** Some users can't operate wheels or tiny day cells. WCAG 2.2 asks for a single-pointer alternative to dragging movements (2.5.7), and a text input is the easiest alternative of all. Don't make a text field read-only just because there is a calendar button.
+- **Show the format** in a visible label or hint (`DD/MM/YYYY`), not only as a <Term id="placeholder" /> that disappears while typing.
+- **Errors in words:** "April has only 30 days" beats a red border alone (don't rely on color).
+- **Disabled days** must look disabled for more than color (for example a strikethrough) and be announced as unavailable.
+- **Modal pickers** must move focus into the dialog, keep it there (<Term id="focus-trap" />), and return it to the field when closed.
+- **<Term id="touch-target">Touch targets</Term>:** day cells on small phones are often below 44×44 pt (iOS) / 48×48 dp (Android). Check them.
+- **Autofill:** browsers and password managers should be able to fill birth date fields.
+  <DevNote>Birth date fields should use `autocomplete="bday"` (or `bday-day`, `bday-month`, `bday-year`).</DevNote>
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- Three styles: **compact** (grey pills that open a popover), **inline** (full calendar) and **wheels**.
+  <DevNote>`UIDatePicker` / SwiftUI `DatePicker`.</DevNote>
+- Modes: date, time, or date and time. Follows the device's region, calendar and 24-hour setting automatically.
+- Wheels don't stop you from scrolling to February 30th; they snap back. Check the app reacts to the *final* value, not the one in between.
+- Test with **Settings › General › Language & Region** (region, first day of week, calendar) and **Date & Time** (24-hour, time zone off "Set Automatically").
+
+</Tab>
+<Tab>
+
+- Material 3: **docked**, **modal** and **modal input** date pickers, a **date range picker** (usually full screen), and a **time picker** with dial and keyboard input modes.
+- Modal pickers have Cancel/OK. Test that Cancel really cancels and that rotating the device keeps the draft selection.
+- Respects *Use 24-hour format* and the system language, but custom pickers in apps often forget to.
+- On an <Term id="emulator" /> you can change the time zone and date in Settings to jump straight to DST days or a leap day.
+
+</Tab>
+<Tab>
+
+- Native date and time fields use the browser's own picker. The **display** follows the browser language, but the **value** is always `YYYY-MM-DD` / `HH:mm`.
+  <DevNote>`<input type="date">` and `<input type="time">`.</DevNote>
+- Native date-and-time fields have **no time zone**. Check what the backend assumes.
+  <DevNote>`<input type="datetime-local">`.</DevNote>
+- Custom calendar libraries are everywhere: check keyboard support, ARIA roles and focus handling in <Term id="devtools" />.
+- Check the request in the Network tab: is the date sent as `2026-10-20` or as a timestamp like `2026-10-19T22:00:00Z`? The second one is a time zone bug waiting to happen.
+- In Chrome DevTools, **Sensors › Location** lets you override the time zone and locale to test other regions without traveling.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'Which input is the best fit for a date of birth?',
+      options: ['A calendar grid that opens on today', 'Three labeled fields (day, month, year) or a typed field with a format hint', 'A wheel with every day since 1900', 'A dropdown with all dates'],
+      answer: 1,
+      explain: 'People know their birth date by heart. Typing it is much faster than navigating decades of months.',
+    },
+    {
+      q: 'A UK user types 03/04/2026. The app saves March 4th. What kind of bug is this?',
+      options: ['A time zone bug', 'A locale / date format bug', 'A leap year bug', 'Not a bug'],
+      answer: 1,
+      explain: 'In en-GB 03/04 means 3 April. The app parsed the date in the US format (month first).',
+    },
+    {
+      q: 'Check-in 20 Oct, check-out 21 Oct. How many nights should a hotel app show?',
+      options: ['0', '1', '2', 'It depends on the time zone'],
+      answer: 1,
+      explain: 'Nights = check-out minus check-in = 1. Showing 2 is the classic off-by-one bug.',
+    },
+    {
+      q: 'You pick 20 Oct in Belgrade, switch the device time zone to New York, and the app now shows 19 Oct. What is the most likely cause?',
+      options: ['The calendar has the wrong first day of the week', 'The date was stored as a timestamp (local midnight) instead of a plain calendar date', 'The server is down', 'DST started'],
+      answer: 1,
+      explain: 'Midnight in Belgrade is still the previous evening in New York. Calendar dates should be stored as plain dates.',
+    },
+    {
+      q: 'Which pair of dates is the strongest boundary test for typed date validation?',
+      options: ['15 Mar and 16 Mar', '29 Feb 2027 and 29 Feb 2028', '1 Jan and 2 Jan', '10 Oct and 20 Oct'],
+      answer: 1,
+      explain: '2027 is not a leap year (must be rejected) and 2028 is (must be accepted).',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Date pickers come as **calendars, wheels, dials, typed fields and range pickers**. Each fits a different job, and a calendar for a birth date is overkill.
+- The same digits mean different dates in different **locales** (03/04). Always show the format and test at least en-US and one European locale.
+- A **calendar date is not a timestamp**. Change the device time zone and use times near midnight to catch dates that shift by a day.
+- Always test the **boundaries**: month ends, Feb 29 in leap and non-leap years, Dec 31 → Jan 1, DST change days, 12:00 AM/PM.
+- For ranges, check **order** (end after start) and **counts** (nights = difference, not difference + 1).
+- Test **both typing and picking**, and check the value that actually reaches the server.
+
+</KeyTakeaways>

@@ -1,0 +1,46 @@
+teaser: "Jira looks like a wall of columns and cryptic codes like SHOP-142. Testers only need a small part of it. Which part?"
+cards:
+  - type: flip
+    front: "What are Jira's five common issue types?"
+    back: "Epic (big goal), Story (user feature), Task (non-feature work), Bug (doesn't work as expected) and Sub-task (a small step inside one)."
+  - type: flip
+    front: "Read this JQL aloud: project = SHOP AND type = Bug AND status != Done"
+    back: "In project SHOP, bugs that are not Done yet. JQL is just field, operator, value, joined with AND or OR."
+  - type: quiz
+    q: "Your bug means the story can't be released until it's fixed. Which link fits?"
+    options: ["blocks", "duplicates", "relates to"]
+    answer: 0
+    explain: "'Blocks' tells everyone the story can't be finished while the bug is open. 'Duplicates' is for the same bug reported twice."
+  - type: quiz
+    q: "Which JQL shows your own open work and works for any teammate who uses the filter?"
+    options: ["assignee = \"Mia Novak\"", "reporter = currentUser()", "assignee = currentUser() AND statusCategory != Done"]
+    answer: 2
+    explain: "currentUser() is whoever runs the filter, and statusCategory != Done skips finished work, whatever your team calls its done statuses."
+  - type: truefalse
+    statement: "Every team's Jira workflow has the same statuses."
+    answer: false
+    explain: "Workflows, fields and screens are configured per team. Learn yours in your first week and treat tutorial screens as examples."
+  - type: truefalse
+    statement: "Testers should usually leave the Fix version field for the lead to set."
+    answer: true
+    explain: "Fix version is the release that will contain the fix, usually decided in triage. Testers set Affects version: where they found the bug."
+  - type: thisorthat
+    prompt: "A developer moves your bug to In Testing with the comment 'fixed in build 412'."
+    left: "Move it to Done"
+    right: "Retest on build 412"
+    answer: right
+    explain: "A bug is only Done after a tester has retested it on a build that contains the fix. Add a short comment with what you checked."
+  - type: thisorthat
+    prompt: "You want an update when anything changes on a bug you reported. Nobody needs to act yet."
+    left: "Watch the issue"
+    right: "@mention the team"
+    answer: left
+    explain: "Watching gets you notified without disturbing anyone. Save @mentions for when you need a specific person to act or answer."
+  - type: spotbug
+    screen: ["SHOP-150 · Type: Task", "Checkout: total ignores custom tip", "Environment: my phone", "Links: none"]
+    question: "What's wrong with this ticket?"
+    bug: "Wrong type, vague environment, and no link to the story."
+    explain: "Filed as a Task, it vanishes from bug filters. Without device, OS and build it can't be reproduced, and without a link the story might close."
+  - type: tip
+    title: "Search before you create"
+    text: "Run a quick JQL search like text ~ \"tip\" on open bugs before filing. It takes seconds and saves a duplicate ticket."

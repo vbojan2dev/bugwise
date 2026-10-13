@@ -1,0 +1,501 @@
+---
+title: API Testing with Postman
+description: What an API is, how REST requests and responses work, and how to test an API with Postman, from your first GET request to environments, collections and automated checks.
+order: 8
+level: beginner
+minutes: { short: 35 }
+platform: web
+tags: [API, Postman, REST, HTTP, status codes]
+---
+
+import RequestAnatomy from '@/components/demos/web-security-api/RequestAnatomy';
+import ApiClient from '@/components/demos/web-security-api/ApiClient';
+
+A food delivery app had a neat little quantity stepper: the **–** button stopped at 1, so you could never order fewer than one pizza. The UI was tested carefully and worked perfectly.
+
+Then someone sent the request to the server directly, with `"quantity": -3`. The server accepted it. The order total went **negative**, and the "refund" landed on a real card.
+
+The bug was never in the screen. It was in the <Term id="api" /> behind it, and the UI was simply hiding it. This lesson teaches you to test that layer directly, with **Postman**, the most popular tool for the job.
+
+## Why it matters
+
+Almost every modern app is two parts: a **front end** (the website or the mobile app you see) and a **back end** (servers and databases). They talk to each other through APIs. The same API often serves the website, the iOS app, the Android app and partner companies.
+
+That means:
+
+- **One API bug breaks every platform at once.**
+- **The UI can hide bugs.** A form may block bad input, but the API might still accept it from anyone who sends a request directly.
+- **API tests are fast.** You can check 20 cases in the time it takes to click through one checkout.
+- **Bugs are easier to pin down.** If the API returns the wrong data, it's a back-end bug. If the API is right but the screen is wrong, it's a front-end bug. That makes your <Term id="bug-report">bug reports</Term> much sharper.
+
+## What is an API?
+
+An **API** (Application Programming Interface) is a set of rules that lets one program ask another program for data or actions.
+
+The classic analogy is a restaurant:
+
+<div class="not-prose my-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-2xl" aria-hidden="true">🧑‍💻</p>
+    <p class="mt-1 font-semibold">You (the client)</p>
+    <p class="mt-1 text-sm text-muted">The app or website. It knows what it wants, but can't go into the kitchen.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-brand/40 bg-brand-soft p-4">
+    <p class="text-2xl" aria-hidden="true">🤵</p>
+    <p class="mt-1 font-semibold">The waiter (the API)</p>
+    <p class="mt-1 text-sm text-muted">Takes your order in an agreed format (the menu), carries it to the kitchen and brings back the result.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-2xl" aria-hidden="true">👩‍🍳</p>
+    <p class="mt-1 font-semibold">The kitchen (the server)</p>
+    <p class="mt-1 text-sm text-muted">Does the real work: checks stock, saves orders, reads the database.</p>
+  </div>
+</div>
+
+The **menu** is the API documentation: it lists what you can order and how. As an API tester you skip the dining room (the UI) and **talk to the waiter directly**: you order normal dishes, strange dishes, dishes that aren't on the menu, and you check that the waiter always responds correctly.
+
+## REST basics
+
+Most web and mobile APIs today are **REST** APIs. They use plain HTTP, the same protocol your browser uses, and usually send data as <Term id="json" />. Every call is a **request** from the client and a **response** from the server.
+
+<RequestAnatomy />
+
+### Endpoints and URLs
+
+An <Term id="endpoint" /> is one address of the API that does one job. A URL has several parts:
+
+| Part | Example | Meaning |
+| --- | --- | --- |
+| Base URL | `https://api.shop.test/v1` | Where the API lives (often different per environment) |
+| Path | `/products` | Which resource you want |
+| Path parameter | `/products/42` | Which **one** item (here product 42) |
+| <Term id="query-parameter">Query parameters</Term> | `?category=shoes&limit=10` | Filters and options, after a `?`, joined with `&` |
+
+### Methods
+
+The <Term id="http-method" /> says what you want to do with the resource:
+
+| Method | Does | Example | Has a body? | Idempotent? |
+| --- | --- | --- | --- | --- |
+| **GET** | Read | `GET /products/42` | No | Yes |
+| **POST** | Create / trigger an action | `POST /cart/items` | Yes | No |
+| **PUT** | Replace / set completely | `PUT /cart/items/42` with `{"quantity": 3}` | Yes | Yes |
+| **PATCH** | Change some fields | `PATCH /profile` with `{"name": "Ana"}` | Yes | Not necessarily |
+| **DELETE** | Remove | `DELETE /cart/items/42` | Usually no | Yes |
+
+<Callout type="info" title="Idempotent?">
+<Term id="idempotency">Idempotent</Term> means "doing it twice has the same effect as doing it once". Setting the quantity to 3 with PUT twice should still leave 3. Deleting an item twice should leave it deleted (the second call may return 404, that's fine). POST is **not** idempotent: two "Add to cart" calls add the item twice. Testers check this because apps retry requests on bad networks.
+</Callout>
+
+### Status codes
+
+Every response starts with an <Term id="http-status-code" />. The first digit tells you the family:
+
+| Code | Name | When you'll see it |
+| --- | --- | --- |
+| **2xx** | **Success** | |
+| 200 | OK | A read or update worked |
+| 201 | Created | Something new was created (POST) |
+| 204 | No Content | Worked, nothing to send back (often DELETE) |
+| **3xx** | **Redirection** | |
+| 301 / 302 | Moved Permanently / Found | Go to another URL |
+| 304 | Not Modified | Use your cached copy |
+| **4xx** | **Client error (the request was wrong)** | |
+| 400 | Bad Request | Invalid data, missing field, broken JSON |
+| 401 | Unauthorized | **Who are you?** No token, or an invalid / expired one |
+| 403 | Forbidden | **I know who you are, but you're not allowed** |
+| 404 | Not Found | The resource doesn't exist |
+| 405 | Method Not Allowed | E.g. DELETE on an endpoint that only supports GET |
+| 409 | Conflict | Clashes with current state, e.g. creating a duplicate |
+| 422 | Unprocessable Content | The JSON is valid but the values break a rule (some APIs use 400 for this) |
+| 429 | Too Many Requests | Rate limit hit |
+| **5xx** | **Server error (the server failed)** | |
+| 500 | Internal Server Error | Unhandled crash on the server: **almost always a bug** |
+| 502 / 503 / 504 | Bad Gateway / Service Unavailable / Gateway Timeout | Server down, overloaded or too slow |
+
+<Callout type="tip" title="The tester's rule of thumb">
+Bad input from the client should give a **4xx** with a helpful message. A **5xx** for something the user did (like a duplicate name or a missing field) is a bug: the server didn't validate the input and crashed instead.
+</Callout>
+
+### Headers
+
+Headers are key–value pairs with extra information about the request or response:
+
+- `Content-Type: application/json` — "the body I'm sending is JSON".
+- `Authorization: Bearer eyJhbGci...` — "here's my token, this is who I am".
+- `Accept: application/json` — "please answer in JSON".
+- Response headers like `Cache-Control`, `Location` (where a new resource lives) or `X-Request-Id` (great to paste into bug reports so developers can find the server log).
+
+### JSON bodies
+
+POST, PUT and PATCH usually send a body in JSON: keys in double quotes, values as strings, numbers, `true`/`false`, `null`, arrays `[ ]` or objects `{ }`.
+
+```json
+{
+  "productId": 1,
+  "quantity": 2,
+  "giftWrap": false,
+  "note": "Leave at the door"
+}
+```
+
+Notice that `1` (a number) and `"1"` (a string) are **different types**. Many API bugs are type bugs.
+
+### Authentication: tokens and API keys
+
+Most APIs need to know who is calling:
+
+- **Bearer token.** You log in once (e.g. `POST /login`), the server returns a token, and you send it on every request in the header `Authorization: Bearer <token>`. Tokens expire. A common format is a JWT (a long string starting with `eyJ`).
+- **API key.** A fixed secret string for an app or partner, sent in a header like `x-api-key: ...` or sometimes as a query parameter.
+
+The two error codes to remember: **401** = missing or invalid credentials; **403** = valid credentials, but not allowed (for example a customer trying an admin endpoint).
+
+<Callout type="warning" title="Treat tokens like passwords">
+Use tokens from **test** accounts only. Don't paste them into public chats, screenshots or tickets without masking them, and never commit them to a shared collection.
+</Callout>
+
+## Why test the API directly?
+
+| Reason | Example |
+| --- | --- |
+| **Faster feedback** | Check 15 invalid inputs in two minutes, no clicking through screens |
+| **Finds bugs the UI hides** | The UI greys out "–" at 1, but the API accepts `-5` |
+| **Validation bypass** | Front-end checks can be skipped by anyone. The server must validate everything again. |
+| **Earlier testing** | The API is often ready days before the screens are |
+| **Clear blame** | Wrong data in the API response → back-end bug. Correct response but wrong screen → front-end bug. |
+| **Security checks** | Call another user's resources with your token to test access rules (see [Security Basics](/web/security-basics)) |
+
+## Try it: a mini API client
+
+Here's a simplified Postman-like client connected to a **simulated Shop API** that runs in your browser. Nothing is sent over the internet. Try these:
+
+<Steps>
+
+1. **Send the first request.** "List products" is preloaded. Click **Send** and look at the status, time and JSON body.
+2. **Change a query parameter.** In **Params**, change `limit` to `2`, then to `0`. Which status do you get for `0`, and does the message help?
+3. **Use the environment.** Click the eye icon to see `{{baseUrl}}` and `{{token}}`. Switch the environment to **No environment** and send again. Then switch back.
+4. **Check 401 vs 403.** Load **View cart**, untick the `Authorization` header and send (401). Then load **Delete product (admin)** and change `{{adminToken}}` to `{{token}}` (403).
+5. **Break the body.** Load **Add to cart**, change `"quantity": 2` to `"quantity": "two"`, then remove the closing `}`.
+6. **Run tests.** Open **Tests**, tick a few checks, send, and open **Test Results**. Then click **curl** to see the same request as a terminal command.
+
+</Steps>
+
+<ApiClient showDocs client:visible />
+
+## Postman essentials
+
+[Postman](https://www.postman.com/) is an app (desktop and web, with a free plan) for building, sending, saving and automating API requests. Here's what you'll use every day.
+
+<Steps>
+
+1. **Build a request.** Click **New › HTTP** (or the **+** tab). Choose the method from the dropdown, paste the URL and click **Send**. The response appears below with status, time, size, body (Pretty / Raw / Preview) and headers.
+2. **Params.** Query parameters typed in the URL appear in the **Params** tab, and vice versa. Path variables written as `:id` in the URL (e.g. `/products/:id`) also get a value field there.
+3. **Headers.** Add headers in the **Headers** tab. For tokens, the **Authorization** tab is easier: choose *Bearer Token* and paste `{{token}}`. Postman then adds the header for you.
+4. **Body.** In **Body**, choose **raw** and **JSON**. Postman highlights invalid JSON and sets `Content-Type: application/json` automatically.
+5. **Environments and variables.** Create an environment (e.g. *Staging*) with variables like `baseUrl` and `token`, select it in the top-right dropdown, and write `{{baseUrl}}/products`. Switching to a *Dev* environment then retargets every request at once. Unresolved variables show in red.
+6. **Collections.** Save requests into a **collection** (a folder for one API, e.g. *Shop API*) with sub-folders like *Products* and *Cart*. Collections can be shared with your team and run all at once with the **Collection Runner**.
+7. **Save examples.** After a response, click **Save Response › Save as example**. Examples document what a correct (or error) response looks like and can power mock servers.
+8. **Scripts and tests.** In the **Scripts** tab (called **Tests** in older versions), the **Post-response** script runs after every response. Add checks with `pm.test` and `pm.expect`. The **Snippets** list on the side writes common ones for you.
+
+</Steps>
+
+A few tests worth knowing, in Postman's JavaScript syntax:
+
+```js
+// Status code
+pm.test("Status code is 200", () => {
+  pm.response.to.have.status(200);
+});
+
+// Response time
+pm.test("Response time is below 500 ms", () => {
+  pm.expect(pm.response.responseTime).to.be.below(500);
+});
+
+// Body content and types
+pm.test("Product has the right shape", () => {
+  const json = pm.response.json();
+  pm.expect(json.id).to.eql(1);
+  pm.expect(json.name).to.be.a("string");
+  pm.expect(json.price).to.be.a("number");
+});
+
+// Header
+pm.test("Content-Type is JSON", () => {
+  pm.expect(pm.response.headers.get("Content-Type")).to.include("application/json");
+});
+
+// Save a value for the next request (e.g. after POST /login)
+pm.environment.set("token", pm.response.json().token);
+```
+
+<Callout type="tip" title="Chaining requests">
+Saving the token from the login response with `pm.environment.set` means every other request using `{{token}}` works automatically. Do the same with IDs: save the `id` from a "create" response and use `{{orderId}}` in the next "get" request.
+</Callout>
+
+## What to test
+
+**Positive (happy path):** each endpoint with valid data returns the documented status (200, 201, 204) and body · created items can be read back with GET · updates really change the data · lists support their filters, sorting and <Term id="pagination" />.
+
+**Negative: input validation.** <Term id="input-validation" /> on the server is the heart of API testing:
+
+- **Missing required fields** → 400 with a message naming the field.
+- **Wrong types**: `"quantity": "two"`, `"price": "19.99"`, `null`, an array instead of an object.
+- **Boundary values** ([boundary value analysis](/fundamentals/boundary-value-analysis)): if quantity is 1–10, try 0, 1, 10, 11, and also `-1` and `1.5`.
+- **Invalid JSON** (a missing bracket) → 400, not 500.
+- **Extra or unknown fields** like `"isAdmin": true` are ignored or rejected, never applied.
+
+**Negative: auth and existence.**
+
+- No token or an invalid / expired token → **401**.
+- Valid token but no permission → **403**. Another user's resource → 403 or 404.
+- An ID that doesn't exist → **404**, not 200 with an empty body.
+- Creating a duplicate (same email, same coupon code) → **409**, not 500.
+- Wrong method on an endpoint → **405**.
+
+**Behavior:**
+
+- **Idempotency.** Send the same PUT or DELETE twice; the result must be the same as sending it once.
+- **Response schema and data.** Field names, types and formats match the docs (dates, currencies, IDs). No missing fields, no extra sensitive fields like passwords or other users' emails.
+- **Response time.** Agree on a target (e.g. under 500 ms in the test environment) and watch for slow endpoints.
+- **Error messages** are clear, consistent and don't leak stack traces or SQL (see <Term id="error-message" />).
+
+## Common API bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Missing server validation** | `quantity: -5` or `0` is accepted, totals go negative | High |
+| 2 | **Wrong status code** | 200 with `null` or `{}` instead of 404; 200 with `{"error": ...}` | Medium |
+| 3 | **500 instead of 4xx** | A duplicate, missing field or bad JSON crashes the server | Medium–High |
+| 4 | **Missing auth check** | An endpoint works without a token, or for the wrong user | Critical |
+| 5 | **Type / schema mismatch** | `"price": "19.99"` (string) where the docs say number; renamed fields | Medium |
+| 6 | **Not idempotent** | Repeating PUT adds the item again; a retried payment charges twice | High |
+| 7 | **Over-sharing** | The response includes password hashes, internal IDs or other users' data | High–Critical |
+| 8 | **Leaky errors** | Stack traces, SQL queries or server paths in error messages | Medium |
+| 9 | **Inconsistent errors** | Each endpoint returns errors in a different format | Low |
+| 10 | **Slow endpoints** | A list call takes 4 seconds once there are 1,000 items | Medium |
+
+## Find the bug
+
+Here's the same client connected to a **buggy build** of the Shop API. The **API docs** at the bottom say what the API promises. Compare the real responses with the docs, and use the Tests tab and History to help.
+
+<BugHunt
+  title="Shop API test build"
+  bugs={[
+    {
+      title: 'Adding a negative quantity to the cart is accepted',
+      hint: 'The docs say quantity must be 1–10. Try values outside that range in Add to cart.',
+      detail: '<code>POST /cart/items</code> with <code>"quantity": -5</code> (or <code>0</code>) returns <strong>201 Created</strong> and the cart total becomes negative. Only the upper limit (10) is checked. Expected: <strong>400</strong> "quantity must be between 1 and 10".',
+    },
+    {
+      title: 'A product that does not exist returns 200 with null',
+      hint: 'Ask for a product ID that is not in the list.',
+      detail: '<code>GET /products/999</code> returns <strong>200 OK</strong> with the body <code>null</code>. Apps then crash or show an empty page. Expected: <strong>404 Not Found</strong> as documented.',
+    },
+    {
+      title: 'Removing a cart item works without a token',
+      hint: 'Add an item, then untick the Authorization header and remove it.',
+      detail: '<code>DELETE /cart/items/1</code> without an <code>Authorization</code> header returns <strong>204</strong> and really deletes the item. Expected: <strong>401 Unauthorized</strong>. Missing auth checks are critical security bugs.',
+    },
+    {
+      title: 'Creating the same coupon twice crashes the server (500)',
+      hint: 'Send Create coupon (admin) twice with the same code.',
+      detail: 'The second call returns <strong>500 Internal Server Error</strong> with a raw database message (<code>duplicate key value violates unique constraint</code>). Expected: <strong>409 Conflict</strong> with a clear message, and no database details.',
+    },
+    {
+      title: 'price is a string, not a number',
+      hint: 'Compare the type of price with the docs, or run the price test.',
+      detail: 'Products return <code>"price": "19.99"</code> (a string in quotes) but the docs say <code>number</code>. Apps that add prices may concatenate text ("19.99" + "9.50" = "19.999.50"). The price test fails with <code>expected \'19.99\' to be a number</code>.',
+    },
+    {
+      title: 'PUT is not idempotent: each call adds the quantity again',
+      hint: 'Send Update cart item several times and look at the quantity.',
+      detail: '<code>PUT /cart/items/1</code> with <code>"quantity": 3</code> gives 3, then 6, then 9. PUT should <strong>set</strong> the quantity, so repeating it must always leave 3. Retries on a bad network would silently inflate orders.',
+    },
+  ]}
+>
+  <ApiClient buggy showDocs docsOpen client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #4?">
+
+**Title:** API: POST /coupons returns 500 with a database error when the coupon code already exists
+
+**Request:** `POST {{baseUrl}}/coupons` with admin token, body `{"code": "SPRING10", "percent": 10}`, sent twice.
+
+**Expected:** 2nd call returns 409 Conflict, e.g. "Coupon SPRING10 already exists".
+**Actual:** 500 Internal Server Error, body contains `duplicate key value violates unique constraint "coupons_code_key"`.
+
+**Environment:** Staging · **X-Request-Id:** from the response headers · **Severity:** Medium (crash plus leaked DB details)
+
+</Callout>
+
+## Reading API docs: Swagger and OpenAPI
+
+Before testing, read the docs. Most teams describe their API in an **OpenAPI** file (formerly called Swagger), a YAML or JSON file that lists every endpoint, parameter, request body, response and status code. Tools like **Swagger UI** or **Redoc** turn it into a readable web page, often at a URL like `/docs` or `/swagger`.
+
+As a tester, the docs are your **expected results**:
+
+- Each documented field, type and status code is something to verify.
+- Anything **missing** from the docs (what happens on a duplicate? what is the max length?) is a question for the team, and often a bug waiting to happen.
+- Postman can **import** an OpenAPI file (Import › file or URL) and generate a whole collection for you.
+
+## Alternatives to Postman
+
+| Tool | What it is | Good for |
+| --- | --- | --- |
+| **Insomnia** | Desktop API client, similar to Postman | A cleaner, lighter UI; REST, GraphQL and gRPC |
+| **Bruno** | Open-source desktop client that stores collections as plain files | Teams that keep API tests in Git next to the code |
+| **curl** | Command-line tool available on macOS, Linux and Windows | Quick checks, sharing an exact request with a developer |
+| **Browser [DevTools](/web/devtools-for-testers)** | Network tab › right-click a request › Copy as cURL / fetch | Grabbing the real request the app sent, then replaying it in Postman (Import › Raw text) |
+
+```bash
+curl -X POST 'https://api.shop.test/v1/cart/items' \
+  -H 'Authorization: Bearer <your-test-token>' \
+  -H 'Content-Type: application/json' \
+  -d '{"productId": 1, "quantity": 2}'
+```
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-API-001',
+      title: 'Get an existing product',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Send GET {{baseUrl}}/products/1'],
+      expected: '200 OK. Body has id 1, name (string), price (number), category (string), inStock (boolean). Response time under 500 ms.',
+    },
+    {
+      id: 'TC-API-002',
+      title: 'Get a product that does not exist',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Send GET {{baseUrl}}/products/999'],
+      expected: '404 Not Found with an error message. No 200, no null body.',
+    },
+    {
+      id: 'TC-API-003',
+      title: 'Add to cart rejects quantities outside 1–10',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Valid customer token in {{token}}'],
+      steps: ['Send POST {{baseUrl}}/cart/items with each quantity from the test data', 'Check status and body of each response'],
+      data: 'quantity: 0, -1, 11, 1.5, "two", missing',
+      expected: 'Each request returns 400 with a message naming the quantity rule. The cart does not change.',
+    },
+    {
+      id: 'TC-API-004',
+      title: 'Cart endpoints require a valid token',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Send GET /cart without the Authorization header', 'Send it with "Bearer invalid-token"', 'Repeat for POST /cart/items, PUT and DELETE /cart/items/1'],
+      expected: 'Every request returns 401 and makes no change.',
+    },
+    {
+      id: 'TC-API-005',
+      title: 'Customer token cannot use admin endpoints',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Send DELETE {{baseUrl}}/products/5 with the customer token'],
+      expected: '403 Forbidden. The product still exists (GET /products/5 returns 200).',
+    },
+    {
+      id: 'TC-API-006',
+      title: 'Duplicate coupon code returns 409',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Admin token in {{adminToken}}'],
+      steps: ['Send POST /coupons with code SPRING10', 'Send the same request again'],
+      expected: 'First: 201 Created. Second: 409 Conflict with a clear message. Never 500.',
+    },
+    {
+      id: 'TC-API-007',
+      title: 'PUT on a cart item is idempotent',
+      priority: 'high',
+      type: 'edge',
+      steps: ['Send PUT /cart/items/1 with {"quantity": 3}', 'Send the exact same request two more times', 'Send GET /cart'],
+      expected: 'Every PUT returns 200 with quantity 3. GET /cart shows quantity 3 for product 1.',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="API testing checklist"
+  storageKey="api-testing-with-postman"
+  items={[
+    'I read the API docs (OpenAPI/Swagger) and know the expected status codes',
+    'Requests use environment variables like {{baseUrl}} and {{token}}, no hard-coded values',
+    'Every endpoint returns the documented status and body for valid data',
+    'Created data can be read back, updated data really changed',
+    'Missing fields, wrong types and invalid JSON return 400, never 500',
+    'Boundary values are tested (min-1, min, max, max+1)',
+    'No token / invalid token returns 401, wrong role returns 403',
+    'Unknown IDs return 404, duplicates return 409',
+    'PUT and DELETE give the same result when repeated',
+    'Field names and types match the docs (numbers are numbers)',
+    'Responses contain no sensitive or extra data',
+    'Error messages are helpful and leak no stack traces or SQL',
+    'Response times are within the agreed limit',
+    'Key checks are saved as pm.test scripts in a shared collection',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'You send a request with a valid customer token to an admin-only endpoint. What status code should you get?',
+      options: ['200 OK', '401 Unauthorized', '403 Forbidden', '404 Not Found'],
+      answer: 2,
+      explain: '401 means the server does not know who you are (no or invalid token). 403 means it knows who you are, but you are not allowed.',
+    },
+    {
+      q: 'Which method should be idempotent?',
+      options: ['POST /cart/items', 'PUT /cart/items/1 with {"quantity": 3}', 'POST /orders', 'None of them'],
+      answer: 1,
+      explain: 'PUT sets a value. Sending it once or five times must leave the same state. POST creates something new each time.',
+    },
+    {
+      q: 'Creating a user with an email that already exists returns 500. Is that a bug?',
+      options: ['No, any error code is fine', 'Yes, it should be a 4xx like 409 Conflict', 'No, 500 means the request was wrong', 'Only if it happens on production'],
+      answer: 1,
+      explain: '5xx means the server failed. A predictable client mistake should be handled and answered with a 4xx and a clear message.',
+    },
+    {
+      q: 'Which Postman script checks that the response status is 200?',
+      options: ['pm.status(200)', 'pm.response.to.have.status(200)', 'response.code == 200', 'pm.expect.status = 200'],
+      answer: 1,
+      explain: 'Wrap it in a test: pm.test("Status code is 200", () => { pm.response.to.have.status(200); });',
+    },
+    {
+      q: 'Why use {{baseUrl}} instead of typing https://api.staging.example.com in every request?',
+      options: ['It makes requests faster', 'You can switch every request to another environment by changing one variable', 'Postman requires it', 'It hides the URL from the server'],
+      answer: 1,
+      explain: 'Environments and variables let one collection run against dev, staging or a local server without editing each request.',
+    },
+    {
+      q: 'The UI blocks quantities below 1. Why test quantity -5 on the API anyway?',
+      options: ['You should not, the UI already prevents it', 'Anyone can call the API directly, so the server must validate too', 'Negative numbers are not valid JSON', 'To test the response time'],
+      answer: 1,
+      explain: 'Front-end validation is for user comfort. Only server-side validation protects the data.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- An **API** is how apps talk to servers. Testing it directly is **fast**, finds bugs the **UI hides**, and shows whether a bug is front end or back end.
+- Know the basics: **methods** (GET, POST, PUT, PATCH, DELETE), **status codes** (2xx success, 4xx client error, 5xx server error), **headers**, **JSON bodies** and **tokens**.
+- Remember **401 vs 403**, **404** for missing items, **409** for duplicates, and that a **500** caused by user input is a bug.
+- In Postman, use **environments and variables**, organize requests in **collections**, and automate checks with `pm.test` and `pm.expect`.
+- Always test **validation**, **auth**, **idempotency**, the **response schema** against the docs, **response time** and **error messages**.
+
+</KeyTakeaways>
+
+**Go deeper:** [API Testing in Depth](/web/api-testing-in-depth) covers JWTs and expired tokens, authorization tests, negative requests, response checks beyond the status code, and a FoodDash API sandbox with 8 bugs to find.

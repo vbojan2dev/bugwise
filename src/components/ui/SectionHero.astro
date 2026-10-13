@@ -1,0 +1,32 @@
+---
+import Icon from '@/components/ui/Icon.astro';
+import type { Section } from '@/data/site';
+
+interface Props {
+  section: Section;
+  stats?: string[];
+}
+const { section, stats = [] } = Astro.props;
+---
+
+<section class="relative overflow-hidden border-b border-line" style={`--accent: ${section.accent}`}>
+  <div class="bg-grid absolute inset-0 -z-10 opacity-60"></div>
+  <div class="absolute -top-40 left-1/2 -z-10 h-80 w-[50rem] -translate-x-1/2 rounded-full opacity-25 blur-3xl" style="background: var(--accent)"></div>
+  <div class="container-page py-14 sm:py-20">
+    <span class="grid size-12 place-items-center rounded-2xl text-white shadow-soft" style="background: var(--accent)">
+      <Icon name={section.icon} size={24} />
+    </span>
+    <h1 class="mt-5 text-4xl font-bold tracking-tight sm:text-5xl">{section.title}</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-muted">{section.description}</p>
+    {
+      stats.length > 0 && (
+        <div class="mt-6 flex flex-wrap gap-2">
+          {stats.map((s) => (
+            <span class="rounded-full border border-line bg-surface/80 px-3 py-1 text-sm font-medium text-muted backdrop-blur">{s}</span>
+          ))}
+        </div>
+      )
+    }
+    <slot />
+  </div>
+</section>

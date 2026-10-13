@@ -1,0 +1,465 @@
+---
+title: Modal
+description: A window that sits on top of the screen and blocks everything else until you answer it. Learn the platform variants, the many ways to close one, and the focus, scroll and data-loss bugs testers find every week.
+category: feedback
+aka: [Dialog, Popup, Alert, Overlay]
+platforms: [ios, android, web]
+minutes: 35
+order: 1
+---
+
+import Anatomy from '@/components/demos/modal/Anatomy';
+import VariantsGallery from '@/components/demos/modal/VariantsGallery';
+import Playground from '@/components/demos/modal/Playground';
+import { BuggyAccountApp } from '@/components/demos/modal/BuggyAccountApp';
+import { StaticScreen, IOSAlert, M3Dialog, MiniSnackbar, InlineBanner } from '@/components/demos/modal/Dialogs';
+
+You tap **Delete account** in a food delivery app and the screen dims. A small box asks *"Delete account?"* with **Cancel** and **Delete**. You can't scroll, you can't tap the menu, you have to decide. That box is a <Term id="modal">modal</Term>.
+
+Modals look like the simplest thing in an app: a box with a title and two buttons. But they control **what the user is allowed to do**, they guard **destructive actions**, and they hold **unsaved data**. When they misbehave, people delete things by accident, lose what they typed, or get stuck. Let's learn them properly.
+
+## What is a modal?
+
+A modal is a **window that appears on top of the current screen and blocks interaction with everything behind it** until the user responds or dismisses it. The word comes from "mode": while it's open, the app is in a special mode where only the modal works.
+
+You'll usually see one used to:
+
+- **Confirm a destructive or important action**: *Delete 3 photos?*, *Cancel your subscription?*, *Discard changes?*
+- **Ask for a quick decision**: *Allow notifications?*, *Choose a delivery time*.
+- **Do a short, focused task without leaving the page**: edit a delivery address, add a card, write a review.
+- **Tell the user something they must acknowledge**: *Your session expired. Please log in again.*
+
+### Anatomy
+
+<Anatomy />
+
+### How it differs from similar components
+
+The key questions are: **does it block the screen?** and **does the user have to respond?** Using a blocking component for something that didn't need it is a valid usability finding.
+
+| Component | Blocks the screen? | Needs a response? | Typical use |
+| --- | --- | --- | --- |
+| **Alert dialog** | Yes | Yes | Short, urgent decision: "Delete account?" |
+| **Dialog** | Yes | Usually | A small task or choice: pick a date, rename a file |
+| **Full-screen dialog** | Yes (covers it) | Save or close | A longer task on a phone: new event, new address |
+| **Modal bottom sheet / action sheet** | Yes | Pick an option or dismiss | A list of actions or options: Share, Sort by |
+| **Popover / menu** | Partly (closes on outside tap) | No | Extra options next to a button |
+| **<Term id="toast">Toast / snackbar</Term>** | No | No (optional action) | Brief feedback: "Message archived · Undo" |
+| **Banner / inline message** | No | No (optional action) | Persistent status or warning on the page |
+
+<Callout type="dev" title="Platform names">
+Apple calls the small centered one an **alert** and the bottom list an **action sheet**; larger ones are **sheets**. Google's Material Design calls them **dialogs** (basic and full-screen) and **bottom sheets**. On the web you'll hear **modal**, **dialog**, **popup** and **lightbox**. In bug reports, use the name your team uses, and say which kind it is.
+</Callout>
+
+## Designs & variants
+
+Each platform has its own look and its own rules for **how a modal can be closed**. The chips under each demo list the exits that should work.
+
+<VariantsGallery client:visible />
+
+## When to use it
+
+A modal is a good choice when:
+
+- The user is about to do something **destructive or hard to undo** and must confirm it.
+- The app **can't continue without an answer** (permission, expired session, required choice).
+- The task is **short and focused**, and leaving the current page would lose the user's context.
+- The information is **critical** and must not be missed.
+
+## Good and bad uses
+
+Every modal interrupts. A good rule: **interrupt only for decisions**, not for news.
+
+<Compare>
+<Do title="Clear question, clear verbs">
+
+<div class="not-prose demo-screen my-3"><StaticScreen label="iOS alert titled Delete 3 photos with Cancel and a red Delete button" height={210}><IOSAlert id="cmp-a1" title="Delete 3 photos?" message="They'll be removed from all your devices." actions={[{ label: 'Cancel', style: 'cancel' }, { label: 'Delete', style: 'destructive' }]} /></StaticScreen></div>
+
+The title names the action and the button repeats the verb. The destructive button is red.
+
+</Do>
+<Dont title="Vague question, Yes / No">
+
+<div class="not-prose demo-screen my-3"><StaticScreen label="iOS alert titled Are you sure with No and Yes buttons" height={210}><IOSAlert id="cmp-a2" title="Are you sure?" message="Do you want to continue?" actions={[{ label: 'No' }, { label: 'Yes' }]} /></StaticScreen></div>
+
+Sure about *what*? "Yes" and "No" force the user to re-read the question, and nothing signals danger.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Non-blocking feedback">
+
+<div class="not-prose demo-screen my-3"><StaticScreen label="A snackbar saying Address saved at the bottom of the screen" placement="bottom" scrim={false} height={210}><MiniSnackbar text="Address saved" /></StaticScreen></div>
+
+Success needs no decision. A <Term id="toast">snackbar</Term> confirms it and lets the user carry on.
+
+</Do>
+<Dont title="A modal just to say “done”">
+
+<div class="not-prose demo-screen my-3"><StaticScreen label="Material dialog saying Success, your address was saved, with an OK button" height={210}><M3Dialog id="cmp-m1" title="Success!" body="Your address was saved successfully." actions={[{ label: 'OK' }]} /></StaticScreen></div>
+
+An extra tap for nothing. Users learn to hit "OK" without reading, and then they also skip the dialogs that matter.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Inline for non-urgent info">
+
+<div class="not-prose demo-screen my-3"><StaticScreen label="An inline warning banner at the top: Your card expires next month" placement="top" scrim={false} height={210}><InlineBanner text="Your Visa ending 4242 expires next month. Update it in Payment methods." /></StaticScreen></div>
+
+The user sees it, but can finish what they came to do.
+
+</Do>
+<Dont title="Popups on app start">
+
+<div class="not-prose demo-screen my-3"><StaticScreen label="A dialog on app launch asking the user to rate the app 5 stars" height={210}><M3Dialog id="cmp-m2" title="Enjoying Foodly?" body="Rate us 5 stars on the store!" actions={[{ label: 'Later' }, { label: 'Rate now' }]} /></StaticScreen></div>
+
+Blocking the user the moment they open the app, before they've done anything, is pure friction.
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Tester mindset">
+Count the modals in a flow. If checkout shows three dialogs before payment, or a success message needs an "OK", raise it as a **usability** finding. Also watch for the opposite: a destructive action (delete, cancel order, remove card) that happens **without** any confirmation or undo.
+</Callout>
+
+## How a good modal behaves
+
+Most modal bugs aren't about how it looks. They're about **behavior**: which button does what, how you get out, and where focus and scrolling go. These are the rules to test against.
+
+### Destructive confirmations
+
+- **The title is a specific question** with the action in it: *Delete "Lisbon 2025"?*, not *Are you sure?*
+- **The confirm button repeats the verb**: *Delete*, *Remove*, *Cancel order*. Not *OK* or *Yes*.
+- **Destructive actions look destructive**: red text (iOS, Material) or a red button (web).
+- **Button order follows the platform.** iOS two-button alerts put Cancel on the left and the destructive action on the right. Material puts the dismissive action left and the confirming action right. On the web, follow the design system and be **consistent across the whole product**.
+- **The safe option is the default.** Pressing <kbd>Enter</kbd> or having initial focus should never trigger *Delete* in a destructive dialog. Focus the least destructive button.
+- **Confirming happens once.** The button shows progress and ignores extra taps (a <Term id="double-submit">double submit</Term> can delete twice or charge twice).
+
+### Every way to close a modal
+
+| Exit | iOS | Android | Web | What must happen |
+| --- | --- | --- | --- | --- |
+| **Cancel / Close button** | ✓ | ✓ | ✓ | Closes, changes nothing |
+| **X icon** | Sheets, full-screen | Full-screen dialogs | Very common | Same as Cancel |
+| **Tap outside (scrim)** | Sheets yes, alerts **no** | Yes by default | Usually | Same as Cancel, or ignored. **Never** confirm |
+| **Esc key** | With a hardware keyboard | With a hardware keyboard | ✓ | Same as Cancel |
+| **System Back** | — | ✓ (button or gesture) | Browser Back: team decision | Closes the dialog first, not the screen behind |
+| **Swipe down** | Sheets | Bottom sheets | Mobile web sheets | Same as Cancel |
+
+<Callout type="warning" title="The golden rule">
+Every exit except the confirm button means **"cancel"**. If the modal holds unsaved input (a form, a review, an edited photo), a stray tap outside or a swipe must **not** silently throw it away: ignore it or ask *"Discard changes?"* first.
+</Callout>
+
+### Focus: in, trapped, and back
+
+Keyboard and <Term id="screen-reader" /> users can't "see" the dim layer. They rely on focus:
+
+<Steps>
+
+1. **Focus moves in** when the modal opens, to the first field or the safest button, so the screen reader starts reading the dialog.
+2. **Focus is trapped inside.** <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> cycle through the modal's controls only. This is a <Term id="focus-trap" />. If focus escapes, users end up on invisible buttons behind the scrim.
+3. **Focus returns** to the element that opened the modal when it closes. Otherwise keyboard users are thrown back to the top of the page.
+
+</Steps>
+
+### Scroll lock
+
+While a modal is open, the page behind it should **not scroll**. Test by scrolling with a mouse wheel, a trackpad and a finger **over the dialog and over the scrim**. A classic bug on iOS Safari: the page behind scrolls when you swipe on the dim area. If the modal content is long, the **modal itself** should scroll, with its buttons still reachable.
+
+### Nested modals
+
+A modal opening another modal (*Edit address* → *Delete this address?*) is a warning sign in design. If it exists, test it hard: Esc and Back should close **only the top one**, focus should return to the dialog underneath (not the page), and the scrims shouldn't stack into a black screen.
+
+### Small screens and the open keyboard
+
+On a phone, a centered dialog with a form often breaks when the keyboard appears: the **Save button ends up behind the keyboard**, or the dialog is taller than the screen and can't scroll. Test on the smallest supported phone, in landscape, with the largest text size, and with the keyboard open. Good apps switch to a **full-screen dialog** or a sheet on small screens.
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Outside tap confirms or loses data** | Tapping the dim area deletes, submits, or throws away typed text | High |
+| 2 | **Can't close it** | Esc, Android Back or swipe-down do nothing; the user is stuck | Medium–High |
+| 3 | **Background still works** | Taps go through the scrim, or the page behind scrolls | Medium |
+| 4 | **Focus escapes** | Tab reaches links behind the modal; screen reader reads the page, not the dialog | High (for affected users) |
+| 5 | **Focus not returned** | After closing, focus jumps to the top of the page | Medium |
+| 6 | **Double confirm** | Fast double tap fires two requests: two orders, two deletions, an error after success | High |
+| 7 | **Doesn't fit the screen** | Long text or large fonts push the buttons off-screen with no scrolling | High |
+| 8 | **Hidden by the keyboard** | Save or Continue is behind the on-screen keyboard | Medium |
+| 9 | **Reopens or stacks** | The modal comes back after closing, or opens twice on a double tap | Medium |
+| 10 | **Wrong or vague buttons** | "OK / Cancel" for a delete, destructive button not red, safe option not default | Medium |
+
+<Callout type="bug" title="Why #6 happens">
+The confirm button stays enabled while the request is in flight. The first request succeeds, the second finds nothing to delete and fails, and the app shows the **last** response: an error. The user tries again, panics, or contacts support. Expected: disable the button (or ignore repeat taps) until the first request finishes. Servers should also be <Term id="idempotency">idempotent</Term> where possible.
+</Callout>
+
+## Try it: close it every way
+
+Switch good behaviors off one by one, open the dialog, and try to get out with <kbd>Esc</kbd>, a click outside, <kbd>Tab</kbd> and the scroll wheel. Then switch to **phone** and tap a field to open the keyboard.
+
+<Playground client:visible />
+
+## Find the bug
+
+This Android account screen has **six bugs** around its two dialogs: *Discard changes?* (edit your profile, then tap the back arrow) and *Delete account?* (the red row). Explore it like a tester:
+
+- Try every way out of each dialog: buttons, the dim area, and **System Back**.
+- Tap things you can still see behind the dialog.
+- Tap buttons twice, fast, and watch the network log.
+- Turn on **Large text**.
+
+<BugHunt
+  title="Account settings"
+  bugs={[
+    {
+      title: 'Tapping outside “Discard changes?” discards the edits',
+      hint: 'Change your name, tap the back arrow, then tap the dark area.',
+      detail: 'The scrim is wired to the <strong>Discard</strong> action, so a stray tap throws away the user’s edits and leaves the screen. Expected: tapping outside behaves like <strong>Keep editing</strong> (closes the dialog only), or is ignored.',
+    },
+    {
+      title: 'System Back does nothing while a dialog is open',
+      hint: 'Open either dialog and press System Back.',
+      detail: 'Back is swallowed and the dialog stays open. On Android, Back must close the topmost dialog (as Cancel / Keep editing would). Users who navigate with Back feel stuck.',
+    },
+    {
+      title: 'Double tap on Delete sends two requests and shows an error',
+      hint: 'Open Delete account and tap Delete twice quickly. Watch the network log.',
+      detail: 'Two <code>DELETE /api/me</code> calls are sent. The first returns <strong>200</strong> (account deleted), the second <strong>404</strong>, and the app shows “Couldn’t delete account. Try again.” The user sees a failure for an action that succeeded. Expected: the button is disabled after the first tap; one request only.',
+    },
+    {
+      title: 'Taps go through the “Delete account?” scrim',
+      hint: 'With the delete dialog open, tap the bottom navigation.',
+      detail: 'The overlay uses <code>pointer-events: none</code>, so the bottom navigation behind still works: you can switch to Home or Orders while the dialog stays open on top. Expected: the scrim blocks all interaction with the screen behind.',
+    },
+    {
+      title: 'Delete dialog doesn’t fit the screen with large text',
+      hint: 'Turn on Large text and open Delete account.',
+      detail: 'The dialog grows taller than the screen and its <strong>Cancel</strong> / <strong>Delete</strong> buttons are cut off. It can’t scroll, so the user can’t finish or cancel. Expected: a max height with a scrollable body and buttons always visible.',
+    },
+    {
+      title: '“Discard changes?” reopens by itself',
+      hint: 'Discard your edits, then open Edit profile again.',
+      detail: 'The dialog appears immediately, before the user has changed anything. Its open state is never reset after discarding. Expected: a fresh, closed dialog state every time the screen opens.',
+    },
+  ]}
+>
+  <BuggyAccountApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #3?">
+
+**Title:** Delete account: double tap on "Delete" sends two DELETE requests and shows an error although the account is deleted
+
+**Steps:** 1. Account › Delete account. 2. Tap **Delete** twice within 1 second.
+
+**Expected:** One `DELETE /api/me` request. The button shows progress and ignores the second tap. The user lands on "Account deleted".
+**Actual:** Two requests (200, then 404). The dialog closes and a snackbar says "Couldn't delete account. Try again." The account is in fact deleted.
+
+**Severity:** High (misleading result on an irreversible action) · **Reproducible:** 10/10 with a fast double tap
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Modal test checklist"
+  storageKey="modal"
+  items={[
+    'The title is a specific question and the confirm button repeats the verb (Delete, Remove, Cancel order)',
+    'Destructive actions are styled as destructive and follow the platform button order',
+    'Cancel, X, Esc, System Back and swipe-down all close without changing anything',
+    'Tapping outside either cancels or is ignored; it never confirms and never silently loses typed data',
+    'Unsaved input triggers a “Discard changes?” confirmation instead of disappearing',
+    'The page behind cannot be tapped, clicked or scrolled while the modal is open',
+    'Focus moves into the modal, stays trapped inside, and returns to the trigger on close',
+    'A screen reader announces the dialog title and role when it opens',
+    'Double tapping the confirm button sends only one request',
+    'The modal fits the smallest phone, landscape and the largest text size; long content scrolls',
+    'Buttons stay reachable with the on-screen keyboard open',
+    'The modal opens once per tap and does not reappear after closing, rotating or returning from background',
+    'Errors during the confirm action are shown clearly and the user can retry or cancel',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-MOD-001',
+      title: 'Confirming deletes the account once',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['User is logged in', 'Network log or proxy is recording'],
+      steps: ['Open Account', 'Tap "Delete account"', 'Tap "Delete"'],
+      expected: 'Exactly one DELETE request is sent. The button shows progress and is disabled. The user lands on the "Account deleted" screen.',
+    },
+    {
+      id: 'TC-MOD-002',
+      title: 'Double tap on the confirm button',
+      priority: 'high',
+      type: 'edge',
+      steps: ['Open "Delete account?"', 'Tap "Delete" twice within 1 second'],
+      expected: 'Only one request is sent and the user sees the success result, not an error.',
+    },
+    {
+      id: 'TC-MOD-003',
+      title: 'Every dismissal path cancels',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Open "Delete account?"', 'Close it with: Cancel, tap outside, System Back (Android), Esc (web / hardware keyboard)', 'Check the account after each attempt'],
+      expected: 'Each path closes the dialog and the account still exists. No request is sent.',
+    },
+    {
+      id: 'TC-MOD-004',
+      title: 'Unsaved changes are protected',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Open Edit profile', 'Change the name to "Maya L."', 'Tap Back', 'Tap outside the "Discard changes?" dialog'],
+      expected: 'The dialog closes, the user stays on Edit profile and "Maya L." is still in the field.',
+    },
+    {
+      id: 'TC-MOD-005',
+      title: 'Background is blocked while the modal is open',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Open any modal', 'Tap the bottom navigation and list items visible behind the scrim', 'Scroll over the scrim and over the dialog'],
+      expected: 'Nothing behind the modal reacts and the page behind does not scroll.',
+    },
+    {
+      id: 'TC-MOD-006',
+      title: 'Keyboard focus is trapped and returned (web)',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Tab to "Change address" and press Enter', 'Press Tab 10 times, then Shift+Tab 10 times', 'Press Esc'],
+      expected: 'Focus starts in the first field, cycles only through the dialog\'s controls, and returns to "Change address" after Esc.',
+    },
+    {
+      id: 'TC-MOD-007',
+      title: 'Dialog fits with the largest text size',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Smallest supported phone', 'Font size set to maximum (Android Settings › Display › Font size / iOS Larger Text)'],
+      steps: ['Open "Delete account?"'],
+      expected: 'All text is readable. If content is too tall, the body scrolls and both buttons remain visible and tappable.',
+    },
+    {
+      id: 'TC-MOD-008',
+      title: 'Form dialog with the keyboard open',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Phone in portrait, then landscape'],
+      steps: ['Open "Edit delivery address"', 'Tap the Street field so the keyboard opens', 'Try to tap Save without closing the keyboard'],
+      expected: 'Save is visible and works in both orientations (e.g. full-screen dialog with Save in the top bar).',
+    },
+    {
+      id: 'TC-MOD-009',
+      title: 'Screen reader announces the dialog',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['VoiceOver / TalkBack is on'],
+      steps: ['Activate "Delete account"', 'Swipe right through the dialog, then keep swiping'],
+      expected: 'The title is read first ("Delete account?, alert"), then the text and buttons. Swiping never reaches elements behind the dialog.',
+    },
+  ]}
+/>
+
+## Accessibility
+
+- **Role and name.** The dialog is announced as a dialog, with its title. Native iOS and Android dialogs get this for free; custom ones often don't.
+  <DevNote>On the web, use the native `<dialog>` element with `showModal()`, or `role="dialog"` (`role="alertdialog"` for urgent confirmations) plus `aria-modal="true"` and `aria-labelledby` pointing to the title.</DevNote>
+- **Focus management.** Move focus in on open, trap it inside (<Term id="focus-trap" />), and return it to the trigger on close. Make the page behind inert so screen readers can't wander there.
+- **Esc closes** on the web, and the **Back gesture** closes on Android. A visible Close or Cancel button must always exist: not everyone can tap outside or press Esc.
+- **Contrast.** Text needs 4.5:1, button shapes need 3:1 against their background, and the dialog must stand out from the page (an edge with 3:1 contrast, or a clear scrim). Red destructive text must still reach 4.5:1.
+- **<Term id="touch-target">Touch targets</Term>** of at least 44×44 pt (iOS) / 48×48 dp (Android), including the X icon, which is often too small.
+- **Large text.** Content must scroll rather than clip at the biggest <Term id="dynamic-type" /> and Android font sizes.
+- **Don't rely on color alone** to mark the destructive action: use the verb in the label too.
+
+<Callout type="tip">
+Try the gallery and the playground above with only your keyboard: <kbd>Tab</kbd> to a button, <kbd>Enter</kbd> to open, <kbd>Tab</kbd> around, <kbd>Esc</kbd> to close. Notice where focus lands afterwards.
+</Callout>
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- **Alerts**: centered, title + message + up to two side-by-side buttons (more stack vertically). Tapping outside does **not** close them.
+- **Action sheets**: slide up from the bottom with a separate Cancel; on iPad they appear as a popover next to the button.
+- **Sheets**: cards that slide up, can have detents (medium / large) and close with a **swipe down**. Test swipe-down with unsaved data: apps can block it and ask first.
+  <DevNote>Alerts: `UIAlertController` / SwiftUI `.alert`. Action sheets: `.confirmationDialog`. Sheets: `.sheet`.</DevNote>
+- Test with **VoiceOver**, **Larger Text**, iPhone SE size, landscape, and a hardware keyboard on iPad (Esc / ⌘ + .).
+
+</Tab>
+<Tab>
+
+- Material 3 **basic dialogs** (rounded 28 dp, text buttons on the right) and **full-screen dialogs** (X, title, Save) for longer tasks on phones.
+- **Back** (button or edge-swipe gesture) must close the dialog first. By default, tapping outside closes a dialog too, but developers can turn that off.
+- **Modal bottom sheets** have a drag handle and close with a swipe down.
+- Watch for **rotation**: a dialog can disappear, duplicate or lose its input when the activity is recreated.
+- Test with **TalkBack**, maximum **font size** and **display size**, and small devices.
+
+</Tab>
+<Tab>
+
+- Custom `div` modals often get focus and scroll wrong.
+  <DevNote>Prefer the native `<dialog>` with `showModal()`: it gives Esc handling, top-layer rendering and an inert background.</DevNote>
+- Check **Esc**, **click outside**, the **X**, and focus with <kbd>Tab</kbd>. Inspect roles and `aria-modal` in <Term id="devtools" />.
+- Test **scroll lock** with wheel, trackpad and touch, especially on iOS Safari.
+- Test **responsive** behavior: at 360 px wide and with the mobile keyboard open, can you still reach every button?
+- Decide what **browser Back** does with an open modal. Either way, it shouldn't lose the user's data.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A user edits their profile, taps Back, sees "Discard changes?" and taps the dark area outside it. What should happen?',
+      options: ['The changes are discarded', 'The changes are saved', 'The dialog closes and the user keeps editing (or nothing happens)', 'The app goes back to the previous screen'],
+      answer: 2,
+      explain: 'Every exit except the confirm button means cancel. An outside tap must never destroy the user\'s work.',
+    },
+    {
+      q: 'Which confirmation is the best for deleting an album?',
+      options: ['"Are you sure?" with Yes / No', '"Delete “Lisbon 2025”?" with Cancel / Delete (red)', '"Warning" with OK / Cancel', 'No confirmation, just delete'],
+      answer: 1,
+      explain: 'A specific question and a button that repeats the verb, styled as destructive.',
+    },
+    {
+      q: 'On the web, you press Tab inside a modal and focus lands on a link in the page behind it. What is missing?',
+      options: ['A scroll lock', 'A focus trap', 'A loading state', 'A toast'],
+      answer: 1,
+      explain: 'A focus trap keeps Tab and Shift+Tab inside the modal while it is open.',
+    },
+    {
+      q: 'You tap "Pay" twice quickly in a confirmation dialog and get charged twice. What kind of bug is this?',
+      options: ['Truncation', 'Double submit', 'Localization', 'Dark mode'],
+      answer: 1,
+      explain: 'The confirm button stayed active during the request. It should be disabled after the first tap.',
+    },
+    {
+      q: 'Which of these does NOT need a modal?',
+      options: ['Confirming "Cancel your order?"', 'Telling the user "Address saved"', 'Asking for camera permission', 'Session expired, log in again'],
+      answer: 1,
+      explain: 'Success feedback needs no decision. A toast or snackbar is enough.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A modal **blocks the screen until the user responds**. Use it for decisions and destructive actions, not for news or success messages.
+- Destructive dialogs need a **specific title**, a **verb on the confirm button**, **destructive styling** and the **safe option as default**.
+- Test **every exit**: buttons, X, tap outside, Esc, System Back, swipe down. All of them mean *cancel*, and none may silently lose typed data.
+- While open: **background blocked and not scrolling**, **focus trapped**, and **focus returned** on close.
+- Classic bugs: **double confirm**, **dialogs that don't fit** small screens, large text or the keyboard, and **dialogs that reopen**.
+
+</KeyTakeaways>

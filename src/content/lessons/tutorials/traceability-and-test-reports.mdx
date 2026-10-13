@@ -1,0 +1,374 @@
+---
+title: Traceability and Test Summary Reports
+description: Learn how a requirements traceability matrix links stories, test cases, runs and bugs, how to use it to find coverage gaps and the impact of a change, and how to write status updates and an honest test summary report, with an RTM explorer for the FoodDash 2.0 release.
+order: 8.6
+level: intermediate
+minutes: { short: 13, long: 20 }
+platform: both
+tags: [traceability, rtm, test reporting, test summary report, metrics]
+---
+
+import TraceabilityExplorer from '@/components/demos/test-management/TraceabilityExplorer';
+import ReportClaimCheck from '@/components/demos/test-management/ReportClaimCheck';
+
+Thursday, 16:00. The FoodDash 2.0 run is closed. The product owner stops by: *"So, can we ship tomorrow? And did anyone test the new courier tip? Marketing is announcing it on Monday."*
+
+You open the run: 11 cases, 7 passed, 3 failed, 1 blocked. Nothing in there says "tip". Was it covered by some other case? Or did nobody write one? Answering that in ten seconds instead of an hour is what **traceability** is for. Answering "can we ship?" honestly, in one page, is what the **test summary report** is for. This lesson covers both.
+
+It builds on [Test Runs and Test Management Tools](/tutorials/test-runs-and-test-management), so if run, status and Blocked are new words to you, start there.
+
+## Two questions at the end of every cycle
+
+<div class="not-prose my-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-5">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">Traceability</p>
+    <p class="mt-1 font-semibold">Did we test what we promised?</p>
+    <p class="mt-1 text-sm text-muted">Every requirement linked to its test cases, their latest results and their bugs. Gaps become visible.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-5">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">Reporting</p>
+    <p class="mt-1 font-semibold">What did we find, and what's left?</p>
+    <p class="mt-1 text-sm text-muted">Scope, results, open bugs, risks and a recommendation, short enough to be read before the release meeting.</p>
+  </div>
+</div>
+
+<Callout type="example" title="Think of a building inspection">
+
+An inspector has the building code (requirements) and a checklist of checks (test cases). The inspection log says which checks were done on which floor (runs), and the defects list says what was found (bugs). The **traceability matrix** connects all four, so you can ask "was the fire exit rule checked on floor 3?" The **report** is the one page the owner reads: "Floors 1 to 3 pass. Floor 4 not inspected, the elevator was out. Two exit doors open inwards. We recommend fixing those before people move in."
+
+</Callout>
+
+<Short>
+
+## The essentials
+
+### The traceability matrix
+
+A <Term id="traceability-matrix">requirements traceability matrix (RTM)</Term> is a table that links each <Term id="requirement" /> or <Term id="user-story" /> to the test cases that check it, and in practice also to the latest run results and the bugs found:
+
+| Requirement | Test cases | Latest result | Bugs |
+| --- | --- | --- | --- |
+| FD-104 Coupon rules | C202 | Failed | FD-242 |
+| FD-105 Tip the courier | none | – | – |
+| FD-106 Pay with a saved card | C301 | Blocked | – |
+
+Test management tools can build this for you from the links; a spreadsheet works too.
+
+### Forward and backward
+
+- **Forward** (requirement → tests): is every requirement tested? Finds **coverage gaps**, like FD-105 above.
+- **Backward** (test or bug → requirement): why does this test exist, and which story does this bug hurt? Finds **orphan tests** and helps prioritize bugs.
+
+### Impact analysis
+
+When a requirement changes, the matrix shows which cases and bugs are linked to it, so you know what to update and re-run. It shows direct links only, so still think about what else depends on the change. See <Term id="impact-analysis" />.
+
+### Status updates and the summary report
+
+During the cycle, send a **short daily or weekly update**: progress, blockers, the important new bugs, what you need. At the end, write a <Term id="test-summary-report" /> with:
+
+1. **Scope**: release, build, environments, dates.
+2. **What was tested, and what wasn't** (and why).
+3. **Results**: executed, passed, failed, blocked.
+4. **Open bugs by severity**, with the user impact of the worst ones.
+5. **Risks**.
+6. **Recommendation**: go, no-go, or go with conditions. The product owner decides.
+
+### Numbers that mislead
+
+"92% passed" sounds great until you learn the 8% are all in checkout. Pair every number with what it means for users, and never use counts to compare testers. More in [Which quality metrics help, and which harm?](/interview/useful-and-harmful-quality-metrics).
+
+Switch to **Detailed** at the top for the full method: building an RTM, coverage gaps, impact analysis, a complete FoodDash 2.0 report, templates and the metrics table.
+
+</Short>
+
+<Long>
+
+## What a traceability matrix is
+
+A <Term id="traceability-matrix" /> (RTM, requirements traceability matrix) is a map of links. In its simplest form it's two columns: requirement and test cases. Most teams add the latest run result and the bugs, because that's what people actually ask about.
+
+Here's the FoodDash 2.0 matrix after the build 412 iPhone run:
+
+| Requirement | Test cases | Latest result | Bugs |
+| --- | --- | --- | --- |
+| FD-101 Sign in with email | C101, C102 | 1 passed, 1 failed | FD-241 |
+| FD-102 Sign in with Face ID | C103 | Passed | – |
+| FD-103 Add and remove dishes | C201, C203 | Passed | FD-118 (closed) |
+| FD-104 Coupon rules | C202 | Failed | FD-242 |
+| FD-105 Tip the courier | none | – | – |
+| FD-106 Pay with a saved card | C301 | Blocked | – |
+| FD-107 Choose a delivery slot | C302 | Failed | FD-243 |
+| FD-108 Track the order | C401, C402 | Passed | – |
+| FD-109 Reorder a past order | none | – | – |
+| FD-110 Edit profile details | C501 | Passed | – |
+
+In ten seconds you can answer the product owner: **no, the courier tip (FD-105) has no tests**. Neither does reorder. And card payment has a test, but it was blocked, so it's not verified either.
+
+<Callout type="info" title="Where the links come from">
+
+You don't fill this table in by hand at the end. It's a by-product of habits from the previous lessons: every case has a **requirement link** field, every run records a **status** per case, and every failure **links a bug**. In Xray, tests are linked to stories as Jira issues and coverage is shown on the story. In TestRail, cases have a references field that holds story keys. In a spreadsheet, it's a column. The matrix is only as good as those links.
+
+</Callout>
+
+## Forward and backward traceability
+
+<div class="not-prose my-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-5">
+    <p class="font-semibold">Forward: requirement → tests → results</p>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
+      <li>Is every requirement covered by at least one case?</li>
+      <li>Did those cases run on this build, and pass?</li>
+      <li>Finds <strong class="text-fg">coverage gaps</strong>: FD-105 and FD-109 have no cases.</li>
+    </ul>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-5">
+    <p class="font-semibold">Backward: bug → test → requirement</p>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
+      <li>Which story does bug FD-242 hurt? (FD-104, coupons, money.)</li>
+      <li>Why does test C601 exist? It links to nothing: gift cards were cut.</li>
+      <li>Finds <strong class="text-fg">orphan tests</strong> and bugs found outside any case.</li>
+    </ul>
+  </div>
+</div>
+
+When a matrix supports both directions it's called **bidirectional**. That's the normal case in tools, where a link is visible from both ends.
+
+## Building an RTM, step by step
+
+<Steps>
+
+1. **Give every requirement an ID.** Jira story keys are perfect (FD-104). If requirements live in a document, number them (REQ-07). No ID, no traceability.
+2. **Link each test case to the requirement(s) it checks.** Do it while writing the case, not later. One case can cover several requirements, and most requirements need several cases (positive, negative, edge).
+3. **Run the cases and record statuses.** The run supplies the "latest result" column.
+4. **Link bugs to the failed case results** (and in Jira, to the story).
+5. **Generate or update the matrix** from the tool, or with a spreadsheet lookup. Review it before every report.
+
+</Steps>
+
+## Using the matrix
+
+### Finding coverage gaps
+
+Read the matrix forward and look for four kinds of gaps:
+
+- **No tests at all** (FD-105, FD-109). Write cases, or state in the report that it's untested.
+- **Tests exist but didn't run or were blocked** (FD-106). Covered on paper, not verified.
+- **Only failing tests** (FD-104, FD-107). The requirement is not met yet.
+- **Thin coverage**: one happy-path case for a complex rule. A link doesn't tell you how *well* something is tested. FD-104 with a single case doesn't check expired codes, minimum order value or what happens after removing an item.
+
+<Callout type="warning" title="Covered is not the same as tested well">
+
+"100% of requirements have at least one test" is easy to reach and easy to game: link one shallow case to every story. <Term id="test-coverage">Coverage</Term> from a matrix is a floor, not a quality score. Use it to find the gaps, then use your judgment and <Term id="risk-based-testing" /> to decide how deep each requirement needs to go.
+
+</Callout>
+
+### Impact analysis when a requirement changes
+
+Product decides that from 2.1, a coupon needs a minimum order of €15. The matrix answers *what is directly affected?* in seconds:
+
+- **Cases linked to FD-104**: C202, which checks that the expired code SPRING5 is rejected, uses a €12 cart. After the change the code would be refused for the minimum order too, so the case no longer proves anything about expiry. Update its data in the repository and add a case for the new minimum before the next run.
+- **Bugs linked through those cases**: FD-242 ("Expired coupon SPRING5 is still accepted"). Still a bug, but its steps use the same €12 cart. Update them so developers reproduce the expiry problem, not the new rule.
+
+Then think beyond the links. FD-109 (reorder) copies an old cart together with its coupon. Old orders under €15 would now be refused, so reorder is affected too, even though nothing links it to FD-104. The matrix gives you a starting point; <Term id="impact-analysis" /> still needs your head.
+
+## Status updates during the cycle
+
+Between "run created" and "summary report", people want to know where you are. A short, regular update beats a long one nobody reads. Post it at the same time every day (or week) in the same format:
+
+```text
+FoodDash 2.0 · build 412 · day 3 of 5
+Progress: 84/120 executed (70%). 71 passed, 9 failed, 4 blocked.
+New since yesterday: FD-243 (Major) delivery slots offered after closing time.
+Blocked: 4 card-payment cases, PayCo sandbox down until 15:00.
+Need: a decision on FD-241 ('Remember me' ignored) by Wednesday.
+On track for Thursday's summary: yes, if the sandbox is back today.
+```
+
+Keep the detail one click away (a link to the run and to the bug filter). For non-technical readers, translate: "some users can't sign in on their phone" rather than "case-sensitive email comparison". [How do you present testing status to stakeholders?](/interview/reporting-test-status-to-stakeholders) goes deeper.
+
+## The test summary report
+
+A <Term id="test-summary-report" /> (also called a test closure or test completion report) closes a test cycle. It helps the team decide whether to release, and it records what was known at that moment. For an agile team it's one page. For a regulated project it can be a formal document, but the content is the same.
+
+| Section | What goes in | Watch out for |
+| --- | --- | --- |
+| **Scope** | Release, build, environments and devices, dates | "Latest build" is not a build number. |
+| **Tested / not tested** | Features and requirements covered; what wasn't tested and why | The not-tested list is the most valuable part. Never leave it out. |
+| **Results** | Executed, passed, failed, blocked, not run | Counts with meaning, not counts alone. |
+| **Open bugs** | By <Term id="severity" />, with the user impact of the worst | A list of 40 bug titles is not a summary. |
+| **Risks** | What could still go wrong, how likely, how bad | Include risks from untested areas. |
+| **Recommendation** | Go, no-go, or go with conditions, and why | You recommend; the product owner decides. |
+
+### Worked example: FoodDash 2.0
+
+<Callout type="example" title="Test summary: FoodDash 2.0.0 (build 412)">
+
+**Scope.** Release 2.0.0, build 412 on staging. iPhone 15 (iOS 18), Monday to Thursday. Android run reported separately. 10 user stories in scope.
+
+**Tested.** 8 of 10 stories have test cases; cases for 7 of them were run. 11 cases executed: 7 passed, 3 failed, 1 blocked. The retest of FD-118 (removing a dish) passed; that bug is closed.
+
+**Not tested.**
+- **FD-106 Pay with a saved card**: blocked, the PayCo sandbox was down. Re-run planned for Friday 9:00.
+- **FD-105 Tip the courier** and **FD-109 Reorder**: no test cases yet. Exploratory session booked for Friday morning.
+
+**Open bugs.** 0 Critical, 3 Major, 1 Minor.
+- FD-241 (Major): 'Remember me' is ignored. Every user is signed out each time they restart the app.
+- FD-242 (Major): the expired coupon SPRING5 is still accepted. Direct money loss.
+- FD-243 (Major): delivery slots are offered after the restaurant closes.
+- FD-244 (Minor): restaurant logos are stretched in the Orders list.
+
+**Risks.** Payment is not verified on this build, and it's the money path. The courier tip is announced by marketing on Monday and is untested.
+
+**Recommendation.** Not ready for Friday as is. Go is realistic for Monday if FD-241 and FD-242 are fixed and retested, card payment passes after the sandbox is back, and the courier tip passes a focused session. FD-243 and FD-244 could ship as known issues if Product accepts them.
+
+</Callout>
+
+Notice what's **not** in it: no "64% passed", no "testing is complete", no bug list copied from Jira. Every number is next to what it means.
+
+### A template you can copy
+
+```text
+Test summary: <app> <version> (build <n>)
+Scope: <environments / devices>, <dates>, <stories or features in scope>
+Tested: <what was covered>, <executed / passed / failed / blocked>
+Not tested: <what> – <why> – <plan or accepted risk>
+Open bugs: <n Critical, n Major, n Minor>; worst: <key> – <user impact>
+Risks: <what could still go wrong>
+Recommendation: <go / no-go / go if ...> – decision by <who>
+Links: <run>, <bug filter>, <traceability matrix>
+```
+
+## Metrics that help, and metrics that mislead
+
+Numbers belong in a report, but only with context. A useful rule: if a number could make a reader feel safer than they should, put the explanation right next to it.
+
+| Metric | Helps when… | Misleads when… |
+| --- | --- | --- |
+| **Pass rate** | Shown per area, next to what failed | Used alone as "92% ready" |
+| **Requirement coverage** | It points at untested stories | Read as "tested well" |
+| **Open bugs by severity** | It comes with the user impact | Bugs are simply counted |
+| **Burndown of remaining cases** | Used to spot blockers early | Testers rush to make it look good |
+| **Bugs found per tester** | Almost never | Always: it rewards noise and punishes testers in stable areas |
+
+Teams that turn a number into a target get the number, not the quality. Read [Which quality metrics do you find useful, and which can do more harm than good?](/interview/useful-and-harmful-quality-metrics) for a deeper take, and [entry and exit criteria](/interview/entry-and-exit-criteria) for how numbers become agreed release rules.
+
+## Common mistakes
+
+<Callout type="bug" title="Watch out for these">
+
+- **Building the matrix the night before the report.** Links added from memory are wrong. Link while you write cases and run them.
+- **Counting blocked as tested.** A blocked requirement is not verified. Say so.
+- **Hiding the not-tested list.** Readers assume everything was tested unless you tell them otherwise.
+- **A report that's just numbers.** "11 executed, 7 passed" without the impact helps nobody decide.
+- **Deciding instead of recommending.** "We're releasing" isn't your call. "I recommend no-go until FD-241 and FD-242 are fixed" is.
+- **Old orphan tests.** Cases with no requirement keep failing every run and wasting time. Ask, then relink or archive.
+
+</Callout>
+
+</Long>
+
+## Practice: find the gaps
+
+Label each FoodDash story by what the matrix tells you, then switch to the **Backward** view to trace bugs and tests back to their stories. Finish with the impact analysis at the bottom.
+
+<TraceabilityExplorer client:visible />
+
+## Practice: fair or misleading?
+
+Each sentence below comes from a draft summary report for the same run. Would you put your name under it?
+
+<ReportClaimCheck client:visible />
+
+<Callout type="tip" title="Write a real one">
+
+The [Capstone](/capstone) ends with exactly this task: after testing the FoodDash app and filing your bugs, you write the summary report and a go/no-go recommendation in [the report phase](/capstone/report).
+
+</Callout>
+
+## Before you send a summary report
+
+<Checklist
+  title="Before you send a summary report"
+  storageKey="traceability-and-test-reports"
+  items={[
+    "Scope names the release, the build number, the environments and the dates",
+    "Every requirement in scope appears in the traceability matrix",
+    "Requirements with no tests, or only blocked tests, are listed as not tested",
+    "Results give executed, passed, failed and blocked counts, with meaning",
+    "Open bugs are grouped by severity, with the user impact of the worst ones",
+    "Risks include what wasn't tested",
+    "The recommendation is clear, with conditions, and says who decides",
+    "Links to the run, the bug filter and the matrix are included",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "What does forward traceability help you find?",
+      options: ["Requirements that have no test cases", "Who wrote each bug report", "How long each test took"],
+      answer: 0,
+      explain: "Forward traceability goes from requirement to tests and results, so it shows requirements with no tests (coverage gaps) and those whose tests failed or didn't run.",
+    },
+    {
+      q: "A test case in the repository is linked to no requirement. Which view shows it, and what do you do?",
+      options: [
+        "Forward view; delete it right away",
+        "Backward view; ask whether it tests something removed or a missing story, then relink or archive it",
+        "Neither; orphan tests are harmless",
+      ],
+      answer: 1,
+      explain: "Backward traceability starts from the test and looks for its requirement. An orphan test is either testing something nobody asked for or pointing at a missing story.",
+    },
+    {
+      q: "FD-106 'Pay with a saved card' has one test, and it was Blocked. How should the report describe FD-106?",
+      options: ["Tested", "Not verified: blocked, with the reason and the plan", "Failed"],
+      answer: 1,
+      explain: "A blocked test proves nothing either way. Counting it as tested hides a risk on the money path.",
+    },
+    {
+      q: "Product changes the coupon rule. What does the matrix give you first?",
+      options: [
+        "The full list of everything affected, nothing else needed",
+        "The test cases and bugs directly linked to that requirement",
+        "The developer who wrote the code",
+      ],
+      answer: 1,
+      explain: "The matrix shows direct links, a great starting point for impact analysis. Things that depend on the rule indirectly, like reorder copying old carts with their coupons, still need your thinking.",
+    },
+    {
+      q: "Which sentence belongs in a good test summary report?",
+      options: [
+        "92% of tests passed, so quality is high.",
+        "Card payment was not tested because the sandbox was down; it's the biggest open risk.",
+        "Testing is complete and the release is approved.",
+      ],
+      answer: 1,
+      explain: "It's honest about what wasn't tested, why, and how much it matters. Pass rates alone mislead, and approving the release is the product owner's decision.",
+    },
+    {
+      q: "Why is 'bugs found per tester' a harmful metric?",
+      options: [
+        "It's hard to calculate",
+        "It rewards many small or duplicate reports and punishes testers working on stable areas",
+        "Testers don't find bugs",
+      ],
+      answer: 1,
+      explain: "When a number becomes a target for people, they optimize the number. Use metrics to steer the team, not to rank individuals.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A **requirements traceability matrix** links requirements to test cases, run results and bugs. It's a by-product of good linking habits, not an end-of-cycle chore.
+- **Forward** traceability finds untested requirements; **backward** traceability finds orphan tests and shows which story a bug hurts.
+- Use the matrix for **coverage gaps** (no tests, blocked, failing, thin) and as the starting point of **impact analysis** when a requirement changes.
+- Covered is not the same as tested well, and blocked is not tested.
+- A **test summary report** gives scope, what was and wasn't tested, results, open bugs by severity, risks and a recommendation. You recommend; the product owner decides.
+- Every number needs its meaning next to it. Never use metrics to rank testers.
+
+</KeyTakeaways>

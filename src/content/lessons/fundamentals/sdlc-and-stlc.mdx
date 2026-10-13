@@ -1,0 +1,356 @@
+---
+title: SDLC and STLC
+description: How software gets built from idea to release, the main development models (waterfall, V-model, agile, DevOps), and the testing life cycle that runs inside them.
+order: 2
+level: beginner
+minutes: { short: 14, long: 20 }
+platform: both
+tags: [fundamentals, process, agile, test planning]
+---
+
+import LifecycleModels from '@/components/demos/fundamentals-process/LifecycleModels';
+import StlcTrainer from '@/components/demos/fundamentals-process/StlcTrainer';
+import CostCurve from '@/components/demos/fundamentals-process/CostCurve';
+import SprintStlc from '@/components/demos/fundamentals-process/SprintStlc';
+
+Nobody builds a house by grabbing bricks and hoping for the best. First you decide what you need (three bedrooms, a big kitchen), then an architect draws plans, then builders build, an inspector checks the work, the family moves in, and for years afterwards someone fixes leaks and repaints the walls.
+
+Software is built the same way. The steps have a name, and so do the steps that testers follow inside them. Knowing both tells you **what is happening on your team right now** and **what you should be doing about it**.
+
+## The SDLC in six phases
+
+The <Term id="sdlc">software development life cycle (SDLC)</Term> is the sequence of stages software goes through, from "we have an idea" to "people use it every day". Different companies use slightly different names, but almost all of them include these six:
+
+| Phase | Building a house | Food delivery app example |
+| --- | --- | --- |
+| **1. Requirements** | "Three bedrooms, a garden, a budget of X." | "Customers can apply one coupon code per order." |
+| **2. Design** | The architect draws the plans. | Screens for the coupon field, rules, and which service checks the code. |
+| **3. Development** | Builders lay bricks, run pipes and wires. | Developers write the app code and the coupon service. |
+| **4. Testing** | The inspector checks walls, wiring and plumbing. | Testers check valid, expired and invalid coupons on phones and browsers. |
+| **5. Deployment** | The family gets the keys and moves in. | The new version goes live on the App Store, Google Play and the website. |
+| **6. Maintenance** | Fixing a leaky tap, adding a porch. | Fixing bugs users report, adding "free delivery" coupons later. |
+
+<Callout type="info" title="Testing is not only phase 4">
+
+Phase 4 is where the *product* is tested. But good testers are busy in **every** phase: questioning requirements, reviewing designs, preparing tests during development, and checking production after release. You will see how below.
+
+</Callout>
+
+<Short>
+
+## The quick version
+
+### Four ways to run the SDLC
+
+Teams arrange these six phases in different **models**:
+
+- **Waterfall.** One phase after another, each finished before the next starts. Testing comes near the end. Simple to plan, but problems are found late.
+- **V-model.** Like waterfall, but every design phase has a matching test level. While requirements are written, acceptance tests are designed; while the architecture is drawn, integration tests are planned. Tests are *designed* early, *run* late.
+- **<Term id="agile">Agile</Term>.** Work is cut into short <Term id="sprint">sprints</Term> (often two weeks). Each sprint plans, builds, tests and shows a small working slice. Testing happens all the time, next to development. <Term id="scrum">Scrum</Term> is the most popular way of doing agile.
+- **DevOps / continuous delivery.** Small changes flow through an automated pipeline that builds and tests every change, so the team can release very often. Manual testers focus on new features and risky areas.
+
+### Find it early, fix it cheap
+
+A missing rule caught while reading a <Term id="user-story">user story</Term> costs a five-minute chat. The same problem found after release can mean a hotfix, an app store review, support tickets and refunds. Moving testing activities earlier is called **shift-left** (left = earlier on a timeline).
+
+### What testers do in each phase
+
+Ask questions about requirements, review designs, write test cases during development, run tests when the <Term id="build" /> is ready, smoke-check <Term id="production" /> after release, and test fixes during maintenance.
+
+### The STLC: testing's own life cycle
+
+The <Term id="stlc">software testing life cycle (STLC)</Term> is the sequence of testing activities. Each phase has **entry criteria** (what must be true before you start) and **exit criteria** (what must be true before you call it done).
+
+| STLC phase | Main deliverable |
+| --- | --- |
+| Requirement analysis | Questions, list of testable requirements |
+| Test planning | <Term id="test-plan">Test plan</Term> |
+| Test case design | <Term id="test-case">Test cases</Term>, <Term id="test-data" /> |
+| Environment setup | A working test <Term id="environment" />, passed <Term id="smoke-testing">smoke test</Term> |
+| Test execution | Test results, <Term id="bug-report">bug reports</Term> |
+| Test closure | Test summary report, lessons learned |
+
+In an agile team the whole cycle repeats inside every sprint, often several times at once (one mini cycle per story).
+
+<Callout type="tip">
+
+Switch to **Detailed** for each model in depth, a real 2-week sprint day by day, and entry and exit criteria for every phase.
+
+</Callout>
+
+</Short>
+
+<Long>
+
+## Development models
+
+A **development model** is the "recipe" a team uses to move through the SDLC phases: in which order, how often and how strictly. The model decides **when** you, as a tester, get to see working software. That is why it matters so much to your day.
+
+### Waterfall
+
+In the **waterfall model**, each phase is finished and signed off before the next begins, like water falling down a staircase. Requirements are written in full, then the whole design, then all the code, and only then does testing start.
+
+<Callout type="example" title="Waterfall in real life">
+
+A bank replaces its internal loan-approval system. Requirements are fixed by regulation and won't change much. The project runs for a year: three months of requirements and design, six months of development, two months of testing, then a careful launch.
+
+</Callout>
+
+- **Good for:** stable, well-understood requirements, strict documentation needs, fixed contracts.
+- **Weak at:** change. If testers discover in month ten that a requirement was misunderstood in month one, a lot of work has to be redone, and there is usually little time left.
+
+### V-model
+
+The **V-model** is waterfall bent into a "V". The left side goes **down** through definition and design; coding sits at the bottom; the right side goes back **up** through test levels. Every phase on the left is paired with a test level on the right:
+
+| Left side (define) | Right side (test) |
+| --- | --- |
+| Requirements | <Term id="acceptance-testing">Acceptance testing</Term> |
+| System design | <Term id="system-testing">System testing</Term> |
+| Architecture | <Term id="integration-testing">Integration testing</Term> |
+| Module design | <Term id="unit-testing">Unit testing</Term> |
+
+The big idea: **design the tests at the same time as the thing they will test**. While the business writes "customers can apply one coupon per order", testers already write the acceptance test for it. Writing a test is a great way to discover that a requirement is vague ("Is a free-delivery code a coupon too?"). The V-model is also a handy picture of two big questions: <Term id="verification" /> ("did we build it right?", checked against the design) and <Term id="validation" /> ("did we build the right thing?", checked against real needs). See [Verification vs Validation](/fundamentals/verification-vs-validation). The four test levels get their own lesson: [Levels of Testing](/fundamentals/levels-of-testing).
+
+### Iterative and agile
+
+**Iterative** models build the product in repeated cycles, adding and improving a bit each time. **Agile** is the most popular family of iterative approaches. Instead of one big release after a year, an agile team delivers a small, working, tested piece every few weeks and adjusts based on feedback.
+
+Most agile teams use **Scrum**, which works in fixed time boxes called **sprints**, usually two weeks long:
+
+<Steps>
+
+1. **Backlog refinement.** The team discusses upcoming user stories and sharpens their <Term id="acceptance-criteria" />.
+2. **Sprint planning.** The team picks the stories it can finish in this sprint.
+3. **Build and test.** Developers build the stories one by one; testers test each story as soon as it is ready. A short daily stand-up keeps everyone in sync.
+4. **Sprint review.** The team demos what is done to stakeholders.
+5. **Retrospective.** The team talks about what to improve next sprint. Then the next sprint starts.
+
+</Steps>
+
+In agile, testing is not a phase at the end. It is an activity that happens **every day**. The flip side: the app changes every sprint, so <Term id="regression-testing" /> keeps growing, and teams need a smart regression set (and usually some automation).
+
+### DevOps and continuous delivery
+
+**DevOps** joins development ("Dev") and operations ("Ops", the people who run the servers) into one team with shared responsibility. A key practice is a **pipeline**: every time a developer pushes a change to the shared code, a server automatically builds the app and runs the automated tests (this is called **continuous integration**, or CI). If the change passes, it can be released quickly and safely (**continuous delivery**, or CD). Some web teams release many times a day; mobile teams are slower because app store releases need review, but they often ship weekly or every two weeks.
+
+For a beginner, three things matter:
+
+- **Automated checks run on every change.** A red (failed) pipeline means "not ready".
+- **Manual testing doesn't disappear.** It moves to where humans add the most value: new features, <Term id="exploratory-testing" />, usability and risky areas.
+- **Production is watched closely.** Crash reports, error logs and user feedback become a source of bugs, and new features are often switched on for a small group of users first.
+
+### The models side by side
+
+| Model | When you test | Best when |
+| --- | --- | --- |
+| Waterfall | One big phase near the end | Requirements are fixed and well known |
+| V-model | Design tests early, run them late | Strict quality or safety rules |
+| Agile (Scrum) | Every day, inside each sprint | Requirements change and feedback matters |
+| DevOps / CD | Continuously, mostly automated, plus manual for new work | Frequent, small releases |
+
+Real teams often mix: a "mostly agile" team with a waterfall-style release phase for a big launch is very common.
+
+## Why finding bugs late costs more
+
+Imagine nobody wrote down the rule "one coupon per order". Here is what fixing it costs at each stage:
+
+<CostCurve />
+
+You may have seen charts claiming a bug costs "exactly 100 times more" in production. Be careful with precise numbers like that; they come from old studies of very different projects. The **trend** is what is real and widely agreed: the later a problem is found, the more work, people and risk its fix involves.
+
+This is why modern teams **shift left**: they move testing activities earlier on the timeline. Shift-left doesn't mean "test less at the end". It means "also test at the beginning": review requirements, discuss examples before coding, and test small pieces as soon as they exist.
+
+## Where testers get involved in each phase
+
+| SDLC phase | What a tester does |
+| --- | --- |
+| Requirements | Reads stories, asks "what if...?", points out missing or untestable criteria |
+| Design | Reviews mock-ups and flows, spots missing states (loading, error, empty) |
+| Development | Plans testing, writes test cases, prepares data and devices, tests early builds |
+| Testing | Runs tests, explores, reports bugs, retests fixes, runs regression |
+| Deployment | Smoke tests the release candidate and then production |
+| Maintenance | Tests hotfixes, checks user-reported bugs, updates the regression suite |
+
+<Callout type="example" title="One good question, before any code exists">
+
+Story: *"As a customer, I can apply a coupon code at checkout."*
+
+A tester in refinement asks: "Can I use a coupon **and** loyalty points together? What if the coupon brings the total below the delivery fee? Is the code case-sensitive?" Each answer becomes an acceptance criterion, and three bugs never get written.
+
+</Callout>
+
+## The STLC: the testing life cycle
+
+The **software testing life cycle (STLC)** describes the testing work itself, from "what are we testing?" to "here is what we found". It runs *inside* the SDLC. (The ISTQB syllabus describes the same work as a "test process" with slightly different names, such as test analysis, test design, test implementation, test execution and test completion. The ideas match.)
+
+Each phase has two kinds of rules:
+
+- **Entry criteria:** what must be true before the phase can start. Like a recipe's "you will need": you can't start baking without flour and an oven.
+- **Exit criteria:** what must be true before the phase is "done". Like "bake until golden and a toothpick comes out clean". Without exit criteria, testing either never ends or ends whenever the deadline arrives.
+
+<Steps>
+
+1. **Requirement analysis.** Read the requirements and user stories, find what is testable, ask questions, list risks. *Entry:* requirements are available. *Exit:* questions answered, testable requirements identified. *Deliverables:* question list, list of testable requirements, a first <Term id="traceability-matrix" /> linking requirements to future tests.
+2. **Test planning.** Decide scope (what will and won't be tested), approach, people, devices, schedule and risks. *Entry:* requirements understood. *Exit:* plan agreed. *Deliverables:* the <Term id="test-plan" />, effort estimate. (A <Term id="test-strategy" /> is the higher-level, longer-lived document that many plans follow.)
+3. **Test case design.** Write <Term id="test-scenario">test scenarios</Term> and detailed test cases, and decide what data you need. *Entry:* plan approved. *Exit:* test cases written and reviewed, every requirement covered. *Deliverables:* test cases, test data, updated traceability matrix. See [How to Write Test Cases](/tutorials/writing-test-cases).
+4. **Test environment setup.** Prepare the place where tests run: a test server or <Term id="staging" />, the right build, devices, accounts, test cards. Often runs in parallel with test case design. *Entry:* you know what the tests need. *Exit:* the build is installed and a smoke test passes. *Deliverables:* a ready environment, smoke test result.
+5. **Test execution.** Run the tests, compare <Term id="expected-result">expected</Term> and <Term id="actual-result">actual results</Term>, report bugs, retest fixes, run regression. *Entry:* test cases ready, environment passed the smoke test. *Exit:* planned tests run, no open critical bugs, agreed coverage reached. *Deliverables:* test results, <Term id="bug-report">bug reports</Term> (see [How to Write Bug Reports](/tutorials/writing-bug-reports)), daily status.
+6. **Test closure.** Sum up and look back. *Entry:* execution exit criteria met, or the team decides to stop. *Exit:* report shared, lessons recorded. *Deliverables:* **test summary report** (what was tested, results, open bugs, risks, recommendation), lessons learned.
+
+</Steps>
+
+<Callout type="note" title="Not always a document">
+
+In big waterfall projects, every deliverable is a formal, signed document. In agile teams, the "test plan" might be a one-page wiki section, test cases might live in <Term id="jira" />, and the "summary report" might be five minutes in the sprint review. The **thinking** is the same; only the paperwork changes.
+
+</Callout>
+
+### SDLC vs STLC
+
+| | SDLC | STLC |
+| --- | --- | --- |
+| Covers | Building the whole product | The testing work only |
+| Who | Whole team | Mainly testers |
+| Goal | Deliver working software | Find problems and give confidence |
+| Relation | The big cycle | Runs inside it |
+
+## How the STLC fits inside a 2-week sprint
+
+Here is what the STLC looks like for a tester on a food delivery team, sprint goal: "Customers can apply coupons at checkout."
+
+<SprintStlc />
+
+- **Day 1 (planning):** you read the three coupon stories, ask about expired codes and minimum order values, and note that you'll need test accounts with order history. That is requirement analysis and test planning, done in an hour or two.
+- **Days 2-6:** while developers build, you write test cases for each story and prepare coupon codes in the test environment. When the first story lands on day 4, you install the build, smoke test it and start testing.
+- **Days 4-9:** you test each story as it arrives, log bugs, retest fixes the same day, and talk to developers constantly.
+- **Days 8-9:** you run the regression set on the release candidate: login, cart, payment, order tracking.
+- **Day 10:** you share a short summary in the sprint review ("all three stories pass; one low-severity layout bug left open") and mention in the retro that stories arrived late.
+
+The phases overlap, and each story runs through its own mini cycle. But all six are still there.
+
+</Long>
+
+## Try it: when does testing happen?
+
+Switch between the models and watch the timeline. Then click the phases to see what testers do in each one.
+
+<LifecycleModels client:visible />
+
+## Practice the STLC
+
+First put the six phases in order, then match common deliverables to the phase that produces them.
+
+<StlcTrainer client:visible />
+
+## Practice: plan the testing for one story
+
+Here is a real-looking story from a travel booking app:
+
+> **Story:** As a traveler, I want to add travel insurance to my flight booking so that I am covered if I have to cancel.
+>
+> **Acceptance criteria:**
+> 1. An "Add insurance" option appears on the payment screen for flights over 7 days away.
+> 2. The insurance costs 5% of the ticket price, minimum €10.
+> 3. The insurance appears as a separate line in the booking confirmation email.
+
+On paper or in a note, try these three tasks:
+
+1. **Requirement analysis:** write at least three questions you would ask before testing.
+2. **Entry criteria:** what must be true before you can start test execution for this story?
+3. **Exit criteria:** when would you say testing of this story is done?
+
+<details class="my-6 rounded-2xl border border-line bg-subtle px-4 py-3 [&>p]:mt-3 [&>ul]:mt-3">
+<summary class="cursor-pointer font-semibold">Show a sample answer</summary>
+
+**Questions:** What about flights exactly 7 days away? Is the 5% calculated before or after taxes and discounts? What currency is the €10 minimum in for non-euro bookings? Can insurance be removed after booking? Does it apply to every passenger or the whole booking?
+
+**Entry criteria:** the story's questions are answered; the feature is deployed to the test environment; a smoke test of booking and payment passes; test cards and flight data (one flight 6, 7 and 8 days away, one cheap ticket below €200) are ready.
+
+**Exit criteria:** all test cases for the three criteria have been run on iOS, Android and web; no open critical or high bugs; the confirmation email was checked; booking-and-payment regression passed.
+
+</details>
+
+<Checklist
+  title="SDLC and STLC checklist"
+  storageKey="sdlc-and-stlc"
+  items={[
+    "I know which development model my team uses, and when I see working builds",
+    "I review user stories and acceptance criteria before development starts",
+    "I ask at least one 'what if...?' question in refinement or planning",
+    "I know the entry criteria for test execution (build ready, smoke test passed, data ready)",
+    "I agree exit criteria with the team before testing starts",
+    "I prepare test cases and test data while developers are still building",
+    "I smoke test every new build before starting detailed testing",
+    "I share a short test summary at the end of each sprint or release",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "In which model is testing mostly one big phase near the end of the project?",
+      options: ["Agile (Scrum)", "Waterfall", "DevOps", "Exploratory"],
+      answer: 1,
+      explain: "In waterfall, each phase is finished before the next starts, so testing the product happens after all development is done.",
+    },
+    {
+      q: "What is the main idea of the V-model?",
+      options: [
+        "Testing is skipped to go faster",
+        "Each development phase has a matching test level, and tests are designed early",
+        "The team releases many times per day",
+        "Users write all the test cases",
+      ],
+      answer: 1,
+      explain: "The left side of the V (requirements, design) is paired with the right side (acceptance, system, integration, unit testing). Tests are designed alongside each phase and run later.",
+    },
+    {
+      q: "A tester reads a new user story and asks: 'What happens if the coupon expires while it's in the cart?' Which STLC phase is this?",
+      options: ["Test closure", "Test execution", "Requirement analysis", "Environment setup"],
+      answer: 2,
+      explain: "Reading requirements and asking questions about them is requirement analysis, the first STLC phase, and a great example of shift-left testing.",
+    },
+    {
+      q: "Which is a good exit criterion for test execution?",
+      options: [
+        "The developers say they are finished",
+        "The deadline has arrived",
+        "All planned tests are run and there are no open critical bugs",
+        "The test plan has been written",
+      ],
+      answer: 2,
+      explain: "Exit criteria are agreed, measurable conditions for 'done'. A deadline or a developer's opinion is not a quality criterion; a finished test plan is the exit of test planning, not execution.",
+    },
+    {
+      q: "Which deliverable belongs to test closure?",
+      options: ["Test plan", "Bug report", "Test summary report", "Test cases"],
+      answer: 2,
+      explain: "The test summary report sums up what was tested, results, open bugs and risks. It is the main output of test closure.",
+    },
+    {
+      q: "Why is 'shift-left' valuable?",
+      options: [
+        "It removes the need for testing at the end",
+        "Problems found earlier are cheaper and easier to fix",
+        "It lets testers skip writing bug reports",
+        "It means testing only on the left side of the screen",
+      ],
+      answer: 1,
+      explain: "Shift-left means starting testing activities earlier. A misunderstanding caught in a story review costs a conversation; caught in production it can cost a hotfix, refunds and trust.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- The SDLC is the life cycle of building software: requirements, design, development, testing, deployment, maintenance.
+- Waterfall tests near the end; the V-model pairs each design phase with a test level; agile tests inside every sprint; DevOps tests every change, mostly automatically.
+- The later a bug is found, the more it tends to cost to fix (a trend, not a fixed multiplier). Shift left: question requirements and test early.
+- Testers add value in every SDLC phase, not only in "testing".
+- The STLC has six phases: requirement analysis, test planning, test case design, environment setup, test execution, test closure.
+- Entry criteria say when a phase can start; exit criteria say when it is done. In agile, the whole STLC repeats (and overlaps) inside each sprint.
+
+</KeyTakeaways>

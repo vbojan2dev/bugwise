@@ -1,0 +1,458 @@
+---
+title: Types of Testing
+description: Smoke, sanity, regression, exploratory, usability, accessibility and more. A clear map of the testing types a manual tester meets, when each one is used, and how to pick the right one.
+order: 4
+level: beginner
+minutes: { short: 14, long: 25 }
+platform: both
+tags: [fundamentals, testing types, regression, smoke testing]
+---
+
+import TypesMap from '@/components/demos/fundamentals-types/TypesMap';
+import ScenarioSorter from '@/components/demos/fundamentals-types/ScenarioSorter';
+
+It is 4:40 pm on a Thursday. A new <Term id="build" /> of a food delivery app lands in your inbox with a short note: "Fixed the double-charge bug, updated the menu screen, added German. Release is Monday." Your lead asks: "What's the plan?"
+
+You can't just answer "I'll test it". Test *what*, and *how*? Check the build isn't broken? Confirm the double-charge fix? Make sure the menu changes didn't break the cart? Check the German texts fit? Each of those is a different **type of testing**, and each one answers a different question.
+
+<Callout type="example" title="An everyday analogy">
+
+Think of a yearly health check. The doctor doesn't run "a test". They take your blood pressure, run a blood test, check your eyesight, maybe order an X-ray. Each test answers one specific question, and the doctor picks them based on your age, your symptoms and how much time there is.
+
+Testing types work the same way. A tester picks the right mix for the situation: how much changed, how much time is left, and what could hurt users most.
+
+</Callout>
+
+## Functional vs non-functional: the first big split
+
+Almost every testing type falls on one side (or both sides) of this line:
+
+| | Functional testing | Non-functional testing |
+| --- | --- | --- |
+| Question | **What** does it do? | **How well** does it do it? |
+| Checks | Features, rules, calculations, flows | Speed, ease of use, accessibility, security, compatibility |
+| Banking app example | A $50 transfer leaves the account and arrives with the payee | The transfer screen loads in under 2 seconds and works with VoiceOver |
+
+<Term id="functional-testing">Functional testing</Term> checks behavior against the <Term id="requirement">requirements</Term>: tap "Add to cart" and the item is in the cart. <Term id="non-functional-testing">Non-functional testing</Term> checks the *qualities* of that behavior: is it fast, clear, safe, and usable by everyone?
+
+<Callout type="tip">
+
+A feature can be **functionally perfect and still fail**. A checkout that charges the right amount but takes 14 seconds to load on mobile data will lose customers. That is why testers care about both sides.
+
+</Callout>
+
+<Short>
+
+## The quick map
+
+Instead of memorizing a flat list, group the types by the **question they answer**. Here are the ones you will meet most as a manual tester.
+
+### 1. Is this build worth testing?
+
+- **<Term id="smoke-testing">Smoke testing</Term>**: a quick, shallow run through the most important flows (open, log in, search, pay) on a new build. If it fails, the build goes back.
+- **<Term id="sanity-testing">Sanity testing</Term>**: a quick, narrow check of one area after a small change. Heads-up: teams use "smoke" and "sanity" inconsistently. Always ask what *your* team means.
+
+### 2. Did the change work, and did it break anything?
+
+- **<Term id="retesting">Retesting</Term>** (confirmation testing): repeat the exact steps of a fixed bug to confirm it is gone.
+- **<Term id="regression-testing">Regression testing</Term>**: re-check things that used to work, to catch side effects of new changes. Always done before a release.
+
+### 3. Is it good for real people?
+
+- **<Term id="usability-testing">Usability</Term>**: is it easy and clear to use?
+- **<Term id="accessibility-testing">Accessibility</Term>**: can people with disabilities use it, for example with a <Term id="screen-reader" />? See [Accessibility basics](/web/accessibility-basics).
+- **<Term id="compatibility-testing">Compatibility</Term>**: does it work on the browsers, devices and OS versions users have? See [Cross-browser testing](/web/cross-browser-testing).
+- **<Term id="localization">Localization</Term>**: does it work in other languages, currencies and date formats? See [Localization and RTL](/features/localization-and-rtl).
+- **<Term id="performance-testing">Performance</Term>**: is it fast enough? Load and stress testing are specialist forms. See [Performance basics](/web/performance-basics).
+- **<Term id="security-testing">Security</Term>**: is data protected? See [Security basics](/web/security-basics).
+
+### 4. Does it survive real life on a device?
+
+- **Installation and <Term id="upgrade-testing">upgrade testing</Term>**: fresh install, update from an older version, uninstall. See [Install, update, uninstall](/mobile/install-update-uninstall).
+- **Interruption testing**: calls, notifications, screen lock mid-task. See [Interruptions](/mobile/interruptions).
+
+### 5. How do you test?
+
+- **<Term id="exploratory-testing">Exploratory</Term>**: learning and testing at the same time, with a goal and a time limit.
+- **<Term id="ad-hoc-testing">Ad-hoc</Term>**: informal, unplanned "let me try this" testing.
+- **<Term id="positive-testing">Positive</Term> vs <Term id="negative-testing">negative</Term>**: valid input expecting success vs invalid input expecting a clear error.
+- **Manual vs automated**: a person runs the checks, or a script does.
+
+<Callout type="tip">
+
+Switch to **Detailed** at the top of the page for each type explained in depth, with timing, examples and the classic mix-ups (smoke vs sanity, retesting vs regression, exploratory vs ad-hoc).
+
+</Callout>
+
+</Short>
+
+<Long>
+
+## How to read the rest of this lesson
+
+There are dozens of named testing types, and different books slice them differently. Instead of a flat list, we group them by **the question they answer**:
+
+<Steps>
+
+1. **Build health checks.** Is this build even worth testing?
+2. **Change-related testing.** Did the fix work, and did anything else break?
+3. **Quality attributes.** Is it usable, inclusive, compatible, fast, safe and ready for every market?
+4. **Life on a real device.** Does it survive installs, updates and interruptions?
+5. **Approaches and styles.** *How* do you design and run the tests?
+
+</Steps>
+
+<Callout type="note" title="Types are not boxes">
+
+One test session can belong to several types at once. Checking the cart with VoiceOver on Safari after a fix is retesting, accessibility testing *and* compatibility testing. The names help you plan and communicate, not to file every minute of your day.
+
+Testing **types** are also different from testing **levels** (unit, integration, system, acceptance). Levels say *how big a piece* you are testing; types say *what you are checking for*. See [Levels of testing](/fundamentals/levels-of-testing).
+
+</Callout>
+
+## 1. Build health checks
+
+### Smoke testing
+
+<Term id="smoke-testing">Smoke testing</Term> is a quick, shallow pass over the most important flows of a new build. The name comes from hardware: you switch on a new circuit board, and if smoke comes out, there is no point testing further.
+
+- **When:** every time a new build arrives, before any deeper testing. Usually 10 to 30 minutes.
+- **Goal:** decide "go" or "no-go". If login is broken, there's no point running 300 test cases.
+- **Mobile example:** install build 4.2.0 (311), open the app, log in, search for "pizza", add one item, reach checkout.
+- **Web example:** the home page loads, search returns results, a product can be added to the cart, login works.
+
+A smoke test is broad (it touches many areas) but shallow (it doesn't dig into any of them). Many teams automate it so it runs on every build. See [Regression and Smoke Suites](/tutorials/regression-and-smoke-suites) for building one.
+
+### Sanity testing
+
+<Term id="sanity-testing">Sanity testing</Term> is a quick, **narrow** check of one area after a small change, to decide whether it is sensible to continue with deeper testing.
+
+- **When:** after a small fix or tweak, often before a bigger regression run.
+- **Mobile example:** the tip calculation changed. You quickly check 0%, 10%, 15% and a custom tip, and that the total updates.
+- **Web example:** the currency formatter was patched. You check prices on the product, cart and checkout pages.
+
+<Callout type="warning" title="Smoke vs sanity: honest version">
+
+The industry does **not** agree on these two words. Some teams use them as synonyms. Some call any quick check "sanity". Some swap the definitions entirely. The most common usage is:
+
+- **Smoke** = broad and shallow, on a **new build**: "Is the whole thing basically alive?"
+- **Sanity** = narrow and a bit deeper, after a **specific change**: "Does this part make sense now?"
+
+In an interview, give this common definition and add that teams use the words differently. On the job, ask your team what they mean. That answer shows experience.
+
+</Callout>
+
+## 2. Change-related testing
+
+These two are the bread and butter of a manual tester's week, and they are often confused.
+
+### Retesting (confirmation testing)
+
+<Term id="retesting">Retesting</Term> means repeating the **exact steps** from a bug report on the new build, to confirm the bug is really fixed. ISTQB calls it *confirmation testing*.
+
+- **When:** a developer marks a bug as fixed.
+- **How:** same steps, same test data, same type of device or browser as the original report. Then note the build you verified on. See the [bug life cycle](/fundamentals/bug-life-cycle).
+- **Example:** BUG-207 said "Coupon SAVE10 applies twice on a quick double-click". You double-click "Apply" on build 512 and check the total.
+
+### Regression testing
+
+<Term id="regression-testing">Regression testing</Term> means re-checking things that **used to work**, to catch unwanted side effects of new changes. A "regression" is a feature going backwards.
+
+- **When:** after any change, and always before a release. The bigger or riskier the change, the wider the regression run.
+- **Example:** a developer changed the shared price-formatting code to fix the coupon bug. Now the cart total, order history, receipts and push notification texts all need checking, because they use the same code.
+
+| | Retesting | Regression testing |
+| --- | --- | --- |
+| Question | Is this bug fixed? | Did anything else break? |
+| Scope | One bug, exact steps | Areas that worked before |
+| Planned in advance? | Steps come from the bug report | Usually a maintained test suite |
+| Good for automation? | Rarely | Very often |
+
+<Callout type="example" title="Both, in order">
+
+When a fix arrives you usually **retest first** (is the bug gone?), then run a **targeted regression** around it (did the fix break its neighbors?). Bugs love company: the code that had one problem often has another.
+
+</Callout>
+
+## 3. Quality attributes
+
+These are mostly non-functional. Some have their own lessons on Bugwise, so here is the short version of each.
+
+### Usability testing
+
+<Term id="usability-testing">Usability testing</Term> checks how easy, clear and pleasant the product is for real people. Formal usability studies watch real users try tasks; testers do lighter usability checks every day by asking "would a normal person understand this?".
+
+- **Mobile example:** five users try to reschedule a fitness class. Three can't find the option, because it hides behind a long press.
+- **Web example:** shoppers hesitate on checkout because "Continue" and "Place order" look identical.
+
+### Accessibility testing
+
+<Term id="accessibility-testing">Accessibility testing</Term> checks that people with disabilities can use the product: blind users with a screen reader, people who can't use a mouse, people with low vision or color blindness. It is usually measured against <Term id="wcag" />.
+
+- **Mobile example:** with VoiceOver on, the "Transfer" button is read as just "button".
+- **Web example:** you can't reach the cookie banner's "Accept" button with the Tab key, so keyboard users are stuck.
+
+Deep dive: [Accessibility basics](/web/accessibility-basics).
+
+### Compatibility testing (cross-browser, cross-device)
+
+<Term id="compatibility-testing">Compatibility testing</Term> checks the product works across the browsers, devices, OS versions and screen sizes your users actually have. On the web this is called <Term id="cross-browser-testing" />; on mobile, cross-device testing against a <Term id="device-matrix" />.
+
+- **Mobile example:** the booking calendar is fine on iOS 18, but dates overlap on a small Android phone.
+- **Web example:** the date field works in Chrome but shows a plain text box in an older Safari.
+
+Deep dives: [Cross-browser testing](/web/cross-browser-testing), [Device fragmentation](/mobile/device-fragmentation), [Responsive design testing](/web/responsive-design-testing).
+
+### Localization and internationalization testing
+
+Two related ideas, often shortened to L10n and i18n (the numbers count the letters in between):
+
+- **Internationalization (i18n)** is how the product is *built*: ready for any language, long texts, right-to-left scripts, different currencies and date formats.
+- **<Term id="localization">Localization (L10n)</Term>** is adapting it to *one specific* market: German translations, euro prices, "14.10.2026" dates.
+
+Testers check translations are present and correct, texts fit (German words are long), currencies and dates are formatted for the <Term id="locale" />, and Arabic or Hebrew layouts are mirrored. Deep dive: [Localization and RTL](/features/localization-and-rtl).
+
+- **Mobile example:** in German, "Add to basket" becomes "In den Warenkorb legen" and gets cut off.
+- **Web example:** French users see "$1,299.00" instead of "1 299,00 €".
+
+### Performance testing (and load and stress)
+
+<Term id="performance-testing">Performance testing</Term> checks speed and responsiveness. As a manual tester you notice slowness every day: a menu that takes 6 seconds on mobile data, a list that stutters when scrolling. Report it with numbers (device, network, seconds).
+
+Two specialist forms are worth knowing by name:
+
+- **Load testing:** does the system cope with the *expected* number of users, for example Black Friday traffic?
+- **Stress testing:** what happens *beyond* that, and how does it fail and recover?
+
+These need tools that simulate thousands of users, so they are usually done by performance engineers. Deep dive: [Performance basics](/web/performance-basics) and [Network conditions](/mobile/network-conditions).
+
+### Security testing
+
+<Term id="security-testing">Security testing</Term> checks that data and accounts are protected from people who should not see or change them. Full penetration testing is a specialist job, but manual testers catch many security bugs with simple curiosity:
+
+- **Mobile example:** after logging out, pressing Back shows the account balance again.
+- **Web example:** changing `/orders/1001` to `/orders/1002` in the address bar shows another customer's order.
+
+Deep dive: [Security basics](/web/security-basics).
+
+## 4. Life on a real device
+
+### Installation and upgrade testing
+
+Checks that the app installs cleanly, **updates from older versions without losing data**, and uninstalls properly. <Term id="upgrade-testing">Upgrade testing</Term> is the risky one: millions of users will update, and none of them want to lose their saved addresses or be logged out.
+
+- **Mobile example:** updating from 3.9 to 4.0 logs everyone out and deletes saved delivery addresses.
+- **Web example:** after a release, some users still get the old JavaScript from their <Term id="cache" />, so the cart breaks until they refresh.
+
+Deep dive: [Install, update and uninstall](/mobile/install-update-uninstall).
+
+### Interruption testing
+
+Checks how the app copes when something takes the user away mid-task: a phone call, an alarm, a notification, the screen locking, low battery, switching apps. See <Term id="interruption" />.
+
+- **Mobile example:** a call arrives during card payment. After the call the app shows a blank screen and the order is lost.
+- **Web example:** the user switches tabs during a 3-D Secure check and comes back to "Session expired".
+
+Deep dives: [Interruptions](/mobile/interruptions), [Background and foreground](/mobile/background-and-foreground).
+
+## 5. Approaches and styles
+
+These describe **how** you test rather than what you check. You can combine them with any type above.
+
+### Exploratory vs ad-hoc testing
+
+<Term id="exploratory-testing">Exploratory testing</Term> means learning the product, designing tests and running them **at the same time**. It is structured: you work to a goal (a *charter*, such as "Explore split-bill with odd amounts and people leaving the group"), in a time box (say 60 minutes), and you take notes of what you tried and found. See [Exploratory Testing](/tutorials/exploratory-testing).
+
+<Term id="ad-hoc-testing">Ad-hoc testing</Term> is the informal cousin: unplanned, undocumented "let me try this" testing based on intuition. It finds bugs too, but nobody can repeat or review what you covered.
+
+| | Exploratory | Ad-hoc |
+| --- | --- | --- |
+| Goal | A written charter | None, just curiosity |
+| Time | Time-boxed session | Whenever |
+| Notes | Yes, what was covered and found | Usually none |
+| Repeatable | Mostly | No |
+
+### Positive vs negative testing
+
+- **<Term id="positive-testing">Positive testing</Term>** uses valid input and expects success: transfer $50 to a saved payee.
+- **<Term id="negative-testing">Negative testing</Term>** uses invalid or unexpected input and expects a clear, safe error: transfer -$50, $0, letters, or more than the balance.
+
+Beginners often write only positive tests. Real users mistype, paste, double-tap and lose signal, so most bugs hide on the negative side. See [Writing test cases](/tutorials/writing-test-cases) and the [Text field](/components/text-field) page for practice.
+
+### Manual vs automated testing
+
+**Manual testing**: a person runs the checks. **Automated testing**: scripts run them. Almost every type above can be done either way, but each suits some types better:
+
+| Often automated | Usually manual |
+| --- | --- |
+| Smoke tests on every build | Exploratory testing |
+| Large regression suites | Usability and look-and-feel |
+| Load and stress tests | New features still changing |
+| Running the same checks on 20 devices | Interruptions and real-world device quirks |
+
+More in [What is software testing?](/fundamentals/what-is-software-testing#manual-vs-automated-testing).
+
+## Putting it together: a typical release
+
+Here is how the types usually line up in a two-week release of a mobile app:
+
+<Steps>
+
+1. **Each new build:** smoke test. If it fails, send it back.
+2. **During the sprint:** functional testing of new features with positive and negative tests, exploratory sessions, quick usability and accessibility checks, a few key devices or browsers.
+3. **Each bug fix:** retest, then a quick sanity or targeted regression around it.
+4. **Release candidate:** full regression, wider compatibility (the whole device or browser matrix), upgrade testing from the last versions, interruption checks on critical flows.
+5. **Before big events or launches:** load testing (specialists), localization for new markets, security review for new data flows.
+
+</Steps>
+
+To see where these activities sit in the bigger process, read [SDLC and STLC](/fundamentals/sdlc-and-stlc).
+
+</Long>
+
+## Explore the map
+
+Filter by **what** a type checks and **when** it is usually done. Open any card for a mobile and a web example, plus a link to the dedicated lesson where there is one.
+
+<TypesMap client:visible />
+
+## Practice: what would you run?
+
+Real testing starts with a situation, not with a definition. Read each scenario and pick the type that fits **best**. There can be more than one useful answer in real life, so read the explanation for every option.
+
+<ScenarioSorter client:visible />
+
+## Exercise: plan a release
+
+Your team is about to release **version 5.2 of a food delivery app** on iOS and Android, and the matching website. You have three days. Read the changelog and decide which testing types you would plan for each line before peeking at the suggested plan.
+
+<Tabs labels={["The changelog", "A suggested plan"]}>
+<Tab>
+
+**Release 5.2 changelog**
+
+1. Fixed: BUG-482, app crashes when rotating the payment screen.
+2. New: "Schedule order for later" on the checkout screen.
+3. Changed: the shared price-formatting code (used by cart, receipts and emails).
+4. New: Italian language and euro prices for the launch in Italy.
+5. Changed: the local database for saved addresses was moved to a new format.
+6. Marketing will push a 50% discount on launch day.
+
+For each line, write down at least one testing type and one concrete thing you would check.
+
+</Tab>
+<Tab>
+
+1. **Retesting** BUG-482 on the same device model, then a quick **regression** of payment in both orientations. See [Orientation and screen sizes](/mobile/orientation-and-screen-sizes).
+2. **Functional** testing with **positive and negative** cases (past times, closing hours, time zones), an **exploratory** session, quick **usability** and **accessibility** checks of the time picker. See [Date picker](/components/date-picker).
+3. **Regression** of every place that shows a price: cart, checkout, receipts, emails, order history.
+4. **Localization**: Italian texts fit, euro formatting ("12,50 €"), dates, and checking nothing is left untranslated.
+5. **Upgrade testing**: install 5.1, save addresses, update to 5.2, check addresses survive. Also a fresh **install**.
+6. **Performance (load)** testing by specialists for launch-day traffic; **functional** tests of the discount with [coupon](/features/shopping-cart-and-checkout) edge cases.
+
+And on every new build during those three days: a **smoke test** first.
+
+</Tab>
+</Tabs>
+
+<Checklist
+  title="Choosing testing types for a build"
+  storageKey="types-of-testing"
+  items={[
+    'I smoke-tested the new build before starting deeper testing',
+    'Every bug marked as fixed has been retested with its original steps',
+    'I ran regression around each change, wider for risky or shared code',
+    'New features got positive and negative tests plus at least one exploratory session',
+    'I checked usability and accessibility basics on new screens',
+    'Key devices, OS versions and browsers from our matrix are covered',
+    'New languages or markets were checked for translation, text fit, currency and dates',
+    'For app releases, I tested upgrading from the previous version(s)',
+    'Critical flows survive interruptions like calls, notifications and screen lock',
+    'Specialist work (load, stress, penetration testing) is planned with the right people',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "A developer says BUG-207 is fixed. What do you do first?",
+      options: [
+        "Run the full regression suite",
+        "Retest: repeat the exact steps from BUG-207 on the new build",
+        "Run a load test",
+        "Start an exploratory session on a different feature",
+      ],
+      answer: 1,
+      explain: "Retesting (confirmation testing) comes first: is this specific bug really gone? Then you run some regression around the fix.",
+    },
+    {
+      q: "Which statement best describes regression testing?",
+      options: [
+        "Testing a brand-new feature for the first time",
+        "Re-checking things that used to work, to catch side effects of changes",
+        "Testing with invalid input",
+        "Testing with real users before launch",
+      ],
+      answer: 1,
+      explain: "A regression is something that used to work and now doesn't. Regression testing looks for exactly that after changes.",
+    },
+    {
+      q: "Which of these is a non-functional test?",
+      options: [
+        "A $50 transfer arrives in the payee's account",
+        "The coupon SAVE10 takes 10% off the subtotal",
+        "The transfer screen loads in under 2 seconds on 4G",
+        "Logging out returns the user to the login screen",
+      ],
+      answer: 2,
+      explain: "Speed is a quality of the behavior (how well), so it is non-functional. The other options check what the app does.",
+    },
+    {
+      q: "How is exploratory testing different from ad-hoc testing?",
+      options: [
+        "Exploratory testing is always automated",
+        "Ad-hoc testing needs detailed test cases",
+        "Exploratory testing has a goal (charter), a time box and notes; ad-hoc testing is informal and undocumented",
+        "There is no difference at all",
+      ],
+      answer: 2,
+      explain: "Both are unscripted, but exploratory testing is structured: a charter, a time box and notes on what was covered.",
+    },
+    {
+      q: "Your team uses 'sanity test' to mean what another team calls a 'smoke test'. What is the best reaction?",
+      options: [
+        "Insist they use the textbook definition",
+        "Accept that usage varies, and agree on what the word means in your team",
+        "Stop using either word",
+        "Report it as a bug",
+      ],
+      answer: 1,
+      explain: "Smoke and sanity are used inconsistently across the industry. What matters is that everyone on your team means the same thing.",
+    },
+    {
+      q: "Version 4.0 of an app changes how saved data is stored. Which type is most important to add?",
+      options: [
+        "Upgrade testing from older versions",
+        "Ad-hoc testing",
+        "Localization testing",
+        "Smoke testing only",
+      ],
+      answer: 0,
+      explain: "Existing users will update, not install fresh. Upgrade testing checks their data and login survive the move to the new storage format.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Each testing type answers a different question. Pick the mix based on what changed, how much time you have and what could hurt users most.
+- **Functional** testing checks *what* the app does; **non-functional** testing checks *how well* (speed, usability, accessibility, security, compatibility).
+- **Smoke** = broad and shallow on a new build; **sanity** = narrow check after a small change. Teams use these words inconsistently, so agree on a meaning.
+- **Retesting** confirms a specific fix; **regression testing** checks nothing else broke. You usually do both, in that order.
+- **Exploratory** testing is structured (charter, time box, notes); **ad-hoc** testing is informal.
+- Always mix **positive and negative** tests, and remember mobile-specific types: upgrade and interruption testing.
+- Load, stress and penetration testing are specialist areas, but manual testers spot and report the first signs.
+
+</KeyTakeaways>

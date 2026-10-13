@@ -1,0 +1,440 @@
+---
+title: Install, Update and Uninstall
+description: Fresh installs, upgrades, skipped versions, reinstalls and downgrades. Learn what happens to user data at each step, how to test upgrades, and why every bug report needs a version and build number.
+order: 8
+level: beginner
+minutes: { short: 35 }
+platform: mobile
+tags: [mobile, upgrade testing, installation, versions, data migration]
+---
+
+import VersionLab from '@/components/demos/mobile-install/VersionLab';
+import VersionAnatomy from '@/components/demos/mobile-install/VersionAnatomy';
+
+Monday, 8:05 a.m. A grocery delivery app ships version 3.0, a beautiful redesign. By 9:00 the support inbox is on fire: *"I've been logged out"*, *"My saved shopping lists are gone!"*, *"Dark mode turned itself off"*. The team had tested 3.0 for weeks, and every test passed. The catch? Every tester had **installed 3.0 fresh**. Nobody had started on 2.x, created real data, and then **updated**, which is exactly what millions of real users did that morning.
+
+Most of your users will never do a fresh install of your newest version. They already have the app, with their account, favorites and settings, and they get the update in the background overnight. This lesson is about testing that journey.
+
+## Why it matters
+
+- **Data loss is the worst kind of bug.** A crash annoys people. Losing their saved addresses, order history or workout streak makes them leave and write one-star reviews.
+- **It only shows up in one path.** Upgrade bugs hide from testers who always start from a clean install. You have to *deliberately* walk the path from old version to new.
+- **You can't easily undo it.** Once a broken update is out, the store won't let users go back to the old version. A hotfix helps the next users, not the ones whose data is already gone.
+
+That's why teams do <Term id="upgrade-testing">upgrade testing</Term> before every <Term id="release" />, and why you should know exactly what happens to an app's data when it's installed, updated or removed.
+
+## Four ways an app lands on a phone
+
+| Scenario | What it means | What's on the device before | Typical risk |
+| --- | --- | --- | --- |
+| **Fresh install** | The app was never on this device | Nothing | Onboarding, first permission prompts, empty states |
+| **Upgrade (update)** | A newer version replaces the old one | All the old app data | Data migration, staying signed in, settings kept |
+| **Reinstall** | Uninstall, then install again | Usually nothing, but **some data can survive** (see below) | Leftover login, restored backups, "ghost" data |
+| **Downgrade** | An older version replaces a newer one | Data in a *newer* format | Old app can't read new data: crashes, data loss |
+
+<Callout type="info" title="Downgrades are a tester thing">
+The App Store and Google Play **never** offer an older version: users only ever move forward. But testers can downgrade with test builds (for example, an older build in <Term id="testflight">TestFlight</Term>, or `adb install -r -d` for debuggable Android builds). It's useful when you need to reproduce a bug on the exact version a user has, but remember the old version may not understand data written by the newer one.
+</Callout>
+
+## The first launch
+
+The very first launch after a **fresh install** is the user's first impression, and it's packed with one-time logic: onboarding screens, sign-up or sign-in, and permission prompts.
+
+<Steps>
+
+1. **Onboarding.** A few welcome screens that explain the app. Check you can skip them, that they appear **only once**, and that they don't come back after an update or a restart.
+2. **Permission prompts.** On iOS, the system asks for each <Term id="app-permissions">permission</Term> only **once**. If the user taps "Don't Allow", the app can't ask again; the user has to go to Settings. So timing matters: a good app explains *why* first ("Get delivery updates?") and asks at the moment the feature is needed, not as five pop-ups on launch. On Android 13+ notifications also need a runtime permission.
+3. **Empty states.** No orders, no favorites, no history yet. Every list should have a friendly empty state, not a blank screen or a spinner that never stops.
+4. **Sign in, then everything else.** Check the first sync after sign-in: favorites from another device appear, and the app doesn't show another user's cached data.
+
+</Steps>
+
+<Callout type="tip" title="Reset permissions without reinstalling">
+On iOS, **uninstalling the app resets its permissions**, so a reinstall shows the prompts again. On Android you can reset them in **Settings › Apps › [app] › Permissions**, or by clearing app storage.
+</Callout>
+
+## What happens during an update
+
+When a user updates, the system **replaces the app's code but keeps its data**: the database, saved files, preferences and Keychain/Keystore items. The new code then has to make sense of data written by the old code. That's where things go wrong.
+
+### Data migration
+
+If version 2.0 stores favorites in a new database table, it needs a **migration**: code that runs on first launch after the update and converts the old data into the new format. Things to check:
+
+- **Data is still there.** Favorites, carts, drafts, history, downloaded files.
+- **The user stays signed in.** If the new version stores the session token differently, the old <Term id="session-token">token</Term> must be moved over. Logging everyone out on update is a classic bug (and a support nightmare).
+- **Settings are preserved.** Dark mode, language, notification preferences, units (km vs miles).
+- **Database schema changes** work in **every** direction users can come from, which brings us to the next point.
+
+### Skipping versions
+
+Not everyone updates every week. Some users go straight from **3.0 to 3.4**, skipping three releases. If 3.2 added a migration and 3.4 assumes it already ran, those users break. Good apps run **all** missing migrations in order (3.0 → 3.1 → 3.2 → … → 3.4). Ask the developers which versions changed the data format, and test an upgrade from **the oldest version still in use** as well as from the previous one.
+
+### Forced updates (minimum version)
+
+Sometimes an old version must stop working, for example because the server API changed. Apps then check a **minimum supported version** from the server and show an **"Update required"** screen. Test that:
+
+- Versions **below** the minimum see the prompt and can't continue.
+- Versions **equal to or above** the minimum never see it. Watch out for `1.10` vs `1.9`: compared as text, `"1.10"` comes *before* `"1.9"`, so a lazy comparison thinks 1.10 is older.
+- The **Update** button opens the right store page.
+- There's also usually a softer **"Update available"** prompt that can be dismissed. It shouldn't nag on every launch.
+
+## What happens on uninstall
+
+Uninstalling deletes the app's **sandbox**: its database, files, caches and preferences. But "deleted" isn't the whole story:
+
+| | iOS | Android |
+| --- | --- | --- |
+| App files, database, preferences | Deleted | Deleted |
+| Permissions | Reset (prompts show again) | Reset |
+| Secure storage | **Keychain items can survive** a reinstall | Keystore keys are deleted |
+| Cloud backup | iCloud backup restores data only when restoring a whole device | **Auto Backup** can restore app data (up to 25 MB) when reinstalling with the same Google account |
+| "Keep data" option | **Offload App** removes the app but keeps documents and data | Some apps offer "Keep app data" when uninstalling |
+
+<Callout type="bug" title="The ghost user">
+Because Keychain items can survive on iOS, an app that keeps the login token there may show **"Hi, Anna"** after a reinstall, even though all other data is gone. If a different person now uses the phone, that's a privacy bug. Well-built apps detect a fresh install (for example, with a flag in normal storage, which *is* deleted) and clear leftover Keychain items on first launch.
+</Callout>
+
+On Android, the reverse surprise is **Auto Backup**: you uninstall, reinstall, and your old settings or even a stale login come back. That can be a feature (users love it) or a bug (restoring a token that the server already revoked). Know which one your team intends.
+
+## Try it: the version timeline
+
+This is FreshCart, a grocery app with five releases. Play a real user's journey:
+
+1. Install **1.0**, go through onboarding, sign in, add a few **favorites**, and turn on **Dark mode** in Settings.
+2. Update to **1.1**, then **1.9** (new database), then **2.0** (redesign). Check that everything survived.
+3. **Reset**, then do it again but **skip** straight from 1.0 to 2.0.
+4. Set the server's **minimum version** to 1.9 and try different versions.
+5. **Uninstall** and **reinstall**. Watch the Keychain in the storage inspector.
+6. Try installing an **older** build over a newer one, and turn on **Low storage** before an update.
+
+Check **Settings › About** for the version and build number, and keep an eye on the device log: it shows what the app does behind the scenes on every launch.
+
+<VersionLab client:visible />
+
+<Callout type="info" title="What you just saw">
+In this correct app, every upgrade path keeps your data because **all** missing migrations run in order, the old login token is **moved** to its new place, existing users get a short "What's new" sheet instead of the full onboarding, and a reinstall cleans up the leftover Keychain item. A failed update (low storage) changes nothing, and the old version keeps working.
+</Callout>
+
+## Low storage and app size
+
+Phones are often almost full. Updates need space for the **download and the unpacked app at the same time**, so they can fail even when the app itself is small.
+
+- **The update fails cleanly.** The old version stays installed and keeps working, with its data intact.
+- **The app copes when storage is full at runtime.** Saving a photo, downloading a playlist or writing to the database can fail. The user should see a clear message, not a crash or silently lost data.
+- **App size is a feature.** Check the size in the store listing and on the device (**iOS:** Settings › General › iPhone Storage › [app], **Android:** Settings › Apps › [app] › Storage). Watch for sudden jumps between versions, and for "Documents & Data" that keep growing forever (a cache that's never cleared). iOS also asks for confirmation before downloading big apps over mobile data.
+
+## Store install vs test distribution
+
+As a tester you'll mostly install **test builds**, not store builds. They're the same app, but not identical:
+
+| | Store build | Test build (TestFlight, Firebase, Play testing tracks, Xcode, `adb`) |
+| --- | --- | --- |
+| Who gets it | Everyone | Invited testers |
+| Server | <Term id="production" /> | Often a <Term id="staging" /> or test <Term id="environment" /> |
+| Can install older versions | No | Usually yes |
+| Extras | None | Debug menus, logging, sometimes a different icon or name |
+
+Before a release, make sure at least one upgrade test is done **from the current store version** to the release candidate, ideally on a <Term id="real-device" />. That's the exact path your users will take. There's more on beta channels in [TestFlight and Firebase App Distribution](/mobile/beta-distribution).
+
+## Version and build numbers
+
+Every app has two numbers, and you need **both** in every bug report.
+
+<VersionAnatomy />
+
+- **Version** (also "marketing version") is what users see in the store, usually in **semantic versioning** style: `MAJOR.MINOR.PATCH`. `2.4.1` means the second big generation, fourth feature release, first bug-fix release.
+- **Build number** identifies one specific <Term id="build" />. The team may produce ten builds of version `2.4.1` while fixing bugs, and they all show `2.4.1`. Only the build number tells them apart.
+- On Android, `versionCode` is an integer that **must increase** with every Play Store upload. Android refuses to install a lower `versionCode` over a higher one, which is why downgrades need special tools.
+
+<Compare>
+<Do title="Exact">
+
+**Build:** FreshCart 2.4.1 (318), staging · iPhone 15, iOS 18.5 · upgraded from 2.3.0 (290)
+
+</Do>
+<Dont title="Vague">
+
+**Build:** latest
+
+</Dont>
+</Compare>
+
+"Latest" changes every day. A developer reading your report next week can't know which code you tested, whether the fix was already in it, or whether the bug only happens after an upgrade. See [Writing bug reports](/tutorials/writing-bug-reports) for the full template.
+
+## What to test
+
+**Fresh install**
+
+- Onboarding appears once, can be skipped, and doesn't return after restart.
+- Permission prompts appear in context, and the app works when they're denied.
+- Empty states on every list; first sign-in syncs the right account's data.
+
+**Upgrade**
+
+- From the **previous** version, from the **current store** version and from the **oldest supported** version (skipped releases).
+- User stays signed in; favorites, carts, drafts, history and downloads are kept.
+- Settings and preferences keep their values.
+- Existing users don't see first-launch onboarding again (a short "What's new" is fine).
+- Update while the app is **running in the background**, and with a pending action (an item in the cart, an unsent message).
+
+**Forced and optional updates**
+
+- Below / equal to / above the minimum version, including two-digit parts like `1.9` vs `1.10`.
+- The Update button opens the right store page; the optional prompt can be dismissed and doesn't nag.
+
+**Uninstall and reinstall**
+
+- After reinstall the app behaves like a fresh install: no previous user's name, token or data (unless restoring is an intended feature).
+- iOS: Keychain leftovers are cleaned up. Android: check what Auto Backup restores.
+
+**Edge cases**
+
+- Low storage during install and update; storage full while using the app.
+- Downgrade with a test build (when the team supports it): clear error, no crash.
+- Update interrupted (network lost, phone restarted).
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Logged out after update** | Sign-in screen right after updating; the token was moved or renamed without migrating | High |
+| 2 | **Data lost on upgrade** | Favorites, carts or history gone after updating | Critical |
+| 3 | **Migration only from the previous version** | Works 3.3 → 3.4, loses data 3.0 → 3.4 | High |
+| 4 | **Settings reset** | Dark mode, language or units back to default after update | Medium |
+| 5 | **Onboarding again** | Existing users see welcome screens and permission explanations again | Medium |
+| 6 | **Forced update loop** | "Update required" keeps showing after updating (string version compare) | Blocker |
+| 7 | **Crash on first launch after update** | App crashes once, or every time, because of unexpected old data | Blocker |
+| 8 | **Ghost data after reinstall** | Previous user's name or token reappears after reinstall | High (privacy) |
+| 9 | **Update fails silently** | Low storage: no message, app half-updated or old data broken | Medium |
+| 10 | **Cache that never shrinks** | "Documents & Data" grows by hundreds of MB over weeks | Low–Medium |
+
+## Find the bug
+
+This build of FreshCart has **six upgrade and install bugs**. Use the timeline like a real user would: create data on an old version, then update, skip, restart, uninstall and reinstall. Compare what the app shows with the storage inspector and the device log.
+
+<BugHunt
+  title="FreshCart upgrade paths"
+  bugs={[
+    {
+      title: 'User is logged out after updating from 1.0',
+      hint: 'Sign in on 1.0, then update to any newer version.',
+      detail: 'Version 1.1 reads the login token from a new Keychain key (<code>session_v2</code>), but nobody moves the old <code>session</code> token. The storage inspector still shows the old token, yet the app asks you to sign in. Expected: the token is migrated and the user stays signed in.',
+    },
+    {
+      title: 'Settings reset to defaults after updating to 1.9 or later',
+      hint: 'Turn on Dark mode and Weekly deals email on 1.0 or 1.1, then update to 1.9.',
+      detail: 'The 1 → 2 database migration moves favorites but forgets the settings, so dark mode and the deals email switch back <strong>off</strong>. Expected: all preferences keep their values after any update.',
+    },
+    {
+      title: 'Favorites are lost when skipping versions (1.x → 2.0)',
+      hint: 'Add favorites on 1.0, then update straight to 2.0. Compare with 1.0 → 1.9 → 2.0.',
+      detail: 'The app only runs the migration from the <em>previous</em> schema (2 → 3). Coming from schema 1, it skips the 1 → 2 step, finds no <code>saved_items</code> table and starts empty (the log says "0 items"). Expected: all missing migrations run in order, so users who skip releases keep their data.',
+    },
+    {
+      title: 'Forced update prompt keeps showing on 1.10',
+      hint: 'Set the minimum version to 1.9, then update to the newest 1.x version.',
+      detail: 'The app compares versions as text: <code>"1.10" &lt; "1.9"</code> is true, because the character <code>1</code> sorts before <code>9</code>. So 1.10 is treated as too old and the user is stuck in an update loop. (With minimum 1.10, version 1.9 is wrongly let through.) Expected: compare each number part as a number.',
+    },
+    {
+      title: 'Existing users see the full onboarding again after updating to 2.0',
+      hint: 'Finish onboarding on 1.x, then update to 2.0.',
+      detail: 'Version 2.0 checks a new onboarding flag that existing users don\'t have, so they get the welcome screens again, although the storage inspector says onboarding was seen. Expected: existing users skip onboarding (a short "What\'s new" sheet is fine), only new installs see it.',
+    },
+    {
+      title: 'Previous user is still signed in after uninstall and reinstall',
+      hint: 'Sign in, uninstall, then install again.',
+      detail: 'Uninstall deletes the app data, but the token in the Keychain survives on iOS. The app never clears it on first launch, so after onboarding it greets <strong>"Hi, Anna"</strong> with empty favorites. Expected: a fresh install clears leftover Keychain items and shows the sign-in screen.',
+    },
+  ]}
+>
+  <VersionLab buggy client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #3?">
+
+**Title:** Favorites lost when updating from 1.0 directly to 2.0 (skipped versions)
+
+**Build:** FreshCart 2.0 (105), upgraded from 1.0 (41) · iPhone 15, iOS 18.5
+
+**Steps:** 1. Install 1.0 (41) and sign in. 2. Favorite "Oat milk" and "Avocados". 3. Update directly to 2.0 (105). 4. Open the app.
+
+**Expected:** "Saved items · 2" with both products.
+**Actual:** "Saved items · 0". Updating 1.0 → 1.9 → 2.0 keeps both items.
+
+**Severity:** High (user data loss) · **Reproducible:** 5/5
+
+</Callout>
+
+## Tools and how-to
+
+<Tabs labels={['iOS', 'Android']}>
+<Tab>
+
+**Upgrade test with TestFlight**
+
+1. In the TestFlight app, open the app › **Previous Builds** and install the older build (or the current store version from the App Store).
+2. Use the app: sign in, create data, change settings.
+3. Install the new build from TestFlight **without deleting the app**. TestFlight installs it over the old one and keeps the data.
+
+**Simulator (from Xcode builds)**
+
+- Install a build: `xcrun simctl install booted OldFreshCart.app`, then the new one the same way. Installing over an existing app keeps its data, just like an update.
+- Uninstall: `xcrun simctl uninstall booted com.example.freshcart`.
+- Erase everything (including the Keychain): **Device › Erase All Content and Settings** in the Simulator menu.
+
+**Check storage:** Settings › General › iPhone Storage › [app] shows **App Size** and **Documents & Data**, plus **Offload App** and **Delete App**.
+
+</Tab>
+<Tab>
+
+**Upgrade test with adb**
+
+1. `adb install freshcart-1.0.apk`, then use the app and create data.
+2. `adb install -r freshcart-2.0.apk`: `-r` replaces the app and **keeps its data**, exactly like an update.
+3. Downgrade (debuggable builds only): `adb install -r -d freshcart-1.0.apk`.
+
+**Clean up**
+
+- Clear data without uninstalling: `adb shell pm clear com.example.freshcart` (or **Settings › Apps › [app] › Storage › Clear storage**).
+- Uninstall: `adb uninstall com.example.freshcart`.
+
+**Auto Backup:** trigger a backup with `adb shell bmgr backupnow com.example.freshcart`, uninstall, and reinstall to see what gets restored.
+
+**Low storage:** create an emulator in Android Studio's **Device Manager** with small internal storage, or fill a test device with large files.
+
+</Tab>
+</Tabs>
+
+<Callout type="tip" title="Keep old builds">
+Ask your team to keep the builds that went to the store (or know where to find them). You can't do upgrade testing from 2.3.0 if nobody can give you 2.3.0 anymore. Your <Term id="adb" /> or Simulator commands are useless without the files.
+</Callout>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-UPG-001',
+      title: 'User stays signed in after updating from the store version',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Current store version 2.3.0 (290) installed', 'User is signed in'],
+      steps: ['Install release candidate 2.4.0 (318) over the existing app', 'Open the app'],
+      expected: 'Home screen opens without a sign-in prompt and shows the same account.',
+    },
+    {
+      id: 'TC-UPG-002',
+      title: 'Favorites and settings survive an upgrade that skips versions',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Version 2.0.0 (210) installed, user signed in'],
+      steps: ['Add 3 favorites', 'Turn on Dark mode and set units to miles', 'Update directly to 2.4.0 (318)', 'Open Favorites and Settings'],
+      expected: 'All 3 favorites are listed; Dark mode is on and units are miles.',
+    },
+    {
+      id: 'TC-UPG-003',
+      title: 'Existing users do not see onboarding after a major update',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Version 1.10 installed and onboarding completed'],
+      steps: ['Update to 2.0', 'Open the app', 'Close and reopen the app'],
+      expected: 'No onboarding screens. A "What\'s new" sheet appears once and not after reopening.',
+    },
+    {
+      id: 'TC-UPG-004',
+      title: 'Forced update compares two-digit version parts correctly',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Server minimum version set to 1.9'],
+      steps: ['Open version 1.1: note the result', 'Open version 1.9: note the result', 'Open version 1.10: note the result'],
+      expected: '1.1 shows "Update required". 1.9 and 1.10 open normally with no prompt.',
+    },
+    {
+      id: 'TC-UPG-005',
+      title: 'Reinstall behaves like a fresh install',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['iOS device', 'User "Anna" is signed in'],
+      steps: ['Delete the app', 'Install it again', 'Open it'],
+      expected: 'Onboarding and sign-in screen are shown. No name, data or token from the previous user is visible.',
+    },
+    {
+      id: 'TC-UPG-006',
+      title: 'Update with low storage fails without breaking the old version',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Device has less free space than the update needs', 'Old version installed with data'],
+      steps: ['Start the update from the store or TestFlight', 'Open the app after the failure'],
+      expected: 'The system shows a storage message; the old version still opens with all data.',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="Install, update and uninstall checklist"
+  storageKey="install-update-uninstall"
+  items={[
+    'Fresh install: onboarding shows once and can be skipped',
+    'Permission prompts appear in context, and the app works when they are denied',
+    'Upgrade from the previous version keeps login, data and settings',
+    'Upgrade from the current store version to the release candidate is tested',
+    'Upgrade that skips versions (oldest supported → newest) keeps all data',
+    'Existing users do not see first-launch onboarding after an update',
+    'Forced update: below, equal to and above the minimum version, including 1.9 vs 1.10',
+    'Reinstall shows no previous user data (check Keychain on iOS, Auto Backup on Android)',
+    'Low storage: install/update fails cleanly and the old version still works',
+    'App size and Documents & Data are reasonable and don\'t grow forever',
+    'Every bug report includes version, build number, device, OS and the upgrade path',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'All your tests pass on a fresh install of 3.0. Why can users still lose data after updating?',
+      options: ['Fresh installs are slower', 'Updates keep old data that the new code must migrate, and a fresh install never runs that migration', 'The store deletes data on update', 'Users have older phones'],
+      answer: 1,
+      explain: 'An update keeps the old database and settings. Only an upgrade test exercises the migration code that converts them.',
+    },
+    {
+      q: 'A migration works from 3.3 to 3.4 but loses data from 3.0 to 3.4. What is the most likely cause?',
+      options: ['A localization bug', 'The app only runs the migration from the previous version instead of all missing ones', 'Low storage', 'A slow network'],
+      answer: 1,
+      explain: 'Users who skip releases need every intermediate migration to run in order.',
+    },
+    {
+      q: 'Why does "Update required" keep appearing on version 1.10 when the minimum is 1.9?',
+      options: ['The store is slow to update', 'The versions are compared as text, and "1.10" sorts before "1.9"', 'The build number is missing', 'The user denied notifications'],
+      answer: 1,
+      explain: 'Version parts must be compared as numbers: 10 is greater than 9.',
+    },
+    {
+      q: 'On iOS, which data can survive uninstalling and reinstalling an app?',
+      options: ['The app database', 'Cached images', 'Keychain items, such as a login token', 'Permission answers'],
+      answer: 2,
+      explain: 'Keychain items can survive a reinstall, which is why apps should clear leftovers on the first launch after install.',
+    },
+    {
+      q: 'What should the "Build" field of a bug report contain?',
+      options: ['"Latest"', 'The version and build number, e.g. 2.4.1 (318), plus environment and upgrade path if relevant', 'Only the app name', 'The date you tested'],
+      answer: 1,
+      explain: 'Many builds share one version number. Only the exact build tells developers which code you tested.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Most users **update**, they don't install fresh. Always test from an old version with real data to the new one.
+- After an update, check **login, data, settings and onboarding**, and test **skipped versions**, not just the previous one.
+- Forced updates must compare versions **as numbers** (`1.10` is newer than `1.9`).
+- Uninstall deletes the app's data, but **iOS Keychain items can survive** and **Android Auto Backup can restore** data. A reinstall should feel like a fresh install unless restoring is intended.
+- Stores never downgrade; test builds can. Keep old builds around for upgrade testing.
+- Every bug report needs the **version and build number**, the device and OS, and the **upgrade path** when it matters.
+
+</KeyTakeaways>

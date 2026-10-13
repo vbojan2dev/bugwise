@@ -1,0 +1,315 @@
+---
+title: TestFlight and Firebase App Distribution
+description: How testers get pre-release builds on real phones. TestFlight, Google Play testing tracks and Firebase App Distribution explained, plus how to always know which build you are testing.
+order: 10
+level: beginner
+minutes: { short: 20 }
+platform: mobile
+tags: [mobile, beta testing, testflight, firebase, builds, release]
+---
+
+import BetaLab from '@/components/demos/mobile-install/BetaLab';
+import { TrackSorter, RetestPlanner } from '@/components/demos/mobile-install/Decisions';
+
+Friday afternoon, a banking app team. The developer says "the transfer bug is fixed, can you check?" The tester opens the app, tries a transfer, and it fails again. Bug reopened. Developer: "Works for me." Twenty minutes of back-and-forth later they find the problem: the tester was still on **yesterday's build**. The fix was in a build that had arrived in TestFlight an hour earlier, which nobody had installed.
+
+That's the whole topic in one story. On mobile you can't just refresh a page to get the latest code. Every change has to become a new <Term id="build" />, get delivered to your phone, and be installed. Knowing how that delivery works, and **always knowing which build you're holding**, is a basic tester skill.
+
+## Why beta distribution exists
+
+Developers can install an app straight from Xcode or Android Studio onto a phone plugged into their computer. That's fine for one person, but a team needs something better:
+
+- **Real builds on real phones.** Testers need the same kind of build users will get (signed, optimized, with push notifications and payments working), installed on <Term id="real-device">real devices</Term>.
+- **Many testers, no cables.** QA, product managers, designers and sometimes thousands of customers need to install new builds with one tap.
+- **Before the store.** Once something is in the App Store or Google Play, every user gets it. Beta distribution is the last safety net before a <Term id="release" />.
+- **Feedback and crash reports** from testers flow back to the developers, tied to the exact build.
+
+There are three main channels you'll meet: **TestFlight** (iOS), **Google Play testing tracks** (Android) and **Firebase App Distribution** (mostly Android, also iOS).
+
+## TestFlight (iOS)
+
+<Term id="testflight" /> is Apple's beta service, part of App Store Connect. Testers install Apple's free **TestFlight** app from the App Store, and beta apps are installed through it.
+
+| | Internal testers | External testers |
+| --- | --- | --- |
+| Who | Members of your App Store Connect team (with a role like Developer or Marketing) | Anyone with an email address |
+| How many | Up to 100 | Up to 10,000 |
+| How they join | Added in App Store Connect, invited by email | Email invitation or a **public link** |
+| Review | None: builds are available as soon as they're processed | The first build of a version needs **Beta App Review** (usually quick) |
+| Typical use | Daily QA builds | Wider beta with customers or other departments |
+
+Things every TestFlight tester should know:
+
+- **Builds expire after 90 days.** An expired build can't be opened anymore. If someone reports a bug on an expired build, it needs to be checked on a current one.
+- **"What to Test" notes** come with every build. Read them first: they tell you what changed and what the team wants checked.
+- **Version and build** are shown on every build, for example *Version 2.4.0 (318)*. Many builds can share one version; the number in brackets is the one that matters.
+- **Previous builds.** In the TestFlight app you can install an older build of the same app (as long as it hasn't expired). Useful for checking "did this work before?" and for <Term id="upgrade-testing">upgrade tests</Term>.
+- **Feedback with screenshots.** Take a screenshot while using a beta app, tap **Share Beta Feedback**, add a comment and send it. After a crash, TestFlight can ask you to share details. Both arrive in App Store Connect together with the device, OS and build number.
+- **Installing over the store app.** A TestFlight build replaces the App Store version of the same app (and keeps its data). To go back, reinstall from the App Store.
+
+<Callout type="tip" title="Turn on automatic updates, or don't">
+TestFlight can update beta apps automatically. That's convenient, but it can also swap your build in the middle of a test session. Many testers turn automatic updates **off** and install new builds on purpose, after finishing what they were doing.
+</Callout>
+
+## Google Play testing tracks (Android)
+
+Google Play has its own beta system built into the Play Console. The team uploads a build to a **track**, and testers who joined that track get it through the normal Play Store app, like a regular update.
+
+| Track | Who can join | Notes |
+| --- | --- | --- |
+| **Internal testing** | Up to 100 testers chosen by email | Fastest: available within minutes. Great for daily QA builds. |
+| **Closed testing** | Invited testers (email lists or Google Groups) | For a bigger, controlled group. At the time of writing, new personal developer accounts must run a closed test with at least 12 testers for 14 days before they can publish to production. |
+| **Open testing** | Anyone, from the app's Play Store listing | A public beta. Your app's store page shows a "Join the beta" option. |
+
+Testers first **opt in** with a link from the team, then install or update the app from Google Play. To go back to the public version, they leave the testing program and reinstall.
+
+## Firebase App Distribution
+
+<Term id="firebase-app-distribution" /> sends builds **directly** to testers, without going through a store track. That makes it popular for very early builds, feature branches and debug builds.
+
+<Steps>
+
+1. **You get an email invitation** for the app and accept it in your browser.
+2. **Android:** you install the **App Tester** app (the email guides you). It lists every build you've been given, with release notes. Because App Tester installs apps outside Google Play, Android asks you to allow **Install unknown apps** for it once.
+3. **iOS:** you register your device through a web page (Firebase adds an App Tester web clip to your home screen). iOS builds have to be made for registered devices, so a newly added iPhone may have to wait for the next build.
+4. **Install the build**, open it, and you're testing. New builds show up in App Tester with an email notification.
+
+</Steps>
+
+Developers can upload **APK** files, which install directly, or **AAB** (Android App Bundle) files, which Firebase delivers through Google Play's internal app sharing (that needs the Firebase project linked to Google Play). Firebase builds expire after 150 days.
+
+<Callout type="warning" title="Only from links you trust">
+Allowing "Install unknown apps" for App Tester is fine. Never allow it for a browser or messaging app just because someone sent you an APK file. Builds should only come from your team's distribution tool.
+</Callout>
+
+## Which channel would you use?
+
+Match each situation with the channel that fits best.
+
+<TrackSorter client:visible />
+
+## Environment builds: dev, staging, prod
+
+Teams often build the same app version for different <Term id="environment">environments</Term>:
+
+| Build | Talks to | Usually looks like |
+| --- | --- | --- |
+| **Dev** | Developer or test servers, often unstable | Icon with "DEV" badge, name "FreshCart DEV" |
+| **Staging** | <Term id="staging" /> servers that copy production, with test data | Orange "STG" badge, staging banner in the app |
+| **Production** | Real <Term id="production" /> servers, real money | The real icon and name, like the store version |
+
+Different icons and names let you install several versions side by side and tell them apart at a glance. But they also cause classic mix-ups:
+
+- A tester reports "test promo banner on the home screen", but it's **staging content**, not an app bug.
+- A bug is "fixed" on staging but still happens on production, because the fix was **on the server** and wasn't deployed there yet.
+- A tester uses a production build with a test card and the payment fails, because production rejects test cards.
+
+## Always know which build you're testing
+
+Before you report or retest anything, check three things:
+
+1. **Version and build number**, for example 2.4.0 (318). Good apps show it in **Settings › About**; TestFlight and App Tester show it too. On Android you'll find it in **Settings › Apps › [app]**.
+2. **Environment** (dev, staging or production). Look at the icon, the app name, a banner, or the About screen.
+3. **How you got it** (TestFlight, Play internal track, Firebase), and whether it was a fresh install or an update.
+
+Then copy them into every <Term id="bug-report" />. See [Writing bug reports](/tutorials/writing-bug-reports) and the version numbers section of [Install, Update and Uninstall](/mobile/install-update-uninstall).
+
+## Try it: install a beta and report against it
+
+Your phone has an older build of FreshCart installed. Pick the newest build in the TestFlight mock, read what to test, install it and follow the task. The About screen is behind the gear icon.
+
+<BetaLab client:visible />
+
+<Callout type="info" title="What this shows">
+The bug only exists in **318**. If you report it as "latest" or against 309, a developer may install the wrong build, see no bug and close it as "can't reproduce". And notice how the staging build has a different app name and banner: the environment is part of the bug report too.
+</Callout>
+
+## When a new build arrives
+
+A new build in TestFlight or App Tester is your cue for a small routine:
+
+<Steps>
+
+1. **Read the release notes** ("What to Test"). What's new, what's fixed, what's a known issue, which environment it uses.
+2. **Install it and confirm** the version, build number and environment in the About screen.
+3. **Smoke test.** A quick <Term id="smoke-testing">smoke test</Term>: the app opens, you can log in, the main flows (search, cart, checkout) work. If it's badly broken, report that right away so nobody wastes time.
+4. **Verify fixed bugs.** For every bug listed as fixed in *this* build, do <Term id="retesting" /> with the original steps. Close it, or reopen it with the new build number.
+5. **Test the new features** the notes mention.
+6. **Regression.** Check the areas around the changes (and your regular <Term id="regression-testing">regression</Term> set) for things that broke.
+
+</Steps>
+
+## Practical exercise: plan your retests
+
+FreshCart 2.4.0 (318) just arrived. Read the release notes, look at each bug in the tracker, and decide what to do with it **on this build**. Watch for fixes that aren't in this build, reports from old builds, known issues and environment confusion.
+
+<RetestPlanner client:visible />
+
+## Common mistakes
+
+| # | Mistake | What happens | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Testing an old build** | Fixed bugs "still fail", new features "are missing" | High (wasted time, wrong reopen) |
+| 2 | **"Build: latest" in reports** | Developer can't tell which code you tested | Medium |
+| 3 | **Retesting before the fix is in the build** | Bug reopened although the fix was never delivered | Medium |
+| 4 | **Staging vs production mix-up** | Test data or server-only issues reported as app bugs | Medium |
+| 5 | **Ignoring release notes** | Known issues re-reported as duplicates; changed areas not tested | Low–Medium |
+| 6 | **Bug reported on an expired build** | Nobody can install that build to reproduce it | Low |
+| 7 | **Only testing fresh installs of betas** | Upgrade bugs from the store version are missed | High |
+
+## Tools and how-to
+
+<Tabs labels={['TestFlight', 'Google Play', 'Firebase']}>
+<Tab>
+
+**As a tester**
+
+1. Install **TestFlight** from the App Store.
+2. Open the invitation email (or public link) and tap **View in TestFlight**, then **Accept** and **Install**.
+3. Open the app from TestFlight or the home screen; beta apps have an orange dot next to their name.
+4. Feedback: take a screenshot in the beta app › tap the preview › **Share Beta Feedback**. Or open TestFlight › the app › **Send Beta Feedback**.
+5. Older builds: TestFlight › the app › **Previous Builds**.
+
+**The team** uploads builds from Xcode (**Product › Archive › Distribute App**) or a CI pipeline, then adds testers and "What to Test" notes in **App Store Connect › TestFlight**.
+
+</Tab>
+<Tab>
+
+**As a tester**
+
+1. Open the opt-in link the team sends you and tap **Become a tester** (use the Google account that's signed in to Play on your phone).
+2. Install or update the app from the Play Store. It can take a little while to show up the first time.
+3. To leave, open the same link and choose to leave the program, then reinstall the store version.
+
+**The team** uploads an AAB in **Play Console › Testing › Internal testing / Closed testing / Open testing** and manages tester lists there. For quick one-off builds there's also **internal app sharing**, which gives a download link per upload.
+
+</Tab>
+<Tab>
+
+**As a tester**
+
+1. Accept the email invitation.
+2. Android: install **App Tester**, sign in with the invited Google account, and allow **Install unknown apps** for it when asked. iOS: follow the steps to register your device and add the App Tester web clip.
+3. Pick a build in App Tester, read its notes and tap **Download**/**Install**.
+
+**The team** uploads builds in the **Firebase console › App Distribution**, with the Firebase CLI (`firebase appdistribution:distribute`) or Gradle/fastlane plugins, and picks testers or tester groups for each release.
+
+</Tab>
+</Tabs>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-BETA-001',
+      title: 'New build is the one shown in About',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['TestFlight shows build 2.4.0 (318) as available'],
+      steps: ['Install 2.4.0 (318) from TestFlight', 'Open the app', 'Go to Settings › About'],
+      expected: 'About shows "2.4.0 (318)" and environment "Staging", matching TestFlight.',
+    },
+    {
+      id: 'TC-BETA-002',
+      title: 'Smoke test of a new beta build',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open the app', 'Log in with the test account', 'Search for "milk" and add an item to the cart', 'Go to checkout and pay with a test card'],
+      expected: 'All steps work without crashes or errors; the order confirmation is shown.',
+    },
+    {
+      id: 'TC-BETA-003',
+      title: 'Beta build installs over the store version and keeps data',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Store version 2.3.2 installed and signed in', 'Two items saved as favorites'],
+      steps: ['Install 2.4.0 (318) from TestFlight over the store app', 'Open the app'],
+      expected: 'User is still signed in and both favorites are there.',
+    },
+    {
+      id: 'TC-BETA-004',
+      title: 'Fixed bug is verified on the build that contains the fix',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['BUG-412 fix version is 2.4.0 (318)', 'Build 318 is installed'],
+      steps: ['Go to checkout', 'Enter the expired coupon code SUMMER23', 'Tap Apply'],
+      expected: 'Error "This code has expired" is shown and the total does not change. BUG-412 can be closed with build 318 noted.',
+    },
+    {
+      id: 'TC-BETA-005',
+      title: 'Firebase build installs on Android via App Tester',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Tester invitation accepted', 'App Tester installed'],
+      steps: ['Open App Tester', 'Select the newest FreshCart release', 'Tap Download and allow installs from App Tester if asked', 'Open the app and check About'],
+      expected: 'The app installs and About shows the same version and build as App Tester.',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="New beta build checklist"
+  storageKey="beta-distribution"
+  items={[
+    'Read the release notes: new features, fixed bugs, known issues, environment',
+    'Installed the new build (not left on the previous one)',
+    'Confirmed version, build number and environment in the About screen',
+    'Ran a quick smoke test of the main flows',
+    'Retested only bugs whose fix version matches this build',
+    'Did not re-report known issues listed in the notes',
+    'Checked staging-only content or data before reporting it as an app bug',
+    'Tested at least one upgrade from the current store version',
+    'Every new bug report has version, build, environment, device and OS',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A developer says a bug is fixed, but it still happens on your phone. What should you check first?',
+      options: ['Whether your phone needs a restart', 'Which build is installed, and whether the fix is in that build', 'Whether the developer tested it', 'The phone\'s battery level'],
+      answer: 1,
+      explain: 'Compare the build in your About screen with the fix version. Often the fix is simply in a newer build you haven\'t installed.',
+    },
+    {
+      q: 'What happens to a TestFlight build after 90 days?',
+      options: ['It becomes the App Store version', 'It expires and can no longer be opened', 'It turns into an external build', 'Nothing'],
+      answer: 1,
+      explain: 'TestFlight builds expire 90 days after upload. Testers need a newer build to keep testing.',
+    },
+    {
+      q: 'Your Android QA team needs a build through the Play Store within minutes of upload. Which track fits best?',
+      options: ['Open testing', 'Closed testing', 'Internal testing', 'Production'],
+      answer: 2,
+      explain: 'Internal testing is the fastest Play track and is meant for small teams of up to 100 testers.',
+    },
+    {
+      q: 'Why does Android ask you to allow "Install unknown apps" for Firebase App Tester?',
+      options: ['Because the build is broken', 'Because App Tester installs apps from outside Google Play', 'Because you have no storage', 'Because the app is for iOS'],
+      answer: 1,
+      explain: 'Android blocks installs from sources other than the Play Store unless you allow that specific app to install them.',
+    },
+    {
+      q: 'A staging build shows a "TEST PROMO, do not ship" banner. What is the best next step?',
+      options: ['Report a critical bug immediately', 'Check whether the banner is staging test content before reporting it as an app bug', 'Uninstall the app', 'Ignore everything on staging'],
+      answer: 1,
+      explain: 'Staging servers hold test content. Check against production content first, and mention the environment in any report.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Beta distribution gets **real builds onto real phones** before a release: **TestFlight** for iOS, **Play testing tracks** and **Firebase App Distribution** for Android.
+- TestFlight: **internal** (team, up to 100, no review) vs **external** (up to 10,000, email or public link, Beta App Review). Builds **expire after 90 days**.
+- Play tracks: **internal** (fast, small team), **closed** (invited group), **open** (anyone). Firebase sends builds **directly**, via App Tester.
+- Dev, staging and production builds look different on purpose. Always know **which environment** you're on.
+- Before every report or retest, check **version, build number and environment** in the About screen.
+- New build routine: **read notes → install and confirm → smoke test → verify fixes → test new features → regression**.
+
+</KeyTakeaways>

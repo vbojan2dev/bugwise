@@ -1,0 +1,530 @@
+---
+title: Deep Links
+description: How links from emails, SMS, QR codes, ads and push notifications open the right screen in an app, what usually breaks, and how to trigger and test deep links on Android and iOS.
+order: 12
+level: intermediate
+minutes: { short: 40 }
+platform: both
+tags: [deep links, universal links, app links, mobile, navigation, marketing]
+---
+
+import DeepLinkExplorer from '@/components/demos/deep-links/DeepLinkExplorer';
+import { BuggyLinkTester } from '@/components/demos/deep-links/BuggyLinkTester';
+
+Your friend sends you a link to a rain jacket. You tap it, and instead of the jacket, the shopping app opens on its Home screen. Or it opens the website and asks you to log in again. Or it opens the right product, but pressing **Back** throws you out of the app. You shrug and close it. The marketing team paid for that click, and nobody will ever know why it didn't turn into a sale.
+
+Links into apps are everywhere: newsletters, order emails, SMS, QR codes on posters, ads, Instagram posts, push notifications. They connect the outside world to one exact screen in the app, and they cross many systems on the way: the email tool, the browser, the operating system, the website and the app. That's exactly where bugs hide. By the end of this lesson you'll know how deep links work, which situations to test, and how to fire links at a phone in seconds.
+
+## How it works
+
+A <Term id="deep-link" /> is a link that opens a **specific screen inside an app**, not just the app's start screen. "Open Pinecone" is a normal link. "Open Pinecone **on product 42**" is a deep link.
+
+<Steps>
+
+1. **Someone taps a link.** In an email, an SMS, a chat, a QR code scanned with the camera, an ad, or a notification.
+2. **The phone decides who opens it.** Is there an installed app that's allowed to handle this link? If yes, the app opens. If not, the browser (or the app store) opens instead.
+3. **The app reads the link.** It takes the path and parameters (for example `/product/42`) and works out which screen that means. This part of the app is called the **router**.
+4. **The app checks the situation.** Is the user logged in? Does product 42 still exist? Is the user allowed to see order 8812?
+5. **The app shows the screen, with a sensible history.** Product 42 is on screen, and **Back** leads somewhere that makes sense (usually the app's Home), not out of the app.
+
+</Steps>
+
+### Two kinds of links: custom schemes and https links
+
+There are two ways to build a deep link, and testers meet both.
+
+| | Custom URL scheme | Universal Link (iOS) / App Link (Android) |
+| --- | --- | --- |
+| **Looks like** | `pinecone://product/42` | `https://pinecone.example/product/42` |
+| **App not installed** | Nothing happens or an error | The website opens (a free web fallback) |
+| **Who can claim it** | Any app can register `pinecone://` | Only the app the website owner approves |
+| **Typical use** | Push notifications, links between your own apps | Emails, SMS, QR codes, ads, social posts |
+
+A **custom scheme** is like a nickname that the app registers on the phone: "send me everything that starts with `pinecone://`". It's simple, but it has two problems: if the app isn't installed, the link is dead, and another app could register the same nickname.
+
+**Universal Links** (Apple's name) and **App Links** (Android's name) are normal `https://` web addresses. If the app is installed, the phone opens the app. If not, the same link simply opens the website. To stop any random app from grabbing `pinecone.example` links, the **website has to vouch for the app** with a small verification file:
+
+<Tabs labels={['iOS: apple-app-site-association', 'Android: assetlinks.json']}>
+<Tab>
+
+The file is called `apple-app-site-association` (no `.json` at the end) and lives in the `/.well-known/` folder of the website. It lists which app may open which paths:
+
+```json
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["ABCDE12345.com.pinecone.app"],
+        "components": [{ "/": "/product/*" }, { "/": "/orders/*" }, { "/": "/go/*" }]
+      }
+    ]
+  }
+}
+```
+
+The app itself also lists the domains it wants (`applinks:pinecone.example`) in its settings, called **Associated Domains**. Apple downloads the file through its own servers when the app is installed or updated, so a fixed file can take a while to reach phones.
+
+</Tab>
+<Tab>
+
+The file is called `assetlinks.json`, lives in the `/.well-known/` folder of the website, and names the app's package and the fingerprint of the certificate it was signed with:
+
+```json
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.pinecone.app",
+    "sha256_cert_fingerprints": ["14:6D:E9:83:...:A5"]
+  }
+}]
+```
+
+Android checks the file when the app is installed. If the check fails, Android 12 and newer **open the link in the browser** instead of the app.
+
+<DevNote>The app's manifest lists the domains with `android:autoVerify="true"`.</DevNote>
+
+</Tab>
+</Tabs>
+
+<Callout type="tip" title="What the tester takes away from these files">
+
+You don't need to write them. You need to know that **each domain needs its own file** (`pinecone.example` and `www.pinecone.example` are different domains), that the file must be reachable over <Term id="https" /> without redirects, and that on Android the fingerprint must match the build you're testing. A debug build, a test build and the Play Store build are often signed with **different certificates**, so "App Links work in debug but not in production" is a classic.
+
+</Callout>
+
+### Deferred deep links: when the app isn't installed yet
+
+A normal link can't survive an app install. You tap an ad for "10% off your first tent", go to the store, install, open the app... and land on a generic welcome screen. The offer is gone.
+
+A **deferred deep link** fixes this. The link first goes through a link service that **remembers** what you wanted. After installation, the app asks "was this person sent here by a link?" and opens the offer on first launch. Android has a built-in helper for this (the Play **Install Referrer**). iOS has no built-in equivalent, so link services (Branch, AppsFlyer, Adjust and similar) use their own matching, which is not 100% reliable. Firebase Dynamic Links, which many older apps used, was shut down in 2025, so old links that still point to it are worth a check.
+
+The tricky part for testers: the offer must open **exactly once**. Not zero times, and not on every launch. See also [Onboarding](/features/onboarding), which usually runs right before.
+
+### Try it: what happens when you tap?
+
+Pick a link type, whether the app is installed, and where the link was tapped:
+
+<DeepLinkExplorer client:visible />
+
+### Where links come from
+
+The same link can behave differently depending on **where** it's tapped. A good test plan covers the real sources:
+
+| Source | Why it's special |
+| --- | --- |
+| **Email** | Marketing tools often wrap links in a click-tracking redirect (`click.mailer.example/…`), so the phone sees *their* domain, not yours, and opens the browser |
+| **SMS / chat apps** | Usually work well, but some messengers open links in their own in-app browser |
+| **Push notifications** | Often use a custom scheme or an ID. See [Push Notifications](/features/push-notifications) |
+| **QR codes** | Scanned with the camera app; long URLs make dense codes that are hard to scan from a poster |
+| **Ads and social apps** | Instagram, Facebook, TikTok and LinkedIn often open links in their **in-app browser**, which shows the website instead of opening your app |
+| **Web pages** | A link from your own website to your own domain usually stays in the browser on iOS. Tapping from another site opens the app |
+
+<Callout type="info" title="In-app browsers are not your app's bug, but they are your problem">
+
+When Instagram opens a link inside its own browser, the operating system never gets the chance to hand it to your app. You can't fix Instagram, but the **web page** can: it should show a clear "Open in app" button and work well on its own.
+
+</Callout>
+
+## Example requirements
+
+<Callout type="example" title="User story: Product links open the app">
+
+**As a** Pinecone customer, **I want** product and order links from emails, SMS, QR codes and ads to open the right screen in the app **so that** I don't have to search for what I was just shown.
+
+**Acceptance criteria**
+
+1. Product links (`/product/{id}`) on both `pinecone.example` and `www.pinecone.example` open the product screen in the app when it's installed, from any state: open, in the background, or not running.
+2. When the app is not installed, the same link opens the product on the website, with a "Get the app" banner.
+3. Tracking parameters (`utm_source`, `utm_medium`, `utm_campaign`, `ref`) are ignored by the app's routing but sent to analytics.
+4. If the user must be logged in (orders, account), the app shows Log in first and then **continues to the linked screen**.
+5. If the product no longer exists, the app shows "This product is no longer available" with a link to similar products. It never crashes or shows an empty screen.
+6. After a deep link, **Back** goes to the app's Home screen (or the previous screen if the app was already open), never straight out of the app.
+7. Campaign links (`/go/{campaign}`) survive an install: after installing from the link and finishing onboarding, the campaign screen opens **once**.
+8. Unknown paths open the app's Home screen (or a friendly "Page not found" with a way home).
+
+</Callout>
+
+Criteria 1 (both domains), 3 (parameters), 4 (continue after login) and 6 (Back) are the ones developers most often forget, because nobody writes them down. If your story doesn't mention them, ask.
+
+## What usually goes wrong
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Link opens the website instead of the app** | Verification file missing on one domain (often `www`), wrong fingerprint, or wrapped in click tracking | High |
+| 2 | **Target lost after login** | Logged-out user taps an order link, logs in, lands on Home | Medium–High |
+| 3 | **Deleted or old content crashes** | Old email link to a removed product: crash, blank screen or endless spinner | High |
+| 4 | **Back exits the app** | App started from a link has only one screen in its history | Medium |
+| 5 | **Parameters break routing** | `?utm_source=email` makes the app show "Page not found" | High (marketing links all carry them) |
+| 6 | **Works only when the app is already open** | From a killed state the link opens Home and the target is ignored | High |
+| 7 | **Deferred link lost or repeated** | After install the offer never opens, or opens on every launch | Medium |
+| 8 | **Wrong user's data** | Link to `/orders/8812` shows another customer's order | Critical (security) |
+| 9 | **Custom scheme used where the app may be missing** | `pinecone://` in an email does nothing for people without the app | Medium |
+| 10 | **No web fallback** | The https link opens a 404 page on the website | High |
+
+## Find the bug
+
+Pinecone, an outdoor gear shop, has **six deep-link bugs**. On the left are links as they would arrive by email, SMS, QR code, push and ads. Change the **device state** between tests like a real tester would:
+
+- Tap every link with the app **killed**, then again with it **in the background** (open the app and press **Home**).
+- Log out, then try the order links.
+- Uninstall the app and tap the ad.
+- After every link, press **Back** and see where you end up.
+- Watch the **device log**.
+
+<BugHunt
+  title="Pinecone deep links"
+  bugs={[
+    {
+      title: 'www links open the website instead of the app',
+      hint: 'Tap the SMS from Jonas with the app installed. Then compare with the QR code link.',
+      detail: 'Links to <code>pinecone.example</code> open the app, but the same kind of link on <code>www.pinecone.example</code> opens Chrome. The log says the domain is not verified: <code>assetlinks.json</code> is only published on the bare domain. Each host needs its own verification file (and the app must list it). Expected: both domains open the app.',
+    },
+    {
+      title: 'After logging in, the app forgets where the link was going',
+      hint: 'Turn "Logged in" off and tap the "order has shipped" email or the push.',
+      detail: 'The app correctly asks you to log in first, but after <strong>Log in</strong> it goes to Home instead of order #8812. The user has to find the order again. Expected: the app remembers the target and continues to it after a successful login.',
+    },
+    {
+      title: 'Link to a deleted product shows a blank screen',
+      hint: 'Tap the old 2024 email.',
+      detail: 'The API answers <code>404</code> for product 999 and the app shows an empty screen with only a back arrow. The website handles the same link well ("This product is no longer available"). Expected: a friendly message and a way forward, never a blank screen or crash.',
+    },
+    {
+      title: 'Back after a cold-start link closes the app',
+      hint: 'With the app not running, tap the QR code link and press Back. Then open Pinecone from the home screen, press Home, tap the same link and press Back.',
+      detail: 'When the app was not running, the product screen is the <em>only</em> screen in the history, so Back (and the ← arrow) exits to the phone’s home screen. From the background it works. Expected: on a cold start the app builds a sensible back stack (Home underneath), so Back goes to Home.',
+    },
+    {
+      title: 'Tracking parameters lead to "Page not found"',
+      hint: 'Compare the newsletter link with the QR code link. Both point to product 42.',
+      detail: 'The newsletter link has <code>?utm_source=newsletter&amp;utm_medium=email</code>. The app’s router matches the whole string including the query, finds no route and shows "Page not found". Every marketing link carries such parameters, so whole campaigns fail. Expected: the router ignores the query string for matching (and passes the parameters to analytics).',
+    },
+    {
+      title: 'Deferred link after install loops onboarding forever',
+      hint: 'Turn "Pinecone installed" off, tap the banner ad, install and open the app. Finish onboarding, then reopen the app from the home screen.',
+      detail: '"Get started" sends you back to the first onboarding page, and every launch starts onboarding again. The pending link is read but never cleared, and the handler restarts the first-run flow. Expected: after onboarding, the tent offer opens <strong>once</strong>, and the pending link is deleted. A normal install (switch on) shows onboarding only once, so compare the two.',
+    },
+  ]}
+>
+  <BuggyLinkTester client:visible />
+</BugHunt>
+
+<Callout type="tip" title="Notice what works">
+
+The QR code link, the push and the ad (with the app installed) open the right screens. With the app uninstalled, https links fall back to the website. Instagram opens its in-app browser, and the website's **Open in app** button gets you into the app. Knowing what *should* happen in each state is half of deep link testing.
+
+</Callout>
+
+<Callout type="example" title="How would you report bug #4?">
+
+**Title:** Deep link (cold start): Back from product screen closes the app instead of going to Home
+
+**Environment:** Pixel 8, Android 15, Pinecone 5.2.0 (build 3310)
+
+**Steps:** 1. Force-stop the app. 2. Open `https://pinecone.example/product/42` (QR code, or `adb shell am start -a android.intent.action.VIEW -d "https://pinecone.example/product/42"`). 3. Product screen opens. 4. Press **Back**.
+
+**Expected:** The app's Home screen.
+**Actual:** The app closes and the phone's home screen is shown. With the app in the background before step 2, Back correctly returns to the previous screen.
+
+**Severity:** Medium · **Reproducible:** 5/5 from a cold start
+
+</Callout>
+
+## Test scenarios
+
+Deep links multiply quickly: every link × every app state × logged in or out. Use the scenarios below as a menu, and agree with your team which combinations matter most.
+
+### Functional
+
+- Every supported link type opens the **right screen with the right content**: products, categories, orders, search results, campaigns, password reset ([Password Reset](/features/password-reset)).
+- **App states:** open in the foreground, in the background, and **not running** (killed). The killed case is a separate code path (a cold start) and breaks most often. Read [Background and Foreground](/mobile/background-and-foreground) for how to kill an app properly and why the OS does it on its own.
+- **Logged in vs logged out:** links to private screens ask for login and then **continue to the target**. Links to public screens don't ask for login at all.
+- **Installed vs not installed:** https links fall back to the website. Campaign links survive the install (deferred deep links) and open **once**.
+- **Back and Up:** after the link, Back goes to a sensible place. Test from a cold start and from the background.
+- **Tabs:** a link to an order selects the **Orders tab** (or wherever orders live), so the bottom navigation matches the screen.
+- **Both domains:** `pinecone.example` and `www.pinecone.example`, and any short-link or tracking domain the marketing team uses.
+
+### Negative
+
+- Product, order or campaign ID that **doesn't exist** or was deleted.
+- IDs in the wrong format: `/product/abc`, `/product/-1`, `/product/` with nothing after it.
+- Unknown paths: `/sale2023`, `/product/42/reviews` if reviews have no deep link.
+- An **expired** campaign or a password reset link that was already used.
+- A link to an order that belongs to **a different user** (log in as user B and open user A's order link).
+- The app is installed but **outdated** and doesn't know a new link type yet.
+
+### Edge cases
+
+- <Term id="query-parameter">Query parameters</Term>: `?utm_source=email` (often with `utm_medium` and `utm_campaign` too), `?ref=ad`, parameters in a different order, unknown parameters, a `#fragment` at the end.
+- Upper case and trailing slashes: `/Product/42`, `/product/42/`.
+- Special characters: search links like `/search?q=rain%20jacket` or `q=Zoë`.
+- Tapping a link while a **modal**, a payment sheet or an unsaved form is open. Does the app warn before throwing away the user's input?
+- Two links quickly one after another. The second one should win, without a stack of duplicate screens.
+- A link that arrives during **onboarding**, the login screen, or a forced update screen.
+- Deep link while logged in as a different user than the one the email was sent to.
+
+### UI & usability
+
+- The target screen shows a loading state while it fetches data, not an empty screen.
+- "No longer available" screens offer a way forward (similar products, Home).
+- Web fallback pages work on a phone and show a clear "Open in app" / "Get the app" banner.
+- iOS shows a small "◀ Mail" (or "◀ Messages") button in the status bar after a link. Tapping it should return the user to where they came from.
+- The link preview (title and image) looks right when the link is pasted into a chat app.
+
+### Security
+
+- Links never log the user in or change data without confirmation. `pinecone://transfer?amount=500` must not move money on its own.
+- Links can't show data the user isn't allowed to see. That's an <Term id="idor" /> bug, see [Web Security Basics](/web/security-basics).
+- One-time tokens (password reset, email confirmation, magic login links) work once, expire, and are **not** in custom-scheme links, which other apps could intercept.
+- Unknown or malformed parameters don't crash the app or get displayed as raw text (try `<b>` or a very long value).
+
+### Accessibility
+
+- After the link opens, a <Term id="screen-reader" /> starts on the new screen's title, not somewhere in the middle.
+- "Open in app" banners on the website are real buttons with a clear name, reachable with the keyboard.
+- "Not available" and login prompts are announced, not only shown visually.
+
+## How to open links while testing
+
+You don't need to send yourself an email for every test. Each platform can fire a link at a phone directly.
+
+<Tabs labels={['Android', 'iOS', 'Any phone']}>
+<Tab>
+
+With [ADB](/mobile/adb-basics) and a phone or emulator connected:
+
+```bash
+# Open a link as if it was tapped (Android decides: app or browser)
+adb shell am start -W -a android.intent.action.VIEW -d "https://pinecone.example/product/42"
+
+# Force it into a specific app (skips the verification check, so don't use it to test verification)
+adb shell am start -W -a android.intent.action.VIEW -d "pinecone://orders/8812" com.pinecone.app
+
+# Links with & need quotes around the whole command, or the device shell cuts them off
+adb shell 'am start -W -a android.intent.action.VIEW -d "https://pinecone.example/product/42?utm_source=email&utm_medium=newsletter"'
+
+# Android 12+: is App Link verification OK for each domain?
+adb shell pm get-app-links com.pinecone.app
+
+# Kill the app first to test a cold start
+adb shell am force-stop com.pinecone.app
+```
+
+`pm get-app-links` lists every domain with a state such as `verified`, or a failure. Ask the developers to re-run verification with `adb shell pm verify-app-links --re-verify com.pinecone.app` after a fix. In Android Studio, **Tools → App Links Assistant** can also test links and check the `assetlinks.json` file.
+
+</Tab>
+<Tab>
+
+In the [iOS Simulator](/mobile/simulators-and-emulators):
+
+```bash
+# Open a link in the booted simulator
+xcrun simctl openurl booted "https://pinecone.example/product/42"
+xcrun simctl openurl booted "pinecone://orders/8812"
+
+# Kill the app first to test a cold start
+xcrun simctl terminate booted com.pinecone.app
+```
+
+On a real iPhone, paste links into a note in the **Notes** app or send them to yourself in **Messages**, then tap them. A few iOS habits to know:
+
+- **Typing** a Universal Link into Safari's address bar opens the website, not the app. Only **tapping** a link opens the app.
+- If you tap the domain name in the top-right corner after the app opened, iOS remembers that you prefer the browser for that domain. Long-press a link and pick **Open in "Pinecone"** to switch back.
+- Universal Link files are fetched (through Apple's servers) when the app is installed. After the team fixes the file, reinstall the app, and allow some time: Apple may keep serving the old file for a while (up to about a day).
+
+</Tab>
+<Tab>
+
+- **QR codes:** paste the link into any QR code generator on your computer and scan the screen with the phone's camera. Great for testing real posters and packaging links, including long URLs.
+- **Chat and email:** send links to yourself through the channels customers use: email (in the Gmail and Outlook apps, not only the built-in mail app), SMS, WhatsApp.
+- **Social apps:** post or DM the link in Instagram, Facebook or LinkedIn (a test account) and tap it there to see the in-app browser.
+- **A test page:** many teams keep a simple internal web page with all supported links as tappable buttons. Open it on the phone and tap away. Ask if your team has one.
+- **Push:** send a test notification with the deep link inside, see [Push Notifications](/features/push-notifications).
+
+</Tab>
+</Tabs>
+
+<Callout type="warning" title="Reset the device between tests">
+
+Deep link bugs depend on state. Before each run, decide and write down: installed or not, logged in or not, app killed or in the background, and which build. "Uninstall, reinstall, then tap" is the only honest way to test a first launch and deferred links. See [Install, Update, Uninstall](/mobile/install-update-uninstall).
+
+</Callout>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-DL-001',
+      title: 'Product link opens the app from a cold start',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['App installed, user logged in', 'App force-stopped'],
+      steps: ['Open pinecone.example/product/42 from Messages', 'Check the screen', 'Press Back'],
+      expected: 'The app opens directly on Trail Tent 2P (no browser in between). Back shows the app Home screen.',
+    },
+    {
+      id: 'TC-DL-002',
+      title: 'www and bare domain both open the app',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['App installed'],
+      steps: ['Tap pinecone.example/product/17', 'Return to Messages', 'Tap www.pinecone.example/product/17'],
+      expected: 'Both links open the Storm Rain Jacket screen in the app.',
+    },
+    {
+      id: 'TC-DL-003',
+      title: 'Logged-out user continues to the order after login',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['App installed, user logged out', 'Order 8812 belongs to sam@test.com'],
+      steps: ['Tap pinecone.example/orders/8812', 'Log in as sam@test.com'],
+      data: 'sam@test.com / Test1234!',
+      expected: 'The Log in screen appears first. After login, order #8812 opens. Back goes to Home.',
+    },
+    {
+      id: 'TC-DL-004',
+      title: 'Tracking parameters do not break routing',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['App installed'],
+      steps: ['Open pinecone.example/product/42 with the parameters ?utm_source=newsletter&utm_medium=email&utm_campaign=spring added'],
+      expected: 'Trail Tent 2P opens. The campaign parameters appear in the analytics event for the app open.',
+    },
+    {
+      id: 'TC-DL-005',
+      title: 'Link to a deleted product',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Product 999 was removed from the catalog'],
+      steps: ['Open pinecone.example/product/999 with the app killed', 'Repeat with the app in the background'],
+      expected: 'Both times the app shows "This product is no longer available" with a link to similar products. No crash, no blank screen.',
+    },
+    {
+      id: 'TC-DL-006',
+      title: 'Web fallback when the app is not installed',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['App not installed'],
+      steps: ['Tap pinecone.example/product/42 in an email'],
+      expected: 'The product opens on the website in the browser, with a "Get the app" banner. No error page.',
+    },
+    {
+      id: 'TC-DL-007',
+      title: 'Deferred campaign link opens once after install',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['App not installed', 'Clean test device'],
+      steps: ['Tap pinecone.example/go/spring-tent', 'Install the app from the store and open it', 'Finish onboarding', 'Kill the app and open it again from the home screen'],
+      expected: 'After onboarding, the tent offer opens. On the second launch the normal Home screen opens and onboarding is not shown again.',
+    },
+    {
+      id: 'TC-DL-008',
+      title: 'Order link of another user is not shown',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Logged in as lea@test.com', 'Order 8812 belongs to sam@test.com'],
+      steps: ['Open pinecone.example/orders/8812'],
+      expected: 'The app shows "Order not found" (or similar). None of Sam\'s order details are shown, and the API returns 403 or 404.',
+    },
+  ]}
+/>
+
+## Mobile vs web
+
+<Tabs labels={['Mobile app', 'Website']}>
+<Tab>
+
+- **Two link systems:** Universal Links on iOS and App Links on Android behave differently. Test both platforms, they rarely break the same way.
+- **App states** matter a lot: foreground, background and killed each take a different path through the code. See [Background and Foreground](/mobile/background-and-foreground).
+- **The back stack** is the app's job. After a cold start there's no history, so the app has to build one.
+- **Install and update:** verification files are read at install time. Test fresh installs, updates from an older version, and links to screens an old version doesn't know.
+- **Notifications** usually carry deep links too. Test them together with [Push Notifications](/features/push-notifications).
+
+</Tab>
+<Tab>
+
+- On the web, every page already has a URL, so "deep linking" mostly means: **every URL works when opened directly**, not only when you click your way there. Paste a product URL into a fresh private window.
+- Single-page apps can break this: the page works when you navigate, but **reloading** or opening the URL directly shows a 404. Test refresh on every important page.
+- Logged-out users should go through login and come back to the page (often a `?redirect=` or `returnUrl` parameter). Check that the redirect only goes to **your own site**, not to any URL in the parameter (an "open redirect").
+- The website is also the **fallback** for the app's links. Every path the app supports needs a working page here.
+- Check the "Get the app" / "Open in app" banner: it shouldn't cover content, should be dismissible, and should remember being dismissed.
+
+</Tab>
+</Tabs>
+
+## Checklist
+
+<Checklist
+  title="Deep links checklist"
+  storageKey="deep-links"
+  items={[
+    'Every supported link opens the right screen and content in the app',
+    'Links work from foreground, background and killed states',
+    'Both domains (with and without www) and any tracking or short-link domain open the app',
+    'Logged-out users log in and then continue to the linked screen',
+    'Deleted, invalid or old IDs show a friendly message, never a crash or blank screen',
+    'Query parameters (utm, ref) and fragments do not break routing',
+    'Back after a link goes to a sensible screen; the right tab is selected',
+    'With the app not installed, https links open a working web page with a Get the app banner',
+    'Deferred links open the target once after install, and never again',
+    'Links in in-app browsers (Instagram, Facebook) lead to a page with a working Open in app button',
+    'Links never show another user\'s data or perform an action without confirmation',
+    'Verification files are checked on every domain (adb pm get-app-links, reinstall on iOS)',
+    'Links were tested from real sources: email apps, SMS, QR codes, push and social apps',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'Which link opens the website when the app is NOT installed?',
+      options: ['pinecone://product/42', 'https://pinecone.example/product/42 (Universal Link / App Link)', 'Neither, both show an error', 'Both open the website'],
+      answer: 1,
+      explain: 'Universal Links and App Links are normal https addresses, so without the app the browser opens them. A custom scheme has no web page behind it.',
+    },
+    {
+      q: 'Links to pinecone.example open the app, but links to www.pinecone.example open the browser. What is the most likely cause?',
+      options: ['The phone has no internet', 'The verification file (apple-app-site-association / assetlinks.json) is missing or not set up for the www domain', 'The product was deleted', 'The user is logged out'],
+      answer: 1,
+      explain: 'Each domain is checked separately. If www has no verification file, or the app does not list it, the phone hands the link to the browser.',
+    },
+    {
+      q: 'A logged-out user taps an order link, logs in, and lands on Home. What is the bug?',
+      options: ['None, Home is the default screen after login', 'The app forgot the link target; it should continue to the order after login', 'The user should not be asked to log in', 'The link should open the website'],
+      answer: 1,
+      explain: 'The app must remember the target while the user logs in and then continue to it. Otherwise the link is wasted.',
+    },
+    {
+      q: 'You open a product link with the app killed and press Back. The app closes. Why does this matter?',
+      options: ['It does not matter, Back always closes apps', 'After a cold start the app should build a back stack so Back leads to Home', 'The link should have opened the website', 'The product page should not have a back arrow'],
+      answer: 1,
+      explain: 'Users expect to keep exploring the app. Many apps put Home under the linked screen on a cold start. From the background, Back should return to where the user was.',
+    },
+    {
+      q: 'Which adb command opens a link on a connected Android phone as if it was tapped?',
+      options: ['adb install "https://pinecone.example/product/42"', 'adb shell am start -a android.intent.action.VIEW -d "https://pinecone.example/product/42"', 'adb logcat "https://pinecone.example/product/42"', 'adb shell pm clear "https://pinecone.example/product/42"'],
+      answer: 1,
+      explain: 'am start with the VIEW action and -d data URL sends the link to Android, which decides whether the app or the browser opens it.',
+    },
+    {
+      q: 'A user taps a link in an Instagram post and sees your website inside Instagram, even though your app is installed. What should you check?',
+      options: ['That the website offers a working "Open in app" button and works well on its own', 'That the app crashes', 'Nothing, Instagram links never work', 'That the user uninstalls Instagram'],
+      answer: 0,
+      explain: 'In-app browsers often keep links inside the social app. That is platform behavior, so the web page must handle it gracefully.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A <Term id="deep-link" /> opens one specific screen in an app. **Custom schemes** (`pinecone://`) are simple but die without the app; **Universal Links / App Links** are https links that fall back to the website.
+- Universal Links and App Links need a **verification file on every domain** (`apple-app-site-association`, `assetlinks.json`). A missing `www` file or a wrong certificate fingerprint quietly sends users to the browser.
+- Test every important link × **installed or not** × **logged in or out** × **foreground, background or killed**.
+- Classic bugs: target lost after login, deleted IDs crashing, Back exiting the app, `utm` parameters breaking routes, deferred links lost or repeated, and in-app browsers that never open the app.
+- Fire links quickly with `adb shell am start -a android.intent.action.VIEW -d "…"`, `xcrun simctl openurl booted "…"`, Notes or Messages, and QR codes, and reset the device state between runs.
+
+</KeyTakeaways>

@@ -1,0 +1,45 @@
+teaser: "You tap the dark area around a dialog and your edits vanish. Should a stray tap ever be able to do that?"
+cards:
+  - type: flip
+    front: "What makes a window a modal?"
+    back: "It sits on top of the screen and blocks everything behind it until the user responds or dismisses it."
+  - type: thisorthat
+    prompt: "A user saves a new delivery address. The app wants to confirm it worked."
+    left: "Modal with OK"
+    right: "Toast or snackbar"
+    answer: right
+    explain: "Success needs no decision. A modal adds a pointless tap, and users learn to hit OK without reading the dialogs that matter."
+  - type: spotbug
+    screen: ["Are you sure?", "Do you want to continue?", "[ No ]   [ Yes ]"]
+    question: "What's wrong with this delete dialog?"
+    bug: "Vague question and Yes / No buttons."
+    explain: "Sure about what? Name the action, e.g. Delete 3 photos?, repeat the verb on the button, and style it as destructive."
+  - type: quiz
+    q: "\"Discard changes?\" is open. The user taps the dark area outside it. What should happen?"
+    options: ["The edits are discarded", "Dialog closes, user keeps editing", "The edits are saved"]
+    answer: 1
+    explain: "Every exit except the confirm button means cancel. An outside tap must never destroy the user's work."
+  - type: spotbug
+    screen: ["Delete account?  [Delete]", "Network log:", "DELETE /api/me  200", "DELETE /api/me  404", "\"Couldn't delete account.\""]
+    bug: "A double tap sent two requests and showed a false error."
+    explain: "The confirm button stayed active during the request. The account was deleted, but the last response wins. Disable it after the first tap."
+  - type: quiz
+    q: "On the web, Tab inside a modal lands on a link behind it. What's missing?"
+    options: ["A scroll lock", "A loading state", "A focus trap"]
+    answer: 2
+    explain: "A focus trap keeps Tab and Shift+Tab inside the modal. Focus should also return to the trigger when it closes."
+  - type: truefalse
+    statement: "On Android, System Back should close an open dialog before leaving the screen."
+    answer: true
+    explain: "Back must close the topmost dialog, like Cancel. If it does nothing, users who navigate with Back feel stuck."
+  - type: truefalse
+    statement: "In a delete dialog, initial focus should be on the Delete button."
+    answer: false
+    explain: "The safe option is the default. Pressing Enter or initial focus should never trigger Delete."
+  - type: spotbug
+    screen: ["Delete account? (Large text)", "Your orders and saved addresses", "will be removed forever and...", "(buttons cut off, can't scroll)"]
+    bug: "The buttons are off-screen and the dialog can't scroll."
+    explain: "With large text the user can neither confirm nor cancel. The body should scroll with buttons always visible."
+  - type: tip
+    title: "Try every way out"
+    text: "Close each modal with Cancel, X, tap outside, Esc, System Back and swipe down. All of them mean cancel."

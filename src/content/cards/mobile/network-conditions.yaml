@@ -1,0 +1,46 @@
+teaser: "Full Wi-Fi bars, and the app still crashes on launch. What is really coming down that connection?"
+cards:
+  - type: flip
+    front: "Latency, bandwidth, packet loss: which hurts what?"
+    back: "Latency hurts chatty apps with many small requests. Low bandwidth hurts heavy content like images and uploads. Packet loss hurts everything unpredictably."
+  - type: flip
+    front: "What is a captive portal?"
+    back: "Hotel, airport or train Wi-Fi that shows as connected, but every request gets an HTML login page back instead of real data."
+  - type: quiz
+    q: "The spinner never stops on a lossy network, and turning on Retry changes nothing. What is missing?"
+    options: ["A cache", "A timeout", "A push notification"]
+    answer: 1
+    explain: "Without a timeout the app never learns that the request failed, so it never retries or shows an error."
+  - type: quiz
+    q: "A screen makes ten tiny requests in a row and feels slow on 3G. Most likely cause?"
+    options: ["High latency", "Low bandwidth", "Full phone storage"]
+    answer: 0
+    explain: "Each request waits for round trips. At 300 ms latency, ten small requests in a row take seconds, even though the data is tiny."
+  - type: truefalse
+    statement: "Full 5G bars in the status bar mean the connection is good."
+    answer: false
+    explain: "A packed stadium on 5G can be slower than a quiet 3G cell. In bug reports, write how you simulated the network, not what the icon showed."
+  - type: truefalse
+    statement: "Network Link Conditioner slows down every app on the iPhone until you turn it off."
+    answer: true
+    explain: "It affects all traffic and stays on. Make resetting your network tools the last step of every test session."
+  - type: thisorthat
+    prompt: "Offline, the shop app shows yesterday's cached prices. What should the screen show?"
+    left: "Just the prices"
+    right: "Offline banner and timestamp"
+    answer: right
+    explain: "Stale prices shown as current mislead users. Cached content is useful offline, but it must be clearly labeled, like 'Last updated 2 h ago'."
+  - type: thisorthat
+    prompt: "A payment request timed out on a weak network. Should the app retry it automatically?"
+    left: "Only if idempotent"
+    right: "Yes, always"
+    answer: left
+    explain: "Safe requests like loading a list can retry with backoff. Payments only retry if the server can recognize a repeat, or users get charged twice."
+  - type: spotbug
+    screen: ["Orders", "Loading... (spinner)", "Network: offline", "GET /v2/orders failed 2 min ago"]
+    bug: "The spinner never stops, with no error or retry."
+    explain: "The request failed but the app ignored it. It should show a friendly offline message with Try again, or cached orders."
+  - type: spotbug
+    screen: ["Refresh failed", "Error Domain=NSURLErrorDomain", "Code=-1009", "[ OK ]"]
+    bug: "A raw system error is shown to the user."
+    explain: "Users can't act on error codes. Say 'You're offline. Check your connection and try again.' and keep technical details in logs."

@@ -1,0 +1,60 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/ui/Icon.astro';
+import { href } from '@/lib/url';
+---
+
+<BaseLayout title="You're offline" description="This page isn't saved on this device yet." noindex>
+  <section class="container-page max-w-2xl py-20 text-center sm:py-28">
+    <span class="mx-auto grid size-14 place-items-center rounded-2xl bg-subtle text-muted">
+      <Icon name="wifi-off" size={26} />
+    </span>
+    <h1 class="mt-6 text-3xl font-bold tracking-tight">You're offline</h1>
+    <p class="mt-4 text-lg text-muted">
+      This page isn't saved on this device yet. Pages you've opened before still work without internet, and your progress is safe: it's stored on
+      this device.
+    </p>
+    <div class="mt-10 text-left" data-offline-list hidden>
+      <h2 class="text-sm font-semibold tracking-wider text-faint uppercase">Available offline</h2>
+      <ul class="mt-3 divide-y divide-line rounded-2xl border border-line bg-surface"></ul>
+    </div>
+    <a href={href('/')} class="mt-10 inline-flex h-11 items-center gap-2 rounded-xl bg-brand px-5 font-medium text-brand-fg">Try again</a>
+  </section>
+</BaseLayout>
+
+<script>
+  // List the pages this device has saved, so learners can keep going offline.
+  (async () => {
+    if (!('caches' in window)) return;
+    const keys = await caches.keys();
+    const name = keys.find((k) => k.endsWith('-pages'));
+    if (!name) return;
+    const cache = await caches.open(name);
+    const seen = new Set<string>();
+    const items: { url: string; title: string }[] = [];
+    for (const req of await cache.keys()) {
+      const url = new URL(req.url);
+      // Only pages (paths ending in /), not icons or the manifest.
+      if (!url.pathname.endsWith('/') || url.pathname.endsWith('/offline/') || seen.has(url.pathname)) continue;
+      seen.add(url.pathname);
+      const res = await cache.match(req);
+      const html = res ? await res.text() : '';
+      const raw = html.match(/<title>([^<]*)<\/title>/)?.[1] ?? url.pathname;
+      const title = raw.startsWith('Bugwise ·') ? 'Home' : raw.replace(/ · Bugwise.*$/, '').replace(/&amp;/g, '&');
+      items.push({ url: url.pathname, title });
+    }
+    if (!items.length) return;
+    const box = document.querySelector<HTMLElement>('[data-offline-list]')!;
+    const ul = box.querySelector('ul')!;
+    for (const i of items.sort((a, b) => a.title.localeCompare(b.title)).slice(0, 60)) {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = i.url;
+      a.textContent = i.title;
+      a.className = 'block px-4 py-2.5 text-sm hover:bg-subtle';
+      li.append(a);
+      ul.append(li);
+    }
+    box.hidden = false;
+  })();
+</script>

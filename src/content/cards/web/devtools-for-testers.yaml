@@ -1,0 +1,43 @@
+teaser: "A website says \"Order placed!\" and the order never arrives. One key on your keyboard can prove what really happened."
+cards:
+  - type: flip
+    front: "Which four DevTools panels do testers use most?"
+    back: "Elements (HTML and CSS), Console (JavaScript errors), Network (every request) and Application (cookies and storage)."
+  - type: spotbug
+    screen: ["Toast: Profile saved!", "Network: PUT /api/profile  500", "After reload: old name is back"]
+    bug: "The page shows success although the server failed."
+    explain: "A false success: the user thinks the change was saved but it was lost. The page message must match the real status code."
+  - type: quiz
+    q: "Your login redirects and the request you wanted disappears from the Network panel. What do you turn on?"
+    options: ["Disable cache", "Preserve log", "Throttling: Offline"]
+    answer: 1
+    explain: "Preserve log keeps requests across page loads and redirects, so you don't lose the evidence."
+  - type: quiz
+    q: "A request takes 6 s, and 5.8 s of it is \"Waiting for server response\". Where's the problem?"
+    options: ["The user's Wi-Fi", "The browser cache", "The server or backend"]
+    answer: 2
+    explain: "That's the time before the first byte arrives, so the server is slow to respond. A slow network shows up mostly as long download time."
+  - type: thisorthat
+    prompt: "You enter the wrong password and the login request returns 401. The page says \"Wrong password\"."
+    left: "Correct behavior"
+    right: "Bug"
+    answer: left
+    explain: "A 4xx can be correct. Wrong password should be rejected, and the page tells the user the truth. A 5xx is almost always a bug."
+  - type: spotbug
+    screen: ["GET /api/me  200", "{ \"name\": \"Maya\",", "  \"passwordHash\": \"$2b$10...\" }", "Page shows: Hi, Maya"]
+    bug: "The response leaks the password hash."
+    explain: "Anyone can read responses in DevTools, even if the page hides them. APIs should only return fields the page needs. This is critical."
+  - type: truefalse
+    statement: "If you fix a bug by editing HTML in the Elements panel, the real site is fixed."
+    answer: false
+    explain: "Elements edits only exist in your tab and vanish on reload. Use them to explore, then report what the real page does."
+  - type: truefalse
+    statement: "One click on a filter should send exactly one API request."
+    answer: true
+    explain: "Duplicate requests double server load and can cause flicker. On POST requests, the same bug creates duplicate orders."
+  - type: flip
+    front: "Why be careful attaching a HAR file to a ticket?"
+    back: "HAR files and cURL commands can contain cookies, session tokens and personal data. Check them first and never post them publicly."
+  - type: tip
+    title: "Clear before every action"
+    text: "Clear the Console and Network log before an important action. Then every new line clearly belongs to your step."

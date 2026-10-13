@@ -1,0 +1,102 @@
+---
+import Icon from '@/components/ui/Icon.astro';
+---
+
+<dialog
+  data-search
+  class="mx-auto mt-[10vh] w-[min(40rem,calc(100vw-2rem))] max-w-none rounded-2xl border border-line bg-elevated p-0 text-fg shadow-float backdrop:bg-black/40 backdrop:backdrop-blur-sm"
+>
+  <div class="flex items-center gap-3 border-b border-line px-4">
+    <Icon name="search" size={18} class="text-faint" />
+    <input
+      data-search-input
+      type="search"
+      placeholder="Search lessons, components, terms…"
+      class="h-14 flex-1 bg-transparent text-base outline-none placeholder:text-faint"
+      autocomplete="off"
+      aria-label="Search the site"
+    />
+    <kbd class="rounded-md border border-line px-1.5 py-0.5 font-mono text-[11px] text-faint">Esc</kbd>
+  </div>
+  <div data-search-results class="max-h-[60vh] overflow-y-auto p-2">
+    <p class="px-3 py-8 text-center text-sm text-faint">Type to search the whole site.</p>
+  </div>
+</dialog>
+
+<script>
+  type PagefindResult = { url: string; excerpt: string; meta: { title?: string; section?: string } };
+  type Pagefind = {
+    options: (o: object) => Promise<void>;
+    search: (q: string) => Promise<{ results: { data: () => Promise<PagefindResult> }[] }>;
+  };
+
+  const dialog = document.querySelector<HTMLDialogElement>('[data-search]')!;
+  const input = dialog.querySelector<HTMLInputElement>('[data-search-input]')!;
+  const results = dialog.querySelector<HTMLDivElement>('[data-search-results]')!;
+  const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+  let pagefind: Pagefind | null | undefined;
+
+  async function load() {
+    if (pagefind !== undefined) return pagefind;
+    try {
+      const url = `${base}/pagefind/pagefind.js`;
+      pagefind = (await import(/* @vite-ignore */ url)) as Pagefind;
+      await pagefind.options({ baseUrl: base + '/' });
+    } catch {
+      pagefind = null;
+    }
+    return pagefind;
+  }
+
+  const open = () => {
+    dialog.showModal();
+    input.select();
+    load();
+  };
+  document.querySelectorAll('[data-search-open]').forEach((b) => b.addEventListener('click', open));
+  document.addEventListener('keydown', (e) => {
+    const typing = /INPUT|TEXTAREA|SELECT/.test((e.target as HTMLElement).tagName);
+    if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing)) {
+      e.preventDefault();
+      open();
+    }
+  });
+  dialog.addEventListener('click', (e) => {
+    if (e.target === dialog) dialog.close();
+  });
+
+  let timer: number | undefined;
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = window.setTimeout(run, 120);
+  });
+
+  async function run() {
+    const q = input.value.trim();
+    if (!q) {
+      results.innerHTML = '<p class="px-3 py-8 text-center text-sm text-faint">Type to search the whole site.</p>';
+      return;
+    }
+    const pf = await load();
+    if (!pf) {
+      results.innerHTML =
+        '<p class="px-3 py-8 text-center text-sm text-faint">The search index is created by <code>npm run build</code>.<br/>Run <code>npm run build &amp;&amp; npm run preview</code> to try search locally.</p>';
+      return;
+    }
+    const res = await pf.search(q);
+    const items = await Promise.all(res.results.slice(0, 10).map((r) => r.data()));
+    if (q !== input.value.trim()) return;
+    results.innerHTML = items.length
+      ? items
+          .map(
+            (r) => `<a href="${r.url}" class="block rounded-xl px-3 py-2.5 hover:bg-subtle focus:bg-subtle focus:outline-none">
+              <div class="flex items-center gap-2"><span class="font-medium">${r.meta.title ?? r.url}</span>${
+                r.meta.section ? `<span class="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand">${r.meta.section}</span>` : ''
+              }</div>
+              <p class="mt-0.5 line-clamp-2 text-sm text-muted [&_mark]:bg-transparent [&_mark]:font-semibold [&_mark]:text-fg">${r.excerpt}</p>
+            </a>`,
+          )
+          .join('')
+      : `<p class="px-3 py-8 text-center text-sm text-faint">No results for “${q.replace(/</g, '&lt;')}”.</p>`;
+  }
+</script>

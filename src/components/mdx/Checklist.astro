@@ -1,0 +1,10 @@
+---
+import ChecklistIsland from '@/components/islands/ChecklistIsland';
+interface Props {
+  title?: string;
+  items: string[];
+  storageKey?: string;
+}
+---
+
+<ChecklistIsland client:visible {...Astro.props} />

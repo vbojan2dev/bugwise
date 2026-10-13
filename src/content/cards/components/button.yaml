@@ -1,0 +1,46 @@
+teaser: "Two pizzas, one order, a card charged twice. How can a single button cause that?"
+cards:
+  - type: flip
+    front: "Button or link? The one-line rule."
+    back: "If it does something, it's a button. If it goes somewhere, it's a link."
+  - type: thisorthat
+    prompt: "A \"Terms of service\" control opens a new page with the legal text."
+    left: "Button"
+    right: "Link"
+    answer: right
+    explain: "It goes somewhere instead of doing something. On the web, links also support Ctrl/Cmd-click and show their URL."
+  - type: spotbug
+    screen: ["[ Place order ... ]  (spinner)", "Network log:", "POST /api/orders  201", "POST /api/orders  201"]
+    bug: "Two taps during loading created two orders."
+    explain: "The loading button still accepted taps. It must block repeat taps, and the server should reject duplicates with idempotency keys."
+  - type: quiz
+    q: "After a server error, the Pay button keeps spinning forever. What wasn't handled?"
+    options: ["The hover state", "The error outcome of loading", "The focused state"]
+    answer: 1
+    explain: "Every loading state needs an exit for success and for failure. Test with a slow network and a failing one."
+  - type: spotbug
+    screen: ["Promo code: (empty)", "[ Apply ]  (greyed out)", "Tap Apply...", "\"Something went wrong\""]
+    bug: "The greyed-out button still sends a request."
+    explain: "It's only styled grey, not really disabled. A disabled button must do nothing on tap, click, Enter or Space."
+  - type: quiz
+    q: "A dialog asks \"Remove this card?\" Which label is best for the confirm button?"
+    options: ["Remove card", "OK", "Yes"]
+    answer: 0
+    explain: "A specific verb plus object tells users exactly what happens, even if they skip the dialog text."
+  - type: thisorthat
+    prompt: "A payment screen shows three filled buttons side by side: Cancel, Edit, Send €50."
+    left: "Too many primaries"
+    right: "Fine as is"
+    answer: left
+    explain: "Use one primary action per screen. When everything shouts, users hesitate or tap the wrong one."
+  - type: truefalse
+    statement: "The minimum touch target is 44×44 pt on iOS and 48×48 dp on Android."
+    answer: true
+    explain: "The visible icon can be smaller, but the tappable area must meet these sizes or users miss it and think the app froze."
+  - type: truefalse
+    statement: "Users tapping twice is user error, so double orders aren't a bug."
+    answer: false
+    explain: "Double taps are normal, especially on slow connections. A double submit is usually Critical because customers get charged twice."
+  - type: tip
+    title: "Throttle the network first"
+    text: "On fast office Wi-Fi the double-tap gap is milliseconds. Throttle to slow 3G and tap twice quickly to make loading-state bugs appear."

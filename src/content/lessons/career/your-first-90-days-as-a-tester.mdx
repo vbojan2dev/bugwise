@@ -1,0 +1,227 @@
+---
+title: Your First 90 Days as a Tester
+description: What to expect in your first QA job, from onboarding and learning the product to asking good questions, filing your first bug reports, working with developers and choosing where to grow next, such as automation or a specialization.
+order: 6
+level: beginner
+minutes: { short: 6, long: 10 }
+platform: both
+tags: [career, onboarding, first job, growth]
+---
+
+You got the job. Congratulations! On Monday you'll get a laptop, a dozen accounts and a Slack channel full of names you don't know. By Wednesday someone will say *"Can you take a look at this ticket?"*
+
+Nobody expects a junior tester to know everything in the first weeks. What teams do notice is **how** you learn: whether you ask good questions, write clear bugs, and become a little more useful every week. Here's what a typical first three months look like, and how to make them count.
+
+<Callout type="note" title="Every team is different">
+
+Some companies have a formal onboarding plan and a QA mentor; others hand you a login and a sprint board. Use this as a rough guide, and ask your lead early what they expect from you at 30, 60 and 90 days.
+
+</Callout>
+
+## The first 90 days at a glance
+
+| Days | Focus | You know it's going well when |
+| --- | --- | --- |
+| 1 to 30 | Learn the product, people and process | You can demo the main flows and know who to ask what |
+| 31 to 60 | Own small pieces of testing | You test stories end to end and your bugs rarely bounce back |
+| 61 to 90 | Add value beyond the tickets | You suggest an improvement and someone uses it |
+
+<Short>
+
+## The essentials
+
+### Days 1 to 30: learn
+
+- **Use the product like a customer.** Sign up, complete the main flows, on the devices and browsers users actually use.
+- **Learn the process.** How a ticket moves through the board, where bugs go, what "done" means, how releases happen.
+- **Read old bugs.** Recent bug reports show where the product breaks and how this team writes them.
+- **Meet people.** A short chat with a developer, the product owner and someone in support.
+
+### Ask good questions
+
+Try first for 15 to 30 minutes, then ask, saying what you already tried. Write the answers down so you don't ask twice.
+
+### Your first bug reports
+
+Search for duplicates, follow the team's template, reproduce before you file, and ask a senior tester to review your first few. See [How to Write a Bug Report](/tutorials/writing-bug-reports).
+
+### Working with developers
+
+Be curious, not accusing. Talk early, show evidence, and when they say "it's not a bug", ask what the expected behavior should be.
+
+### Growing
+
+After a few months, notice what you enjoy: automation, APIs, mobile, accessibility, performance, security. Pick one direction and learn it alongside your job.
+
+Switch to **Detailed** for more on each phase, how to ask questions well, and where testers commonly grow next.
+
+</Short>
+
+<Long>
+
+## Days 1 to 30: learn the product, people and process
+
+**The product.** Use it as a real customer would, on the devices and browsers your users have. Build a simple **feature map**: a list or mind map of the main areas, user types and integrations. [Testing Without Documentation](/tutorials/testing-without-documentation) shows how. Mark what feels risky or confusing; a new pair of eyes notices things the team stopped seeing.
+
+**The process.** Find out:
+
+- How a story moves across the board, and when QA gets involved. See [Working with Jira](/tutorials/working-with-jira).
+- The team's <Term id="definition-of-done" /> and bug template.
+- What severities and priorities mean **here**, since teams define them differently. See [Severity vs Priority](/fundamentals/severity-vs-priority).
+- How a release works: <Term id="staging" />, test builds, <Term id="regression-testing" />, who decides go or no-go.
+
+**The people.** Ask your lead who to talk to, then book 20-minute chats with a developer, the product owner and someone in customer support. Good questions: *"What are the most important flows? What breaks most often? What would be the worst bug for us?"*
+
+## Asking good questions
+
+New people worry about asking too much. In practice, teams worry more about new people who **don't** ask and then lose a day.
+
+<Compare>
+<Do title="A question someone can answer fast">
+
+"I'm trying to test the refund flow on staging. I used the test account from the wiki and the card from the payment docs, but refunds stay 'pending'. Is there a step to trigger them on staging, or should I ask someone in payments?"
+
+</Do>
+<Dont title="A question that starts a guessing game">
+
+"Refunds don't work, can you help?"
+
+</Dont>
+</Compare>
+
+- **Try first** for 15 to 30 minutes: read the wiki, search Slack, search old tickets.
+- **Say what you tried** and what you expected.
+- **Batch small questions** into one message instead of five pings.
+- **Write the answers down.** Your notes become the onboarding guide for the next person, which is a great first contribution.
+
+## Days 31 to 60: own small pieces
+
+You'll start getting stories of your own. For each one:
+
+<Steps>
+
+1. **Read the story early.** Check its <Term id="acceptance-criteria" /> before development finishes, and ask questions early. See [User Stories and Acceptance Criteria](/tutorials/user-stories-and-acceptance-criteria).
+2. **Write down your test ideas** as a short checklist or a few test cases, in whatever format the team uses. See [Test Scenarios vs Test Cases vs Checklists](/tutorials/scenarios-cases-checklists).
+3. **Test it,** including negative and edge cases and the mobile or browser specifics from your lessons.
+4. **Report what you found** and **what you didn't test**, in the ticket or in stand-up.
+
+</Steps>
+
+### Your first bug reports
+
+- **Search for duplicates** first.
+- **Use the team's template and fields** exactly.
+- **Reproduce before you file,** and note how often it happens.
+- **Ask a senior tester to review** your first few reports. Most people are happy to, and it's the fastest way to learn the team's style.
+- **Follow up:** when a fix comes, retest it promptly, and run a little <Term id="regression-testing" /> around it.
+
+### Working with developers
+
+Testers and developers are on the same side: both want the product to work. A few habits help:
+
+- **Talk early.** A five-minute question while they're building beats a bug after they've moved on.
+- **Describe, don't blame.** "The total shows €23.9 after removing an item" not "you broke the cart".
+- **Bring evidence:** steps, screenshots, logs, network responses from <Term id="devtools" />.
+- **When they say "not a bug",** ask what the expected behavior is and who decides. See [this model answer](/interview/developer-says-not-a-bug) and [working with developers in a sprint](/interview/working-with-developers-in-a-sprint).
+
+## Days 61 to 90: add value beyond the tickets
+
+By now you know the product and the process. Look for one small improvement that helps the team, for example:
+
+- A **smoke checklist** for releases, if there isn't one. See [Regression and Smoke Suites](/tutorials/regression-and-smoke-suites).
+- An **onboarding page** from your notes.
+- A short **device or browser matrix** based on real analytics.
+- A recurring **exploratory session** on a risky area nobody owns.
+
+Then have a short conversation with your lead: what went well, what to improve, and what you'd like to learn next.
+
+## Where to grow next
+
+After your first months, you'll notice which parts of the work you enjoy most. Common directions:
+
+- **Test automation:** writing code that runs checks, often for web, API or mobile. Start with: the basics of a programming language your team uses, then their test framework.
+- **API and backend:** testing services directly, checking data. Start with: [API Testing with Postman](/web/api-testing-with-postman) and [SQL for Testers](/tutorials/sql-for-testers).
+- **Mobile specialist:** devices, OS versions, gestures, interruptions, store releases. Start with: the [Mobile Testing](/mobile) lessons.
+- **Accessibility:** WCAG, screen readers, inclusive design. Start with: [Accessibility Basics (WCAG)](/web/accessibility-basics).
+- **Performance or security:** specialist tools and techniques. Start with: [Performance Basics](/web/performance-basics), [Security Basics](/web/security-basics).
+- **Test lead or QA lead:** planning, strategy, coaching others. Start with: [Writing a Test Plan](/tutorials/writing-a-test-plan), the mid and senior questions in [Interview Prep](/interview).
+
+There's no "right" path, and manual and exploratory testing skills stay valuable in all of them. If you're curious about automation, ask whether you can pair with someone who writes the team's automated tests. It's the most realistic way to learn what it involves. See [working with automation engineers](/interview/working-with-automation-engineers).
+
+</Long>
+
+## Your 90-day checklist
+
+<Checklist
+  title="First 90 days"
+  storageKey="your-first-90-days-as-a-tester"
+  items={[
+    "I've used every main flow of the product as a customer",
+    "I have a simple feature map and know the risky areas",
+    "I know how a ticket moves, what 'done' means and how releases work",
+    "I've had short chats with a developer, the product owner and support",
+    "I ask questions after trying first, and write the answers down",
+    "A senior tester reviewed my first bug reports",
+    "I test stories end to end and say what I didn't test",
+    "I've suggested one small improvement to how the team tests",
+    "I've talked with my lead about what I want to learn next",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "You've been stuck on a staging problem for 20 minutes after reading the wiki. What's best?",
+      options: [
+        "Keep trying alone for the rest of the day",
+        "Ask, saying what you tried and what you expected",
+        "Skip the test and don't mention it",
+      ],
+      answer: 1,
+      explain: "Try first, then ask with context. It saves everyone time, and nobody expects a new tester to know staging quirks.",
+    },
+    {
+      q: "What's a good way to make your first bug reports match the team's standard?",
+      options: [
+        "Use your own format from a course",
+        "Follow the team's template and ask a senior tester to review the first few",
+        "Only report bugs verbally",
+      ],
+      answer: 1,
+      explain: "Every team has its own conventions. A quick review early saves many back-and-forths later.",
+    },
+    {
+      q: "A developer says your bug 'works as designed'. What do you do first?",
+      options: [
+        "Reopen the ticket with 'it's still broken'",
+        "Ask what the expected behavior is and who decides, and check the requirements",
+        "Escalate to the CTO",
+      ],
+      answer: 1,
+      explain: "It may be a requirements gap, a misunderstanding or a real bug. Clarifying the expected behavior is the fastest way forward.",
+    },
+    {
+      q: "Which is a realistic first step toward test automation?",
+      options: [
+        "Rewrite the whole regression suite in a new framework in month two",
+        "Pair with someone who writes the team's automated tests and learn the basics of their language",
+        "Stop doing manual and exploratory testing",
+      ],
+      answer: 1,
+      explain: "Learning alongside the team shows you what automation involves here. Manual and exploratory skills stay valuable.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Nobody expects a junior to know everything. Teams notice how you learn, ask and communicate.
+- Days 1 to 30: learn the product, process and people. Days 31 to 60: own small pieces. Days 61 to 90: add one improvement.
+- Ask good questions: try first, say what you tried, batch small ones, write answers down.
+- First bug reports: search for duplicates, use the team's template, reproduce first, get early reviews.
+- Work with developers as teammates: talk early, describe without blame, bring evidence.
+- After a few months, pick a direction to grow: automation, APIs, mobile, accessibility, performance, security or leadership.
+
+</KeyTakeaways>

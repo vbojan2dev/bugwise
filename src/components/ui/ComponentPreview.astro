@@ -1,0 +1,15 @@
+---
+// Tiny static previews for the component gallery cards.
+// Each component provides its own: src/components/demos/<slug>/Preview.astro
+interface Props {
+  id: string;
+}
+const { id } = Astro.props;
+const previews = import.meta.glob<{ default: AstroComponentFactory }>('../demos/*/Preview.astro', { eager: true });
+const Preview = previews[`../demos/${id}/Preview.astro`]?.default;
+import type { AstroComponentFactory } from 'astro/runtime/server/index.js';
+---
+
+<div class="grid h-full place-items-center">
+  {Preview ? <Preview /> : <div class="h-8 w-24 rounded-lg bg-line" />}
+</div>

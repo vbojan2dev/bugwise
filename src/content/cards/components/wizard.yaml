@@ -1,0 +1,45 @@
+teaser: "You press Back to fix a typo, and the whole address form is empty. Why do multi-step forms lose data so easily?"
+cards:
+  - type: flip
+    front: "What is a wizard (multi-step form)?"
+    back: "A long task split into ordered steps with a step indicator, like Contact › Shipping › Payment › Review."
+  - type: flip
+    front: "Linear vs non-linear wizard?"
+    back: "Linear: steps in a fixed order, no skipping ahead. Non-linear: open any step in any order; the last step checks everything is complete."
+  - type: spotbug
+    screen: ["Step 3 of 4: Payment", "Shipping address", "Street: [          ]", "[ Back ]  [ Continue ]"]
+    bug: "The indicator says Payment while the Shipping form is shown."
+    explain: "The indicator, the step text and the form must always agree, after Continue, Back, Edit and refresh."
+  - type: quiz
+    q: "On a web checkout, browser Back on Payment opens the cart. Most likely cause?"
+    options: ["The cart is cached", "Payment provider is slow", "Steps don't have their own URLs"]
+    answer: 2
+    explain: "If the URL stays /checkout for every step, the history has one entry for the whole wizard, so Back leaves it."
+  - type: quiz
+    q: "The user edits Shipping from the Review page and saves. Where should they land?"
+    options: ["Back on Review, all else kept", "On Payment, empty", "On step 1"]
+    answer: 0
+    explain: "Edit is a detour: open the step, save, return to Review. Clearing or re-walking later steps is a common bug."
+  - type: truefalse
+    statement: "Pressing Back in a wizard may clear the previous step so users can double-check it."
+    answer: false
+    explain: "Back must keep everything the user entered. Clearing it forces retyping and makes users abandon the flow."
+  - type: truefalse
+    statement: "A good wizard saves a draft, so refreshing on step 3 returns to step 3 with the data."
+    answer: true
+    explain: "Users get interrupted. A draft lets them continue where they stopped instead of starting over."
+  - type: thisorthat
+    prompt: "A linear checkout. On step 1 you can click Payment in the indicator and it opens."
+    left: "Expected"
+    right: "Bug"
+    answer: right
+    explain: "Linear wizards don't allow skipping ahead. Otherwise users can reach Payment, or even place an order, without an address."
+  - type: thisorthat
+    prompt: "A small control with − 2 + for the number of guests. What is it called on this site?"
+    left: "Stepper (+/−)"
+    right: "Wizard"
+    answer: left
+    explain: "Both are called 'stepper' in the wild. The +/− control changes a number; a wizard walks you through steps."
+  - type: tip
+    title: "Announce every step"
+    text: "Turn on a screen reader and press Continue. You should hear something like 'Step 2 of 4: Shipping'. Silence means a bug."

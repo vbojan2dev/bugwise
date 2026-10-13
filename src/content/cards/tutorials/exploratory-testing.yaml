@@ -1,0 +1,44 @@
+teaser: "Every test case passed, yet the app charged customers twice. How do testers find the bugs nobody wrote a script for?"
+cards:
+  - type: flip
+    front: "What is exploratory testing in one sentence?"
+    back: "Learning about the app, designing tests and running them at the same time, guided by a charter and a time box."
+  - type: flip
+    front: "What's the classic charter template?"
+    back: "Explore <target> with <resources> to discover <information>."
+  - type: quiz
+    q: "Which charter is the strongest?"
+    options: ["Explore the app to find bugs", "Explore order tracking with slow 3G to discover how updates recover", "Explore the Submit button color"]
+    answer: 1
+    explain: "It has a focused target, concrete resources and the information the team needs. The others are too broad or too narrow."
+  - type: quiz
+    q: "The Goldilocks heuristic means trying values that are…"
+    options: ["Typical and valid only", "Picked at random", "Too small, too big, just right"]
+    answer: 2
+    explain: "Try 0, 1, the maximum, beyond it, empty and very long text. It's boundary thinking turned into a habit."
+  - type: truefalse
+    statement: "Exploratory testing is just random clicking without a plan."
+    answer: false
+    explain: "Random clicking has no goal or notes. Exploration has a charter, a time box, notes and a debrief."
+  - type: truefalse
+    statement: "Important findings from exploration often become new scripted regression cases."
+    answer: true
+    explain: "Exploration finds what nobody thought of; scripts then re-check it on every release. They are partners, not rivals."
+  - type: thisorthat
+    prompt: "Mid-session on payments, you notice the profile photo upload looks broken."
+    left: "Switch to photos"
+    right: "Note it, stay on charter"
+    answer: right
+    explain: "Never lose a finding, but don't chase every rabbit. Note it and plan a separate session for it."
+  - type: spotbug
+    screen: ["You're parked", "Zone 4127 until 10:41", "[System back pressed]", "Confirm  Total €3.00", "[ Pay €3.00 ]"]
+    question: "What's wrong after pressing Back?"
+    bug: "Back returns to an already-paid Pay screen."
+    explain: "Tapping Pay again would charge twice. The back button tour finds this: press Back after anything is saved or paid."
+  - type: spotbug
+    screen: ["Sessions", "(no parking yet)", "Loading your parking…", "(still loading after 2 minutes)"]
+    bug: "No empty state: the spinner never stops."
+    explain: "With zero data the screen should say something like 'No active parking'. Always open every screen before you have any data."
+  - type: tip
+    title: "Debrief with PROOF"
+    text: "Past, Results, Obstacles, Outlook, Feelings. Tell your lead what you covered, found, what blocked you, what's left and how you feel about the risk."

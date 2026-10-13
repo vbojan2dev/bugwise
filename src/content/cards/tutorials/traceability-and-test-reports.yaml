@@ -1,0 +1,46 @@
+teaser: "Your run shows 7 of 11 tests passed. Can you tell, in ten seconds, whether the new courier tip was tested at all?"
+cards:
+  - type: flip
+    front: "What is a requirements traceability matrix (RTM)?"
+    back: "A table linking each requirement to its test cases, and usually to their latest results and bugs. It shows what's tested, failing or untested."
+  - type: flip
+    front: "Forward vs backward traceability?"
+    back: "Forward: requirement to tests, finds untested requirements. Backward: test or bug to requirement, finds orphan tests and which story a bug hurts."
+  - type: quiz
+    q: "FD-106 has one test case, and it was Blocked. How should the report describe FD-106?"
+    options: ["Tested", "Failed", "Not verified"]
+    answer: 2
+    explain: "A blocked test proves nothing either way. Counting it as tested hides a risk."
+  - type: quiz
+    q: "Product changes the coupon rule. What does the matrix give you first?"
+    options: ["The cases and bugs linked to it", "The full list of everything affected", "The code that changed"]
+    answer: 0
+    explain: "It shows direct links, a great start for impact analysis. Indirect effects, like reorder copying old coupons, still need your thinking."
+  - type: truefalse
+    statement: "If every requirement has at least one linked test, the product is well tested."
+    answer: false
+    explain: "A link says a requirement has a test, not that it's tested well. One happy-path case per story still misses most bugs."
+  - type: thisorthat
+    prompt: "Which line belongs in a test summary report?"
+    left: "92% passed"
+    right: "Payment untested: sandbox down"
+    answer: right
+    explain: "Saying what wasn't tested, why and how much it matters helps the decision. A pass rate alone can hide failures in the most important area."
+  - type: spotbug
+    screen: ["Test summary: FoodDash 2.0", "Executed: 11, passed: 7", "Testing complete.", "Approved for release."]
+    question: "What's wrong with this report?"
+    bug: "No gaps, bugs or risks, and the tester 'approves' the release."
+    explain: "A report states what wasn't tested, open bugs by severity and risks, then recommends. The product owner decides."
+  - type: thisorthat
+    prompt: "A test case in the repository links to no requirement. Gift cards were cut from the release."
+    left: "Ask, then archive"
+    right: "Keep running it"
+    answer: left
+    explain: "Backward traceability found an orphan. Check whether it tests something removed or a missing story, then archive or relink it."
+  - type: truefalse
+    statement: "'Bugs found per tester' is a good way to measure testers."
+    answer: false
+    explain: "It rewards many small or duplicate reports and punishes testers on stable areas. Use metrics to steer the team, not rank people."
+  - type: tip
+    title: "Link as you go"
+    text: "Link each case to its story when you write it, and each failure to a bug when you find it. Then the matrix builds itself."

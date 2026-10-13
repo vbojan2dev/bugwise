@@ -1,0 +1,62 @@
+---
+import type { MarkdownHeading } from 'astro';
+
+interface Props {
+  headings: MarkdownHeading[];
+}
+const items = Astro.props.headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+
+{
+  items.length > 1 && (
+    <nav aria-label="On this page" class="text-sm" data-toc>
+      <p class="mb-3 text-xs font-semibold tracking-wider text-faint uppercase">On this page</p>
+      <ul class="space-y-1 border-l border-line">
+        {items.map((h) => (
+          <li>
+            <a
+              href={`#${h.slug}`}
+              data-toc-link={h.slug}
+              class:list={[
+                '-ml-px block border-l border-transparent py-1 text-muted transition-colors hover:text-fg',
+                h.depth === 3 ? 'pl-6 text-[13px]' : 'pl-3',
+              ]}
+            >
+              {h.text}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
+
+<script>
+  const links = [...document.querySelectorAll<HTMLAnchorElement>('[data-toc-link]')];
+  const targets = links.map((l) => document.getElementById(l.dataset.tocLink!)).filter(Boolean) as HTMLElement[];
+  const setActive = (id: string) =>
+    links.forEach((l) => {
+      const on = l.dataset.tocLink === id;
+      l.classList.toggle('!border-brand', on);
+      l.classList.toggle('!text-fg', on);
+      l.classList.toggle('font-medium', on);
+    });
+  if (targets.length) {
+    const onScroll = () => {
+      let id = targets[0].id;
+      for (const t of targets) if (t.offsetParent && t.getBoundingClientRect().top < 120) id = t.id;
+      setActive(id);
+    };
+    // Hide entries whose heading is inside a hidden Quick/Detailed block.
+    const filter = () => {
+      links.forEach((l) => {
+        const t = document.getElementById(l.dataset.tocLink!);
+        l.parentElement!.hidden = !t || t.offsetParent === null;
+      });
+    };
+    addEventListener('scroll', onScroll, { passive: true });
+    addEventListener('lessonmode', filter);
+    filter();
+    onScroll();
+  }
+</script>

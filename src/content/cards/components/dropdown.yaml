@@ -1,0 +1,46 @@
+teaser: "Pick a country, pick a city, then change the country. Where does your parcel go now?"
+cards:
+  - type: flip
+    front: "What is a dropdown?"
+    back: "A closed field showing the current value. Tap it to open a list of options, pick one, and the list closes again."
+  - type: thisorthat
+    prompt: "A checkout asks \"Gift wrap?\" with two options: No gift wrap, or Gift wrap (+€2.00)."
+    left: "Dropdown"
+    right: "Radio buttons"
+    answer: right
+    explain: "With only two options, showing both is faster and clearer. A dropdown hides them behind an extra tap, including the price difference."
+  - type: thisorthat
+    prompt: "Users must choose their country from about 200 options."
+    left: "Combo box with search"
+    right: "Plain long dropdown"
+    answer: left
+    explain: "For long lists (15+), add search. Scrolling about 200 countries, five at a time, to reach United Kingdom is painful."
+  - type: spotbug
+    screen: ["Country: Srbija", "City: Zagreb", "[ Place order ]"]
+    bug: "The city wasn't reset when the country changed."
+    explain: "Each dropdown works alone, so this only shows when you change fields backwards. The order ships to an impossible address."
+  - type: spotbug
+    screen: ["Country", "Search: ceska", "No matches"]
+    bug: "Search is accent-sensitive and misses Česká republika."
+    explain: "Many people type without accents or in lowercase. Search should ignore case and accents."
+  - type: quiz
+    q: "A required Country field starts with Afghanistan pre-selected. What's the risk?"
+    options: ["Users skip it, orders say Afghanistan", "The list loads more slowly", "Screen readers can't read it"]
+    answer: 0
+    explain: "A wrong default is worse than none. Use a clear placeholder like \"Select a country\" and block submit until a real choice is made."
+  - type: quiz
+    q: "Highlighted vs selected option: what's the difference?"
+    options: ["They're the same thing", "Selected options sit at the top", "Highlight is focus; selected is the value"]
+    answer: 2
+    explain: "Arrows or the mouse move the highlight; only Enter or a click selects. If hovering changes the value, that's a bug."
+  - type: truefalse
+    statement: "A menu with Edit, Share and Delete is a kind of dropdown."
+    answer: false
+    explain: "A menu runs actions, it doesn't store a value. It may look similar, but it's a different component."
+  - type: truefalse
+    statement: "A custom dropdown needs keyboard and screen reader support tested by hand."
+    answer: true
+    explain: "A native select gets keyboard, screen reader and phone picker support for free. Custom ones rebuild all of it, and that's where bugs hide."
+  - type: tip
+    title: "Always try the last option"
+    text: "Open the dropdown near the bottom of the screen or inside a card. If the menu is clipped, the last options can't be reached."

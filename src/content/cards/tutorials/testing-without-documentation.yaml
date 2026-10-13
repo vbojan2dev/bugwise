@@ -1,0 +1,45 @@
+teaser: "No spec, no user stories, and the release is on Friday. How do you decide what's a bug when nothing is written down?"
+cards:
+  - type: flip
+    front: "What is an oracle in testing?"
+    back: "Any way of deciding whether a result is right or wrong. A spec is one oracle; comparable products, user expectations and public claims are others."
+  - type: flip
+    front: "What does the HICCUPPS heuristic help you spot?"
+    back: "Inconsistencies: with history, image, comparable products, claims, user expectations, the product itself, its purpose, and standards."
+  - type: spotbug
+    screen: ["Home: 112 beans", "Rewards tab: 120 beans", "Same account, seconds apart"]
+    bug: "The app shows two different balances."
+    explain: "No spec needed: one account can't have two balances. The product contradicts itself, so at least one screen is wrong."
+  - type: spotbug
+    screen: ["Store listing: free drink, any size", "App reward: Free drink · Small only", "Cost: 100 beans"]
+    bug: "The app breaks a claim made in the listing."
+    explain: "Public claims are a strong oracle. Report the mismatch, quote the listing, and let the product owner decide which side changes."
+  - type: quiz
+    q: "A refund adds 4 points instead of removing them. Which oracle shows it's a bug?"
+    options: ["User expectations", "Platform guidelines", "History"]
+    answer: 0
+    explain: "Any customer expects a refund to take points back. Comparable loyalty apps do the same, so that oracle also works."
+  - type: quiz
+    q: "Without a spec, what should the Expected line of a bug report include?"
+    options: ["Your personal opinion", "The oracle it's based on", "Just 'should work'"]
+    answer: 1
+    explain: "Naming the oracle, like 'Expected (App Store claim)', shows the reason behind your judgment so others can check it."
+  - type: thisorthat
+    prompt: "$4.50 earned 5 points. The listing says '1 point per $1'. Nobody defined rounding."
+    left: "File a bug"
+    right: "Ask the PO"
+    answer: right
+    explain: "No oracle settles it, so it's a question, not yet a bug. Log it as an assumption and ask a specific question in writing."
+  - type: thisorthat
+    prompt: "Two days, an undocumented app. What do you test first?"
+    left: "Points and payments"
+    right: "Profile settings"
+    answer: left
+    explain: "Test by risk, roughly impact times likelihood. Money, data and core flows come first."
+  - type: truefalse
+    statement: "If the app and the marketing page disagree, the app is always right."
+    answer: false
+    explain: "Oracles can be wrong, and either side may be outdated. Report the inconsistency and let the product owner decide."
+  - type: tip
+    title: "Leave documentation behind"
+    text: "Turn your session into a checklist, a feature map and a small glossary of the app. The next tester starts with the spec nobody wrote."

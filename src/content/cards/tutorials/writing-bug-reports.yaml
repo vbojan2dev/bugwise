@@ -1,0 +1,46 @@
+teaser: "Great find, poor report, and the bug quietly ends up as 'Cannot reproduce'. What turns a bug report into a fix?"
+cards:
+  - type: flip
+    front: "The golden rule of bug reports?"
+    back: "A developer can only fix what they can reproduce. Your report is instructions for recreating the bug, plus proof it's real."
+  - type: thisorthat
+    prompt: "Which title is better? A: 'Payment broken!!!' B: 'Checkout: Pay button stays disabled after entering a valid card on iOS 18'"
+    left: "Title A"
+    right: "Title B"
+    answer: right
+    explain: "Title B follows Where + What + When: the screen, the observed symptom and the condition. Urgency belongs in the priority field, not in capitals."
+  - type: thisorthat
+    prompt: "Which title is better for the same bug?"
+    left: "Pay button stays disabled"
+    right: "Validation regex is wrong"
+    answer: left
+    explain: "Describe the symptom, not your guess at the cause. The disabled button is a fact; the regex is a guess that might be wrong."
+  - type: spotbug
+    screen: ["Title: Checkout: Pay button disabled", "Steps: 1. Go to checkout", "2. Try to pay with a card", "Expected: It works", "Actual: It doesn't work"]
+    question: "What's wrong with this report?"
+    bug: "Vague steps and no real expected or actual result."
+    explain: "'Doesn't work' could mean a crash, a freeze, an error or nothing. Give exact steps and data, and describe precisely what should and did happen."
+  - type: quiz
+    q: "While testing checkout you notice a blurry profile photo. What should you do?"
+    options: ["Add it to the checkout report", "File a separate bug report", "Mention it in chat"]
+    answer: 1
+    explain: "One bug per report. Separate reports can be assigned, prioritized and closed on their own, so nothing gets forgotten when one is fixed."
+  - type: quiz
+    q: "A bug happened 3 times out of 5 attempts. What do you write?"
+    options: ["Always, so it gets attention", "Nothing until it's consistent", "Reproducibility: 3/5 attempts"]
+    answer: 2
+    explain: "An honest rate is a clue. Intermittent bugs often point to timing, network or caching problems."
+  - type: truefalse
+    statement: "When your bug is marked Fixed, you retest it on a build containing the fix."
+    answer: true
+    explain: "'Fixed' means the developer believes it's fixed. You verify it, then close it if it passes or reopen it with fresh evidence."
+  - type: truefalse
+    statement: "A real card number in a bug report is fine if the tracker is internal."
+    answer: false
+    explain: "Never put real card numbers, passwords or personal data in reports. Use test data, and blur or crop sensitive details in screenshots, logs and HAR files."
+  - type: flip
+    front: "What goes in the Environment field?"
+    back: "App version and build, device, OS version, browser and version for web, test environment like staging, and the network."
+  - type: tip
+    title: "Isolate before you file"
+    text: "Ask 'does it still happen if…' on another platform, device, account, data or the previous build. A few minutes here tells developers where to look."

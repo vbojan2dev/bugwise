@@ -1,0 +1,46 @@
+teaser: "Your lead asks what happened to the bug you reported on Monday. Is 'I told someone in chat' a good answer?"
+cards:
+  - type: flip
+    front: "What does a bug's status tell the team?"
+    back: "Where the bug is in the workflow right now, and who has to do what next."
+  - type: flip
+    front: "Status vs resolution?"
+    back: "Status is where the bug is right now (Open, In Progress, Closed). Resolution is why the work ended (Fixed, Duplicate, Won't fix)."
+  - type: quiz
+    q: "A developer moves your bug to Fixed. What does that tell you?"
+    options: ["The bug is gone, close it", "The developer believes it's fixed", "It's in the next release for sure"]
+    answer: 1
+    explain: "Fixed means the code changed. Only your retest on a build that contains the fix shows whether the bug is really gone."
+  - type: quiz
+    q: "The developer writes 'Fixed in 2.4.0 (311)'. Your test phone has 2.4.0 (309). What next?"
+    options: ["Retest now on 309", "Mark it Verified", "Install build 311 first"]
+    answer: 2
+    explain: "Build 309 doesn't contain the fix, so retesting on it proves nothing. Compare the fix version with your build number first."
+  - type: thisorthat
+    prompt: "Retesting a banking fix: the transfer limit bug is gone, but the confirmation screen now shows the wrong date."
+    left: "Reopen the old bug"
+    right: "File a new, linked bug"
+    answer: right
+    explain: "The original bug is fixed, so verify it and track the new problem separately. Some teams reopen when the fix clearly caused it, so follow your team's rule."
+  - type: thisorthat
+    prompt: "Your bug was resolved as Cannot reproduce. The developer tested on Wi-Fi; you found it on mobile data."
+    left: "Reopen: 'Still happens'"
+    right: "Add the network detail"
+    answer: right
+    explain: "Most Cannot reproduce results come from a missing detail. Add 'mobile data' to the preconditions, attach a recording, then reopen or reassign."
+  - type: truefalse
+    statement: "A bug with the status Closed was always fixed."
+    answer: false
+    explain: "Closed can come with the resolution Duplicate, Won't fix or Cannot reproduce. Ten closed bugs might be only four fixes."
+  - type: truefalse
+    statement: "If your retest fails, the bug becomes Reopened and goes back to the developer."
+    answer: true
+    explain: "Reopen it with the build you tested, what still happens and fresh evidence, so the developer can pick it up quickly."
+  - type: spotbug
+    screen: ["SHOP-1542 · Ready for test", "Tester comment: Works now.", "Status changed to Verified"]
+    question: "What's wrong with this verification?"
+    bug: "The comment doesn't say what was checked, or where."
+    explain: "A useful verification names the build, the devices and what was checked, including nearby features. 'Works now' can't be trusted later."
+  - type: tip
+    title: "Search before you file"
+    text: "Duplicates waste everyone's time. Search the tracker first, and if the bug is already there, add your new details to that ticket as a comment."

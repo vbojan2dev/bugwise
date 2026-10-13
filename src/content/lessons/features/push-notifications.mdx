@@ -1,0 +1,488 @@
+---
+title: Push Notifications
+description: How push notifications reach a phone, how permissions, app states and deep links change what users see, what usually breaks, and how testers trigger and test pushes on iOS, Android and the web.
+order: 4
+level: intermediate
+minutes: { short: 40 }
+platform: mobile
+tags: [push notifications, mobile, deep links, permissions, localization]
+---
+
+import PushFlow from '@/components/demos/push/PushFlow';
+import NotificationAnatomy from '@/components/demos/push/NotificationAnatomy';
+import { BuggyDeliveryPush } from '@/components/demos/push/BuggyDeliveryPush';
+
+It's 8 pm, you're hungry, and your phone buzzes: **"Marco picked up your order. Arriving in 18 min."** You tap it, and the app opens straight on the order with a live map. That moment feels effortless, but behind it are your app, your company's server, Apple or Google, the phone's operating system, a permission the user gave months ago, and a deep link. Any of them can break.
+
+And when push breaks, users notice fast. The notification arrives twice. It arrives at 3 am. It says "Your order from \{\{restaurant\}\}". It keeps coming after you turned it off, so people uninstall the app. This lesson shows you how <Term id="push-notification">push notifications</Term> work, where they fail, and how to test them without waiting for a real order.
+
+## How it works
+
+A push notification is a message your company's server sends to an app on a phone, even when the app isn't open. The server doesn't contact the phone directly. It goes through a delivery service run by the platform owner:
+
+- **APNs** (Apple Push Notification service) for iPhone and iPad.
+- **FCM** (Firebase Cloud Messaging) from Google for Android (and it can forward to APNs for iOS too).
+
+<PushFlow />
+
+<Steps>
+
+1. **The app asks for permission.** Without it, the phone won't show anything (more on this below).
+2. **The app registers and gets a device token.** A long random string from APNs or FCM that identifies *this app on this device*. Think of it as a postal address.
+3. **The app sends the token to your server.** The server stores it next to the user account, e.g. "Anna has an iPhone with token a1f3…9c".
+4. **Something happens.** The restaurant confirms, the driver picks up the food, a sale starts.
+5. **The server sends a message to APNs or FCM** with the token, the text and extra data (like which order it's about).
+6. **APNs or FCM delivers it to the phone.** If the phone is offline, they keep it for a while and deliver later.
+7. **The operating system shows it.** Banner, sound, badge, lock screen. When the user taps it, the app opens and should take them to the right screen.
+
+</Steps>
+
+<Callout type="tip" title="Why testers care about this flow">
+Every step is a place where bugs hide. Step 1: when and how do we ask? Step 2–3: what if the token changes, or is stored twice (duplicates)? Step 5: is the text in the right language, with all placeholders filled in? Step 7: what does the app do when it's open, in the background or not running at all? Keep this chain in mind and you'll know where to look.
+</Callout>
+
+### Push, local and in-app notifications
+
+Not every notification is a push. Testers should know which kind they're looking at, because they break in different ways:
+
+| Kind | Who creates it | Example |
+| --- | --- | --- |
+| **Push (remote)** | Your server, via APNs/FCM | "Your order is on the way" |
+| **Local** | The app itself, scheduled on the phone, no internet needed | "Time for your 7 am workout", a timer that finished |
+| **In-app message** | The app's own UI, only while the app is open | A banner or <Term id="toast" /> inside the app: "Marco is 2 minutes away" |
+
+A common bug is mixing them up: the server sends a push *and* the app schedules a local reminder for the same thing, so the user gets both.
+
+### Permission: asking at the right moment
+
+For every permission type, the system dialogs and what happens after each answer, see [App Permissions](/features/app-permissions).
+
+Users decide whether an app may notify them, and they can change their mind any time in system Settings. This is one of the <Term id="app-permissions" /> that every tester should know well.
+
+**iOS**
+
+- The app shows Apple's system dialog: *"QuickBite" Would Like to Send You Notifications*, with **Allow** and **Don't Allow**.
+- iOS shows this dialog **only once** per install. After a "Don't Allow", the app can never show it again. The only way back is **Settings › Notifications › QuickBite**, so a good app explains that and offers a button to open Settings.
+- **Timing matters.** Asking on the very first screen, before the user understands the app, gets a lot of "Don't Allow". Good apps ask *in context*: right after the user places their first order ("Want to know when your food is on the way?"). See [Onboarding](/features/onboarding) for this "permission priming" pattern.
+- **Provisional (quiet) notifications** (iOS 12 and later): an app can skip the dialog and deliver notifications quietly to Notification Center only (no banner, no sound). Each one asks the user "Keep" or "Turn off". Test that these really arrive quietly.
+
+**Android**
+
+- **Android 13 and newer** need the runtime permission `POST_NOTIFICATIONS`: the app shows a system dialog with **Allow** and **Don't allow**. If the user denies it twice, Android stops showing the dialog, and only system Settings can turn notifications on.
+- **Android 12 and older** have no dialog: notifications are on by default, and users turn them off in Settings. So test both an old and a new Android version.
+- Upgrades are tricky: existing apps that already sent notifications usually keep them after the phone updates to Android 13 (the permission is pre-granted), while apps that still target Android 12L or older get the dialog automatically when they create their first notification channel. Test what existing users see after the update.
+
+<Callout type="warning" title="Two layers of settings">
+There are **two** switches that must agree: the **system** permission (iOS/Android Settings) and the **in-app** settings ("Order updates", "Offers"). If either is off, the user should get nothing of that type. When the system permission is off, the in-app settings screen should say so, not just show switches that look on but do nothing.
+</Callout>
+
+### Anatomy of a notification
+
+<NotificationAnatomy />
+
+A few platform details that affect testing:
+
+- **Android channels.** Since Android 8, every notification belongs to a **channel** (like "Order updates" or "Offers") and users can turn each channel on or off, or change its sound. The app sets each channel's **importance** once: *high* pops up as a heads-up banner with sound, *default* makes a sound, *low* is silent. After that, the **user** owns the channel, and the app can't change it in an update. A promo channel created with high importance by mistake stays noisy for every existing user.
+- **iOS interruption levels.** Notifications can be *passive* (silent), *active* (normal), *time-sensitive* (may break through a Focus mode) or *critical* (always plays a sound; needs special approval from Apple, e.g. for health alerts). A marketing push marked time-sensitive is a bug.
+- **Grouping.** Several messages about one order or one chat should stack together. Test five updates in a row: are they grouped and in the right order?
+- **Badge.** The red number on the app icon. On iOS the server sends the number in the message, and the app is responsible for **clearing** it when the user has seen the updates.
+
+### What happens in each app state
+
+The same push behaves differently depending on the <Term id="app-lifecycle">state of the app</Term>. This is where many push bugs live, so always test all three:
+
+| App state | What the user should see | What to check |
+| --- | --- | --- |
+| **Foreground** (open, on screen) | Usually no system banner. The **app** decides: show an in-app banner and refresh the screen | The order status updates live; nothing is silently ignored |
+| **Background** (opened earlier, now hidden) | A normal system banner, sound and badge | Tap opens the right screen; data is fresh when the app returns |
+| **Killed** (swiped away, or never opened since restart) | A normal system banner | Tap starts the app from scratch (a <Term id="cold-start" />) and still opens the right screen |
+
+<Callout type="info" title="Force quit is special">
+On iOS, a user who swipes the app away still gets normal notifications, but "silent" background pushes (used to refresh data) no longer wake the app. On Android, **Force stop** in Settings goes further: the app gets no FCM messages at all until the user opens it again. Testers should know this so they don't log a bug for expected platform behavior.
+</Callout>
+
+### Tapping a notification: deep links
+
+Tapping "Your order is on the way" should open **that order**, not the Home screen. The push carries a <Term id="deep-link" /> or an ID (like `order_id: 4821`) that the app uses to navigate.
+
+The classic bug: it works when the app is in the background, but from a **killed** state the app starts, shows the splash screen, and lands on Home. That's because the code path for a cold start is different. Other things to try: tapping while logged out, tapping an old notification for an order that's already delivered, and tapping when the app is open on another screen. The lesson [Background and foreground](/mobile/background-and-foreground) explains these app states in depth.
+
+### The tricky details
+
+- **Do Not Disturb and Focus.** The phone delivers the notification silently to Notification Center. The app can't override this (except time-sensitive or critical notifications, when the user allows them). Test that nothing is lost, it's just quiet.
+- **Quiet hours and <Term id="time-zone">time zones</Term>.** "No offers between 21:00 and 08:00" must use the **user's** local time, not the server's. A server in Frankfurt sending a "lunch deal" at 12:00 Frankfurt time wakes up users in New York at 6 am. Also think about <Term id="daylight-saving-time" /> changes.
+- **Unsubscribe and settings sync.** When the user turns off "Offers" in the app, the server must know. If the switch only changes on the phone, offers keep coming. Also test after reinstalling and on a second device: is the setting kept?
+- **Duplicates.** The same message twice is usually a token problem: the server stores the same device twice, or keeps an old token after a reinstall, or both a push and a local notification fire. Pushes should also be safe to retry without double delivery (<Term id="idempotency" />).
+- **<Term id="localization" />.** The push text is often built on the **server**, so it uses the language the server *thinks* the user has. Test with the phone in another language: right language, placeholders filled in, no cut-off titles in German or Finnish, correct date and number formats.
+- **Logout.** After logging out (or when someone else logs in on the same phone), the old user's notifications must stop. Otherwise the next person sees Anna's orders on the lock screen.
+
+### How testers trigger pushes
+
+You can't wait for a real driver to pick up a real order. Ask your developers which of these your team uses:
+
+<Steps>
+
+1. **A staging admin panel or "push console".** Many teams build an internal page on the <Term id="staging" /> server: pick a user, pick a message type, press Send. This is the most realistic option because it uses the real server code and templates.
+2. **Firebase console.** In Firebase: **Messaging › New campaign › Notifications**, write a title and text, then **Send test message** and paste the device's **FCM registration token** (developers can show it in a debug menu or log it to <Term id="logcat" />).
+3. **iOS [Simulator](/mobile/simulators-and-emulators).** Save a payload as a `.apns` file and run `xcrun simctl push booted com.quickbite.app order.apns`, or drag the file onto the Simulator window (for drag and drop, the file must also contain a `"Simulator Target Bundle"` key with the app's bundle ID). Great for checking text, deep links and app states. Since Xcode 14 (macOS 13, Apple silicon or T2 Macs), the Simulator can also receive real remote pushes.
+4. **Apple's Push Notifications Console.** A web tool in the Apple Developer account where you paste a device token and send a test push to a real iPhone.
+5. **A <Term id="real-device" />, end to end.** Before release, always test real pushes on real iPhones and Android phones, through the real server. Simulators can't tell you about delivery delays, battery savers or a manufacturer's aggressive background limits.
+
+</Steps>
+
+Here's what a simple iOS payload looks like. Even if you never write one, it helps to recognize the fields in a bug report:
+
+```json
+{
+  "aps": {
+    "alert": { "title": "On the way", "body": "Marco picked up your order." },
+    "badge": 3,
+    "sound": "default",
+    "thread-id": "order-4821"
+  },
+  "order_id": "4821"
+}
+```
+
+`alert` is the text, `badge` the number on the icon, `thread-id` groups notifications together, and `order_id` is custom data the app uses to open the right screen.
+
+## Example requirements
+
+<Callout type="example" title="User story: Order status notifications">
+
+**As a** QuickBite customer, **I want to** get a notification when my order's status changes **so that** I don't have to keep the app open while I wait.
+
+**Acceptance criteria**
+
+1. The app asks for notification permission **after the first order is placed**, with a short explanation, not on first launch.
+2. A push is sent when the order is **confirmed, picked up, arriving and delivered**. Each event is delivered **once**.
+3. Tapping an order notification opens **that order's** screen, whether the app was in the foreground, background or not running.
+4. When the app is open, an **in-app banner** appears and the order screen updates without a manual refresh.
+5. The text uses the **phone's language** (English and German at launch). No placeholders are ever visible.
+6. Users can turn off **Order updates** and **Offers** separately in the app. The change applies on the server within one minute, on all devices.
+7. Offers are never sent between **21:00 and 08:00 in the user's time zone**. Order updates are always sent.
+8. The **badge** shows the number of unread order updates and clears when the user opens the order.
+9. If notifications are off in system Settings, the in-app settings screen explains this and links to Settings.
+10. After logout, the device stops getting notifications for that account.
+
+</Callout>
+
+Criteria 3, 4, 6 and 7 are the ones teams most often forget to test, because they need a specific app state, a second device or a different time zone.
+
+## What usually goes wrong
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Wrong screen on tap** | Tapping a push from a killed app opens Home, not the order | Medium–High |
+| 2 | **Duplicates** | The same notification twice (or once per reinstall) | Medium |
+| 3 | **Opt-out ignored** | Offers keep coming after turning them off in the app | High (trust, legal) |
+| 4 | **Foreground push lost** | App is open: no banner, the screen shows an old status | Medium |
+| 5 | **Text problems** | Raw `{{restaurant}}`, wrong language, title cut off | Medium |
+| 6 | **Badge never clears** | Red "7" on the icon even after reading everything | Low–Medium |
+| 7 | **Wrong time** | Promo arrives at 3 am because the server used its own time zone | Medium–High |
+| 8 | **Permission asked too early** | Dialog on first launch, user taps Don't Allow, no way back | High (business) |
+| 9 | **Notifications after logout** | Next user sees the previous user's orders on the lock screen | High (privacy) |
+| 10 | **Private data on the lock screen** | Full bank balance or a health result in the preview | High (privacy) |
+
+## Find the bug
+
+QuickBite's order notifications have **six bugs**. You control the phone (app state, permission, Do Not Disturb, language, time zone) and a fake **server console** that sends pushes, just like a staging admin panel. Try this:
+
+- Send an update while the app is **open** on the order screen.
+- Go to the **Home screen**, send updates, tap them.
+- **Force quit** the app, send an update, tap it. Then send another one.
+- Turn things off in the app's **notification settings**, then send that type.
+- Switch the language to **Deutsch** and send each event.
+- Watch the **badge** on the app icon, and the console log.
+
+<BugHunt
+  title="QuickBite delivery notifications"
+  bugs={[
+    {
+      title: 'Tapping a push from a killed app opens Home instead of the order',
+      hint: 'Force quit the app, send "Picked up", then tap the notification.',
+      detail: 'From the <strong>background</strong>, tapping opens Order #4821 as expected. From a <strong>killed</strong> state, the app shows the splash screen and lands on Home: the cold start code path ignores the notification that launched the app. Expected: the order screen opens in every app state.',
+    },
+    {
+      title: 'Every notification arrives twice after a cold start',
+      hint: 'Force quit, open the app again, go to the Home screen and send any update. Check "Device tokens" in the console.',
+      detail: 'Each cold start calls <code>POST /devices</code> and the server inserts a <strong>new row</strong> for the same token instead of updating it. The console now lists the token twice, so every push is sent and shown twice (and the badge goes up by 2). Expected: one token per device, stored with an update-or-insert.',
+    },
+    {
+      title: 'Offers keep arriving after turning them off',
+      hint: 'In the app, open settings and turn off "Offers & promotions". Go to the Home screen and send the promo.',
+      detail: 'The switch changes on the phone, but no request is sent: the console still says <strong>promos on</strong> and the offer is delivered. "Order updates" does send <code>PUT /me/notification-settings</code>, so compare the two. Ignoring an opt-out breaks user trust and can break marketing laws. Expected: the change is saved on the server.',
+    },
+    {
+      title: 'A push in the foreground shows nothing and the order screen does not update',
+      hint: 'Keep the app open on the order screen and send "Driver arriving".',
+      detail: 'The console says the push was delivered, but the open app shows <strong>no in-app banner</strong> and the status stays old until you go back and open the order again. Expected (criterion 4): an in-app banner and a live update of the status.',
+    },
+    {
+      title: 'German notifications show raw placeholders',
+      hint: 'Switch the language to Deutsch, go to the Home screen and send "Order confirmed".',
+      detail: 'The text reads <code>{{restaurant}} bereitet dein Essen zu.</code> The server only fills in placeholders for English messages. "Picked up" shows <code>{{driver}}</code> too. Expected: "Pasta Roma bereitet dein Essen zu."',
+    },
+    {
+      title: 'The badge count never clears',
+      hint: 'Receive a few pushes, open the app and the order, then go back to the Home screen.',
+      detail: 'The red number only ever goes up. Opening the app or the order never resets it, so users see "5" forever and learn to ignore it. Expected: the badge shows unread updates and clears once the user has seen them.',
+    },
+  ]}
+>
+  <BuggyDeliveryPush client:visible />
+</BugHunt>
+
+<Callout type="tip" title="Notice what works">
+Some things are correct on purpose: with notifications **off in iOS Settings** nothing appears and the settings screen explains why; **Do Not Disturb** delivers silently (look for the moon icon) without a banner; offers sent while it's **21:00–08:00 in the user's time zone** are held (try Berlin or Tokyo); and "Order updates" really syncs to the server. Use the working parts as proof in your bug reports.
+</Callout>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Push from killed state opens Home instead of the order screen
+
+**Preconditions:** iPhone 15, iOS 18, QuickBite 4.2.0 (staging). Notifications allowed. Active order #4821.
+
+**Steps:** 1. Force quit the app (swipe it away in the app switcher). 2. Send "Picked up" for order #4821 from the staging console. 3. Tap the notification.
+
+**Expected:** The app opens on Order #4821.
+**Actual:** The app opens on Home. From the background (same steps without step 1) it works.
+
+**Severity:** Medium · **Reproducible:** Always (5/5) · **Also on:** Android 14, Pixel 8
+
+</Callout>
+
+## Test scenarios
+
+### Functional
+
+- Each event (confirmed, picked up, arriving, delivered) sends exactly **one** push with the right text.
+- Tapping each push opens the right screen in **foreground, background and killed** states.
+- With the app open, an in-app banner appears and the screen refreshes live.
+- In-app settings: turning a type off stops it, turning it on brings it back. Check the server really changed (a second device, or ask a developer).
+- The badge count matches unread updates and clears when they're seen.
+- Notification actions ("Track order", "Call driver") do what they say, also from a killed app.
+
+### Negative
+
+- Permission **denied**: no notifications, no crash, settings screen explains how to turn them on.
+- Permission denied, then turned **on** later in system Settings: notifications start working without reinstalling.
+- **Logged out**: no more pushes for that account. Log in as another user: you get only *their* pushes.
+- The order was **canceled** or deleted: tapping an old push shows a friendly message, not a crash or blank screen.
+- Phone **offline** when the push is sent: when it comes back online, the notification arrives (once) or is skipped if it's out of date.
+
+### Edge cases
+
+- **Reinstall** the app: still exactly one notification per event (no duplicate tokens).
+- **Two devices** with the same account: both get the push; reading it on one doesn't break the other.
+- **Many pushes quickly** (five status changes in a few seconds): grouped, in the right order, no duplicates.
+- **Time zones and quiet hours**: change the phone's time zone; offers respect the user's local time. Try the night of a daylight saving time change.
+- **Do Not Disturb / Focus** on: notifications arrive silently and are still there afterwards.
+- **Low Power Mode** and Android battery savers: pushes still arrive (maybe delayed).
+- **App update** and **OS update**: permission and in-app settings are kept.
+- **Long text and other languages**: German title, a restaurant name with emoji or accents (`Café Zürich`), right-to-left languages.
+
+### UI & usability
+
+- Text is short, specific and useful: "Marco is 2 minutes away", not "Order update".
+- The right icon, app name and image; the image failing to load doesn't block the notification.
+- Notifications are grouped per order or chat.
+- Sounds and vibration fit the importance (no loud sound for marketing).
+- Permission is asked in context, with an explanation first.
+
+### Security & privacy
+
+- No sensitive data in the preview text: no full card numbers, passwords, one-time codes for other services, health results. Check the lock screen with **Show Previews: When Unlocked** too.
+- Deep links from a push can't open screens the user isn't allowed to see (e.g. another user's order).
+- After logout or account deletion, the device token is removed on the server.
+
+### Accessibility
+
+- With a <Term id="screen-reader" /> (VoiceOver, TalkBack) the notification is read in a sensible order: app name, title, text.
+- Notifications aren't the **only** way to get important information: the same status is visible in the app.
+- Don't rely on sound or vibration alone (deaf users, phones on silent).
+- Actions have clear names, and the in-app banner is announced by screen readers.
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-PUSH-001',
+      title: 'Tap push from killed app opens the order',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Notifications allowed', 'Active order #4821', 'App force quit'],
+      steps: ['Send "Picked up" for order #4821 from the staging console', 'Wait for the notification', 'Tap it'],
+      expected: 'The app starts and opens Order #4821 with status "On the way".',
+    },
+    {
+      id: 'TC-PUSH-002',
+      title: 'Foreground push shows in-app banner and updates the screen',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['App open on Order #4821 with status "On the way"'],
+      steps: ['Send "Driver arriving" from the staging console', 'Watch the screen without touching it'],
+      expected: 'An in-app banner "Driver arriving" appears and the status changes to "Arriving" without a manual refresh.',
+    },
+    {
+      id: 'TC-PUSH-003',
+      title: 'Turning off offers stops promo pushes',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Offers turned on', 'App in the background'],
+      steps: ['Open the app › Notification settings', 'Turn off "Offers & promotions"', 'Go to the Home screen', 'Send a promo from the staging console'],
+      expected: 'No notification arrives. The console shows the user has opted out of offers.',
+    },
+    {
+      id: 'TC-PUSH-004',
+      title: 'No duplicate notifications after reinstall',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['User logged in on one device'],
+      steps: ['Delete and reinstall the app', 'Log in and allow notifications', 'Send "Order confirmed"'],
+      expected: 'Exactly one notification arrives. The server has one active token for this device.',
+    },
+    {
+      id: 'TC-PUSH-005',
+      title: 'Push text in German has no placeholders',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Phone language set to Deutsch'],
+      steps: ['Send each order event from the staging console', 'Read every notification'],
+      data: 'Restaurant: Pasta Roma, driver: Marco',
+      expected: 'All texts are German, names are filled in (e.g. "Pasta Roma bereitet dein Essen zu."), nothing is cut off.',
+    },
+    {
+      id: 'TC-PUSH-006',
+      title: 'Offers respect quiet hours in the user time zone',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Server time 20:30 UTC', 'Phone time zone Berlin (21:30 local)'],
+      steps: ['Send a promo from the staging console', 'Change the time zone to New York (15:30 local) and send again'],
+      expected: 'Berlin: the promo is held until 08:00 local time. New York: the promo is delivered.',
+    },
+    {
+      id: 'TC-PUSH-007',
+      title: 'Permission denied, then enabled in Settings',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Fresh install'],
+      steps: ['Place the first order and tap "Don\'t Allow" on the permission dialog', 'Open the app\'s notification settings', 'Follow the link to system Settings and allow notifications', 'Send "Picked up"'],
+      expected: 'The in-app screen explains notifications are off and links to Settings. After allowing, the push arrives.',
+    },
+    {
+      id: 'TC-PUSH-008',
+      title: 'Badge clears after reading updates',
+      priority: 'low',
+      type: 'positive',
+      preconditions: ['App in the background', 'Badge is 0'],
+      steps: ['Send three order updates', 'Check the app icon', 'Open the app and the order', 'Go back to the Home screen'],
+      expected: 'The icon shows 3, then the badge is gone after the order was opened.',
+    },
+  ]}
+/>
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- **One chance to ask.** The permission dialog appears once per install. Test the "Don't Allow" path carefully. To see the dialog again, delete and reinstall the app.
+- **Settings › Notifications › App** lets users turn off banners, sounds, badges, lock screen and previews separately. Try each.
+- **Focus modes** and **Scheduled Summary** can delay or bundle notifications. Time-sensitive ones may break through.
+- **Simulator:** `xcrun simctl push` or drag an `.apns` file onto the Simulator. A **TestFlight** or App Store build uses the *production* APNs environment, while a debug build from Xcode uses the *sandbox*, so a token from one doesn't work with the other. A common "push doesn't arrive" cause in testing.
+- **Foreground:** iOS doesn't show the banner unless the app asks for it. Check the app does something.
+
+</Tab>
+<Tab>
+
+- **Android 13+** asks with `POST_NOTIFICATIONS`; older versions don't ask at all. Test on both.
+- **Channels:** check Settings › Apps › QuickBite › Notifications. Each channel should have a clear name, sensible importance and should be switchable on its own.
+- **Manufacturers differ.** Battery savers on some Samsung, Xiaomi or Huawei phones delay or block pushes for apps in the background. Include such phones in your device matrix.
+- **Force stop** means no pushes until the user opens the app again. That's expected platform behavior.
+- **Foreground:** FCM hands the message to the app instead of showing it. The app must show its own in-app banner or notification.
+- **Debugging:** developers can log the FCM token and incoming messages to <Term id="logcat" />, read with <Term id="adb" /> or Android Studio.
+
+</Tab>
+<Tab>
+
+- **Web push** works in Chrome, Edge, Firefox and Safari through a background script called a *service worker*. On iPhone and iPad (iOS 16.4+), only for web apps added to the Home Screen.
+- **The browser asks** ("shop.example.com wants to show notifications"). Many browsers only allow this after a user click, and Chrome hides prompts from sites that ask too aggressively. Test the prompt is triggered by a clear button, not on page load.
+- **Blocked is blocked.** If the user clicks Block, the site can't ask again; the user must change it in the browser's site settings. The site should explain how.
+- **Operating system settings** can also block browser notifications (macOS, Windows Focus Assist).
+- **Test in DevTools:** in Chrome, Application › Service workers has a **Push** button that sends a test message to the service worker.
+- **Unsubscribe** and clearing site data must stop the notifications.
+
+</Tab>
+</Tabs>
+
+## Checklist
+
+<Checklist
+  title="Push notifications checklist"
+  storageKey="push-notifications"
+  items={[
+    'Permission is asked in context, with an explanation; denying it has a recovery path to Settings',
+    'Each event sends exactly one notification (also after reinstall and on two devices)',
+    'Tap opens the right screen from foreground, background and killed states',
+    'In the open app, an in-app banner appears and the screen updates live',
+    'Text is correct in every supported language, with all placeholders filled in',
+    'Title and body fit; image, actions, grouping and sound work',
+    'Badge shows unread updates and clears when they are seen',
+    'In-app settings sync to the server and are respected for every type',
+    'System permission off: nothing arrives and the app explains why',
+    'Do Not Disturb / Focus: delivered silently, nothing lost',
+    'Quiet hours use the user time zone (also around daylight saving changes)',
+    'After logout, the device gets no more notifications for that account',
+    'No sensitive data in lock screen previews',
+    'Tested on real iOS and Android devices, including Android 12 and 13+',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'Who actually delivers a push notification to an iPhone?',
+      options: ['The app, by checking the server every minute', 'Apple Push Notification service (APNs)', 'The mobile carrier via SMS', 'The App Store'],
+      answer: 1,
+      explain: 'Your server sends the message to APNs (Apple) or FCM (Google), and they deliver it to the device using its device token.',
+    },
+    {
+      q: 'Tapping a push opens the order when the app is in the background, but opens Home when the app was killed. What should you test next?',
+      options: ['Nothing, killed apps always open Home', 'The same tap from all app states and with different notification types', 'Only the Android version', 'Whether the push text is spelled right'],
+      answer: 1,
+      explain: 'A cold start uses a different code path. Check every app state and every type of notification, then report it with the exact state in the steps.',
+    },
+    {
+      q: 'A user turned off "Offers" in the app but still gets promo pushes. Where is the bug most likely?',
+      options: ['In APNs', 'The setting was saved only on the phone, not on the server', 'The phone is in Do Not Disturb', 'The user has two phones'],
+      answer: 1,
+      explain: 'The server decides who gets a push. If the in-app switch never reaches the server, the server keeps sending.',
+    },
+    {
+      q: 'On iOS, the user tapped "Don\'t Allow" on the notification dialog. What should the app do later?',
+      options: ['Show the system dialog again on every launch', 'Explain the benefit and offer a button to open the app\'s page in Settings', 'Crash', 'Nothing, the user can never turn them on'],
+      answer: 1,
+      explain: 'iOS shows the dialog only once. The only way back is Settings, so a good app explains why and links there.',
+    },
+    {
+      q: 'A promo arrives at 3 am for users in New York. Which requirement probably uses the wrong time?',
+      options: ['Quiet hours are calculated in the server time zone instead of the user time zone', 'The badge count', 'The notification channel', 'The deep link'],
+      answer: 0,
+      explain: 'Quiet hours must use the user\'s local time. A server in Europe can easily send at night for users elsewhere.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Push goes **app → token → your server → APNs/FCM → device**. Bugs can hide at every hop.
+- Permission is asked **once** on iOS (and denied for good after two "no"s on Android 13+), so ask **in context** and always offer a way back via Settings.
+- Test every push in **foreground, background and killed** states, and check that tapping opens the **right screen**.
+- Classic bugs: **duplicates, opt-outs that don't sync, raw placeholders or wrong language, badges that never clear, wrong time zone for quiet hours**.
+- Trigger pushes yourself with a **staging console, Firebase test messages or `simctl push`**, and confirm on **real devices** before release.
+
+</KeyTakeaways>

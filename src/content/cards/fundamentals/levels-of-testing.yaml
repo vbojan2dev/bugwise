@@ -1,0 +1,45 @@
+teaser: "A coupon feature can pass every developer test, every API test and every end-to-end test, and still get rejected. By whom, and why?"
+cards:
+  - type: flip
+    front: "The four test levels, smallest to largest?"
+    back: "Unit (one piece of code), integration (pieces working together), system (the whole app end to end), acceptance (does it meet the real need?)."
+  - type: flip
+    front: "What does the test pyramid recommend?"
+    back: "Many fast, cheap unit tests at the bottom, fewer integration tests in the middle, and only a few slow end-to-end tests at the top."
+  - type: quiz
+    q: "A developer checks that formatPrice(4.5) returns '€4.50'. Which level is this?"
+    options: ["Unit testing", "Integration testing", "System testing"]
+    answer: 0
+    explain: "One small function, tested on its own by the developer who wrote it. That's a unit test."
+  - type: quiz
+    q: "The app shows an order as 'Paid', but the order service never got it from the payment service. Best level to catch it?"
+    options: ["Unit testing", "Acceptance testing", "Integration testing"]
+    answer: 2
+    explain: "The bug lives in the handover between two services. Integration testing focuses exactly on those connections."
+  - type: truefalse
+    statement: "Most manual testers spend most of their time on system testing."
+    answer: true
+    explain: "They test the complete app end to end on real devices and browsers, and also support acceptance testing."
+  - type: truefalse
+    statement: "The main goal of acceptance testing is to find as many bugs as possible."
+    answer: false
+    explain: "Its job is confidence and a go / no-go decision. If UAT finds lots of basic bugs, something went wrong at the lower levels."
+  - type: thisorthat
+    prompt: "Before launch, 300 company employees use the new banking app in daily life and report problems."
+    left: "Alpha testing"
+    right: "Beta testing"
+    answer: left
+    explain: "Real users inside the company is alpha testing. If outside customers got the build via TestFlight or a Play testing track, it would be beta."
+  - type: thisorthat
+    prompt: "The marketing team runs the real Friday SAVE10 campaign on a pre-release build to check it fits how they run promotions."
+    left: "System testing"
+    right: "Acceptance testing"
+    answer: right
+    explain: "Business users checking it solves their real need is UAT. It's where 'we always exclude alcohol from discounts' finally surfaces."
+  - type: spotbug
+    screen: ["Order total: €20.00", "Coupon: SAVE10 applied", "Discount: €0.00", "Rule: 10% off orders of €20 or more"]
+    bug: "A €20.00 order gets no discount."
+    explain: "The code says 'more than €20' instead of '€20 or more'. A unit test on the boundary would catch this in milliseconds."
+  - type: tip
+    title: "Know what's already covered"
+    text: "If developers unit-test every discount rule, spend less time on calculation combinations and more on full journeys, devices and network drops."

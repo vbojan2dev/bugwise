@@ -1,0 +1,45 @@
+teaser: "A checkout can charge exactly the right amount and still lose customers. What kind of testing would have caught it?"
+cards:
+  - type: flip
+    front: "Functional vs non-functional testing?"
+    back: "Functional checks what the app does (features, rules, flows). Non-functional checks how well it does it (speed, usability, accessibility, security, compatibility)."
+  - type: flip
+    front: "Retesting vs regression testing?"
+    back: "Retesting repeats a fixed bug's exact steps to confirm it's gone. Regression re-checks things that used to work, to catch side effects."
+  - type: quiz
+    q: "A developer says BUG-207 is fixed. What do you do first?"
+    options: ["Run the full regression suite", "Retest with BUG-207's exact steps", "Start an exploratory session"]
+    answer: 1
+    explain: "First confirm this specific bug is really gone. Then run a targeted regression around the fix, because the code that had one problem often has another."
+  - type: quiz
+    q: "Which of these is a non-functional test?"
+    options: ["Transfer screen loads in under 2 seconds", "SAVE10 takes 10% off the subtotal", "Logout returns to the login screen"]
+    answer: 0
+    explain: "Speed is a quality of the behavior (how well), so it's non-functional. The other two check what the app does."
+  - type: truefalse
+    statement: "Every team agrees on the exact difference between smoke and sanity testing."
+    answer: false
+    explain: "The industry uses both words inconsistently, sometimes even swapped. Give the common definition, then ask what your team means."
+  - type: truefalse
+    statement: "Exploratory testing has a goal, a time box and notes on what was covered."
+    answer: true
+    explain: "That structure (a charter, a time limit, notes) is what separates it from ad-hoc testing, which is informal and can't be repeated or reviewed."
+  - type: thisorthat
+    prompt: "Build 4.2.0 just landed. You open the app, log in, search 'pizza', add an item and reach checkout in 15 minutes."
+    left: "Smoke testing"
+    right: "Regression testing"
+    answer: left
+    explain: "A quick, broad, shallow pass on a new build to decide go or no-go. If login were broken, there'd be no point running 300 test cases."
+  - type: thisorthat
+    prompt: "Version 4.0 moves saved addresses to a new storage format. What must you add to the plan?"
+    left: "Localization testing"
+    right: "Upgrade testing"
+    answer: right
+    explain: "Millions of existing users will update, not install fresh. Upgrade testing checks their saved addresses and login survive the move."
+  - type: spotbug
+    screen: ["Logged out of BankApp", "[ taps Back ]", "Account balance: $2,340.18", "Recent: Rent -$950.00"]
+    bug: "Private account data is visible after logging out."
+    explain: "This is a security bug a manual tester can catch with simple curiosity. After logout, Back must not reveal the balance or transactions."
+  - type: tip
+    title: "Test the negative side too"
+    text: "Beginners write mostly positive tests. Try -$50, $0, letters, or more than the balance. Real users mistype and double-tap, so most bugs hide there."

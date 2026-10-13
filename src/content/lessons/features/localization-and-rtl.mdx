@@ -1,0 +1,527 @@
+---
+title: Localization and RTL
+description: How apps adapt to other languages, scripts and regions, from plurals and prices to right-to-left layouts, what usually breaks, and how to test it on mobile and web.
+order: 14
+level: intermediate
+minutes: { short: 40 }
+platform: both
+tags: [localization, internationalization, rtl, languages, formats, test scenarios]
+---
+
+import LocalizationLab from '@/components/demos/localization/LocalizationLab';
+import MirrorIcons from '@/components/demos/localization/MirrorIcons';
+import { BuggyLocalizedShop } from '@/components/demos/localization/BuggyLocalizedShop';
+
+A food delivery app launches in Germany. On day one, support gets screenshots: the **Order** button says "Zahlungspflichtig bes…", the delivery time reads "2:30 PM" (Germans expect 14:30), and the total shows "1,299.00 €" where a German would write "1.299,00 €". Nothing crashed. Every feature "works". But to a German customer the app looks cheap, foreign and a little untrustworthy, and some of them won't trust it with their card.
+
+That's what this lesson is about. Supporting another language is much more than translating words. Dates, numbers, plurals, names, sorting and even the **direction of the whole screen** change. Most of these bugs are invisible if you only ever test in English, and very easy to find once you know where to look.
+
+## How it works
+
+Two words you'll hear a lot, often shortened to numbers (the count of letters between the first and last one):
+
+| Term | Short | What it means |
+| --- | --- | --- |
+| <Term id="internationalization" /> | **i18n** | Building the app so it *can* support any language: no hard-coded text, flexible layouts, Unicode everywhere, locale-aware formatting. Done once, by developers. |
+| <Term id="localization" /> | **l10n** | Actually adapting it to one market: translations, local formats, currency, images, legal texts. Done per language. |
+
+A <Term id="locale" /> is the combination of language and region, written like `de-DE` (German in Germany), `de-AT` (German in Austria), `sr-Latn-RS` (Serbian in Latin script, Serbia) or `ar-AE` (Arabic, United Arab Emirates). The same language can need different formats in different regions, and Serbian is written in **two scripts**: Latin (*Korpa*) and Cyrillic (*Корпа*).
+
+Here's what happens when someone opens a localized app:
+
+<Steps>
+
+1. **The app picks a locale.** From the phone or browser language, from an in-app language setting, or from the user's account. If the user's language isn't supported, it falls back to a default (usually English).
+2. **Text comes from resource files, by key.** The code doesn't contain "Place order". It asks for `checkout.cta`, and the file for the current language returns "Zahlungspflichtig bestellen" or "Наручи".
+3. **Numbers, dates and prices go through formatters.** The app passes the raw value (`1299`, a date, `RSD`) to a locale-aware formatter that knows the separators, the order and the symbols.
+4. **Plurals and variables use message patterns.** Instead of gluing pieces together, the app gives the translator a full sentence with placeholders and plural rules.
+5. **The layout adapts.** Text wraps or the screen scrolls when strings get longer. For right-to-left languages the whole layout is mirrored.
+6. **The server speaks the same language.** Error messages, emails, push notifications, receipts and product data come from the backend, so it must know the user's locale too.
+
+</Steps>
+
+### What changes from one locale to another
+
+Much more than the words. Every row in this table is a classic source of bugs:
+
+| What | Examples |
+| --- | --- |
+| **Text** | Translations, but also gender: Serbian says *Dobro došao* to a man and *Dobro došla* to a woman. |
+| **Plurals** | English: 1 item, 2 items. Serbian: 1 artikal, 2 artikla, 5 artikala. Arabic has six forms. |
+| **Dates and times** | `10/16/2026` (US) vs `16.10.2026` (Germany, Serbia); 2:30 PM vs 14:30; some regions also use other calendars (Thailand's Buddhist year is 543 years ahead). |
+| **First day of the week** | Sunday in the US, Monday in most of Europe, Saturday in several Middle Eastern countries. Watch the [date picker](/components/date-picker). |
+| **Numbers** | `1,299.50` (US), `1.299,50` (Germany, Serbia), `1 299,50` (France), `1’299.50` (Switzerland). Arabic may use Arabic-Indic digits: `١٬٢٩٩٫٥٠`. |
+| **Currency** | Symbol before or after, with or without a space: `$1,299.00`, `1.299,00 €`, `13.990,00 RSD`. Not every currency has 2 decimals (the yen has none). |
+| **Units** | Kilometers or miles, kg or lb, °C or °F. |
+| **Addresses** | Postcode before the city (`11000 Beograd`) or after (`New York, NY 10001`); some countries don't use postcodes at all. |
+| **Phone numbers** | `(415) 555-0132` vs `+381 64 123 4567`. Different lengths, so don't hard-code a mask. |
+| **Names** | Family name first (Hungarian, Chinese, Japanese), two surnames (Spanish), or a single name. "First name / Last name" doesn't fit everyone. |
+| **Sorting** | In Serbian, *Čačak* comes after *Cetinje*, not after *Zrenjanin*. In Swedish, å, ä and ö come after z. |
+| **Time zones** | "Delivery at 14:00" must mean the customer's <Term id="time-zone" />, not the server's. |
+
+<Callout type="tip" title="Language and region are two settings">
+On a phone you can choose **English** as the language and **Germany** as the region. Many apps then show English words with German formats (`16.10.2026`, `1.299,50`). That's usually correct, not a bug, but only if the spec says so. Ask which setting drives what.
+</Callout>
+
+### Text expansion
+
+English is short. When text is translated, it usually grows:
+
+- **German and Finnish** are often **30–50% longer** than English, and a single compound word can be very long (*Geräuschunterdrückung* means "noise canceling").
+- **Short labels grow the most:** "Save" (4 letters) becomes "Speichern" (9). A button label can easily double.
+- Some languages are **shorter** but **taller**: Thai and Hindi have marks above and below the letters, so a fixed line height cuts them off.
+- Chinese and Japanese are short in characters, but each character needs to be big enough to read.
+
+Anything with a fixed width breaks first: buttons, tabs, <Term id="segmented-control">segmented controls</Term>, table headers, badges, and text inside images. Typical symptoms are <Term id="truncation" /> ("Zahlungspflichtig bes…"), text overflowing its box, or two lines squashed into one.
+
+### Pseudo-localization: test translations before they exist
+
+Real translations often arrive late, a day before release. **Pseudo-localization** lets you test the layout *now*. A tool replaces every translatable string with a fake, still readable version:
+
+```text
+Place order   →   [Þļåçé öŕðéŕ one two]
+```
+
+- **Accents** check that fonts and encoding handle non-English letters.
+- **Extra length** (about 30–50%) simulates German and shows what gets cut off.
+- **Brackets** show where each string starts and ends. A missing `]` means the text is truncated.
+- Text **without accents** wasn't translated at all: it's **hard-coded** in the code (or comes from the server).
+
+Android has two built-in pseudo-locales: **en-XA** (accented and longer) and **ar-XB** (right-to-left). Xcode offers pseudolanguages such as *Double-Length*, *Accented* and *Right-to-Left*. You'll try both styles in the lab below.
+
+### Plurals: why "item(s)" is a bug
+
+English has two forms (1 item, 2 items), so developers often write:
+
+```js
+"You have " + n + " item(s)"            // lazy and ungrammatical
+n === 1 ? "1 item" : n + " items"       // works only for English-like languages
+```
+
+Other languages have different rules:
+
+| Language | Forms for whole numbers | Example |
+| --- | --- | --- |
+| English, German | 2 | 1 item · 2 items |
+| Serbian | 3 | 1 artikal · 2 artikla · 5 artikala · **21 artikal** · 22 artikla |
+| Polish, Russian | 3 | Polish: 1 plik · 2 pliki · 5 plików |
+| Arabic | 6 | Separate forms for 0, 1, 2, 3–10, 11–99 and 100–102; bigger numbers follow their last two digits (103 is like 3) |
+| Chinese, Japanese | 1 | The noun doesn't change |
+
+The fix is a plural-aware message format (most apps use ICU MessageFormat or the platform's plural resources), where the translator writes every form the language needs:
+
+```text
+{count, plural, one {# artikal u korpi} few {# artikla u korpi} other {# artikala u korpi}}
+```
+
+Notice "21 artikal": in Serbian, numbers **ending in 1** (except 11) use the singular, and numbers ending in 2–4 (except 12–14) use the "few" form. Testers should try **0, 1, 2, 5, 11, 12, 21, 22 and 101**, not just 1 and 2.
+
+### Concatenation: sentences glued from pieces
+
+Building a sentence from fragments breaks as soon as another language orders words differently:
+
+<Compare>
+<Dont title="Glued from pieces">
+
+`"Arrives " + weekday + ", " + month + " " + day`
+
+English: *Arrives Friday, October 16*. German: *Kommt Freitag, Oktober 16*. Wrong order, and the translator only ever saw "Arrives " with no context.
+
+</Dont>
+<Do title="One message with placeholders">
+
+`"Arrives {date}"` with a locale-aware date formatter.
+
+German: *Lieferung am Freitag, 16. Oktober*. The translator sees the full sentence and can move the placeholder wherever the grammar needs it.
+
+</Do>
+</Compare>
+
+### Missing translations and fallbacks
+
+New features often ship before every translation is in. What the user sees depends on the **fallback**:
+
+- **Good:** the missing string falls back to a sensible language (Serbian Cyrillic → Serbian Latin → English, if the team agreed on that order) and someone gets notified.
+- **Bad:** the screen shows the raw key, like `checkout.title` or `cart.free_delivery_note`, or an empty space.
+- **Also bad:** a Cyrillic screen with one Latin sentence in the middle, or half the screen in English after an update.
+
+### Right-to-left (RTL)
+
+Arabic, Hebrew, Persian and Urdu are read **from right to left**. An <Term id="rtl" /> layout isn't just right-aligned text, the **whole screen is mirrored**: the back button moves to the top right, the list chevron points left, text fields start on the right, progress bars fill from right to left, and swipe directions flip.
+
+But **not everything flips.** Icons that show a *direction in reading order* mirror. Icons that show something *real-world* never do:
+
+<MirrorIcons />
+
+**Bidirectional (bidi) text** is the tricky part. Numbers, order IDs, URLs, email addresses and English brand names stay left-to-right *inside* an Arabic sentence. Without proper isolation, text like `Order #A-2048` or a phone number `+381 64 123 4567` can come out scrambled, with the `#` or the `+` on the wrong end. Look closely at punctuation, prices and anything that mixes the two directions.
+
+### Try it: the localization lab
+
+The same cart screen, correctly localized. Switch languages, change the quantity and try the small phone. Watch what changes: words, length, plural forms, separators, the date and, in Arabic and **ar-XB**, the direction of the whole layout. This is your "expected result" for the bug hunt further down.
+
+<LocalizationLab client:visible />
+
+<Callout type="info" title="Why ar-XB is so useful">
+Most testers can't read Arabic. The **ar-XB** pseudo-locale mirrors the app exactly like Arabic would, but keeps English words (drawn right-to-left). You can check mirroring, icons and alignment without guessing what the text means.
+</Callout>
+
+### In-app language vs device language
+
+Many apps let users pick a language **inside the app**, and Android 13+ and iOS also offer a **per-app language** in system settings. That creates extra combinations to test:
+
+- **System parts stay in the device language:** permission dialogs, the share sheet, the keyboard, the store's purchase sheet. That's expected.
+- **Server texts must follow the app's language:** error messages, emails, push notifications, receipts and product descriptions. If the server doesn't know the user's chosen language, they arrive in the wrong one.
+- **Switching while the app is open** should update every screen, including screens further back in the navigation stack, without losing the cart or form data.
+- **Formats** may follow the region rather than the language. Check what the spec says.
+
+## Example requirements
+
+<Callout type="example" title="User story: Shop in Serbian">
+
+**As a** shopper in Serbia, **I want to** use ShopNest in Serbian, in Latin or Cyrillic script, with prices in dinars **so that** I understand exactly what I'm buying and paying.
+
+**Acceptance criteria**
+
+1. The app follows the device language. **Settings › Language** offers English, Deutsch, Srpski (latinica), Српски (ћирилица) and العربية, and the choice is remembered.
+2. Every screen, error message, email and push notification is in the chosen language and script. No mixed scripts, no raw keys.
+3. Prices use the market's format: `13.990,00 RSD` in Serbia, `1.199,00 €` in Germany, `$1,299.00` in the US.
+4. Dates and times follow the locale: `petak, 16. oktobar · 14:30` in Serbian; weeks in the date picker start on Monday.
+5. Item counts use the correct plural form for every number (Serbian: 1 artikal, 2 artikla, 5 artikala, 21 artikal).
+6. No text is truncated or overlapping in any language at the default and the largest text size.
+7. In Arabic the layout is mirrored; direction icons flip, media icons and logos don't; order numbers and phone numbers read correctly.
+8. Sorting and search respect the language (č, ć, đ, š, ž sort as separate letters; search finds *Čačak* when typing *Cacak*).
+
+</Callout>
+
+Criterion 8 links to another feature. Search and sorting by language is covered in [Search, filters and sorting](/features/search-filters-and-sorting) (see <Term id="diacritics" />).
+
+## What usually goes wrong
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Truncated or overflowing text** | "Zahlungspflichtig bes…", labels on top of each other, buttons taller than the bar | Medium (High on a buy button) |
+| 2 | **Hard-coded strings** | English words in an otherwise translated screen | Medium |
+| 3 | **Raw keys or empty text** | `checkout.title`, `{{name}}`, or a blank button | High |
+| 4 | **Wrong plurals** | "1 items", "2 artikala", "21 artikala" | Low–Medium |
+| 5 | **Concatenated sentences** | Wrong word order, a lone untranslated fragment | Medium |
+| 6 | **Wrong number or currency format** | `1,299.00 RSD` instead of `1.299,00 RSD`, or `€` swapped for `$` without converting | High (money) |
+| 7 | **Wrong date or time format** | `10/11` read as 10 November instead of 11 October; 12-hour clock in Germany | Medium–High |
+| 8 | **RTL not mirrored, or mirrored wrongly** | Back arrow pointing into the screen, play button flipped, logo mirrored | Medium |
+| 9 | **Broken bidi text** | Phone numbers, prices or order IDs scrambled inside Arabic text | Medium–High |
+| 10 | **Clipped or missing glyphs** | Thai or Hindi marks cut off at the top or bottom, empty boxes (□) instead of letters | Medium |
+| 11 | **Mixed languages from the server** | Screen in Serbian, error message or push notification in English | Medium |
+| 12 | **Language switch doesn't stick** | App goes back to English after a restart or an update | Medium |
+
+<Callout type="bug" title="The currency trap">
+Changing the symbol is not localizing a price. If the app shows `€1,299.00` to a German user, two things are wrong: the format (`1.299,00 €`) and, much worse, maybe the **amount**, if someone swapped `$` for `€` without converting. Always check what the customer is actually charged, not just what the label says. More on that in [Shopping cart and checkout](/features/shopping-cart-and-checkout).
+</Callout>
+
+## Find the bug
+
+ShopNest is launching in Germany, Serbia and the UAE. Its cart screen below has **six localization bugs**. You don't need to speak these languages: use the lab above and the spec under the phone as your <Term id="test-oracle" />.
+
+- Switch through **every language** in Settings › App language and compare with the lab.
+- Change the **quantity** with − and +. Try 2, 3 and 5 in Serbian.
+- Read the **delivery date**, the **total** and the **button** carefully in German and Serbian.
+- In Arabic, look at **every icon**. Which way should each one point?
+
+<BugHunt
+  title="ShopNest cart in five languages"
+  bugs={[
+    {
+      title: 'German checkout button is cut off',
+      hint: 'Switch to Deutsch and read the blue button.',
+      detail: 'The button has a <strong>fixed width</strong> and no wrapping, so "Zahlungspflichtig bestellen" is cut off mid-word, without even an ellipsis. On a German shop this exact wording matters: the button must make clear the order costs money. Expected: the button grows or wraps (like in the lab). Pseudo-localization would have caught this before any German text existed.',
+    },
+    {
+      title: 'Serbian plural forms are wrong',
+      hint: 'Switch to Srpski and set the quantity to 2, 3 or 4.',
+      detail: 'The app uses the English rule <code>n === 1 ? one : other</code> for every language. Serbian shows <strong>"2 artikala"</strong> instead of "2 artikla", and with 21 items it would show "21 artikala" instead of "21 artikal". Arabic is wrong too (2 should use the dual form). Expected: plural rules per language (one, few, other in Serbian), e.g. with ICU MessageFormat.',
+    },
+    {
+      title: 'Wrong icons are mirrored in Arabic',
+      hint: 'Switch to العربية and compare the back arrow and the play button with the lab.',
+      detail: 'The layout mirrors correctly, but the icons are the wrong way round: the <strong>back chevron still points left</strong>, into the screen, although it now sits on the right edge. Meanwhile the <strong>play icon on the product video is flipped</strong>, which it never should be (media controls are the same in every language). Expected: direction icons flip, media icons and logos don\'t.',
+    },
+    {
+      title: 'Delivery date is glued together in US order',
+      hint: 'Compare the delivery line in English and Deutsch.',
+      detail: 'German shows <strong>"Freitag, Oktober 16 · 2:30 PM"</strong> and Serbian "petak, oktobar 16 · 2:30 PM". The weekday and month are translated, but the sentence is concatenated in US order with a 12-hour clock. Expected: a locale-aware formatter, e.g. "Freitag, 16. Oktober · 14:30". English looks perfect, which is why nobody noticed.',
+    },
+    {
+      title: 'Raw translation key in Serbian Cyrillic',
+      hint: 'Switch to Српски (ћирилица) and read every line.',
+      detail: 'The free delivery note shows <code>cart.free_delivery_note</code>. The key exists in Latin Serbian but is missing from the Cyrillic file, and there is no fallback. Expected: every string is translated before release, or at least falls back to an agreed language instead of showing a key.',
+    },
+    {
+      title: 'Serbian prices use US separators',
+      hint: 'Look at the total in Srpski, then in Deutsch.',
+      detail: 'Serbian shows <strong>"13,990.00 RSD"</strong> instead of "13.990,00 RSD". The price helper only knows English, German and Arabic and falls back to US formatting for everything else. For a Serbian reader "13,990" looks like thirteen point nine, a dangerous misunderstanding on a total. Expected: formatting by locale (dot for thousands, comma for decimals).',
+    },
+  ]}
+>
+  <BuggyLocalizedShop client:visible />
+</BugHunt>
+
+<Callout type="tip" title="Notice what works">
+English is perfect, which is exactly why these bugs survive: a team that only tests in English sees nothing wrong. The Arabic layout direction, German prices and the Latin Serbian translations are correct on purpose. When you report, point at the working language as proof: "German formats prices correctly, Serbian should use the same rules."
+</Callout>
+
+<Callout type="example" title="How would you report bug #6?">
+
+**Title:** Cart (sr-Latn, sr-Cyrl): total uses US number separators, "13,990.00 RSD"
+
+**Environment:** ShopNest 3.2.0 (Android 15), app language Srpski (latinica) and Српски (ћирилица)
+
+**Steps:** 1. Settings › App language › Srpski (latinica). 2. Open the cart with 1 pair of headphones. 3. Read the total.
+
+**Expected:** `13.990,00 RSD` (dot for thousands, comma for decimals), as in the localization spec.
+**Actual:** `13,990.00 RSD`. Same in Cyrillic. German (`119,90 €`) is correct.
+
+**Severity:** High (a price can be misread) · **Reproducible:** Always · Screenshot attached for both scripts.
+
+</Callout>
+
+Always include the **language, script and region** in a localization bug report, plus a screenshot. Developers often can't read the language, so describe what's wrong in English too. More tips in [Writing bug reports](/tutorials/writing-bug-reports).
+
+## Test scenarios
+
+You won't test every screen in every language by hand. That's a <Term id="combinatorial-explosion" />. A practical strategy: run the **whole app once in a pseudo-locale** (catches hard-coded text and truncation everywhere), then test the **critical journeys** (sign up, search, cart, checkout, receipts) in each real language, and add a native speaker review for wording.
+
+### Functional
+
+- The app starts in the device language if it's supported, and falls back to the agreed default if it isn't (try a language the app doesn't support, like Finnish).
+- The in-app language setting changes every screen, and the choice survives a restart and an app update.
+- Per-app language from system settings (Android 13+, iOS) is respected.
+- Server content follows the app language: error messages, product data, emails, push notifications, PDF receipts.
+- Search and sorting work with local letters (*č, ć, đ, ß, ä*) and with or without diacritics.
+- Users can type and save names and addresses in their script (Cyrillic, Arabic, Chinese), and they show up correctly everywhere, including on other devices and in emails (no garbled text like `ÄŒaÄak`).
+
+### Text and layout
+
+- No truncation, overlapping or clipped text in German, Finnish or a pseudo-locale with expansion.
+- Buttons, tabs and badges grow or wrap instead of cutting text. Check the **small phone** and the **largest text size** (<Term id="dynamic-type" />) together.
+- No hard-coded strings: in the pseudo-locale, every piece of text is accented and bracketed.
+- No raw keys, placeholders like `{name}`, or empty labels.
+- Fonts render every script: no □ boxes, Thai and Hindi marks are not clipped, line height is comfortable.
+- Text inside images and videos is localized too (or avoided).
+
+### Formats
+
+- Plurals for **0, 1, 2, 5, 11, 12, 21, 22, 101** in each language.
+- Prices: separators, symbol position, decimals and the correct currency **amount**.
+- Dates, times (12/24-hour), time zones and the first day of the week in the [date picker](/components/date-picker).
+- Phone numbers, postcodes and addresses accept local formats (no US-only masks).
+- Units: km or miles, kg or lb, °C or °F, as the spec says.
+
+### Right-to-left
+
+- The whole layout is mirrored: navigation, lists, forms, tab order, progress bars, carousels and swipe gestures.
+- Direction icons flip; play buttons, checkmarks, clocks, logos and photos don't.
+- Mixed text reads correctly: prices, order numbers, phone numbers, emails and URLs inside Arabic or Hebrew sentences.
+- Text fields: typing Arabic starts on the right; typing an email address in an RTL screen still works and reads left-to-right.
+- Charts and timelines: check with the spec whether time flows right-to-left or stays left-to-right.
+
+### Edge cases
+
+- Switch language in the middle of a flow (cart full, form half-filled). Nothing is lost, every screen updates.
+- Device language is unsupported, or a regional variant (`de-CH`, `en-IN`, `sr-ME`).
+- Language English with region Germany (formats vs words).
+- Very long names and addresses (German street names, Arabic names with several parts).
+- Translations updated after release (if the app downloads strings from a server): what does an old app version show?
+
+### Accessibility
+
+- Screen readers use the right voice: on the web, the page has a correct `lang` attribute (and `dir="rtl"` for RTL); in apps, VoiceOver and TalkBack read the text in the app language.
+- Content descriptions and accessibility labels are translated too, not only visible text.
+- Large text plus a long language is the worst case for layout: test them together.
+- Reading and focus order follows the language direction (right to left in Arabic).
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-L10N-001',
+      title: 'Pseudo-locale reveals no hard-coded or truncated text',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Debug build with pseudo-locales enabled', 'Developer options on (Android)'],
+      steps: ['Set the device language to English (XA)', 'Open every main screen: Home, Search, Product, Cart, Checkout, Profile', 'Open every dialog and error message you can trigger'],
+      expected: 'All text is accented and wrapped in [brackets]. No plain English text (hard-coded), no missing ] (truncated), no overlapping elements.',
+    },
+    {
+      id: 'TC-L10N-002',
+      title: 'Serbian plural forms in the cart',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['App language: Srpski (latinica)'],
+      steps: ['Add 1 item to the cart', 'Increase the quantity to 2, 5, 11, 21 and 22, reading the summary each time'],
+      data: 'Quantities: 1, 2, 5, 11, 21, 22',
+      expected: '1 artikal · 2 artikla · 5 artikala · 11 artikala · 21 artikal · 22 artikla.',
+    },
+    {
+      id: 'TC-L10N-003',
+      title: 'Prices and dates follow the German locale',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Device language Deutsch (Deutschland)', 'Cart contains items worth more than 1,000 euros'],
+      steps: ['Open the cart', 'Read the total and the delivery slot', 'Open the delivery date picker'],
+      expected: 'Total like "1.199,00 €"; delivery like "Freitag, 16. Oktober · 14:30"; the calendar week starts on Monday.',
+    },
+    {
+      id: 'TC-L10N-004',
+      title: 'German checkout button shows its full text',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['App language Deutsch', 'Smallest supported phone and largest text size'],
+      steps: ['Open the cart', 'Read the checkout button'],
+      expected: '"Zahlungspflichtig bestellen" is fully visible (wrapped or in a taller button), still tappable, and not covered by other elements.',
+    },
+    {
+      id: 'TC-L10N-005',
+      title: 'Arabic layout and icons are mirrored correctly',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['App language العربية'],
+      steps: ['Open the product screen and the cart', 'Check the back button, list chevrons and quantity stepper', 'Check the video play button and the logo', 'Swipe back'],
+      expected: 'Back button is on the right and points right; chevrons point left; play icon and logo are not mirrored; swipe back works from the right edge (iOS).',
+    },
+    {
+      id: 'TC-L10N-006',
+      title: 'Mixed-direction text reads correctly in Arabic',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['App language العربية', 'An order with number A-2048 exists'],
+      steps: ['Open the order details', 'Read the order number, price, support phone number and email address'],
+      data: 'Phone: +381 11 555 0199 / email: help@shopnest.example',
+      expected: 'Each value reads in the correct order (e.g. "#A-2048", "+381 11 555 0199") and punctuation stays on the correct side.',
+    },
+    {
+      id: 'TC-L10N-007',
+      title: 'Changing the language mid-flow keeps the data',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Cart with 3 items', 'Checkout address form half filled'],
+      steps: ['Go to Settings › Language and switch from English to Srpski (ћирилица)', 'Return to checkout'],
+      expected: 'All screens, including the ones further back, are in Cyrillic Serbian. Cart and form data are unchanged. No Latin text or raw keys.',
+    },
+    {
+      id: 'TC-L10N-008',
+      title: 'Server messages follow the app language',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Device in English, app language set to Deutsch'],
+      steps: ['Enter an invalid coupon code', 'Place an order', 'Check the order email and push notification'],
+      expected: 'The coupon error, order email and push notification are all in German.',
+    },
+  ]}
+/>
+
+## Mobile vs web
+
+<Tabs labels={['Mobile app', 'Website']}>
+<Tab>
+
+- **Device language:** iOS: Settings › General › Language & Region. Android: Settings › System › Languages. Also change the **region** separately to see which formats follow it.
+- **Per-app language:** on Android 13+, Settings › System › Languages › App languages (the app must declare its supported languages). On iOS, the app's page in Settings has a **Language** option when the app supports more than one language. Quicker than switching the whole phone.
+- **Pseudo-locales on Android:** in a debug build with `pseudoLocalesEnabled true`, turn on Developer options and add **English (XA)** or **Arabic (XB)** in the language list.
+- **Pseudolanguages on iOS:** in Xcode, Edit Scheme › Run › Options › App Language offers Double-Length, Accented, Right-to-Left and other pseudolanguages, plus a "Show non-localized strings" option. Simulators make switching languages fast (see [Simulators and emulators](/mobile/simulators-and-emulators)).
+- **RTL gestures:** swipe-to-go-back starts from the right edge in RTL on iOS; carousels and swipe actions in lists should flip too.
+- **System UI** (permission dialogs, the store sheet, the keyboard) follows the device language. That's normal; mention it in reports only if the spec says otherwise.
+- **Push notifications** are built on the server: check they arrive in the user's chosen language, also when the app is closed (see [Push notifications](/features/push-notifications)).
+- **Install a different keyboard** (Serbian Cyrillic, Arabic) to type real data into fields and search.
+
+</Tab>
+<Tab>
+
+- **Browser language:** Chrome: Settings › Languages (move a language to the top). Firefox: Settings › General › Language. The browser sends it in the `Accept-Language` request header, which you can see in the <Term id="devtools" /> Network tab.
+- **Locale override in DevTools:** Chrome's Sensors panel (More tools › Sensors) can override the locale for one tab, which changes how JavaScript formats dates and numbers.
+- **Language switcher and URLs:** many sites use `/de/`, `/sr-latn/` or `?lang=de`. Check that links, redirects, the back button and shared links keep the language, and that switching language keeps you on the same page.
+- **`lang` and `dir` attributes:** inspect the `<html>` element. It should say `lang="ar" dir="rtl"` for Arabic. A quick RTL smoke test: add `dir="rtl"` yourself in the Elements panel and see what breaks.
+- **CSS:** look for icons and padding stuck on the wrong side.
+  <DevNote>Layouts built with left/right margins don't mirror; logical properties (start/end) do.</DevNote>
+- **Responsive + long text:** German at a phone width is a classic overflow (see [Responsive design testing](/web/responsive-design-testing)).
+- **Fonts:** web fonts often contain only Latin letters. Check Cyrillic, Arabic and accented letters don't fall back to a mismatched font or show □ boxes.
+- **SEO and sharing:** each language version has its own title and description; shared links preview in the right language.
+
+</Tab>
+</Tabs>
+
+## Checklist
+
+<Checklist
+  title="Localization and RTL checklist"
+  storageKey="localization-and-rtl"
+  items={[
+    'The app follows the device language and falls back correctly for unsupported languages',
+    'The in-app or per-app language setting works and survives a restart and an update',
+    'A pseudo-locale run shows no hard-coded strings and no truncated text',
+    'No raw keys, placeholders or empty labels in any language',
+    'German (or another long language) fits on the smallest phone with the largest text size',
+    'Plurals are correct for 0, 1, 2, 5, 11, 12, 21, 22 and 101',
+    'Prices use the right separators, symbol position, decimals and currency amount',
+    'Dates, times, time zones and the first day of the week follow the locale',
+    'Phone numbers, addresses and names accept local formats and scripts',
+    'Sorting and search handle local letters and diacritics',
+    'RTL: the layout is mirrored, direction icons flip, media icons and logos do not',
+    'Mixed-direction text (numbers, IDs, emails, URLs) reads correctly in RTL',
+    'All scripts render: no boxes, no clipped marks in Thai or Hindi',
+    'Server texts, emails and push notifications use the user\'s language',
+    'Screen readers use the correct language and accessibility labels are translated',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'What is the difference between internationalization (i18n) and localization (l10n)?',
+      options: ['They are the same thing', 'i18n prepares the app to support any language; l10n adapts it to one specific market', 'i18n is for websites, l10n is for mobile apps', 'l10n is done by developers, i18n by translators'],
+      answer: 1,
+      explain: 'Internationalization is the groundwork (no hard-coded text, flexible layouts, locale-aware formatters). Localization is the actual adaptation: translations, formats, currency, images.',
+    },
+    {
+      q: 'You run the app in the en-XA pseudo-locale and see the plain text "Place order" on one button, without accents. What does it most likely mean?',
+      options: ['The button is fine', 'The text is hard-coded and will not be translated', 'The font does not support accents', 'The button is truncated'],
+      answer: 1,
+      explain: 'Pseudo-localization changes every string that comes from the translation files. Plain text was not in those files, so it is hard-coded (or comes from the server) and will stay English in every language.',
+    },
+    {
+      q: 'Which set of quantities is the best for testing Serbian plurals?',
+      options: ['1 and 2', '1, 2, 5, 11, 21, 22', '0 and 100', '10, 20, 30'],
+      answer: 1,
+      explain: 'Serbian has three forms, and the choice depends on the last digit(s): 1 and 21 are singular, 2 and 22 use "few", 5 and 11 use "other". Testing only 1 and 2 misses most bugs.',
+    },
+    {
+      q: 'In an Arabic version of your app, which icon should NOT be mirrored?',
+      options: ['The back arrow', 'The chevron in a list row', 'The video play button', 'The send button'],
+      answer: 2,
+      explain: 'Media controls show playback direction, which is the same everywhere. Back arrows, chevrons and send icons follow the reading direction, so they flip.',
+    },
+    {
+      q: 'The total in the Serbian version reads "13,990.00 RSD". What is the bug?',
+      options: ['Nothing, RSD is correct', 'It uses US separators; Serbian expects 13.990,00 RSD', 'The currency should be EUR', 'It should be rounded to 14,000'],
+      answer: 1,
+      explain: 'Serbian uses a dot to group thousands and a comma for decimals. A reader could misread "13,990" as about thirteen, which is dangerous on a price.',
+    },
+    {
+      q: 'Why is "You have " + n + " item(s)" a localization bug?',
+      options: ['It is too long', 'Translators get fragments without context, word order and plurals cannot change per language', 'Numbers cannot be translated', 'It only fails in RTL languages'],
+      answer: 1,
+      explain: 'Concatenated pieces force English word order and English plural logic on every language. Use one message with placeholders and plural rules instead.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- **i18n** makes an app ready for any language; **l10n** adapts it to one market. Both are full of bugs that are invisible in English.
+- Much more than words changes: **plurals, dates, numbers, currency, units, addresses, names, sorting** and the first day of the week.
+- Text grows **30–50%** in German or Finnish, short labels even more. Use **pseudo-localization** to find truncation and hard-coded strings before translations exist.
+- Beware of **concatenated sentences**, **English-only plural logic**, **raw keys** and **wrong separators** in prices.
+- In **RTL** the whole layout mirrors, but play buttons, logos, checkmarks and clocks don't. Watch numbers and IDs inside RTL text.
+- Test with the device language, the per-app language, the browser language and the pseudo-locales, and always note **language, script and region** in your bug reports.
+
+</KeyTakeaways>

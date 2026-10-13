@@ -1,0 +1,44 @@
+teaser: "A valid email gets rejected, and the user did nothing wrong. Can you guess the invisible culprit?"
+cards:
+  - type: flip
+    front: "Why isn't a placeholder a label?"
+    back: "It vanishes as soon as you type, often has low contrast, and screen readers may skip it. Use a visible label."
+  - type: spotbug
+    screen: ["Email: anna@test.com_", "(_ = trailing space from autofill)", "Error: Invalid email address"]
+    bug: "A trailing space makes a valid email fail."
+    explain: "The app validates the raw value. Leading and trailing spaces should be trimmed before validating and saving."
+  - type: quiz
+    q: "The quantity field shows a number pad. Do you still test letters?"
+    options: ["No, letters are impossible", "Only on Android", "Yes, users can paste or autofill"]
+    answer: 2
+    explain: "A keyboard is a hint, not validation. Paste, autofill and hardware keyboards can all deliver 12abc."
+  - type: spotbug
+    screen: ["Display name: <b>Anna</b>", "Profile preview:", "Hello, Anna  (shown in bold)"]
+    bug: "User input is rendered as HTML."
+    explain: "If formatting tags take effect, scripts probably can too. That's an XSS hole: report it as Critical right away."
+  - type: thisorthat
+    prompt: "A checkout form asks for the country. Users have typed \"Hrvatksa \" and other typos."
+    left: "Text field"
+    right: "Dropdown or combo box"
+    answer: right
+    explain: "A known, fixed list belongs in a dropdown or combo box. Free text invites typos and trailing spaces."
+  - type: spotbug
+    screen: ["Phone: +385 91 23", "Typed: +385 91 234 5678", "No message shown"]
+    bug: "The number is cut off silently."
+    explain: "A hidden 10-character limit chops international numbers and sends the broken value. Users can't be contacted."
+  - type: quiz
+    q: "When should an email field's error appear?"
+    options: ["After the first character", "On leaving the field, rechecked live", "Only on the server later"]
+    answer: 1
+    explain: "Waiting until the user leaves avoids nagging. Rechecking live lets the error disappear as soon as the value is fixed."
+  - type: truefalse
+    statement: "The names O'Brien and Đurđa and the email anna+shop@test.com should all be accepted."
+    answer: true
+    explain: "Rejecting real apostrophes, accented letters or plus addresses is a classic High-severity bug. Real users have names developers never imagined."
+  - type: truefalse
+    statement: "One flower emoji counting as 2 in a character counter is correct."
+    answer: false
+    explain: "The counter is counting code units. It should count characters the way people see them, or users hit the limit early."
+  - type: flip
+    front: "Name four nasty inputs for any text field."
+    back: "Empty, spaces only, maximum + 1 characters, emoji, accented letters, apostrophes, HTML tags, and text pasted with a line break."

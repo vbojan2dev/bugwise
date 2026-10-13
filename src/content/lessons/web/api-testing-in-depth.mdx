@@ -1,0 +1,697 @@
+---
+title: "API Testing in Depth: Auth, Negative Tests and Data Checks"
+description: Go beyond "status is 200". Test tokens and JWTs, 401 vs 403, IDOR and admin access, negative and boundary requests, response schemas, CRUD chains, pagination, rate limits, ETags and versioning, then hunt 8 bugs in a FoodDash API sandbox.
+order: 9
+level: intermediate
+minutes: { short: 30, long: 45 }
+platform: both
+tags: [API, authentication, authorization, JWT, negative testing, Postman, REST]
+---
+
+import FoodDashSandbox from '@/components/demos/api-in-depth/FoodDashSandbox';
+
+The FoodDash team was proud of its Postman collection: 140 requests, all green, every one checking `Status code is 200`. Then a developer opened the mobile app's network log while debugging something else and froze. Every time a customer changed their phone number, the response to `PATCH /users/me` contained the customer's **password hash**, their internal marketing segment and their role.
+
+The status was 200. The tests passed. The bug had been in production for four months.
+
+This lesson picks up where [API Testing with Postman](/web/api-testing-with-postman) stops. You already know methods, status codes, headers, JSON and Postman basics. Now you'll learn to test the parts that cause the expensive bugs: **who** is calling, **what** they're allowed to touch, **what happens with bad input**, and **what's really inside** a response.
+
+<Callout type="info" title="Before you start">
+
+You should be comfortable sending a request in Postman (or the mini client in the [Postman lesson](/web/api-testing-with-postman)) and know the difference between 2xx, 4xx and 5xx. Security background helps too: [Security Basics](/web/security-basics) explains IDOR and broken access control from the browser side. Here we test the same ideas at the <Term id="api" /> level.
+
+</Callout>
+
+<Callout type="warning" title="Ethics first">
+
+Everything in this lesson that touches other people's data (using one user's token on another user's resource, calling admin endpoints, hammering an endpoint to trigger a rate limit) is done **only on test environments, with test accounts, and with your team's permission**. Doing it against a system you don't work on can be illegal, even if you "only looked".
+
+</Callout>
+
+<Short>
+
+## The quick version
+
+### 1. Know who is calling: authentication
+
+- **API key**: a fixed secret that identifies an *app or partner*, usually sent in a header such as `x-api-key`. It says which app is calling, not which person.
+- **Bearer token**: a token you get after logging in and send on every request as `Authorization: Bearer <token>`. Whoever holds ("bears") it is treated as you.
+- **JWT** (JSON Web Token): a common token format with three dot-separated parts, `header.payload.signature`. The payload is just base64url-encoded JSON, so **anyone can decode it** and read the user id, role and expiry time (`exp`). **Decoding is not verifying**: only the server, with its secret key, can check the signature. If you edit the payload, the signature no longer matches and the server must reject it.
+- **Expiry**: access tokens expire on purpose (often after 5–60 minutes). An expired token must get **401** on *every* endpoint.
+
+### 2. 401 vs 403 vs 404
+
+| You send | Expected |
+| --- | --- |
+| No token, broken token, expired token | **401 Unauthorized** ("who are you?") |
+| A valid token, but your role isn't allowed | **403 Forbidden** ("I know you, the answer is no") |
+| A valid token for someone else's order | **404** (or 403), never their data |
+
+### 3. Test what users may touch: authorization
+
+With two test accounts, A and B:
+
+- **Horizontal access (IDOR)**: use A's token on B's resource, e.g. `GET /orders/1043`. Expect 404 or 403.
+- **Vertical access**: use a normal customer token on an admin endpoint, e.g. `GET /admin/users`. Expect 403.
+- **Sneaky fields**: send `"role": "admin"` in a profile update. It must be ignored or rejected.
+
+### 4. Break the request on purpose
+
+Change **one thing at a time**: remove a required field, add an unknown field, send `"2"` instead of `2`, send `""` and `null` and leave the field out (three different cases), send huge values, an invalid enum value, broken JSON and the wrong `Content-Type`. Expect a **4xx with a clear message**. A **500** for bad input is a bug. Send the same POST twice: does it create two orders? Ask whether the API supports an `Idempotency-Key` header.
+
+### 5. Read the whole response, not just the status
+
+Check the **schema** (field names, types, required fields), the **values** (does the total add up?), **consistency** with the database and the UI, **error message quality**, and **leaks**: password hashes, internal IDs, other users' data, stack traces.
+
+### 6. Chain requests and check the edges
+
+Create → read → update → read → delete → read again (expect 404), passing the new id along in a variable. Check **pagination** (no item twice, none missing), **filters and sorting**, **429 with Retry-After** on rate limits, and that old app versions still work when the API changes.
+
+<Callout type="tip">
+
+Switch to **Detailed** at the top for the full method: JWT claims, refresh tokens, a negative-testing table, JSON Schema checks in Postman, ETags, versioning and contract testing. Or jump straight into the sandbox below.
+
+</Callout>
+
+</Short>
+
+<Long>
+
+## Authentication in practice
+
+<Term id="authentication">Authentication</Term> answers "**who are you?**". APIs don't have login screens, so every request has to carry proof. You'll meet three kinds.
+
+### API keys
+
+An <Term id="api-key">API key</Term> is a long, fixed secret string issued to an **application**, a partner or a developer account, for example a restaurant's point-of-sale system that pushes menu updates to FoodDash. It's usually sent in a header:
+
+```http
+GET /v1/partner/menus HTTP/1.1
+Host: api.fooddash.test
+x-api-key: test_pk_7Hq2...
+```
+
+What to test:
+
+- No key, a wrong key, and a **revoked** key all return **401**.
+- A key for partner A can't change partner B's menu (403 or 404).
+- Keys are not accepted in the URL (`?api_key=...`) if the docs say header only. URLs end up in logs and browser history.
+- The key never appears in responses, error messages or the mobile app's public code (ask developers how it's protected).
+
+<Callout type="note" title="Keys identify apps, not people">
+
+An API key says "this is the FoodDash iOS app" or "this is Partner 42". It usually doesn't say *which customer* is using it. For that, APIs use user tokens.
+
+</Callout>
+
+### Bearer tokens
+
+After a user logs in (for example `POST /auth/login` with email and password), the server returns an **access token**, sent as a <Term id="bearer-token">bearer token</Term>. The app sends it on every request:
+
+```http
+GET /v1/users/me HTTP/1.1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1XzEwMDEi...
+```
+
+"Bearer" means *whoever holds this token is treated as the owner*. Like a concert ticket, nobody checks your face, they check the ticket. That's why tokens are treated like passwords: never in screenshots, public tickets or shared collections without masking. Tokens can be **opaque** (a random string the server looks up in a database, much like a <Term id="session-token" />) or **self-contained**, which usually means a JWT.
+
+### JWT: what's inside
+
+A <Term id="jwt">JWT</Term> (JSON Web Token, say "jot") is three base64url-encoded parts joined by dots:
+
+<div class="not-prose my-6 overflow-hidden rounded-2xl border border-line bg-surface">
+  <p class="border-b border-line bg-subtle px-4 py-2 font-mono text-xs break-all"><span class="font-semibold text-danger">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9</span>.<span class="font-semibold text-brand">eyJzdWIiOiJ1XzEwMDEiLCJyb2xlIjoiY3VzdG9tZXIiLCJleHAiOjE3OTIyMzA2MDB9</span>.<span class="font-semibold text-ok">x3Fh9...Qe8</span></p>
+  <div class="grid grid-cols-1 sm:grid-cols-3">
+    <div class="min-w-0 border-b border-line p-4 sm:border-r sm:border-b-0">
+      <p class="font-semibold text-danger">Header</p>
+      <p class="mt-1 text-sm text-muted">Which algorithm signed it.</p>
+      <pre class="mt-2 overflow-x-auto rounded-lg bg-subtle p-2 font-mono text-xs">{`{ "alg": "HS256",
+  "typ": "JWT" }`}</pre>
+    </div>
+    <div class="min-w-0 border-b border-line p-4 sm:border-r sm:border-b-0">
+      <p class="font-semibold text-brand">Payload (claims)</p>
+      <p class="mt-1 text-sm text-muted">Who, what role, until when.</p>
+      <pre class="mt-2 overflow-x-auto rounded-lg bg-subtle p-2 font-mono text-xs">{`{ "sub": "u_1001",
+  "role": "customer",
+  "exp": 1792230600 }`}</pre>
+    </div>
+    <div class="min-w-0 p-4">
+      <p class="font-semibold text-ok">Signature</p>
+      <p class="mt-1 text-sm text-muted">Made from the header, the payload and a secret key only the server knows (or a private key).</p>
+    </div>
+  </div>
+</div>
+
+The payload holds **claims**. The standard ones you'll see most:
+
+| Claim | Meaning | Example |
+| --- | --- | --- |
+| `sub` | Subject: the user id | `"u_1001"` |
+| `exp` | Expires at (seconds since 1 Jan 1970, UTC) | `1792230600` |
+| `iat` | Issued at | `1792227000` |
+| `iss` / `aud` | Issuer / intended audience | `"https://auth.fooddash.test"` |
+
+Apps add their own claims too, like `role`, `name` or `scope`.
+
+**How to decode one.** Copy the token from Postman or from DevTools › Network › a request › **Headers** › `Authorization`. Then paste it into a JWT decoder. The sandbox below has one built in. Online decoders such as jwt.io decode in your browser, but company policy may still forbid pasting tokens into external sites, so use **test** tokens only and ask first. Things to look at:
+
+- Is `exp` there, and is the lifetime what the team agreed (15 minutes, not 15 years)?
+- Is the `role` or `scope` right for this test user?
+- Is there anything that shouldn't be readable by the user, such as an email of another person, an internal flag or a password? **A JWT is encoded, not encrypted.** Anyone holding it can read it.
+
+<Callout type="bug" title="Decoding is not verifying">
+
+A decoder just turns base64url back into JSON. It proves nothing about who created the token. The **server** must verify the signature with its key on every request, and must reject tokens it didn't sign. Two classic bugs a tester can check on a test environment, with the team's OK:
+
+- **Edited payload accepted**: change `"role": "customer"` to `"admin"`, keep the old signature, and call an admin endpoint. Expected: **401** (invalid signature). If you get 200, the server isn't verifying.
+- **`"alg": "none"` accepted**: an unsigned token with the algorithm set to `none` must be rejected. Developers usually test this one with a library; ask whether it's covered.
+
+</Callout>
+
+### Token expiry and refresh
+
+Access tokens are short-lived so a stolen token stops working soon. To avoid logging users out every 15 minutes, many apps also get a **<Term id="refresh-token">refresh token</Term>**: a longer-lived token used only to ask the auth server for a new access token (`POST /auth/refresh`).
+
+<Steps>
+
+1. **Expired access token → 401.** Use an expired token (ask developers for a test token with a short lifetime, or wait). Every protected endpoint must return 401, not just most of them. Check the response: per the HTTP spec a 401 comes with a `WWW-Authenticate` header, often with `error="invalid_token"`.
+2. **The app refreshes quietly.** In the app, wait until the access token expires, then tap something. The app should get a new token in the background and retry once. The user shouldn't see an error or get logged out (watch it in a [proxy tool](/mobile/proxy-tools) or DevTools).
+3. **Refresh after logout fails.** Log out, then try the old refresh token. Expected: 401. Logout must revoke it on the server, not just delete it on the device.
+4. **Refresh token rotation.** If the team uses rotation, each refresh returns a *new* refresh token and the old one stops working. Try the old one again.
+5. **Password change.** After changing the password on another device, do old tokens stop working (now, or when the access token expires)? Ask what the requirement is.
+
+</Steps>
+
+<Callout type="info" title="Where does OAuth fit?">
+
+**<Term id="oauth">OAuth 2.0</Term>** is a standard *authorization framework*: it lets an app get an access token to act on a user's behalf, with limited permissions called **scopes**, without seeing the user's password. "Sign in with Google" adds **OpenID Connect** on top of OAuth to also tell the app *who* the user is (with an ID token, which is a JWT). As a manual tester you rarely test the protocol itself. You test the result: the login flow works ([social login](/features/login-and-sign-up)), the token has the expected scopes, and an endpoint refuses a token that lacks the scope it needs.
+
+</Callout>
+
+### 401 vs 403, tested properly
+
+| Test | Request | Expected |
+| --- | --- | --- |
+| No credentials | No `Authorization` header | 401 + `WWW-Authenticate` |
+| Malformed | `Authorization: Bearer abc`, or `Token xyz` | 401 |
+| Expired | A token whose `exp` is in the past | 401, on **every** endpoint |
+| Tampered | Edited payload, old signature | 401 |
+| Valid, wrong role | Customer token on `GET /admin/users` | 403 |
+| Valid, not the owner | A's token on B's order | 404 (or 403, see below) |
+
+Repeating the request with the same credentials won't fix a 403. A 401 means "authenticate (again)", so apps usually react by refreshing the token or sending the user to the login screen. If the app logs users out on a **403**, that's a client bug worth reporting.
+
+## Authorization tests
+
+<Term id="authorization">Authorization</Term> answers "**what may you do?**" It must be checked by the server on **every** request, because anyone can send any request with their own valid token. Hiding a button in the app is not a security control.
+
+You need at least **two test accounts with the same role** (Anna and Ben, both customers) and, ideally, **one per role** (customer, courier, restaurant owner, support agent, admin).
+
+### Horizontal access: same role, someone else's data (IDOR)
+
+<Steps>
+
+1. As **Ben**, create or find something that belongs to Ben: `GET /orders` → order `1043`.
+2. As **Anna**, request Ben's object directly: `GET /orders/1043`.
+3. Expected: **404 Not Found** (or 403). Never Ben's name, phone, address or items.
+4. Repeat for **every method** and **every object type**: `PATCH /addresses/21`, `DELETE /addresses/21`, `GET /invoices/...`, `GET /users/u_1002`. Teams often protect GET and forget PATCH or DELETE.
+5. Also try IDs hidden in **query parameters and bodies**, not only in paths: `GET /orders?userId=u_1002`, or `"addressId": 21` inside Anna's new order.
+
+</Steps>
+
+This bug is called an <Term id="idor" />, a form of <Term id="broken-access-control" />. Sequential IDs (1041, 1042, 1043) make it easier to exploit, but random IDs (UUIDs) don't fix it. The ownership check does.
+
+<Callout type="tip" title="403 or 404?">
+
+Both are acceptable for "not yours". Many teams prefer **404** because a 403 confirms that order 1043 exists, which leaks information. The HTTP spec explicitly allows a 404 to hide a forbidden resource. What matters is that the API is **consistent** and returns **no data**. Check the docs and compare with how a truly missing ID behaves.
+
+</Callout>
+
+### Vertical access: a normal user calling admin endpoints
+
+List the privileged endpoints (from the <Term id="openapi" /> docs or by watching an admin session in DevTools): `GET /admin/users`, `POST /refunds`, `PATCH /restaurants/3/commission`. Call each one with a **customer** token. Expected: **403**, and **no side effect**. Check afterwards that the refund wasn't created anyway.
+
+### Sneaky fields (mass assignment)
+
+Some APIs copy every field from the request body straight into the database. That bug is called <Term id="mass-assignment">mass assignment</Term>. Then a customer can send:
+
+```json
+{ "name": "Anna", "role": "admin", "balance": 9999, "emailVerified": true }
+```
+
+Expected: unknown or protected fields are **ignored** (or rejected with 400), and a follow-up GET shows they didn't change. This is often called **mass assignment**.
+
+### A role × endpoint matrix
+
+Write it once, then test each cell:
+
+| Endpoint | Anonymous | Customer (own) | Customer (other's) | Admin |
+| --- | --- | --- | --- | --- |
+| `GET /orders/{id}` | 401 | 200 | 404 | 200 |
+| `DELETE /addresses/{id}` | 401 | 204 | 404 | 204 |
+| `GET /admin/users` | 401 | 403 | 403 | 200 |
+
+## Negative and boundary testing of requests
+
+The server is the last line of defense: front-end checks can be skipped by anyone with Postman. Apply [equivalence partitioning](/fundamentals/equivalence-partitioning) and [boundary value analysis](/fundamentals/boundary-value-analysis) to every field, and break **one thing at a time** so you know which change caused the result.
+
+Start from a valid request:
+
+```json
+{
+  "restaurantId": 1,
+  "items": [{ "menuItemId": 101, "quantity": 2 }],
+  "paymentMethod": "card",
+  "note": "Leave at the door"
+}
+```
+
+| Category | Try | Good API answers |
+| --- | --- | --- |
+| **Missing field** | Remove `restaurantId`, then `items`, then `paymentMethod` (one per request) | 400 naming the field, for **each** of them |
+| **Extra field** | Add `"total": 0`, `"status": "delivered"`, `"discount": 100` | Ignored (the server calculates them) or 400. Never applied. |
+| **Wrong type** | `"quantity": "2"`, `"restaurantId": "1"`, `"items": {}`, `"quantity": 2.5` | 400 "must be an integer". Silently converting is a team decision, so ask. |
+| **Empty vs null vs missing** | `"note": ""`, `"note": null`, no `note` at all | Each behaves as documented. They are **three different cases**. |
+| **Boundaries** | `quantity` 0, 1, 20, 21, -1 | 1 and 20 accepted, the rest 400 |
+| **Huge values** | A 10,000-character note, `quantity: 99999999999`, 1,000 items | 400 or 413 Content Too Large. Not 500, not a timeout. |
+| **Invalid enum** | `"paymentMethod": "bitcoin"`, `"CARD"`, `""` | 400 listing the allowed values |
+| **Malformed JSON** | Remove a closing brace, add a trailing comma | 400 "invalid JSON". No stack trace. |
+| **Wrong Content-Type** | Send the JSON with `Content-Type: text/plain` | 415 Unsupported Media Type (some APIs answer 400) |
+| **Unknown references** | `"restaurantId": 999`, a menu item from another restaurant | 404 or 422 with a clear message |
+| **Special characters** | Emoji, accents, `<script>`, `' OR 1=1 --` in text fields | Stored and returned exactly as sent, never executed (see [Security Basics](/web/security-basics)) |
+
+<Callout type="example" title="Empty string, null and missing are not the same">
+
+For a PATCH (partial update), "field missing" usually means **don't change it**, `null` means **clear it**, and `""` might mean "clear it" or be invalid. If `PATCH /users/me` with `{"phone": null}` deletes the phone number while the docs say phone is required, that's a bug. If leaving `phone` out also deletes it, that's a worse one.
+
+</Callout>
+
+### Duplicate submissions and idempotency keys
+
+On a train with bad reception, the app sends `POST /orders`, the response gets lost, and the app (or the impatient user) sends it again. Without protection, the customer gets **two dinners and two charges**. That's the API side of a <Term id="double-submit" />.
+
+POST isn't <Term id="idempotency">idempotent</Term> by nature, so many APIs accept an **`Idempotency-Key`** header (an <Term id="idempotency-key">idempotency key</Term>): a unique value the client generates once per user action (often a UUID). If the server sees the same key again, it returns the **first response** instead of creating a second order. Stripe and many payment APIs work this way, and there's an IETF draft (not yet a finished standard) for the header.
+
+Tests:
+
+- Same key, same body, sent twice → the **same order id** both times, only one order in `GET /orders`.
+- Same key, **different** body → an error (often 422 or 409), not a silent second order.
+- Different keys → two orders (that's correct: two real actions).
+- No key, if the API requires one for payments → 400.
+
+## Validating responses beyond the status code
+
+A 200 only says "the server didn't complain". Check the response in layers:
+
+<Steps>
+
+1. **Status and headers.** The right code (201 + a `Location` header after a create, 204 with an empty body after a delete). `Content-Type: application/json`. `Cache-Control: no-store` on personal data.
+2. **Schema.** Every documented field is there, names are spelled as documented (`deliveryFee`, not `delivery_fee` on one endpoint and `deliveryFee` on another), types are right (`total` is a number, `id` is the same type everywhere), required fields are never `null`.
+3. **Values and business rules.** `total` = sum of `unitPrice × quantity` + `deliveryFee`. Dates are in the documented format and time zone. Currencies match. Enums only contain documented values.
+4. **Consistency.** What the API returns matches the **database** (see [SQL for Testers](/tutorials/sql-for-testers)) and what the **UI** shows. If the app shows €24.99 and the API says 24.98, one of them rounds wrongly.
+5. **Error quality.** Errors use one consistent shape, name the field and the rule, and are written for humans.
+6. **No leaks.** No password hashes, tokens, internal IDs or flags, other users' data, stack traces, SQL, server paths or framework versions.
+
+</Steps>
+
+<Compare>
+<Do title="A useful error">
+
+```json
+{
+  "error": "validation_error",
+  "message": "Some fields are invalid.",
+  "details": [
+    { "field": "items[0].quantity", "message": "must be from 1 to 20" }
+  ],
+  "requestId": "req_8f2k1"
+}
+```
+
+</Do>
+<Dont title="A useless or leaky error">
+
+```json
+{
+  "error": "TypeError: Cannot read properties of undefined (reading 'map')",
+  "stack": "at OrdersController.create (/srv/api/src/orders.js:42:9)"
+}
+```
+
+</Dont>
+</Compare>
+
+### Schema checks in Postman
+
+A **<Term id="json-schema">JSON Schema</Term>** is a JSON document that describes what valid JSON looks like: which fields, which types, which are required. Many teams generate it from their OpenAPI file. Postman can check a response against one:
+
+```js
+const orderSchema = {
+  type: "object",
+  required: ["id", "status", "items", "total", "currency"],
+  properties: {
+    id: { type: "integer" },
+    status: { enum: ["placed", "preparing", "on_the_way", "delivered", "canceled"] },
+    total: { type: "number", minimum: 0 },
+    currency: { type: "string", pattern: "^[A-Z]{3}$" },
+    items: { type: "array", minItems: 1 }
+  },
+  not: { anyOf: [{ required: ["passwordHash"] }, { required: ["stack"] }] }
+};
+
+pm.test("Order matches the schema", () => {
+  pm.response.to.have.jsonSchema(orderSchema);
+});
+```
+
+The last rule (`not … required`) fails the test if a `passwordHash` or `stack` field ever appears. A one-line guard like that would have caught the FoodDash leak from the intro on day one.
+
+## Chaining requests: a CRUD flow with variables
+
+Real tests are sequences: you create something, then use its id in the next request. That's **<Term id="crud">CRUD</Term>**: Create, Read, Update, Delete.
+
+<Steps>
+
+1. **Create**: `POST /v1/addresses` → 201. Save the new id: in Postman's **Scripts › Post-response**, `pm.environment.set("addressId", pm.response.json().id);`
+2. **Read**: `GET /v1/addresses/{{addressId}}` → 200 with exactly what you sent.
+3. **Update**: `PATCH /v1/addresses/{{addressId}}` with a new label → 200.
+4. **Read again**: the label really changed, the other fields didn't.
+5. **Delete**: `DELETE /v1/addresses/{{addressId}}` → 204 (or 200).
+6. **Read after delete**: `GET /v1/addresses/{{addressId}}` → **404**, and the address is gone from `GET /v1/addresses`. Skipping this step is how "delete" bugs escape.
+
+</Steps>
+
+Save the steps in one Postman collection folder and run it with the **Collection Runner** (or **Newman**, Postman's command-line runner, in CI). Each run creates its own data and cleans up after itself, so it can run again and again.
+
+**Environments.** A Postman *environment* is a named set of variables. You keep one for **Dev** and one for **<Term id="staging" />**, each with its own `baseUrl` and test-account tokens, and switch between them in the top-right dropdown. The requests themselves never change. Two habits:
+
+- Keep tokens and keys in variables marked as **secret** and don't share real secrets in team workspaces. Use test accounts only.
+- Never point a destructive collection (one that deletes things) at production by accident. Some teams add a pre-request check that stops if `baseUrl` contains `prod`.
+
+## Lists: pagination, filtering and sorting
+
+List endpoints break in quiet ways. A user never notices that restaurant #7 is missing, they just never order from it. (For the UI side, see the [Pagination component](/components/pagination).)
+
+**Page or offset <Term id="pagination" />** (`?page=2&limit=20`, or `?offset=20&limit=20`):
+
+- Walk **every page** with a small limit and collect the ids. **No duplicates, nothing missing**, and the count equals `total`.
+- First page, last page, one past the last page (expect an empty list, not 500), `page=0`, `page=-1`, `limit=0`, `limit=1`, the maximum limit and maximum + 1, `limit=abc`.
+- Add or delete an item between two page requests: with offset paging, items can shift and appear twice or not at all. That's why many APIs use <Term id="cursor-pagination" /> for feeds.
+
+**Filtering and sorting** (`?cuisine=italian&sort=-rating`):
+
+- Every returned item matches the filter. Combine two filters. Try a filter value that matches nothing (expect 200 with an empty list).
+- The sort order is right, including **ties** (two restaurants with rating 4.5 must keep a stable order across pages) and descending (`-rating`).
+- Unknown sort fields or invalid values give 400, not a silently ignored parameter.
+
+## Rate limiting: 429 and Retry-After
+
+<Term id="rate-limiting" /> caps how many requests a client may send in a time window. When you go over, the API should answer **429 Too Many Requests**, ideally with a **`Retry-After`** header that says how long to wait, in seconds (`Retry-After: 30`) or as a date. Many APIs also send headers like `X-RateLimit-Limit` and `X-RateLimit-Remaining` (common, but not a formal standard).
+
+What to test, after agreeing on it with the team:
+
+- The limit kicks in at the documented number, per user or per IP as documented, and resets after the window.
+- The 429 response has a clear message and `Retry-After`. The blocked request has **no side effect**.
+- The app handles 429 gracefully: it waits and retries with back-off (see <Term id="retry-backoff" />) instead of showing a crash or hammering the server.
+
+The [Security Basics](/web/security-basics) lesson covers which features need rate limits (login, codes, coupons).
+
+## Caching and ETags
+
+Responses can be cached so the app doesn't download the same restaurant menu 50 times. An **<Term id="etag">ETag</Term>** is a version label the server puts on a response, like `ETag: "r3-v3"`. Next time, the client sends it back in `If-None-Match`. If nothing changed, the server answers **304 Not Modified** with an empty body and the client uses its <Term id="cache">cached</Term> copy.
+
+Testers check:
+
+- The ETag **changes** when the data changes. If a restaurant updates its menu and you still get 304 with the old ETag, users see stale prices.
+- Personal data (profiles, orders) is not cached by shared caches: look for `Cache-Control: no-store` or `private`.
+- For updates, some APIs use `If-Match`: "only save if the version is still X". A stale ETag must get **412 Precondition Failed**, which prevents two support agents from overwriting each other's changes.
+
+## Versioning and backward compatibility
+
+APIs change, but old clients don't disappear. A mobile app from last year is still installed on thousands of phones and keeps calling the old API. That's why APIs are versioned (<Term id="api-versioning">API versioning</Term>), usually in the path (`/v1/orders`, `/v2/orders`) or in a header.
+
+| Non-breaking (usually fine in v1) | Breaking (needs a new version) |
+| --- | --- |
+| Adding an optional field to a response | Removing or renaming a field |
+| Adding a new endpoint | Changing a field's type (`"price": 12.5` → `"12.50"`) |
+| Adding an optional request parameter | Making an optional request field required |
+| Adding an enum value *(careful: old apps may crash on unknown values)* | Changing what a status code or error means |
+
+Test ideas: run your **v1 collection** against every new release (it's your regression suite for old apps), check that an unknown version like `/v3` returns a clear 404, and install the **oldest supported app version** against the new back end before a release.
+
+**Contract testing** automates part of this. The client team writes down exactly which requests it sends and which response fields it relies on (the *contract*), and the API's build checks every change against those contracts, so a renamed field fails the build before it reaches users. Tools such as Pact do this; it's mostly set up by developers, but knowing it exists helps you ask "is this endpoint covered by a <Term id="contract-testing">contract test</Term>?"
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-API2-001',
+      title: 'Expired token is rejected on every order endpoint',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Test token for Anna whose exp is in the past'],
+      steps: ['Send GET /v1/orders with the expired token', 'Send GET /v1/orders/1041 with the same token', 'Send POST /v1/orders with a valid body and the same token'],
+      expected: 'All three return 401 with WWW-Authenticate: Bearer error="invalid_token". No data, no order created.',
+    },
+    {
+      id: 'TC-API2-002',
+      title: "Customer cannot read another customer's order",
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Test users Anna and Ben', 'Ben owns order 1043'],
+      steps: ['Send GET /v1/orders/1043 with Anna\'s token'],
+      expected: "404 Not Found, same body shape as a truly missing order. None of Ben's data in the response.",
+    },
+    {
+      id: 'TC-API2-003',
+      title: 'Each missing required field returns 400',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Start from a valid POST /v1/orders body', 'Remove restaurantId and send', 'Restore it, remove items and send', 'Restore it, remove paymentMethod and send'],
+      expected: 'Each request returns 400 with a details entry naming the missing field. No 500, no order created.',
+    },
+    {
+      id: 'TC-API2-004',
+      title: 'Profile update returns only public fields',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Send PATCH /v1/users/me with {"phone": "+1 555 0177"}', 'Compare the response with GET /v1/users/me'],
+      expected: '200 with the same fields as GET (id, name, email, phone, createdAt). No passwordHash, role or internal fields.',
+    },
+    {
+      id: 'TC-API2-005',
+      title: 'Deleted address is really gone',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['POST /v1/addresses and save the id', 'DELETE /v1/addresses/{{addressId}}', 'GET /v1/addresses/{{addressId}}', 'GET /v1/addresses'],
+      expected: 'DELETE returns 204 (or 200). The follow-up GET returns 404 and the list no longer contains the id.',
+    },
+    {
+      id: 'TC-API2-006',
+      title: 'Pagination returns every restaurant exactly once',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['GET /v1/restaurants?page=1&limit=3', 'Repeat for page 2, 3 and 4', 'Collect all ids'],
+      expected: 'Pages 1–3 together contain each restaurant id once and the count equals total. Page 4 returns 200 with an empty data array.',
+    },
+  ]}
+/>
+
+</Long>
+
+## Hands-on: the FoodDash API sandbox
+
+Below is a FoodDash **test build** running entirely in your browser: a mock server, two test customers, Anna and Ben, and a token for Anna that expired an hour ago. Nothing goes over the network, so you can break whatever you like. The **API docs** at the bottom of the sandbox say what the API promises. Every difference between the docs and what you see is a finding.
+
+Start with this tour, then hunt for the rest.
+
+<Steps>
+
+1. **Warm up.** Send **List restaurants (page 1)**. Open the response **Headers** and find `Cache-Control`.
+2. **ETag.** Load **Restaurant details (ETag)** and send. Copy the `ETag` value (with its quotes), add a header `If-None-Match` with that value, and send again. You should get **304** and an empty body.
+3. **401 vs 403.** Load **My profile**. Send it as **Anna**, then **No token** (look at `WWW-Authenticate`), then **Anna (expired)**. Then load **Admin: list users** as Anna.
+4. **JWT.** Open the **JWT decoder** at the bottom. Compare `exp` in `annaToken` and `expiredToken`. Click the button that edits the role to `admin`, then send the admin request. What does the server say?
+5. **CRUD chain.** Send **Create address**: the new id is saved as `{{addressId}}`. Then read it, update it, delete it, and read it again. Does every step match the docs?
+6. **Break an order.** Load **Place an order** and change one thing at a time from the negative-testing table above: a wrong type, an invalid `paymentMethod`, a missing field, a boundary quantity, broken JSON, `Content-Type: text/plain`.
+7. **Duplicates.** Add the header `Idempotency-Key: order-001` and send **Place an order** twice. Compare the ids.
+8. **Rate limit.** Send **Redeem promo code** with a wrong code six times in a row. Find `Retry-After`.
+
+</Steps>
+
+When a request exposes one of the planted bugs, the sandbox says so and ticks it in the list. The bugs are deterministic: the same request always shows the same bug.
+
+<BugHunt
+  title="FoodDash API test build"
+  bugs={[
+    {
+      title: "Anna can read Ben's order (IDOR)",
+      hint: "Find an order that belongs to Ben, then ask for it with Anna's token.",
+      detail: 'As Ben, <code>GET /v1/orders</code> shows order <code>1043</code>. As Anna, <code>GET /v1/orders/1043</code> returns <strong>200</strong> with Ben\'s name, phone number, address and gate code. Expected: <strong>404</strong> like any order Anna doesn\'t own. Severity: critical (any customer can read any order by counting up).',
+    },
+    {
+      title: 'An expired token is still accepted on the order list',
+      hint: 'Send as "Anna (expired)" to several endpoints, not just one.',
+      detail: 'With the expired token, <code>GET /v1/users/me</code> and <code>GET /v1/orders/1041</code> correctly return <strong>401</strong>, but <code>GET /v1/orders</code> returns <strong>200</strong> with Anna\'s orders. That endpoint skips the <code>exp</code> check, so a stolen token works there forever. Expected: 401 everywhere.',
+    },
+    {
+      title: 'An order with a zero or negative quantity is created',
+      hint: 'The docs say quantity is 1–20. Test both ends of that range and beyond.',
+      detail: '<code>POST /v1/orders</code> with <code>"quantity": -3</code> (or <code>0</code>) returns <strong>201 Created</strong> and a negative subtotal. Only the upper limit is checked: 21 correctly gives 400. Expected: <strong>400</strong> "must be from 1 to 20".',
+    },
+    {
+      title: 'Malformed JSON leaks a stack trace',
+      hint: 'Break the JSON syntax of any request body, then read the whole error body.',
+      detail: 'Removing a closing brace returns the right status, <strong>400</strong>, but the body contains <code>stack</code> with server file paths (<code>/srv/fooddash-api/src/...</code>), the framework (Express), the Node.js version and the environment. Expected: a short, consistent error such as <code>{"error": "invalid_json", "message": "The body is not valid JSON."}</code>.',
+    },
+    {
+      title: 'A missing "items" field crashes the server (500)',
+      hint: 'Remove required fields from Place an order one at a time and compare the answers.',
+      detail: 'Without <code>restaurantId</code> or <code>paymentMethod</code> you get a proper <strong>400</strong> naming the field. Without <code>items</code> (or with <code>"items": null</code>) you get <strong>500 Internal Server Error</strong>: the code uses the list before validating it. Expected: 400 with <code>{"field": "items", "message": "is required"}</code>.',
+    },
+    {
+      title: 'Updating the profile returns the password hash',
+      hint: 'Compare what GET and PATCH on /v1/users/me return.',
+      detail: '<code>GET /v1/users/me</code> is clean, but <code>PATCH /v1/users/me</code> returns the whole database row: <code>passwordHash</code>, <code>role</code> and an internal <code>marketingSegment</code>. Expected: the same public fields as GET. Severity: high (hashes can be cracked offline, and the app logs responses).',
+    },
+    {
+      title: 'DELETE says "Address deleted", but the address still exists',
+      hint: 'After deleting something, try to read it again.',
+      detail: '<code>DELETE /v1/addresses/{id}</code> returns <strong>200</strong> <code>{"message": "Address deleted"}</code>, yet <code>GET /v1/addresses/{id}</code> still returns it and it still appears in <code>GET /v1/addresses</code>. The row is only flagged as deleted and the read queries ignore the flag. Expected: 404 after delete, and gone from the list.',
+    },
+    {
+      title: 'Pagination shows the same restaurant on two pages',
+      hint: 'Walk through the pages of the restaurant list and write down the ids.',
+      detail: '<code>GET /v1/restaurants?page=1&amp;limit=3</code> ends with Taco Loco (id 3), and <code>page=2</code> starts with Taco Loco again. Each page starts one item too early, so pages 1–3 (<code>totalPages: 3</code>) never show the last restaurant, Bella Pasta (id 8). It only turns up on a page 4 that shouldn\'t exist. Expected: offset = (page − 1) × limit.',
+    },
+  ]}
+>
+  <FoodDashSandbox client:visible />
+</BugHunt>
+
+## Writing an API bug report
+
+An API bug report is a normal [bug report](/tutorials/writing-bug-reports) with the request and response as the steps and evidence. A developer should be able to **copy one command** and see the bug.
+
+<Steps>
+
+1. **Title**: endpoint + what's wrong + under which condition. "POST /v1/orders returns 500 when items is missing".
+2. **Environment**: base URL (staging, not "the server"), build or version, test account (never a real password).
+3. **Request**: method, full URL, relevant headers, body. Best as a **curl** command (Postman: the code icon `</>` › cURL. DevTools: right-click a request › Copy › Copy as cURL). **Mask the token**.
+4. **Response**: status, the relevant headers and the body (shortened if long). Include the `X-Request-Id` or timestamp so developers can find the server log.
+5. **Expected vs actual**, quoting the API docs if you can.
+6. **Severity** and **reproducibility** (it's an API, so usually 100%).
+
+</Steps>
+
+<Callout type="example" title="Example: the missing-field bug">
+
+**Title:** POST /v1/orders returns 500 instead of 400 when "items" is missing
+
+**Environment:** Staging, `https://api.fooddash.test`, API build 2.14.0 · test user anna@test.fooddash.dev
+
+**Request:**
+
+```bash
+curl -X POST 'https://api.fooddash.test/v1/orders' \
+  -H 'Authorization: Bearer <anna-test-token>' \
+  -H 'Content-Type: application/json' \
+  --data-raw '{"restaurantId": 1, "paymentMethod": "card"}'
+```
+
+**Actual:** `500 Internal Server Error`, body `{"error": "internal_error", "message": "Something went wrong. Please try again later.", "requestId": "req_3q583h"}`
+
+**Expected:** `400 Bad Request` with `details: [{"field": "items", "message": "is required"}]`, as for the other required fields (docs: POST /v1/orders, "items (required)").
+
+**Notes:** Same 500 with `"items": null`. Missing `restaurantId` or `paymentMethod` correctly gives 400. **Severity:** Medium · **Reproducible:** 5/5
+
+</Callout>
+
+<Callout type="warning" title="Security findings go to a private channel">
+
+The IDOR, the expired-token bug and the password-hash leak are security bugs. Report them through your team's restricted process, as explained in [Reporting security bugs responsibly](/web/security-basics), and keep the evidence minimal.
+
+</Callout>
+
+## A practical API test checklist
+
+<Checklist
+  title="API testing in depth"
+  storageKey="api-testing-in-depth"
+  items={[
+    'No token, a malformed token, an expired token and an edited token all return 401 on every protected endpoint',
+    'A valid token with the wrong role returns 403, with no side effect',
+    "User A's token on user B's objects returns 404 or 403 for GET, PATCH and DELETE",
+    'Protected fields like role, status or total in a request body are ignored or rejected',
+    'The JWT payload has a sensible exp and contains nothing secret',
+    'Each required field, removed one at a time, gives a 400 naming that field',
+    'Wrong types, invalid enum values, empty strings, null and huge values give 4xx, never 500',
+    'Malformed JSON gives 400 and a wrong Content-Type gives 415 (or 400)',
+    'The same POST with the same Idempotency-Key creates only one record',
+    'Responses match the schema: field names, types, required fields',
+    'Numbers add up and data matches the database and the UI',
+    'Error messages are consistent, helpful and leak no stack traces, SQL or server paths',
+    'Responses never contain password hashes, tokens or other users\' data',
+    'Create → read → update → read → delete → read (404) works with chained variables',
+    'Every page of a list together contains each item exactly once',
+    'Filters and sorting are correct, including ties and invalid values',
+    'Rate limits return 429 with Retry-After and the app backs off',
+    'ETags change when data changes, and personal data is not publicly cached',
+    'The previous API version and the oldest supported app still work',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'You decode a JWT and change "role": "customer" to "admin", keeping the old signature. What should the API return when you call an admin endpoint?',
+      options: ['200 OK, the role says admin', '401 Unauthorized, the signature no longer matches', '403 Forbidden, because you are a customer', '404 Not Found'],
+      answer: 1,
+      explain: 'Decoding is not verifying. The server checks the signature on every request; an edited payload makes it invalid, so the token is rejected as unauthenticated (401).',
+    },
+    {
+      q: "Logged in as Anna, you send GET /orders/1043, which belongs to Ben. Which result is a bug?",
+      options: ['404 Not Found', '403 Forbidden', "200 OK with Ben's order", 'All of them'],
+      answer: 2,
+      explain: "404 and 403 are both acceptable ways to say 'not yours'. Returning Ben's data is an IDOR, a critical broken-access-control bug.",
+    },
+    {
+      q: 'POST /orders without "items" returns 500. Without "paymentMethod" it returns 400. What is the best conclusion?',
+      options: ['Both are fine, it is an error either way', 'The 500 is a bug: missing input should be a 4xx naming the field', 'The 400 is the bug, it should also be 500', 'Only a problem if users see it'],
+      answer: 1,
+      explain: 'A missing field is a client mistake the server can predict. It should be validated and answered with 400. A 500 means the code crashed on unvalidated input.',
+    },
+    {
+      q: 'A profile update returns 200 with the right new phone number. What else should you check?',
+      options: ['Nothing, the status and the value are right', 'That the response has no extra fields like passwordHash, and a GET shows the change', 'Only the response time', 'That the status is 201'],
+      answer: 1,
+      explain: 'Check the whole response: schema, leaks and consistency. A follow-up GET proves the change was saved.',
+    },
+    {
+      q: 'The app sends POST /orders, the response is lost on a bad network, and the app retries. What prevents a second order?',
+      options: ['Sending the retry as PUT', 'An Idempotency-Key header with the same value on both requests', 'A shorter timeout', 'Using a different token'],
+      answer: 1,
+      explain: 'With the same Idempotency-Key, the server recognizes the retry and returns the first response instead of creating a new order.',
+    },
+    {
+      q: 'You hit a rate limit. Which response is correct?',
+      options: ['403 Forbidden with no headers', '429 Too Many Requests with a Retry-After header', '500 Internal Server Error', '200 OK with an empty body'],
+      answer: 1,
+      explain: '429 is the status for rate limiting. Retry-After tells the client how long to wait (in seconds or as a date).',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- **Authentication**: API keys identify apps, bearer tokens identify users. A JWT's payload is readable by anyone; **decoding is not verifying**. Expired, malformed and edited tokens must get **401 on every endpoint**.
+- **401 vs 403**: 401 = we don't know who you are; 403 = we know you, and the answer is no. Someone else's object → **404 or 403**, never their data.
+- **Authorization**: with two test accounts, test **horizontal** access (IDOR) and **vertical** access (admin endpoints) for every method, plus sneaky fields like `role`. Only on test environments, with permission.
+- **Negative tests**: change one thing at a time: missing, extra, wrong-type, empty vs null, huge, invalid enum, malformed JSON, wrong Content-Type, duplicates. Bad input → **4xx with a clear message**, never 500.
+- **Responses**: check the schema, types, values, consistency with the database and UI, error quality and **leaks**, not just the status.
+- **Flows and edges**: chain CRUD with variables and read after delete; walk every page; check filters and sorting, 429 + Retry-After, ETags and older API versions.
+- **Bug reports**: a curl command with a masked token, the response, the environment and the request id.
+
+</KeyTakeaways>

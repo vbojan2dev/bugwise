@@ -1,0 +1,43 @@
+teaser: "A site works on a phone and on a laptop, yet iPad users can't find the Sign in button. Where do layouts really break?"
+cards:
+  - type: flip
+    front: "What is a breakpoint?"
+    back: "A screen width where the layout changes, for example from one column to two. Developers write them as CSS media queries."
+  - type: quiz
+    q: "The site has a breakpoint at 1024px. Which widths are the best test values?"
+    options: ["1000 and 1100px", "Only 1024px", "1023, 1024 and 1025px"]
+    answer: 2
+    explain: "Boundary value analysis: test just below, at and just above. Off-by-one bugs live exactly at the boundary."
+  - type: spotbug
+    screen: ["Viewport: 768px", "Logo           Cart (2)", "(no menu, no hamburger)"]
+    bug: "No navigation at all at exactly 768px."
+    explain: "Links show from 769px and the hamburger up to 767px, so 768px gets neither. A classic off-by-one, and 768px is a real iPad width."
+  - type: quiz
+    q: "On a phone, a site shows a tiny, zoomed-out desktop layout. Most likely cause?"
+    options: ["A slow network", "A missing meta viewport tag", "A JavaScript error"]
+    answer: 1
+    explain: "Without width=device-width, mobile browsers pretend the screen is about 980px wide and shrink the page to fit."
+  - type: truefalse
+    statement: "A viewport tag with user-scalable=no is an accessibility bug."
+    answer: true
+    explain: "It blocks pinch-zoom in many browsers, which locks out people with low vision who need to enlarge the page."
+  - type: thisorthat
+    prompt: "A Categories menu opens on hover in DevTools device mode. Where do you confirm it works?"
+    left: "Real tablet"
+    right: "Device mode is enough"
+    answer: left
+    explain: "Device mode simulates touch with a mouse, so hover can still fire. Hover-only bugs show up reliably only on real touch devices."
+  - type: spotbug
+    screen: ["Viewport: 360px", "Compare tents", "Name | Weight | Pri", "(page scrolls sideways)"]
+    bug: "A wide table makes the whole page scroll sideways."
+    explain: "A fixed-width table pushes the page wider than the screen and cuts off columns. It should scroll inside its own box or turn into cards."
+  - type: truefalse
+    statement: "If a page looks right at every device preset, it works at every width."
+    answer: false
+    explain: "Layouts often break between presets, like text overlapping an image only from 900 to 999px. Drag the width slowly to catch these."
+  - type: flip
+    front: "What does WCAG reflow ask for?"
+    back: "Content must work at 320 CSS px wide, like a 1280px window at 400% zoom, without scrolling in two directions."
+  - type: tip
+    title: "Screenshot three widths"
+    text: "For a layout bug, the exact viewport size is part of the steps. Attach screenshots at 767, 768 and 769px, not just \"on tablet\"."

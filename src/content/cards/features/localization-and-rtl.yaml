@@ -1,0 +1,45 @@
+teaser: "Your app works perfectly in English. Switch it to German, Serbian or Arabic and count how many things suddenly look broken."
+cards:
+  - type: flip
+    front: "i18n vs l10n in one sentence each?"
+    back: "i18n prepares the app to support any language. l10n adapts it to one market: translations, formats, currency."
+  - type: quiz
+    q: "German text is usually how much longer than English?"
+    options: ["About the same", "About 30-50% longer", "About half as long"]
+    answer: 1
+    explain: "German and Finnish often grow 30-50%, and short labels like Save (Speichern) can double. Fixed-width buttons break first."
+  - type: flip
+    front: "What does pseudo-localization do?"
+    back: "It replaces every string with an accented, longer, bracketed fake like [Þļåçé öŕðéŕ]. Plain text left over is hard-coded."
+  - type: spotbug
+    screen: ["Korpa · Srpski", "2 artikala u korpi", "Ukupno: 27.980,00 RSD"]
+    bug: "Wrong Serbian plural: 2 needs \"2 artikla\"."
+    explain: "Serbian has three forms: 1 artikal, 2 artikla, 5 artikala. The app used the English one-or-many rule."
+  - type: truefalse
+    statement: "In an Arabic layout, the video play button should be mirrored."
+    answer: false
+    explain: "Media controls show playback direction, which is the same everywhere. Back arrows and chevrons flip, play buttons and logos don't."
+  - type: thisorthat
+    prompt: "A Serbian cart shows the total as 13,990.00 RSD."
+    left: "Correct"
+    right: "Bug"
+    answer: right
+    explain: "Serbian uses a dot for thousands and a comma for decimals: 13.990,00 RSD. Readers could misread the amount."
+  - type: quiz
+    q: "Which quantities test Serbian plurals best?"
+    options: ["1 and 2", "10, 20 and 30", "1, 2, 5, 11, 21, 22"]
+    answer: 2
+    explain: "The form depends on the last digits: 1 and 21 are singular, 2 and 22 are few, 5 and 11 use the third form."
+  - type: spotbug
+    screen: ["Warenkorb", "Lieferung: Freitag, Oktober 16", "um 2:30 PM", "[ Zahlungspflichtig bes ]"]
+    bug: "Date in US order, 12-hour clock, button text cut off."
+    explain: "German expects 16. Oktober and 14:30, and the button must grow or wrap. Fixed widths and glued-together dates break in other languages."
+  - type: thisorthat
+    prompt: "In an Arabic screen, the back arrow sits on the right edge but points left, into the screen."
+    left: "Bug"
+    right: "Correct"
+    answer: left
+    explain: "In right-to-left layouts the back arrow moves to the right and points right, toward where the user came from."
+  - type: tip
+    title: "Use ar-XB if you can't read Arabic"
+    text: "Android's ar-XB pseudo-locale mirrors the layout like Arabic but keeps English words, so you can check RTL without guessing the text."

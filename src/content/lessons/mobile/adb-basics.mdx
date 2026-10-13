@@ -1,0 +1,458 @@
+---
+title: adb Basics
+description: Use Android Debug Bridge to install builds, reset apps, read logcat, capture crash stack traces, open deep links and fake device conditions, all from your terminal.
+order: 12
+level: intermediate
+minutes: { short: 25 }
+platform: mobile
+tags: [mobile, android, adb, logcat, crash, tools]
+---
+
+import AdbPlayground from '@/components/demos/mobile-tools/AdbPlayground';
+import CrashChallenge from '@/components/demos/mobile-tools/CrashChallenge';
+
+A tester on a shopping app filed this bug: *"App sometimes crashes when opening links."* The developer tried a few links, nothing crashed, and the ticket came back marked **Cannot reproduce**. Two weeks later a marketing newsletter went out to 400,000 people, and the app crashed for every single one who tapped the sale link.
+
+A second tester picked the ticket up. Ten minutes later they had the exact link, a one-line command that crashed the app every time, the device and app version, and four lines of log ending in `DeepLinkParser.kt:27`. The fix took twenty minutes.
+
+The difference wasn't luck. The second tester used **adb**.
+
+## Why it matters
+
+<Term id="adb" /> (Android Debug Bridge) is the command-line tool that lets your computer talk to an Android phone, tablet or <Term id="emulator" />. For a manual tester it's a superpower:
+
+- **Faster setup**: install builds, wipe app data and set up device conditions in seconds, the same way every time.
+- **Better bug reports**: grab the <Term id="crash" /> stack trace, screenshots and screen recordings straight to your computer.
+- **Tests you can't do by tapping**: open any <Term id="deep-link" />, fake a 5% battery, bump the font size, type long test strings.
+- **More credibility**: a bug report with the exact cause line from <Term id="logcat" /> rarely comes back as "cannot reproduce".
+
+You don't need to be a developer. You need about fifteen commands, and you'll learn them on this page.
+
+## What is adb?
+
+adb has three parts. You only ever type the first one:
+
+<div class="not-prose my-6 grid grid-cols-1 items-stretch gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">Your computer</p>
+    <p class="mt-2 rounded-lg bg-brand-soft px-3 py-2 text-sm"><strong>adb client</strong>: the <code>adb</code> command you type in the terminal</p>
+    <p class="mt-2 rounded-lg bg-subtle px-3 py-2 text-sm"><strong>adb server</strong>: runs in the background (port 5037) and keeps track of connected devices</p>
+  </div>
+  <div class="flex items-center justify-center text-sm font-medium text-muted sm:flex-col sm:px-2">
+    <span>USB or Wi-Fi</span>
+    <span class="ml-2 sm:ml-0" aria-hidden="true">⇄</span>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">Phone or emulator</p>
+    <p class="mt-2 rounded-lg bg-ok-soft px-3 py-2 text-sm"><strong>adbd</strong>: a small service on the device that runs your commands</p>
+    <p class="mt-2 rounded-lg bg-subtle px-3 py-2 text-sm"><code>adb shell …</code> runs a command <em>on the device</em>, for example <code>pm</code>, <code>am</code>, <code>input</code>, <code>dumpsys</code></p>
+  </div>
+</div>
+
+A useful mental model: commands like `adb install` and `adb logcat` are adb features. Commands after `adb shell` are **Android's own tools**, running on the phone: `pm` (package manager), `am` (activity manager), `input`, `settings`, `dumpsys`.
+
+## Setting it up
+
+<Steps>
+
+1. **Install the platform tools.** adb is part of Android's *SDK Platform-Tools*. If you have Android Studio, it's already installed in the SDK folder's `platform-tools` directory (paths below). Without Android Studio, download **SDK Platform-Tools** from developer.android.com, or on a Mac run `brew install --cask android-platform-tools`.
+2. **Add it to your PATH**, so `adb` works in any folder. On macOS with zsh, add the `export` line below to `~/.zshrc` and open a new terminal. Check with `adb version`.
+3. **Turn on Developer options on the phone.** Go to **Settings › About phone** and tap **Build number** seven times until it says "You are now a developer". On Samsung it's under **About phone › Software information**.
+4. **Turn on USB debugging.** Open **Settings › System › Developer options** (on Samsung, Developer options appear at the bottom of Settings) and switch on **USB debugging**.
+5. **Connect and allow.** Plug in a USB cable. The phone asks **"Allow USB debugging?"** and shows your computer's key fingerprint. Tick **Always allow from this computer** and tap **Allow**.
+6. **Check the connection.** Run `adb devices`. Emulators started from Android Studio show up automatically, no setup needed.
+
+</Steps>
+
+```bash
+# Where Android Studio puts adb
+# macOS:   ~/Library/Android/sdk/platform-tools
+# Windows: %LOCALAPPDATA%\Android\Sdk\platform-tools
+# Linux:   ~/Android/Sdk/platform-tools
+
+# macOS (zsh): add this line to ~/.zshrc
+export PATH="$PATH:$HOME/Library/Android/sdk/platform-tools"
+```
+
+```bash
+$ adb devices
+List of devices attached
+38121FDJH00ABC	device
+emulator-5554	device
+```
+
+| State in `adb devices` | Meaning | What to do |
+| --- | --- | --- |
+| `device` | Connected and ready | Start testing |
+| `unauthorized` | The phone hasn't accepted this computer yet | Unlock the phone and tap **Allow** on the prompt. No prompt? Developer options › **Revoke USB debugging authorizations**, then reconnect |
+| `offline` | Connected but not responding | Reconnect the cable, or run `adb kill-server` and then `adb devices` |
+| *(nothing listed)* | adb can't see the phone | Try another cable (some only charge), check USB debugging is on, set USB mode to file transfer |
+
+<Callout type="tip" title="More than one device? Use -s">
+
+If several phones or emulators are connected, adb answers `adb: more than one device/emulator`. Pick one with its serial: `adb -s emulator-5554 install app.apk`.
+
+</Callout>
+
+## The commands testers use most
+
+Throughout this lesson the example app is **ShopEasy**, package name `com.shopeasy.app`. Every Android app has a unique package name like this; find yours with `adb shell pm list packages | grep shop`.
+
+### Install, update, reset
+
+```bash
+adb install shopeasy.apk                  # install an APK
+adb install -r shopeasy.apk               # reinstall/update and keep app data
+adb uninstall com.shopeasy.app            # remove the app and its data
+adb shell pm clear com.shopeasy.app       # wipe app data: like a fresh install, without reinstalling
+```
+
+`-r` means "replace the existing app". Recent Android versions replace by default, but `-r` makes your intent clear and is what you'll see in most guides. Installing a new version **over** an old one with its data intact is exactly what users experience from the Play Store, so it's the heart of <Term id="upgrade-testing" />.
+
+`pm clear` is the tester's reset button: it signs the user out, clears caches and settings, and shows onboarding again. Use it before every "first launch" test.
+
+| Error | What it means |
+| --- | --- |
+| `INSTALL_FAILED_VERSION_DOWNGRADE` | You're installing an older version over a newer one. Uninstall first (or use `-d` on debuggable builds) |
+| `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | The installed app was signed with a different key (e.g. a Play Store build vs a debug build). Uninstall first |
+| `INSTALL_FAILED_INSUFFICIENT_STORAGE` | The device is full |
+
+### Read the logs with logcat
+
+Android writes everything that happens into a system log. `adb logcat` streams it to your terminal until you press **Ctrl+C**. It's a lot, so you'll almost always filter it.
+
+A logcat line looks like this:
+
+```text
+10-13 14:02:11.482  4821  4821 E AndroidRuntime: FATAL EXCEPTION: main
+└─ date & time ──┘  PID   TID  │ └── tag ─────┘  └── message ──────────┘
+                               └ level
+```
+
+| Level | Name | Use |
+| --- | --- | --- |
+| `V` / `D` | Verbose / Debug | Developer detail, usually noise for testers |
+| `I` | Info | Normal events: activity started, request finished |
+| `W` | Warning | Something odd but not fatal |
+| `E` | Error | Something failed. **Crashes are logged here** |
+| `F` | Fatal | Native crashes and fatal system problems |
+
+```bash
+adb logcat -c                                              # clear the log before you reproduce a bug
+adb logcat '*:E'                                           # only errors and worse, from all tags
+adb logcat --pid=$(adb shell pidof -s com.shopeasy.app)    # only the running app's lines
+adb logcat | grep -i shopeasy                              # lines that mention the app
+adb logcat -b crash                                        # only the crash buffer
+adb logcat -d > log.txt                                    # dump the current log to a file and stop
+```
+
+<Callout type="warning" title="Two classic gotchas">
+
+- In **zsh** (the default macOS shell) write `'*:E'` with quotes. Without them the shell tries to match `*` against file names and says `no matches found`.
+- `--pid` only works **while the app is running**. After a crash the process is gone, `pidof` prints nothing, and the command fails. To catch crashes, use `'*:E'`, `-b crash` or `grep`.
+
+</Callout>
+
+### Find a crash stack trace
+
+When an Android app crashes, it writes a block that starts with **`FATAL EXCEPTION`**. Find it like this:
+
+```bash
+adb logcat -c
+# ...reproduce the crash on the phone...
+adb logcat -d | grep -A 20 "FATAL EXCEPTION"
+```
+
+Here's how to read the result:
+
+```text
+E AndroidRuntime: FATAL EXCEPTION: main                       ← a crash happened on the main thread
+E AndroidRuntime: Process: com.shopeasy.app, PID: 4821        ← which app
+E AndroidRuntime: java.lang.RuntimeException: Unable to start activity ...  ← wrapper
+E AndroidRuntime:     at android.app.ActivityThread...       ← framework code (skip)
+E AndroidRuntime: Caused by: java.lang.NumberFormatException: For input string: "summer-sale"   ← root cause
+E AndroidRuntime:     at java.lang.Integer.parseInt(Integer.java:747)                  ← Java's code
+E AndroidRuntime:     at com.shopeasy.app.product.DeepLinkParser.productId(DeepLinkParser.kt:27)  ← the app's code!
+```
+
+<Steps>
+
+1. **Find `FATAL EXCEPTION`.** It marks the start of the crash.
+2. **Jump to the last `Caused by:`.** That's the root cause: the exception type and its message.
+3. **Find the first line below it from the app's own package** (`com.shopeasy.app…`). That file and line number is where developers will start.
+4. **Copy from `FATAL EXCEPTION` through that line** into the bug report. Attach the full log as a file if needed.
+
+</Steps>
+
+<Callout type="info" title="What about ANRs and native crashes?">
+
+If the app freezes and Android shows **"ShopEasy isn't responding"**, that's an ANR (Application Not Responding); search logcat for `ANR in`. Crashes in native (C/C++) code show up as `F DEBUG` lines with `*** *** ***` and a "backtrace". In both cases, save the full log for the developers.
+
+</Callout>
+
+### Screenshots and screen recordings
+
+```bash
+adb exec-out screencap -p > screen.png         # screenshot straight to your computer
+adb shell screenrecord /sdcard/bug.mp4         # record; press Ctrl+C to stop (max 3 minutes)
+adb pull /sdcard/bug.mp4                       # copy the video to your computer
+```
+
+`exec-out` sends the raw image bytes back unchanged, so redirecting them with `>` gives you a valid PNG. `screenrecord` records video without sound.
+
+### Open deep links
+
+```bash
+adb shell am start -a android.intent.action.VIEW -d "shopeasy://product/42"
+adb shell am start -a android.intent.action.VIEW -d "https://shop.example.com/product/42" com.shopeasy.app
+```
+
+`am start` asks Android to open a link, exactly as if the user had tapped it in an email. Adding the package name at the end forces it to open in that app. This is the fastest way to test deep links, including the nasty ones: unknown IDs, missing parameters, letters where numbers are expected.
+
+<Callout type="tip" title="Links with & in them">
+
+The command passes through **two** shells: yours and the phone's. For links with several query parameters, wrap the whole device command in single quotes:
+
+```bash
+adb shell 'am start -a android.intent.action.VIEW -d "shopeasy://search?q=shoes&sort=price"'
+```
+
+</Callout>
+
+### Type and press keys
+
+```bash
+adb shell input text "running%sshoes"     # types "running shoes" into the focused field (%s = space)
+adb shell input keyevent KEYCODE_ENTER    # also KEYCODE_BACK, KEYCODE_HOME (or 66, 4, 3)
+adb shell am force-stop com.shopeasy.app  # kill the app, e.g. to test a cold start
+```
+
+`input text` is great for long or tricky <Term id="test-data" />: a 200-character name, an email with a plus sign, a coupon code you need to type twenty times.
+
+### Fake device conditions
+
+```bash
+adb shell dumpsys battery unplug                     # pretend the charger is unplugged
+adb shell dumpsys battery set level 5                # pretend the battery is at 5%
+adb shell dumpsys battery reset                      # back to the real battery state
+
+adb shell settings put system font_scale 1.3         # bigger text (1.0 is the default)
+adb shell settings put system font_scale 1.0         # back to normal
+
+adb shell cmd uimode night yes                       # dark theme on (no = off)
+```
+
+<Callout type="warning" title="USB means charging">
+
+A phone connected by USB is **charging**, so it never shows low-battery behavior. Run `dumpsys battery unplug` before `set level`, and always `reset` when you're done, or the phone keeps showing your fake numbers.
+
+</Callout>
+
+`font_scale` mimics the user's font size setting. Android 14 and newer allow up to 2.0 (200%), and the large sizes are where <Term id="truncation" /> bugs live. It changes the setting for the whole phone, so set it back afterwards.
+
+## Try it: the adb playground
+
+Time to type. The terminal below is fake, so nothing can break, but the commands and outputs follow real adb. Try installing, clearing data, opening a deep link, faking 5% battery, bumping the font size, and reading logcat. Then try `shopeasy://product/summer-sale` instead of `42`, and look at logcat again.
+
+<AdbPlayground client:visible />
+
+## Wireless debugging
+
+No cable? Since **Android 11** you can use adb over Wi-Fi. The phone and computer must be on the same network.
+
+<Steps>
+
+1. On the phone, open **Developer options › Wireless debugging** and switch it on.
+2. Tap **Pair device with pairing code**. The phone shows an IP address with a port and a six-digit code.
+3. On your computer run `adb pair 192.168.1.23:37199` (use the address shown) and enter the code.
+4. Recent adb versions often connect automatically after pairing. If not, go back to the **Wireless debugging** screen and note the **IP address & Port**. It's a *different* port from the pairing one. Run `adb connect 192.168.1.23:41235`.
+5. Check with `adb devices`. The phone now appears with its IP address.
+
+</Steps>
+
+Android Studio can do the same with a QR code: **Device Manager › Pair Devices Using Wi-Fi**. On Android 10 and older, connect once by USB, run `adb tcpip 5555`, unplug, then `adb connect <phone-ip>:5555`.
+
+<Callout type="note" title="adb reverse, briefly">
+
+When developers run a test server on their computer, the phone can't reach it at `localhost`, because on the phone `localhost` is the phone itself. `adb reverse tcp:8080 tcp:8080` forwards the phone's port 8080 to your computer's port 8080, so the app can call `http://localhost:8080`. Remove it with `adb reverse --remove-all`.
+
+</Callout>
+
+## What to test with adb
+
+### Fresh state and upgrades
+
+- **First launch**: `pm clear`, then open the app. Onboarding, permission prompts and empty states should all appear.
+- **Upgrade**: install the old version, create data (log in, fill the cart), then `adb install -r` the new version. Nothing should be lost.
+- **Reinstall**: `uninstall` then `install`. The app must not crash on missing data.
+
+### Entry points
+
+- **Deep links** with valid, unknown, deleted and malformed IDs, missing parameters, and while logged out.
+- **Cold start vs warm start**: `am force-stop`, then open the deep link.
+
+### Device conditions
+
+- **Low battery** (5%, unplugged): does the app reduce background work? Does it still function?
+- **Large fonts** (1.3, 1.5, 2.0): no clipped buttons, no text running off the screen.
+- **Dark theme** switched while the app is open.
+
+### Evidence
+
+- Clear logcat, reproduce, and save the crash block for every crash or freeze.
+- Record a video of anything that's hard to describe.
+
+### Bugs adb helps you find
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Crash on unexpected deep link input** | Letters, an unknown ID or a missing parameter in a link closes the app | High |
+| 2 | **Crash on first launch after clearing data** | App assumes a saved token exists; after `pm clear` it crashes instead of showing login | High |
+| 3 | **Data lost on upgrade** | After `install -r` the user is logged out or the cart is empty | High |
+| 4 | **Layout breaks at large font scale** | At `font_scale 1.3` buttons are clipped or the Pay button moves off-screen | Medium |
+| 5 | **No low-battery handling** | At 5% the app keeps heavy background syncing or video autoplay | Low–Medium |
+| 6 | **Hidden errors** | No visible problem, but logcat shows repeated `E` lines, e.g. failing API calls on every screen | Medium |
+| 7 | **Deep link ignores login state** | A link opens an account page without asking the logged-out user to sign in | High |
+
+## Practice: investigate the crash
+
+A real support ticket just came in. Use the terminal to reproduce the crash, find the `FATAL EXCEPTION`, click the exact cause line, and decide what evidence goes into the bug report.
+
+<CrashChallenge client:visible />
+
+<Callout type="example" title="Where this goes next">
+
+Paste the excerpt into your <Term id="bug-report" /> exactly as it is, without rewriting it. See [Writing bug reports](/tutorials/writing-bug-reports) for the full structure, and add the adb command to the steps, so anyone can reproduce the bug with one line.
+
+</Callout>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-ADB-001',
+      title: 'First launch after clearing app data shows onboarding',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['ShopEasy installed, user logged in', 'Device connected, adb devices shows "device"'],
+      steps: ['Run adb shell pm clear com.shopeasy.app', 'Open ShopEasy from the launcher'],
+      expected: 'The onboarding screen with Log in / Create account is shown. No crash, no previous user data.',
+    },
+    {
+      id: 'TC-ADB-002',
+      title: 'Upgrade keeps the session and cart',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['ShopEasy 2.3.0 installed', 'User logged in with 2 items in the cart'],
+      steps: ['Run adb install -r shopeasy-2.4.1.apk', 'Open ShopEasy'],
+      expected: 'The user is still logged in and the cart shows the same 2 items.',
+    },
+    {
+      id: 'TC-ADB-003',
+      title: 'Product deep link opens the product page',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Run adb shell am start -a android.intent.action.VIEW -d "shopeasy://product/42"'],
+      expected: 'ShopEasy opens on the "Trail Runner X" product page.',
+    },
+    {
+      id: 'TC-ADB-004',
+      title: 'Deep link with a non-numeric product ID is handled',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Run adb logcat -c', 'Run adb shell am start -a android.intent.action.VIEW -d "shopeasy://product/summer-sale"', 'Run adb logcat -d | grep "FATAL EXCEPTION"'],
+      expected: 'The app shows a friendly "Product not found" screen (or the sale page). No FATAL EXCEPTION in logcat.',
+    },
+    {
+      id: 'TC-ADB-005',
+      title: 'Checkout is usable at 130% font scale',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Run adb shell settings put system font_scale 1.3', 'Open the cart and go to checkout', 'Scroll to the bottom'],
+      data: 'Reset afterwards: adb shell settings put system font_scale 1.0',
+      expected: 'All labels are readable and the Pay button is fully visible and tappable.',
+    },
+    {
+      id: 'TC-ADB-006',
+      title: 'Low battery reduces background work',
+      priority: 'low',
+      type: 'edge',
+      steps: ['Run adb shell dumpsys battery unplug', 'Run adb shell dumpsys battery set level 5', 'Browse the home feed for 1 minute'],
+      data: 'Reset afterwards: adb shell dumpsys battery reset',
+      expected: 'The app keeps working; image prefetching / autoplay is paused as specified.',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="adb testing checklist"
+  storageKey="adb-basics"
+  items={[
+    'adb version works in a new terminal (platform-tools are on the PATH)',
+    'Developer options and USB debugging are on, and the computer is authorized',
+    'adb devices lists the device as "device" (use -s when several are connected)',
+    'I know the app\'s package name',
+    'I clear logcat before reproducing a bug',
+    'I can find FATAL EXCEPTION and the last Caused by in a crash',
+    'Crash reports include the stack trace excerpt, device, OS and app version',
+    'First launch is tested after pm clear, and upgrades with install -r',
+    'Deep links are tested with valid, invalid and malformed values',
+    'Large font scale and low battery are tested, then reset',
+    'Screenshots and recordings are captured with screencap and screenrecord',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'Which command resets an app to a fresh-install state without reinstalling it?',
+      options: ['adb install -r app.apk', 'adb shell pm clear com.shopeasy.app', 'adb logcat -c', 'adb shell am force-stop com.shopeasy.app'],
+      answer: 1,
+      explain: 'pm clear deletes the app\'s data and cache. force-stop only kills the process; logcat -c only clears the log.',
+    },
+    {
+      q: 'adb devices shows your phone as "unauthorized". What do you do?',
+      options: ['Reinstall Android Studio', 'Unlock the phone and allow the USB debugging prompt', 'Run adb install -r', 'Turn on dark mode'],
+      answer: 1,
+      explain: 'The phone has not trusted this computer yet. Accept the RSA key prompt (and tick Always allow).',
+    },
+    {
+      q: 'In a crash stack trace, which line should you point developers to first?',
+      options: [
+        'The FATAL EXCEPTION line',
+        'The first android.app.ActivityThread line',
+        'The first line from the app\'s own package below the last "Caused by:"',
+        'The last line of the log',
+      ],
+      answer: 2,
+      explain: 'The last Caused by is the root cause, and the first line from the app\'s own code under it shows where the app went wrong.',
+    },
+    {
+      q: 'You run adb logcat --pid=$(adb shell pidof -s com.shopeasy.app) after the app crashed and get an error. Why?',
+      options: ['logcat is broken', 'The app process died in the crash, so pidof returned nothing', 'You need root', 'The phone is offline'],
+      answer: 1,
+      explain: 'Use \'*:E\', -b crash or grep for FATAL EXCEPTION to find crashes.',
+    },
+    {
+      q: 'You set the battery to 5% with dumpsys but the app shows no low-battery behavior. What is the most likely reason?',
+      options: ['The phone is still "charging" over USB', 'font_scale is too large', 'The app is not installed', 'Wireless debugging is on'],
+      answer: 0,
+      explain: 'Run adb shell dumpsys battery unplug first. Remember to reset afterwards.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- **adb** connects your computer to Android devices and emulators over USB or Wi-Fi. Set it up once: platform-tools, Developer options, USB debugging, allow the computer.
+- **Install and reset fast**: `install`, `install -r`, `uninstall`, `shell pm clear`.
+- **logcat** is your evidence: clear it, reproduce, filter with `'*:E'`, `--pid` or `grep`, and find **FATAL EXCEPTION**, the last **Caused by** and the first line of app code.
+- **Fake conditions**: deep links with `am start`, typing with `input`, battery with `dumpsys battery`, text size with `font_scale`. Always reset afterwards.
+- Put the **adb command** and the **stack trace excerpt** in your bug report, and "cannot reproduce" becomes rare.
+
+</KeyTakeaways>

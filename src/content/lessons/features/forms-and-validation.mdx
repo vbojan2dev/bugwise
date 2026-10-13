@@ -1,0 +1,730 @@
+---
+title: Forms and Validation
+description: How whole forms should behave, from labels, keyboards and autofill to validation timing, error messages, real-world data and server errors, and how to test a registration form step by step.
+order: 16
+level: beginner
+minutes: { short: 30, long: 55 }
+platform: both
+tags: [forms, validation, sign up, error messages, accessibility, test scenarios]
+---
+
+import FormAnatomy from '@/components/demos/forms/FormAnatomy';
+import ValidationLayers from '@/components/demos/forms/ValidationLayers';
+import ErrorExample from '@/components/demos/forms/ErrorExamples';
+import { BuggyRegistration } from '@/components/demos/forms/BuggyRegistration';
+
+Siobhán O'Brien wants to order groceries. She downloads the app, taps **Create account** and types her name. "Name can only contain letters." She tries "Siobhan OBrien", then her email `siobhan+food@mail.ie`. "Enter a valid email address." She gives up and orders from a competitor. Nobody at the company ever hears about it. In the analytics it's just one more person who "dropped off at sign up".
+
+Forms are where users **give** an app something: their name, their address, their money. Every sign up, checkout, booking, support request and profile screen is a form. A broken form doesn't crash. It quietly turns customers away, which is why testers who know forms well are so valuable.
+
+<Callout type="info" title="This page is about whole forms">
+
+The single fields have their own pages: [Text Field](/components/text-field) (keyboards, trimming, nasty inputs), [Password Field](/components/password-field), [Date Picker](/components/date-picker), [Dropdown](/components/dropdown) and [Checkbox](/components/checkbox). Sign up and log in specifics (generic errors, lockout, sessions) are in [Login and Sign Up](/features/login-and-sign-up). Here we look at how the fields work **together**: validation, errors, data formats, submitting and what happens when things go wrong.
+
+</Callout>
+
+<Short>
+
+## The quick version
+
+### What a good form looks like
+
+- Every field has a **visible label** above it. A <Term id="placeholder" /> disappears when you type, so it can't be the label.
+- Rules and formats are explained **before** typing ("For example SW1A 1AA"), not only after a mistake.
+- Optional fields are marked "(optional)", related fields are **grouped** under a heading.
+- Each field opens the **right keyboard** (email, phone pad, numbers) and has an **autocomplete** hint, so <Term id="autofill">AutoFill</Term> and password managers can fill it.
+
+### Two layers of validation
+
+<Term id="input-validation" /> happens twice. **<Term id="client-side-validation">Client-side</Term>** checks run in the app or browser and give quick feedback. **<Term id="server-side-validation">Server-side</Term>** checks run on the server and are the only ones you can trust, because anyone can skip the app and send data straight to the API. As a tester, check both: a rule that only exists in the app is a bug waiting to happen.
+
+### When to show errors
+
+Show an error **when the user leaves a field** (on blur) or **on submit**, then update it live while they fix it. Don't **shout while they're still typing**: "Invalid email" after the first letter is rude and useless.
+
+### Error messages that help
+
+A good <Term id="error-message" /> is **next to the field**, says **how to fix it** in plain words ("Enter a postcode like SW1A 1AA"), uses **text and an icon, not only red**, and is **announced to screen readers**. After an error, everything the user typed **stays** in the form.
+
+### Test real-world data
+
+The world is bigger than "John Smith, 12345":
+
+- Names: `O'Brien`, `Đorđe Petrović`, `Anne-Marie`, a single name like `Sukarno`, very long names.
+- Emails: `anna+shop@mail.com`, `anna@mail.co.uk`, uppercase letters.
+- Phones and postcodes: `+44 7700 900123` with spaces, `SW1A 1AA`, `1012 AB`.
+- Dates and ages: the 18th birthday **today**, 29 February.
+- Spaces before and after, pasted text, emoji, and decimal commas (`1,5`).
+
+### Whole-form behavior
+
+Tap **Submit** twice, submit with the server failing, let the session time out, press **Back**. The form must not create duplicates, lose the user's data or show a frozen spinner.
+
+<Callout type="tip">
+
+Switch to **Detailed** at the top of the page for the full story: form anatomy, validation timing, a data cheat sheet, multi-step forms, security basics and an accessibility checklist.
+
+</Callout>
+
+</Short>
+
+<Long>
+
+## How it works
+
+Behind every **Create account** or **Place order** button, the same journey happens:
+
+<Steps>
+
+1. **The user fills in the form.** Typing, picking from lists, pasting, or letting AutoFill do it. The app may check fields as they go (client-side validation).
+2. **The user submits.** The app checks everything once more. If something is wrong, it shows the errors and sends nothing.
+3. **The app sends the data.** Usually a `POST` request with the values in the body, over HTTPS. The submit button shows a <Term id="loading-state" /> and can't be used again until there's an answer.
+4. **The server validates again.** Same rules, plus checks only the server can do: is this email already registered? Is this postcode one we deliver to? Too many sign ups from this device?
+5. **The server answers.** Success (for example `201 Created`), a validation error with details per field (often `400` or `422`), or a server error (`500`). See <Term id="http-status-code">HTTP status codes</Term>.
+6. **The app shows the result.** A success screen or confirmation, or the errors next to the right fields, **with everything the user typed still there**.
+
+</Steps>
+
+### Client-side vs server-side validation
+
+<ValidationLayers />
+
+Client-side validation is a **convenience** for the user. Server-side validation is **protection** for the business. A developer can forget to add a rule to the app, the iOS and Android apps can have different rules, an old app version can have no rules at all, and anyone can send a request with a tool like [Postman](/web/api-testing-with-postman) or change it on the way with a <Term id="proxy-tool" />. Only the server sees every request.
+
+| Rule | Client-side | Server-side |
+| --- | --- | --- |
+| Required fields, formats, lengths | Yes, for quick feedback | Yes, always again |
+| "This email is already registered" | No (only the server knows) | Yes |
+| Price, discount, stock | Display only | Yes, the server decides |
+| Too many attempts from one device | No | Yes (<Term id="rate-limiting" />) |
+
+<Callout type="bug" title="How testers find missing server checks">
+
+Find a rule the app enforces (for example "name max 50 characters") and send the same request **without the app**: replay it in [DevTools](/web/devtools-for-testers) with a 300-character name, or send it from Postman. If the server says `201 Created`, the rule exists only on the surface. Typical results: broken layouts in the admin panel, crashes in other apps that read the data, and sometimes security holes such as <Term id="xss" /> or <Term id="sql-injection" />.
+
+</Callout>
+
+## Anatomy of a good form
+
+<FormAnatomy />
+
+### Labels, placeholders and help text
+
+The label says **what** to enter; help text says **how**. Both stay visible while the user types. A placeholder is at most an extra example, because it vanishes on the first keystroke and often has low contrast (more on the [Text Field](/components/text-field) page). Put formats and rules **before** the field ("At least 8 characters", "For example 27 3 1995"): users shouldn't have to fail once to learn the rules.
+
+### Required and optional
+
+Pick one convention and use it everywhere. Most forms have fewer optional fields, so many teams mark those with "(optional)" and say so at the top. If the team uses an asterisk (`*`) for required fields instead, it must be explained ("* required") and announced by screen readers, not just a red star. Test that what's **marked** required is what's **actually** required: a field marked optional that blocks submit, or a "required" field the server happily accepts empty, is a bug.
+
+### Grouping and order
+
+Related fields belong together under a heading: "About you", "Delivery address", "Payment". Screen readers should announce the group's heading when you enter it. The order should match how people think (name before address, street before city), and the keyboard's **Next** or **Tab** key should follow the same order (<Term id="focus-order" />). One column is easier to scan than two, especially on phones.
+
+### Input types and mobile keyboards
+
+The field type decides which keyboard appears on a phone:
+
+| Field | Web | What appears on a phone |
+| --- | --- | --- |
+| Email | `type="email"` | Keyboard with `@` and `.` |
+| Phone | `type="tel"` | Phone pad with `+` |
+| Whole numbers (PIN, code) | `inputmode="numeric"` | Number pad |
+| Amounts, weights | `inputmode="decimal"` | Number pad with `.` or `,` (depends on the region) |
+| Web address | `type="url"` | Keyboard with `/` and `.com` |
+
+A keyboard is only a **hint**: people paste, use hardware keyboards and autofill, so a "numbers only" field still needs validation. The [Text Field](/components/text-field) page has a live keyboard demo.
+
+### Autocomplete and autofill
+
+Browsers, iOS, Android and <Term id="password-manager">password managers</Term> can fill a whole form in one tap, but only if each field says what it contains. On the web that's the `autocomplete` attribute: `name`, `email`, `tel`, `street-address`, `address-level2` (city), `postal-code`, `country`, `bday`, `new-password`, `one-time-code` and more. The [Text Field](/components/text-field) page has a table of the most common hints.
+
+<Callout type="dev" title="Names in code">
+
+Groups on the web are a `<fieldset>` with a `<legend>`. The keyboard is set with `type` and `inputmode` on the web, `keyboardType` on iOS and `inputType` on Android. Autofill hints are `autocomplete` on the web, `textContentType` on iOS and `autofillHints` on Android. Error messages are linked to fields with `aria-invalid="true"` and `aria-describedby`.
+
+</Callout>
+
+What to test:
+
+- **AutoFill puts each value in the right field.** A wrong token is easy to miss in code review: the city lands in the postcode, the surname in the first name.
+- **Autofilled values pass validation.** Autofill can add a country code, a trailing space or a format your rules don't expect.
+- **The form notices the values.** Some forms only react to typing, so autofilled fields still count as "empty" or the button stays disabled.
+- **Sign up offers a strong password** and the new password is saved to the password manager afterwards (`autocomplete="new-password"`).
+- **Fields about the user have tokens.** On the web this is a WCAG requirement: 1.3.5 Identify Input Purpose (AA).
+
+## When to validate
+
+There are three moments to check a field. Each has trade-offs (try them live on the [Text Field](/components/text-field) page):
+
+| Timing | Good for | Problem |
+| --- | --- | --- |
+| **On submit** | Short forms; simple to build | Users discover all problems at the end |
+| **On blur** (when leaving the field) | Most fields; the usual best default | Can fire too early if the user just taps around |
+| **While typing** | Password rules checklist, character counters, "username available" | Shouts at people before they've finished |
+
+<Callout type="tip" title="The rule: don't shout while the user is still typing">
+
+`a` is not a valid email, and neither is `anna@`. That's because the user hasn't finished. Showing "Invalid email" from the first letter is like a waiter saying "wrong order" while you're still reading the menu. The usual pattern is **"late to complain, quick to forgive"**: show an error only when the user leaves the field or submits, but once an error is showing, re-check on every keystroke so it **disappears the moment the value is fixed**.
+
+</Callout>
+
+Whatever the team chooses, test that it's **consistent** across the form, that errors **clear** as soon as the value is fixed, that tapping into an empty field and out again doesn't immediately paint everything red, and that **submit always validates everything**, including fields the user never touched.
+
+## Error messages that help
+
+<Compare>
+<Dont title="Vague, at the top, input wiped">
+
+<div class="not-prose demo-screen my-3"><ErrorExample variant="bad" /></div>
+
+A code instead of an explanation, red borders with no text, and the postcode the user typed is gone. Which field is wrong, and how do you fix it?
+
+</Dont>
+<Do title="Specific, next to the field, input kept">
+
+<div class="not-prose demo-screen my-3"><ErrorExample variant="good" /></div>
+
+A summary at the top, a message under each field that says how to fix it, and the user's input is still there.
+
+</Do>
+</Compare>
+
+A good error message:
+
+- **Is specific and tells the user what to do.** "Enter a postcode like SW1A 1AA", not "Invalid input" or "Error 422". (WCAG 3.3.3 Error Suggestion, AA.)
+- **Sits next to the field** it's about, and the field is visually marked.
+- **Uses plain language.** No codes, no blame ("You entered an illegal value"), no jargon ("Regex mismatch").
+- **Isn't color only.** Red plus text plus an icon, so people who can't see red still notice it. (WCAG 1.4.1 Use of Color, A, and 3.3.1 Error Identification, A.)
+- **Reaches screen reader users.** The field is announced as invalid and the message is read out with it. After a failed submit, focus moves to the first invalid field **or** to an **<Term id="error-summary">error summary</Term>** at the top that lists every problem as a link. Each link must move focus to its field.
+- **Keeps the user's input.** Nothing typed is cleared after an error. Many teams clear the password on purpose; if so, say so and keep everything else.
+- **Disappears when the problem is fixed**, and comes back if it's broken again.
+
+Server errors need the same care. "Something went wrong" with no next step is a dead end. Better: "We couldn't create your account right now. Your details are saved, please try again in a minute." And if the server rejects one field ("This email is already registered"), the message belongs **next to that field**, not in a generic toast.
+
+<Callout type="note" title="Sign up and account enumeration">
+
+"This email is already registered" tells an attacker who has an account. [Login and Sign Up](/features/login-and-sign-up) explains the trade-off and the safer alternatives. Check which one your spec asks for.
+
+</Callout>
+
+## Data formats and edge cases
+
+Most "invalid input" bugs are really **valid input the developer didn't expect**. Keep these lists handy as <Term id="test-data" />.
+
+### Names
+
+| Try | Why |
+| --- | --- |
+| `O'Brien`, `D'Angelo` | Apostrophes are part of many surnames |
+| `Đorđe Petrović`, `Zoë`, `José`, `Łukasz` | Letters with <Term id="diacritics" /> must be accepted **and** displayed correctly later |
+| `Anne-Marie`, `García Márquez`, `van der Berg` | Hyphens, two surnames, lowercase particles |
+| `Sukarno` (one name) | Many people have a single name. "First name" and "Last name" both required blocks them |
+| A 70-character name | Long names exist. Check the limit, the error, and every screen and email that shows the name |
+| `王芳`, `Јована` | Other scripts, if the product supports those markets |
+
+Two separate fields for first and last name don't fit every culture. A single **Full name** field is often simpler. If the spec splits them, test what happens to single names and long double surnames.
+
+### Emails
+
+- **<Term id="plus-addressing">Plus addressing</Term>:** `anna+groceries@mail.com` is valid and widely used to filter mail. Rejecting `+` is one of the most common form bugs.
+- **Subdomains and long domains:** `anna@mail.example.co.uk`, `anna@company.photography`.
+- **Dots and dashes:** `anna.maria-k@mail.com`.
+- **Length:** the part before `@` can have up to 64 characters, and a whole address up to 254 in practice. Test a long but valid one.
+- **Case and spaces:** `Anna@Mail.com` and a trailing space from autofill should be cleaned up, not rejected.
+- **Typos:** `anna@gmial.com` is valid but wrong. Some apps suggest "Did you mean gmail.com?". Nice to have, not a validation rule.
+
+### Phone numbers
+
+People type phone numbers the way they see them: `+44 7700 900123`, `+385 (91) 234-5678`, `0049 151 1234567`. The international format (E.164) has up to 15 digits after the `+`. A good form accepts spaces, dashes and brackets, **removes** them before saving, and either asks for the country or offers a country code picker. Test with numbers from every market the product serves, and never rely on a 10-digit limit.
+
+### Postcodes by country
+
+| Country | Example | Format |
+| --- | --- | --- |
+| United States | `94103`, `94103-1234` | 5 digits, optional ZIP+4 |
+| United Kingdom | `SW1A 1AA`, `M1 1AE` | Letters and digits, with a space, different lengths |
+| Netherlands | `1012 AB` | 4 digits, space, 2 letters |
+| Canada | `K1A 0B6` | Letter-digit-letter, space, digit-letter-digit |
+| Germany, Croatia | `10115`, `10000` | 5 digits (a leading 0 is possible in Germany: `01067`) |
+| Hong Kong | none | No postcodes at all: the field must be optional there |
+
+The postcode rule must **depend on the selected country**, and changing the country should re-check the postcode. A leading zero (`01067`) is a classic: if the field is stored as a number, it becomes `1067`.
+
+### Dates and ages
+
+- **The birthday boundary:** with an 18+ rule, someone whose 18th birthday is **today** is allowed. Test the day before, the day itself and the day after. This is <Term id="boundary-value-analysis" />, and the classic bug here is an <Term id="off-by-one-error" />.
+- **29 February:** when does someone born on 29 February 2008 turn 18 in a non-leap year? The answer depends on the country's law. Ask, then test it.
+- **Impossible dates:** `31 2 1995` should be rejected with a message, not silently become 3 March (see [Date Picker](/components/date-picker)).
+- **Day and month order:** `03/04/2005` is 3 April in Europe and March 4 in the US. Separate Day, Month and Year boxes, or a date picker, avoid the confusion.
+- **Future and unrealistic dates:** born in 2090 or in 1850.
+
+### Numbers, decimals and amounts
+
+`1,5` is one and a half in Germany, Croatia and much of Europe; `1.5` in the US and UK. In an amount field, `1,500` can mean fifteen hundred or one and a half. Test with the device set to different regions (see [Localization and RTL](/features/localization-and-rtl)), and check that `0`, negative numbers, very large numbers and leading zeros are handled as the spec says.
+
+### Spaces, paste, emoji and formatted text
+
+- **Leading and trailing spaces** should be trimmed before validating and saving. Spaces **inside** a password are part of it and must be kept.
+- **Spaces only** in a required field should count as empty.
+- **Paste** must work everywhere, including password and "confirm" fields. Paste a value with a line break at the end (it happens when copying from emails and PDFs).
+- **Formatted text** from Word, a PDF or a website can bring curly quotes (`’` instead of `'`), non-breaking spaces and invisible characters. `O’Brien` with a curly apostrophe must work too.
+- **Emoji** in names, notes and addresses: accepted or rejected with a clear message, never stored as `???`.
+- **Length limits on paste:** if a field has a maximum, pasting a longer value shouldn't cut it silently (see <Term id="truncation" />).
+
+## Multi-step forms, double submit and server errors
+
+### Multi-step forms and saving progress
+
+Long forms (insurance quotes, loan applications, checkouts) are often split into steps, a <Term id="wizard" />. Test that **Back** keeps what was entered, that you can't skip a required step, that the step indicator is right, and that a draft survives a refresh or a closed app if the spec promises it. The [Wizard](/components/wizard) page has a full bug hunt on this. For long forms, ask whether progress is saved on the server or only on this device: a draft that exists only on the phone is gone when the user switches to the laptop.
+
+### Preventing double submit
+
+A slow network, an impatient user, and a button that stays active: that's a <Term id="double-submit" />, and it creates two accounts, two bookings or two support tickets. The fix has two layers. The **app** disables the button and shows a loading state as soon as it's pressed (and pressing **Enter** again must not send another request either). The **server** recognizes a repeated request, for example with an idempotency key (see <Term id="idempotency" />). Test with the network throttled: tap twice, press Enter twice, tap and press Enter.
+
+### Server errors and lost connections
+
+What happens when the server answers `500`, or the connection drops after you tap **Submit**? The user should see a clear message, **all their input should still be there**, and they should be able to try again without creating a duplicate. Test it by turning on airplane mode right after submitting, or with a proxy tool that returns an error. On the web, a broken form that wipes everything after an error is one of the most frustrating bugs a user can meet.
+
+### Session timeout during a long form
+
+Users fill in long forms slowly: they look up their passport number, answer the door, come back an hour later. If the <Term id="session" /> expired meanwhile, the submit fails. Good behavior: warn before the session ends and let the user extend it (WCAG 2.2.1 Timing Adjustable, A), or after logging in again, return to the form **with the data still there**. Bad behavior: a login screen, and then an empty form. Test it by leaving a filled form open past the timeout, or ask a developer for a build with a 1-minute timeout.
+
+### The browser Back button and refresh
+
+- **Back after submit:** going back to a submitted payment or sign up form and submitting again must not create a second order or account.
+- **Refresh on the result page:** if the result page was the direct answer to a `POST`, the browser asks "Confirm form resubmission". Good sites redirect after a successful submit, so a refresh is harmless.
+- **Back from the next page to fix something:** the form should still be filled in, not empty.
+
+## Security and privacy basics
+
+- **No personal or secret data in URLs.** A form sent with `GET` puts every field in the address as <Term id="query-parameter">query parameters</Term> (`?email=…&phone=…`). URLs end up in browser history, server logs, analytics and shared links. Check the Network tab in <Term id="devtools" />: forms with personal data should use `POST`.
+- **Password fields** are masked, have show/hide, allow paste and work with password managers. Details on the [Password Field](/components/password-field) page.
+- **Rate limiting on sign up.** Without it, a script can create thousands of fake accounts or flood people's inboxes with confirmation emails. Check for <Term id="rate-limiting" />, a CAPTCHA or email verification, and that the limit is enforced on the server.
+- **Consent is opt-in.** Marketing checkboxes start unticked (required under GDPR in the EU), and the Terms checkbox is actually enforced, on the server too. See [Checkbox](/components/checkbox).
+- **Input is stored as text, not run as code.** Try `<b>Anna</b>` in a name and check every place it's shown later (see [Security basics](/web/security-basics)).
+- **Only collect what's needed.** A newsletter sign up that asks for a date of birth and phone number is a privacy question worth raising.
+
+## Accessibility checklist for forms
+
+Forms are where accessibility problems hurt most: if someone can't submit, they can't buy, book or sign up at all. Use this list together with [Accessibility basics](/web/accessibility-basics):
+
+<Checklist
+  title="Form accessibility checklist"
+  storageKey="forms-and-validation-a11y"
+  items={[
+    'Every field has a visible label that is connected to it (tapping the label focuses the field on the web)',
+    'Groups like Date of birth or Delivery address have a heading or legend that screen readers announce',
+    'Required and optional fields are announced, not only shown with a red star',
+    'Help text and errors are read out together with the field',
+    'Errors use text and an icon, not color alone (WCAG 1.4.1)',
+    'After a failed submit, focus moves to the error summary or the first invalid field',
+    'Error summary links move focus to the right field',
+    'The whole form works with the keyboard only, in a logical order, with a visible focus ring',
+    'Fields about the user have autocomplete tokens (WCAG 1.3.5)',
+    'Paste works in every field, including passwords and codes (WCAG 3.3.8)',
+    'The form works at the largest text size and when zoomed to 200%',
+    'Labels, text and error messages have at least 4.5:1 contrast; field borders at least 3:1',
+    'Time limits can be extended, and no data is lost when a session expires',
+  ]}
+/>
+
+On mobile, run the same checks with VoiceOver and TalkBack (<Term id="screen-reader">screen readers</Term>): every field should announce its label, type, value, hint and error.
+
+## What usually goes wrong
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Valid data rejected** | `O'Brien`, `Đorđe`, `anna+shop@mail.com` or `+44 7700 900123` gets "invalid" | High |
+| 2 | **One country's format for all** | UK or Dutch postcodes rejected, US phone format required everywhere | High |
+| 3 | **Client-only rules** | The app blocks bad data, but the API accepts it | Medium–High |
+| 4 | **Shouting while typing** | "Invalid email" after the first letter | Low–Medium |
+| 5 | **Errors by color only** | Red border, no text, nothing for screen readers | Medium–High |
+| 6 | **Vague or misplaced errors** | "Error 422" in a toast; the field isn't marked | Medium |
+| 7 | **Input lost** | A server error, timeout or Back clears the form | High |
+| 8 | **Double submit** | Two accounts or two tickets after a slow response | Medium–High |
+| 9 | **Boundary bugs** | 18-year-olds rejected on their birthday, limits off by one | Medium |
+| 10 | **Broken autofill** | Values land in the wrong fields, or the form ignores them | Medium |
+| 11 | **Focus not managed** | After submit, nothing tells a screen reader user what's wrong | High (for affected users) |
+| 12 | **Sensitive data in the URL** | `?email=…&dob=…` visible in the address bar and logs | High (privacy) |
+
+</Long>
+
+## Example requirements
+
+Here's the spec for the form in the bug hunt below: a sign up form for **Larder**, a grocery delivery app that also sells beer and wine.
+
+<Callout type="example" title="User story: Create a Larder account">
+
+**As a** new customer, **I want to** create an account with my delivery address **so that** I can order groceries to my door.
+
+**Acceptance criteria**
+
+1. Required: full name, email, mobile number, date of birth, password, country, street, town or city, postcode, and accepting the Terms. The marketing opt-in is optional and unticked by default.
+2. Names accept any letters, including accents, apostrophes, hyphens and spaces, up to 100 characters. A single name is fine.
+3. Any valid email address is accepted, including plus addresses and subdomains. Leading and trailing spaces are removed in every field.
+4. Mobile numbers are accepted in international format, with or without spaces.
+5. The postcode is checked against the selected country's format (Croatia, Germany, Netherlands, United Kingdom).
+6. Users must be **18 or older on the day they sign up**.
+7. Errors appear when the user leaves a field or submits, never while they're still typing, and disappear as soon as the value is fixed. Every error has a text message.
+8. After a failed submit, an error summary lists all problems and receives focus. Each item moves focus to its field.
+9. All fields support AutoFill with the correct autocomplete token.
+10. The **Create account** button is disabled while the request is in progress. If the server fails, a clear message appears and **everything the user entered is kept** (except, optionally, the password).
+
+</Callout>
+
+## Find the bug
+
+Larder's sign up form below has **ten bugs**. The phone has an **AutoFill** bar at the bottom, and under it you can choose what the **server** answers to the next submit and watch the **network log**. Explore like a tester:
+
+- Type slowly and watch when errors appear.
+- Use real-world data: names, emails and phone numbers from the lists above, and a UK postcode.
+- Fill the form with AutoFill and look at every field.
+- Try dates of birth around the 18th birthday. Today in the demo is **14 May 2026**.
+- Submit with mistakes, then use the error summary.
+- Make the server fail and submit a valid form.
+
+<BugHunt
+  title="Larder sign up"
+  bugs={[
+    {
+      title: 'Email errors appear while you are still typing',
+      hint: 'Type your email slowly, one letter at a time.',
+      detail: 'From the very first letter the field shows <strong>"Enter an email address like name@example.com"</strong> and the box turns red. Every other field waits until you leave it. Expected: validate the email on blur or submit, then re-check live only once an error is showing (AC 7).',
+    },
+    {
+      title: 'Plus addresses are rejected',
+      hint: 'Sign up with an email like maya+food@mail.com.',
+      detail: '<code>maya+food@mail.com</code> is a valid address, but the email pattern only allows letters, digits, dots, dashes and underscores before the <code>@</code>. Gmail and many other providers support plus addressing, and people use it to filter mail. Expected: any valid email is accepted (AC 3).',
+    },
+    {
+      title: 'Names with apostrophes or accents are rejected',
+      hint: 'Try O\'Brien, Đorđe Petrović or Zoë.',
+      detail: 'The name check only allows the letters A–Z, spaces and hyphens, so <code>Siobhán O\'Brien</code> and <code>Đorđe Petrović</code> get <strong>"Name can only contain letters"</strong>. They are letters, just not English ones. Expected: any letters, apostrophes, hyphens and spaces (AC 2).',
+    },
+    {
+      title: 'Phone numbers with spaces are rejected, even in the format the hint shows',
+      hint: 'Type the phone number exactly like the example under the label.',
+      detail: 'The hint says <code>+44 7700 900123</code>, but that exact value gets <strong>"Enter a valid mobile number"</strong>. Only <code>+447700900123</code> passes, because the check allows digits and a leading plus, nothing else. Expected: spaces (and dashes) are accepted and removed before saving (AC 4).',
+    },
+    {
+      title: 'The postcode is always checked as 5 digits',
+      hint: 'Choose United Kingdom or Netherlands and enter a real postcode.',
+      detail: 'The hint changes per country (<code>SW1A 1AA</code>, <code>1012 AB</code>), but validation always says <strong>"Enter a 5-digit postcode"</strong>. Only Croatian and German postcodes can be entered, so UK and Dutch customers can\'t sign up at all. Expected: the rule depends on the selected country (AC 5).',
+    },
+    {
+      title: 'AutoFill puts the city into the postcode field',
+      hint: 'Tap the AutoFill bar and read every filled field.',
+      detail: 'Name, email, phone, country, street and city are filled correctly, but the postcode says <strong>Berlin</strong> instead of <code>10115</code>. The postcode field is marked <code>autocomplete="address-level2"</code> (the city token) instead of <code>postal-code</code>. Expected: each field has the right token (AC 9).',
+    },
+    {
+      title: 'Users are rejected on their 18th birthday',
+      hint: 'Today is 14 May 2026. Try someone born on 14 May 2008, then on 13 May 2008.',
+      detail: 'Born 13 May 2008 is accepted, but born <strong>14 May 2008</strong> (18 today) gets "You must be 18 or older". The age calculation treats the birthday itself as "not yet", a classic off-by-one error. Expected: 18 on the birthday (AC 6). Boundary test: 15 May 2008 rejected, 14 May accepted, 13 May accepted.',
+    },
+    {
+      title: 'An invalid date of birth is shown only by a red border',
+      hint: 'Leave the date of birth empty, or enter 31 2 1995, and submit.',
+      detail: 'The three boxes turn red, but there is <strong>no message</strong>, the boxes aren\'t marked invalid for screen readers, and the problem is missing from the error summary. If it\'s the only problem, tapping Create account seems to do nothing. Expected: a text message such as "Enter a real date of birth, like 27 3 1995" (AC 7, WCAG 1.4.1 and 3.3.1).',
+    },
+    {
+      title: 'Error summary links do nothing',
+      hint: 'Submit the empty form, then tap a problem in the red summary box.',
+      detail: 'Focus moves to the summary correctly, but its links neither move focus to the field nor scroll to it. The code cancels the link\'s default action and never focuses the field. Keyboard and screen reader users are stuck at the top of a long form. Expected: each link moves focus to its field (AC 8).',
+    },
+    {
+      title: 'A server error clears the whole form',
+      hint: 'Set the next server response to 500 and submit a valid form.',
+      detail: 'The message "Something went wrong on our side" is fine, but every field is now empty: name, address, date of birth, all of it. The network log shows the data was sent correctly. Users rarely type everything twice. Expected: all input is kept so the user can simply try again (AC 10).',
+    },
+  ]}
+>
+  <BuggyRegistration client:visible />
+</BugHunt>
+
+<Callout type="tip" title="Notice what works">
+
+Some things here are right on purpose: errors on the other fields wait until you leave the field and clear as soon as you fix them, spaces around values are trimmed, the password needs 8 characters and has show/hide, the Terms checkbox is enforced, the marketing box starts unticked, focus moves to the error summary, and the button is disabled while sending (Enter can't send twice either). Pointing at a part that works is a great way to explain the expected behavior in a bug report.
+
+</Callout>
+
+<Callout type="example" title="How would you report bug #7?">
+
+**Title:** Sign up: users whose 18th birthday is today are rejected as under 18
+
+**Steps:** 1. Open Create account (device date: 14 May 2026). 2. Fill in all fields with valid data. 3. Enter date of birth `14` `5` `2008`. 4. Tap **Create account**.
+
+**Expected:** The account is created: the user is 18 today (AC 6).
+**Actual:** "You must be 18 or older to join Larder." With `13 5 2008` the account is created.
+
+**Severity:** Medium (blocks real customers on one day, every day) · **Reproducible:** Always, for any date of birth that is exactly 18 years before today
+
+</Callout>
+
+## How to test a registration form
+
+"How would you test a registration form?" is one of the most common interview tasks, and one of the most common real tasks too. Here's a structure that works for both:
+
+<Steps>
+
+1. **Ask questions first.** Which fields are required? What are the rules for each (length, format, allowed characters)? Which countries and languages? What happens after sign up: a confirmation email, auto login? What if the email is already registered? These questions alone often reveal gaps in the <Term id="acceptance-criteria" />.
+2. **Run the happy path end to end.** Sign up with valid data, open the confirmation email, log in with the new account and check that every value was **saved correctly** (on the profile, in emails, in the admin panel or database).
+3. **Test each field.** Empty, spaces only, valid and invalid classes (<Term id="equivalence-partitioning" />), minimum, maximum and one beyond (<Term id="boundary-value-analysis" />).
+4. **Use real-world data.** Names with apostrophes and accents, plus addresses, international phone numbers, postcodes from each supported country, the 18th birthday, pasted text.
+5. **Check validation behavior.** When errors appear, what they say, whether they clear, the error summary, where focus goes, and that nothing typed is lost.
+6. **Test the whole form.** Double submit, duplicate email, server error, no connection, session timeout, Back and refresh, closing the app halfway.
+7. **Go around the app.** Send the same request with invalid data straight to the API (Postman or DevTools) to prove the server validates too.
+8. **Check security and privacy.** No data in the URL, password masked, rate limiting, marketing opt-in unticked, Terms enforced, no account enumeration.
+9. **Check accessibility.** Screen reader, keyboard only, large text, contrast, autocomplete tokens.
+10. **Repeat on each platform.** Keyboards and AutoFill on iOS and Android, browsers and password managers on the web, small screens and dark mode.
+
+</Steps>
+
+<Callout type="tip" title="In an interview, structure beats volume">
+
+Don't list fifty random checks. Say "I'd ask about the rules first, then group my tests into functional, validation, data, whole-form behavior, server-side, security and accessibility", and give two good examples per group. More on the interview pages: [How would you test a registration form?](/interview/how-to-test-a-registration-form) and [Client-side vs server-side validation](/interview/client-side-vs-server-side-validation).
+
+</Callout>
+
+<Long>
+
+## Test scenarios
+
+### Functional
+
+- Sign up with all valid data; the account is created and every value is saved exactly as entered (after trimming).
+- Optional fields can be left empty; required fields can't.
+- The confirmation email arrives, and the new account can log in.
+- Changing the country updates the postcode rules and re-checks the postcode.
+- AutoFill and password managers fill every field correctly.
+
+### Negative
+
+- Submit the empty form: every required field gets a message and the summary lists them all.
+- Spaces only in required fields.
+- Invalid formats: `anna@`, `anna@@mail.com`, `12abc` as a phone number, `SW1A` as a UK postcode.
+- Underage date of birth, impossible date (`31 2 1995`), a date in the future.
+- Email already registered (the message follows the spec and doesn't reveal more than intended).
+- Terms not accepted.
+
+### Edge cases
+
+- Names: `O'Brien`, `O’Brien` (curly apostrophe), `Đorđe`, `Anne-Marie`, a single name, 100 and 101 characters.
+- Emails: plus address, subdomain, 64-character local part, uppercase.
+- Phone: with spaces, dashes and brackets, with `00` instead of `+`.
+- Postcodes for every supported country, including a leading zero.
+- Date of birth: exactly 18 today, 18 tomorrow, 29 February.
+- Pasting values with a trailing line break or non-breaking space; emoji in the street name.
+- Decimal comma vs point in numeric fields, with the device set to a different region.
+
+### Whole-form behavior
+
+- Double tap and double Enter on submit with a slow network: one account.
+- Server returns `500`, `422` or times out: clear message, input kept, retry works.
+- Connection lost right after submitting.
+- Session expires while the form is open.
+- Back after a successful submit, refresh on the result page, Back to fix a value.
+- App sent to the background and reopened halfway (see [Background and foreground](/mobile/background-and-foreground)).
+
+### Server-side
+
+- Send the request without the app, with each client rule broken: too long, wrong format, missing required field, extra unknown fields.
+- Check that the server trims and normalizes values the same way the app does.
+- Many sign ups from one device or IP: rate limit or CAPTCHA kicks in.
+
+### UI and accessibility
+
+- Labels, help text, optional markers and grouping are consistent.
+- The right keyboard opens for each field on iOS and Android.
+- The focused field and its error are not hidden behind the keyboard.
+- Everything from the accessibility checklist above.
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-FORM-001',
+      title: 'Sign up with valid data saves every value',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open Create account', 'Fill in every field with valid data', 'Tap "Create account"', 'Open the profile and the confirmation email'],
+      data: 'Full name: Đorđe O\'Brien-Petrović / email: djordje+food@mail.com / phone: +44 7700 900123 / UK, SW1A 1AA',
+      expected: 'The account is created. The name, email, phone and address appear exactly as entered (trimmed) on the profile and in the email.',
+    },
+    {
+      id: 'TC-FORM-002',
+      title: 'Postcode rules follow the selected country',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Choose United Kingdom and enter "SW1A 1AA"', 'Change the country to Netherlands', 'Enter "1012 AB"', 'Change the country to Germany and enter "01067"'],
+      expected: 'Each postcode is accepted for its country. After changing the country, the old postcode is re-checked. "01067" is saved with its leading zero.',
+    },
+    {
+      id: 'TC-FORM-003',
+      title: 'Age boundary on the 18th birthday',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Device date is 14 May 2026'],
+      steps: ['Enter date of birth 15 5 2008 and submit', 'Change it to 14 5 2008 and submit', 'Change it to 13 5 2008 and submit'],
+      expected: '15 May 2008: "You must be 18 or older". 14 May 2008 and 13 May 2008: the account is created.',
+    },
+    {
+      id: 'TC-FORM-004',
+      title: 'Errors are not shown while the user is typing',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Tap into Email', 'Type "anna" slowly', 'Leave the field', 'Go back and complete it to "anna@mail.com"'],
+      expected: 'No error while typing in step 2. After leaving the field, an error with a text message appears. It disappears as soon as the value is valid in step 4.',
+    },
+    {
+      id: 'TC-FORM-005',
+      title: 'Error summary moves focus to each field',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Submit the empty form', 'Check where focus is', 'Activate the first link in the error summary', 'Repeat with keyboard only (Tab, Enter) and with a screen reader'],
+      expected: 'Focus moves to the summary after submit. Each link moves focus to its field, which is scrolled into view and announced with its error.',
+    },
+    {
+      id: 'TC-FORM-006',
+      title: 'Input is kept after a server error',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['The sign up endpoint returns 500 (proxy tool or test switch)'],
+      steps: ['Fill in all fields with valid data', 'Tap "Create account"', 'Read the message', 'Switch the server back to normal and tap "Create account" again'],
+      expected: 'A clear message says the account could not be created and to try again. All fields keep their values (the password may be cleared if the spec says so). The second try creates exactly one account.',
+    },
+    {
+      id: 'TC-FORM-007',
+      title: 'Double submit creates one account',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Network throttled to "3G" in DevTools or a slow profile in a proxy tool'],
+      steps: ['Fill in valid data', 'Tap "Create account" twice quickly', 'Press Enter while the request is in progress'],
+      expected: 'The button is disabled and shows a loading state after the first tap. One request is sent and one account exists.',
+    },
+    {
+      id: 'TC-FORM-008',
+      title: 'Server rejects invalid data sent without the app',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Postman or DevTools "Edit and resend" is available'],
+      steps: ['Capture a valid sign up request', 'Change the date of birth to make the user 16', 'Remove acceptedTerms', 'Send the request'],
+      expected: 'The server answers with a validation error (for example 422) naming the fields. No account is created.',
+    },
+    {
+      id: 'TC-FORM-009',
+      title: 'AutoFill fills every field correctly',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['A saved contact with full address exists on the device or in the browser'],
+      steps: ['Focus the Full name field', 'Choose the saved contact from AutoFill', 'Read every field', 'Submit'],
+      expected: 'Every value lands in the matching field (city in city, postcode in postcode). Autofilled values pass validation and the form submits.',
+    },
+  ]}
+/>
+
+## Mobile vs web
+
+<Tabs labels={['Mobile app', 'Website']}>
+<Tab>
+
+- **Keyboards:** check the keyboard type, auto-capitalization (on for names, off for emails) and autocorrect (off for names, emails and codes) on each field, with Gboard and Samsung Keyboard on Android.
+- **AutoFill:** iOS offers contacts and passwords above the keyboard, Android uses its Autofill service. Test that values land in the right fields and that "Use strong password" works on sign up.
+- **The keyboard covers things:** the focused field, its error message and the submit button must not hide behind the keyboard. Scroll the form with the keyboard open.
+- **Next and Done keys:** **Next** should move to the next field in order; the last field's **Done** or **Go** should submit or close the keyboard.
+- **Interruptions:** a phone call, switching apps to copy a code, or the app being killed in the background should not lose what was typed (see [Interruptions](/mobile/interruptions)).
+- **Native pickers:** dates, countries and times often use system pickers. Test them with large text and VoiceOver or TalkBack.
+- **Old app versions:** users don't all update. A rule added to the new app version must also exist on the server, or old versions keep sending bad data.
+
+</Tab>
+<Tab>
+
+- **Browser autofill and password managers:** Chrome, Safari, Firefox and tools like 1Password should detect every field. In DevTools, check each field's `autocomplete`, `type`, `inputmode` and `name`.
+- **Built-in browser validation:** `required` and `type="email"` show the browser's own bubbles, which look different in every browser and can't always be read well. Many teams turn them off and show their own messages. Know which one your app uses.
+- **Keyboard only:** Tab through the whole form, select with arrows and Space, submit with Enter. Check the focus ring and that **Enter** doesn't submit twice.
+- **Network tab:** check that the form uses `POST`, that no personal data appears in the URL, and what an error response contains.
+- **Back, refresh and multiple tabs:** go back after submitting, refresh the result page, open the form in two tabs.
+- **Mobile browsers:** the right keyboard depends on `type` and `inputmode`. Test on a real phone, not only in a resized desktop window.
+- **Zoom and reflow:** at 200% zoom and at 320 px wide, labels, errors and buttons must stay visible and in order.
+
+</Tab>
+</Tabs>
+
+</Long>
+
+## Checklist
+
+<Checklist
+  title="Forms and validation checklist"
+  storageKey="forms-and-validation"
+  items={[
+    'Every field has a visible label; formats and rules are explained before typing',
+    'Required and optional fields are marked consistently, and the markings match the real rules',
+    'Each field opens the right keyboard and has the right autocomplete token',
+    'Real-world names, emails, phone numbers and postcodes from every supported country are accepted',
+    'Leading and trailing spaces are trimmed; paste works everywhere',
+    'Boundaries are tested: minimum, maximum, maximum + 1, and the 18th birthday',
+    'Errors appear on blur or submit, not while typing, and clear as soon as the value is fixed',
+    'Every error is specific, next to its field, uses text and not only color, and is announced',
+    'After a failed submit, focus moves to the error summary or first invalid field, and summary links work',
+    'Nothing the user typed is lost after a validation error, server error, timeout or Back',
+    'Submit can\'t create duplicates (double tap, double Enter, Back and resubmit)',
+    'The server rejects invalid data sent without the app',
+    'No personal data in URLs; sign up is rate limited; marketing consent starts unticked',
+    'The form works with a screen reader, the keyboard only, large text and 200% zoom',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'The app blocks names longer than 50 characters. Why should you still test a 300-character name?',
+      options: ['You shouldn\'t, the app already blocks it', 'Because the server must enforce the rule too, and anyone can send a request without the app', 'To test the keyboard', 'Only to check performance'],
+      answer: 1,
+      explain: 'Client-side checks can be skipped with Postman, a proxy tool or an old app version. Send the long name straight to the API to prove the server validates too.',
+    },
+    {
+      q: 'An email field shows "Invalid email" as soon as you type the first letter. What is the best description of the problem?',
+      options: ['It validates too late', 'It validates while the user is still typing, before they could possibly be finished', 'The error message is too long', 'Nothing, instant feedback is always best'],
+      answer: 1,
+      explain: 'Validate on blur or submit, then re-check live once an error is showing so it disappears as soon as the value is fixed.',
+    },
+    {
+      q: 'Which of these is a valid email address that forms often reject by mistake?',
+      options: ['anna@', 'anna+groceries@mail.com', 'anna@@mail.com', 'anna mail.com'],
+      answer: 1,
+      explain: 'Plus addressing is valid and widely used to filter mail. The other three are genuinely invalid.',
+    },
+    {
+      q: 'The spec says "18 or older". Today is 14 May 2026. Which date of birth is the most important boundary to test?',
+      options: ['1 January 2000', '14 May 2008', '14 May 1990', '31 December 2010'],
+      answer: 1,
+      explain: 'Someone born on 14 May 2008 turns 18 today and must be accepted. Test the day before and after too: that is where off-by-one bugs hide.',
+    },
+    {
+      q: 'After a 500 error, the sign up form shows "Something went wrong" and all fields are empty. What should you report?',
+      options: ['Nothing, the server failed, not the form', 'Only the server error', 'That the form loses all input after a server error, so users must type everything again', 'That the message is too short'],
+      answer: 2,
+      explain: 'Servers fail sometimes. The form must keep the user\'s input so they can simply try again. Report the server error separately if it is reproducible.',
+    },
+    {
+      q: 'Which error message is best for a UK postcode field containing "SW1A"?',
+      options: ['"Invalid input"', 'A red border with no text', '"Error 422: postcode"', '"Enter a full postcode, like SW1A 1AA"'],
+      answer: 3,
+      explain: 'It says what is wrong and how to fix it, in plain words. Pair it with a red border and an icon, never color alone.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A good form has **visible labels, rules before typing, clear grouping, the right keyboards and autocomplete tokens**.
+- **Client-side validation is a convenience, server-side validation is protection.** Test both, and go around the app to prove the server checks.
+- Validate **on blur or submit**, not while the user is still typing, and clear errors **as soon as they're fixed**.
+- Errors must be **specific, next to the field, not color only, announced to screen readers**, and must never wipe the user's input.
+- Test with **real-world data**: apostrophes and accents, plus addresses, international phone numbers, postcodes per country, the 18th birthday, spaces, paste and emoji.
+- Test the **whole form**: double submit, server errors, timeouts, Back and refresh, security and accessibility.
+
+</KeyTakeaways>

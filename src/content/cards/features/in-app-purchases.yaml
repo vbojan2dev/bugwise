@@ -1,0 +1,43 @@
+teaser: "A user pays for a year of Premium, gets a new phone, taps Restore and nothing happens. Where would you even start testing?"
+cards:
+  - type: flip
+    front: "Consumable vs non-consumable purchase?"
+    back: "Consumables (coins, extra lives) are used up and bought again. Non-consumables (remove ads) are kept forever and must be restorable."
+  - type: quiz
+    q: "A user cancels a monthly plan on day 10. When should Premium end?"
+    options: ["Immediately", "At the end of the paid month", "Never"]
+    answer: 1
+    explain: "Canceling only turns off auto-renew. They paid for the month, so they keep access until it ends."
+  - type: truefalse
+    statement: "During an in-app purchase, the app receives the user's card number."
+    answer: false
+    explain: "The App Store or Google Play charges the user. The app only gets a signed transaction it can verify."
+  - type: spotbug
+    screen: ["Paywall: Start 7-day free trial", "Store sheet: RSD 599.00/month", "Billed today"]
+    bug: "Trial promised, but the store charges right away."
+    explain: "The app decided trial eligibility itself. The store sheet is the truth: this account already used its trial."
+  - type: flip
+    front: "How do testers buy subscriptions without paying?"
+    back: "Sandbox Apple Accounts or StoreKit Testing in Xcode on iOS, license testers with test cards on Google Play."
+  - type: thisorthat
+    prompt: "A subscription was refunded yesterday. The app still shows Premium is active."
+    left: "Bug"
+    right: "Expected"
+    answer: left
+    explain: "A refund returns the money, so access should end right away. The app or server isn't handling refund notifications."
+  - type: quiz
+    q: "Where should the paywall get its prices from?"
+    options: ["Hard-coded in the app", "Converted from USD by the app", "The store, for the user's country"]
+    answer: 2
+    explain: "The store sets prices per country and formats them. A Serbian account pays in dinars, even on an English phone."
+  - type: spotbug
+    screen: ["Google Play › Subscriptions", "Stillwater Monthly · Active", "Stillwater Yearly · Active"]
+    bug: "Upgrading created a second subscription."
+    explain: "Switching plans must replace the old one. Two active subscriptions mean the user is charged twice."
+  - type: truefalse
+    statement: "In sandbox, a monthly subscription renews in about five minutes."
+    answer: true
+    explain: "Test environments speed up renewals so you can test months of a subscription in minutes. Exact times change, so check the current docs."
+  - type: tip
+    title: "Test after the purchase"
+    text: "Most IAP bugs appear later: on a second device, after a refund, expiry or failed renewal. Use the test clock and check Premium every time."

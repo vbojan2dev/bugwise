@@ -1,0 +1,424 @@
+---
+title: Card
+description: A box that groups a photo, a title, a few facts and maybe an action about one thing, like a product, a restaurant or an article. Learn the types, the one-link-per-card pattern, and the grid, price and tap bugs testers find.
+category: content
+aka: [Tile, Content card]
+platforms: [ios, android, web]
+minutes: 35
+order: 1
+---
+
+import Anatomy from '@/components/demos/card/Anatomy';
+import VariantsGallery from '@/components/demos/card/VariantsGallery';
+import TapTargets from '@/components/demos/card/TapTargets';
+import GridLab from '@/components/demos/card/GridLab';
+import { BuggyShopGrid } from '@/components/demos/card/BuggyShopGrid';
+import { ProductCard, ProductSkeleton, products } from '@/components/demos/card/Cards';
+
+Open any shopping, food delivery or news app and you'll see a wall of little boxes: a photo, a name, a price, a heart. Each box is a **card**. You scroll past hundreds of them a day without thinking about it.
+
+For a tester, every card is a tiny screen of its own. It mixes **data** (names, prices, ratings), **images** that can be missing, **badges** like "Sold out", and **several things you can tap**. That mix is where the bugs live.
+
+## What is a card?
+
+A card is a **container that groups everything about one item** and is usually a doorway to more detail. Tap the card and you land on the product, restaurant or article page.
+
+You'll usually see cards used for:
+
+- **Collections of similar things**: products in a shop, restaurants in a delivery app, hotels in a travel app.
+- **Feeds**: news articles, workouts, social posts, recommendations.
+- **Summaries**: "Your run today", "This month's spending", an upcoming flight.
+
+Cards almost never appear alone. They sit in **lists, grids and carousels**, so a lot of card testing is really testing how many cards behave together.
+
+### Anatomy
+
+<Anatomy />
+
+### How it differs from similar components
+
+| Component | What it holds | Typical use |
+| --- | --- | --- |
+| **Card** | Rich, mixed content about one item (media, text, actions) | Products, restaurants, articles, summaries |
+| **List row** | One line or two of text, maybe an icon | Settings, contacts, emails |
+| **Tile** | Mostly an image or icon with a short label | Photo galleries, app launchers, categories |
+| **Banner** | A message across the full width | Promotions, warnings, "You're offline" |
+| **<Term id="modal">Modal</Term>** | Content that blocks the screen | Decisions, forms, confirmations |
+
+<Callout type="dev" title="Platform names">
+**Material Design** (Android) has an official card component in three styles: elevated, filled and outlined. **iOS** has no system "card" control. Apps build cards from views, often in the style of the App Store's Today tab. On the **web**, it's just a styled `div` or `article`, so every site invents its own. Teams may also say *tile* or *content card*.
+</Callout>
+
+## Designs & variants
+
+Material's three card types differ only in how the card's **edge** is drawn: a shadow, a fill color or a border. The rest are content patterns you'll meet in real products. Switch the demo screens to dark mode as you look.
+
+<VariantsGallery client:visible />
+
+### Images: ratio, cropping and missing photos
+
+Images cause more card bugs than anything else. Things to know:
+
+- **Fix the aspect ratio.** Product grids usually use **1:1** or **4:5**, restaurant and article cards **16:9** or **4:3**. If every photo keeps its own shape, the grid jumps around and the layout shifts while images load.
+- **Crop, don't squash.** Photos should be cropped to fit, never stretched. A stretched shoe looks like a canoe.
+  <DevNote>On the web that's `object-fit: cover`.</DevNote>
+- **Plan for missing images.** A photo can be missing, slow or broken. A good card reserves the space and shows a **neutral placeholder**. A bad one shows a broken-image icon, a file name, or collapses to half its height.
+- **Text on photos** (like a "Closed" label or a headline) needs a dark overlay so it stays readable on light and busy images.
+
+### Prices, badges and status
+
+Product and restaurant cards repeat data from the detail page, so they can **disagree** with it.
+
+- **Sale price**: the new price is lower and highlighted, the **old price is higher** and struck through, and the "-25%" badge matches the math: (119 − 89) / 119 ≈ 25%.
+- **Sold out / Closed**: the badge, the button and the detail page must all agree. "Sold out" with a working **Add to cart** is a classic bug.
+- **Currency and format**: "€89.00" on the card but "89,00 €" on the detail page is a <Term id="localization" /> inconsistency.
+
+### Loading: skeletons
+
+While data loads, good apps show **skeleton cards**: grey shapes with the same size and layout as the real cards. The page doesn't jump when content arrives, and users see that something is happening.
+
+<div class="not-prose demo-screen my-6" style={{ colorScheme: "light" }}>
+  <div class="mx-auto grid max-w-[22rem] grid-cols-2 gap-2.5">
+    <ProductSkeleton />
+    <ProductCard p={products[1]} />
+  </div>
+</div>
+
+A skeleton that's a **different size** from the real card, or one that **never goes away** when there's no data, is a bug. More on that in [Empty & error states](/components/empty-and-error-states).
+
+## Whole-card tap vs action buttons
+
+This is the most important card behavior to test. Users expect **tapping anywhere on the card** to open the item. But many cards also have their **own buttons**: a heart, Add to cart, a menu. Now the card has **nested tap targets**, and three things can go wrong:
+
+1. **One tap, two actions.** You tap the heart, and the product page opens too, because the tap "bubbles up" from the heart to the card.
+2. **Screen reader noise.** If the whole card is one link, a screen reader reads every word in it as one long link. If every part is its own link, users hear the same destination three times.
+3. **Invalid markup (web).** A `<button>` inside an `<a>` is not allowed in HTML, and browsers and screen readers handle it unpredictably.
+
+The fix most design systems recommend is **one link per card**: only the title is a real link, but its clickable area is stretched over the whole card. The secondary buttons sit **on top** of it as separate targets. Try all three versions:
+
+<TapTargets client:visible />
+
+<Callout type="tip" title="Tester mindset">
+On every card, tap **each interactive part on its own**: the heart, the button, the menu, then an empty spot on the card. Write down what happened each time. "Tapping the heart also opens the product" is one of the most common card bugs in shopping apps.
+</Callout>
+
+## When to use it
+
+Cards are a good choice when:
+
+- Items have **different kinds of content** (photo, title, price, rating) that belong together.
+- Users **browse and compare**, like scrolling restaurants or products.
+- Each item leads to a **detail page**.
+- The layout needs to **reflow**: a grid of cards can show 1 column on a phone and 4 on a desktop.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Browsing products">
+
+<div class="not-prose demo-screen my-3" style={{ colorScheme: "light" }}>
+  <div class="mx-auto grid max-w-[20rem] grid-cols-2 gap-2.5">
+    <ProductCard p={products[0]} />
+    <ProductCard p={products[3]} />
+  </div>
+</div>
+
+Photos, prices and badges help users compare at a glance.
+
+</Do>
+<Dont title="A plain list of settings">
+
+<div class="not-prose demo-screen my-3" style={{ colorScheme: "light" }}>
+  <div class="mx-auto max-w-[17rem] space-y-2 text-[13px] text-[#14161f]">
+    <div class="rounded-xl bg-white p-3 shadow-sm">Notifications</div>
+    <div class="rounded-xl bg-white p-3 shadow-sm">Language</div>
+    <div class="rounded-xl bg-white p-3 shadow-sm">Privacy</div>
+    <div class="rounded-xl bg-white p-3 shadow-sm">Help</div>
+  </div>
+</div>
+
+One label per box wastes space. A simple list with dividers is easier to scan.
+
+</Dont>
+</Compare>
+
+Also avoid cards when the content is a **table** (comparing many numbers side by side), when there's **only one item**, or when users need to **read long text**. A card is a preview, not the article itself.
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Action also opens the card** | Tapping the heart, Add to cart or ⋮ also navigates to the detail page | Medium–High |
+| 2 | **Long text breaks the layout** | Names overlap the price, push the button out, or are cut mid-word without "…" | Medium |
+| 3 | **Missing image not handled** | Broken-image icon, file name or alt text visible, card collapses | Medium |
+| 4 | **Wrong or inconsistent price** | Old price lower than new, wrong % badge, card and detail page disagree | High |
+| 5 | **Status ignored** | "Sold out" or "Closed" card still lets you order | High |
+| 6 | **Uneven grid** | Cards in one row have different heights, buttons don't line up | Low |
+| 7 | **Layout shift while loading** | Images pop in and push content down, skeleton has a different size | Low–Medium |
+| 8 | **Wrong card opens** | Tapping card 3 opens product 4, often after filtering or scrolling | High |
+| 9 | **Invisible in dark mode** | Card edge or text disappears; shadow doesn't show on black | Medium |
+| 10 | **Screen reader noise** | Every fragment read separately, duplicate links, unlabeled "button" | High (for affected users) |
+
+<Callout type="bug" title="Why #1 happens: event bubbling">
+When you tap a button inside a clickable card, the tap is delivered to the button **and then to every parent**, including the card. Unless the developer stops it (or uses the one-link-per-card pattern), both handlers run. It often slips through because the favorite still gets saved, so a quick "does the heart work?" check passes.
+</Callout>
+
+## Stress-test it
+
+A card that looks perfect with the designer's sample data often falls apart with **real data**. Long product names are already on. Now remove the clamp, then turn off equal heights, remove a photo, turn off the fixed ratio and switch to 3 columns, and watch the grid get ragged:
+
+<GridLab client:visible />
+
+<Callout type="info">
+**Clamping** (showing 2 lines and then "…") is a fine solution, but it's still <Term id="truncation" />. Make sure users can see the full name somewhere: on the detail page, in a tooltip on the web, and in what the screen reader reads.
+</Callout>
+
+## Find the bug
+
+This outdoor shop's product grid has **six bugs**. Explore it like a tester:
+
+- Tap the **heart** on a few products.
+- Compare the cards with each other, and with the product pages.
+- Try to buy something that's sold out.
+- Turn on **VoiceOver** and swipe through the first two cards.
+
+<BugHunt
+  title="Product grid"
+  bugs={[
+    {
+      title: 'Tapping the heart also opens the product',
+      hint: 'Tap the heart on any card.',
+      detail: 'The favorite is saved, but the product page opens at the same time. The tap on the heart bubbles up to the clickable card. Expected: the heart only toggles the favorite, and the user stays on the grid.',
+    },
+    {
+      title: 'Long product name overlaps the price',
+      hint: 'Look at the hiking boots card.',
+      detail: 'The name needs four lines but the title box is only two lines tall and doesn\'t clip, so the text runs over the rating and price. Expected: the title is clamped to two lines with "…" (or the card grows), and nothing overlaps.',
+    },
+    {
+      title: 'Missing photo shows a broken icon and collapses the card',
+      hint: 'Look at the backpack.',
+      detail: 'Instead of a photo you see a tiny broken-image icon and the file name <code>backpack_30l.jpg</code>, and the card is much shorter than its neighbor. Expected: the image area keeps its size and shows a neutral placeholder.',
+    },
+    {
+      title: 'Sale price is higher than the old price',
+      hint: 'Read the tent\'s prices carefully, then open it.',
+      detail: 'The card shows <strong>€249.00</strong> with <s>€199.00</s> struck through and "-20%". The prices are swapped: the product page says €199.00. Expected: the current (lower) price is highlighted, the old (higher) price is struck through, and the card matches the detail page.',
+    },
+    {
+      title: 'Sold out product can be added to the bag',
+      hint: 'Tap Add to cart on the boots, then check the bag.',
+      detail: 'The boots show a "Sold out" badge, and the product page has no Add button, but the card\'s <strong>Add to cart</strong> still works and the bag count goes up. Expected: the card button is disabled or replaced with "Sold out", like on the detail page.',
+    },
+    {
+      title: 'Screen reader reads every fragment and duplicate links',
+      hint: 'Turn on VoiceOver and swipe through the first card.',
+      detail: 'It takes 10 swipes per card: the photo is read as a file name, the heart is just <em>"button"</em>, the rating is split into "4.6" and "(182)", the old price has no "was", and the same product link is announced twice. Expected: one link per card with the product name, a labeled favorite toggle, and the price read as one phrase.',
+    },
+  ]}
+>
+  <BuggyShopGrid client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Product grid: tapping the favorite (heart) icon also opens the product page
+
+**Steps:** 1. Open Hiking gear. 2. Tap the heart on "Trail Rain Jacket".
+
+**Expected:** The heart fills, the user stays on the grid.
+**Actual:** The heart fills **and** the product page opens. Going back shows the heart as filled.
+
+**Severity:** Medium (users can't save several favorites in a row) · **Reproducible:** 10/10, every card
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Card test checklist"
+  storageKey="card"
+  items={[
+    'Tapping the card (title, image, empty area) opens the correct item',
+    'Each action on the card (heart, Add to cart, menu) does only its own job and does not open the card',
+    'Card data matches the detail page: name, price, rating, status',
+    'Sale price is lower than the old price, and the % badge matches the math',
+    'Sold out / Closed cards cannot be ordered from the card or the detail page',
+    'Long titles clamp or wrap cleanly and never overlap other content',
+    'Missing or slow images show a placeholder with the same size; no broken icons or file names',
+    'Images use a consistent aspect ratio and are cropped, not stretched',
+    'Skeleton cards match the real card size, and disappear when loading ends',
+    'Grid adapts to phone, tablet and desktop widths; rows line up',
+    'Cards are readable in dark mode and at the largest text size',
+    'Screen reader: one link per card with a clear name; buttons are labeled; prices read as one phrase',
+    'Web: Tab reaches each card once plus its buttons, with a visible focus ring',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-CARD-001',
+      title: 'Tapping a card opens the matching detail page',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open the Hiking gear category', 'Note the name and price on the 3rd card', 'Tap the card on an empty area below the price'],
+      expected: 'The detail page of that exact product opens, with the same name and price as on the card.',
+    },
+    {
+      id: 'TC-CARD-002',
+      title: 'Favorite button does not open the product',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Open the Hiking gear category', 'Tap the heart on the first card', 'Tap the heart on the second card'],
+      expected: 'Both hearts become filled and the user stays on the grid the whole time. No navigation happens.',
+    },
+    {
+      id: 'TC-CARD-003',
+      title: 'Sale price is displayed correctly',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['"Trail Rain Jacket" is on sale: €89.00, was €119.00'],
+      steps: ['Find the Trail Rain Jacket card', 'Open its detail page'],
+      expected: 'Card shows €89.00 highlighted, €119.00 struck through, badge "-25%". Detail page shows the same prices.',
+    },
+    {
+      id: 'TC-CARD-004',
+      title: 'Sold out product cannot be added from the card',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['"Ridge Hiking Boots" has stock = 0'],
+      steps: ['Find the boots card', 'Try to tap Add to cart'],
+      expected: 'The card shows "Sold out", the button is disabled (or replaced), and the bag count does not change.',
+    },
+    {
+      id: 'TC-CARD-005',
+      title: 'Very long product name',
+      priority: 'medium',
+      type: 'edge',
+      data: 'Name: "Ridge Mid Gore-Tex Waterproof Hiking Boots for Rocky Trails, Wide Fit" (69 characters)',
+      steps: ['Open the category on the narrowest supported phone', 'Find the product'],
+      expected: 'The name is clamped to 2 lines with "…" and does not overlap the rating, price or button. The full name is on the detail page.',
+    },
+    {
+      id: 'TC-CARD-006',
+      title: 'Product without an image',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['A product exists with no image (or the image URL returns 404)'],
+      steps: ['Open the category containing it'],
+      expected: 'The card keeps its normal height and shows a neutral placeholder. No broken-image icon, file name or empty gap.',
+    },
+    {
+      id: 'TC-CARD-007',
+      title: 'Grid while loading on a slow network',
+      priority: 'low',
+      type: 'edge',
+      preconditions: ['Network throttled (e.g. "3G" in DevTools, or a slow profile on the device)'],
+      steps: ['Open the category', 'Watch the screen until all images have loaded'],
+      expected: 'Skeleton cards of the same size appear first. Nothing jumps when real cards and images arrive.',
+    },
+    {
+      id: 'TC-CARD-008',
+      title: 'Screen reader reads a card as one clear unit',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['VoiceOver (iOS) or TalkBack (Android) is on'],
+      steps: ['Swipe to the first product card', 'Keep swiping through it'],
+      expected: 'You hear the product name as a link once, the price as "€89.00, was €119.00", then "Save Trail Rain Jacket to favorites, button" and "Add to cart, button". No file names, no unlabeled buttons, no repeated links.',
+    },
+  ]}
+/>
+
+## Accessibility
+
+- **One link per card.** Make the title the link, and extend its clickable area over the card. Don't wrap the entire card, buttons and all, in one link.
+- **Label icon buttons.** The heart needs a name like "Save Trail Rain Jacket to favorites" and a pressed/selected state. Just "button" or "heart" is useless in a list of 40 hearts.
+- **Decorative images get empty <Term id="alt-text" />.** If the title already names the product, the photo should be skipped (`alt=""`), not read as "IMG_4021.jpg". If the image adds information (a color, a map), describe it.
+- **Prices read as one phrase.** Struck-through text isn't announced as "old price" by most screen readers, so add hidden text like "was €119.00".
+- **Group the card.** On iOS and Android, related text can be grouped so the screen reader reads "Trail Rain Jacket, 4.6 stars, €89.00" in one stop instead of six.
+- **<Term id="touch-target">Touch targets</Term>:** buttons on cards need at least 44×44 pt (iOS) / 48×48 dp (Android), with enough space between them so a tap on the heart doesn't hit the card.
+- **Contrast:** text on photos and badges needs 4.5:1. In <Term id="dark-mode" />, the card edge must still be visible (a lighter surface or a border, since shadows don't show on black).
+- **Keyboard (web):** each card should be **one** Tab stop plus its buttons, in a logical <Term id="focus-order" />, with a visible focus ring around the whole card.
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- No native card component, so behavior varies by app.
+  <DevNote>Cards are built with SwiftUI views or `UICollectionView` cells.</DevNote>
+- Tapping often shows a **highlight or press animation**; long-press may open a **context menu** with a preview. Test both.
+- Test with **Dynamic Type** at the largest sizes: does the card grow, or does text get cut?
+- VoiceOver: check that card content is grouped and the image isn't read as a file name.
+
+</Tab>
+<Tab>
+
+- Material 3 **Card** component: elevated, filled or outlined. Cards in a grid often reflow by <Term id="window-size-class" /> on tablets and foldables.
+- Pressed cards show a **ripple**. A ripple on the whole card when you tap the heart is a hint that both got the tap.
+- Test with **font scale** and **display size** changes, and with TalkBack.
+- Rotate the device: do columns change correctly, and does the scroll position survive?
+
+</Tab>
+<Tab>
+
+- Cards are custom HTML, usually an `article` with a link inside. Inspect the markup in <Term id="devtools" />: look for `<button>` inside `<a>` or several links to the same URL.
+- Check **hover** states and that the cursor is a pointer over the whole card.
+- Use **responsive mode** ([Responsive design testing](/web/responsive-design-testing)) to check 1, 2, 3 and 4 columns, and that cards never overflow the viewport.
+- Watch for **layout shift** while images load (Lighthouse reports it as CLS), and check images are <Term id="lazy-loading">lazy-loaded</Term> below the fold.
+- Middle-click / Cmd+click on a card should open it in a new tab, which only works if it's a real link.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'You tap the heart on a product card. The heart fills AND the product page opens. What is the most likely cause?',
+      options: ['A slow network', 'The tap bubbles up from the heart to the clickable card', 'The image failed to load', 'A dark mode bug'],
+      answer: 1,
+      explain: 'The heart sits inside a clickable card. Unless the tap is stopped or the card uses the one-link-per-card pattern, both handlers run.',
+    },
+    {
+      q: 'A card shows "€249.00" highlighted, "€199.00" struck through and "-20%". What do you report?',
+      options: ['Nothing, it\'s a sale', 'Prices are swapped: the old price must be higher than the new one', 'The badge color is wrong'],
+      answer: 1,
+      explain: 'A sale means the current price is lower. Check the detail page too: here it probably shows €199.00.',
+    },
+    {
+      q: 'What is the recommended way to make a whole card tappable without breaking its buttons?',
+      options: ['Wrap the entire card, buttons included, in one link', 'Make the image, title and a View button all separate links', 'Make the title the only link and stretch its click area over the card, with buttons on top'],
+      answer: 2,
+      explain: 'One link per card: one clear destination for screen readers and keyboards, and separate targets for secondary actions.',
+    },
+    {
+      q: 'A product has no photo. What should the card show?',
+      options: ['A neutral placeholder of the same size', 'The browser\'s broken-image icon', 'Nothing, the card can be shorter', 'The image file name'],
+      answer: 0,
+      explain: 'The image area keeps its size so the grid stays even, and the placeholder doesn\'t look like an error.',
+    },
+    {
+      q: 'Which test data is MOST likely to reveal a card layout bug?',
+      options: ['A product called "Hat"', 'A 70-character product name on a narrow phone with large text', 'A product with a normal price'],
+      answer: 1,
+      explain: 'Long names, narrow screens and big text sizes are what break fixed-height title areas.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A card groups **media, title, supporting text, metadata and actions** about one item, and usually opens a detail page.
+- Test **every tap target separately**: the card itself, the heart, the button, the menu. One tap must do **one** thing.
+- Use the **one link per card** pattern as your expected behavior for screen readers and keyboards.
+- Feed cards **real, ugly data**: long names, missing images, sale prices, sold-out items, and compare them with the detail page.
+- Check the **grid as a whole**: equal heights, fixed image ratios, skeletons while loading, dark mode and every screen width.
+
+</KeyTakeaways>

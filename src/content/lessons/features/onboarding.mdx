@@ -1,0 +1,448 @@
+---
+title: Onboarding
+description: Welcome carousels, setup wizards, tips and permission requests - how first-run onboarding works, what usually breaks, and how to test it after install, update, reinstall and logout.
+order: 5
+level: beginner
+minutes: { short: 30 }
+platform: both
+tags: [onboarding, first run, permissions, accessibility, mobile, web]
+---
+
+import OnboardingTypes from '@/components/demos/onboarding/OnboardingTypes';
+import PermissionPrimer from '@/components/demos/onboarding/PermissionPrimer';
+import { BuggyOnboardingApp } from '@/components/demos/onboarding/BuggyOnboardingApp';
+
+You download a new fitness app. Before you can log a single workout, it shows you three slides, asks your name and goal, and wants to send you notifications. That's **onboarding**: everything an app shows a new user the first time, to explain its value and set it up.
+
+Onboarding is only seen once (if it works), so it's easy for a team to forget about it. But it's also the **first impression**. If it crashes, loops, or forces a long-time customer through it again after an update, people give up before they ever reach the main app. Many apps lose a large share of new users in the first few minutes, and onboarding bugs are a big reason why.
+
+## How it works
+
+### Kinds of onboarding
+
+<OnboardingTypes />
+
+- **Welcome carousel.** Two to five slides with a picture and a sentence each, plus **Skip** and **Next** (see [Carousel](/components/carousel)). The most common, and the most skipped.
+- **Interactive tutorial.** The user practices on sample data: "Swipe this task to delete it." Great for apps with gestures people wouldn't discover alone.
+- **Progressive or contextual tips.** Small hints (coach marks, tooltips) that appear the first time the user reaches a feature, not all at once at the start.
+- **Empty-state onboarding.** An <Term id="empty-state" /> that teaches: "No workouts yet. Tap + to log your first one." Free onboarding on screens that would otherwise be blank (see [Empty and error states](/components/empty-and-error-states)).
+- **Account setup wizard.** Required steps such as creating an account, choosing a goal or a home address. Unlike a carousel, these collect data the app **needs**.
+
+### The first-run flow
+
+<Steps>
+
+1. **The app starts and checks a flag.** Something like `onboarding_done = true`, stored on the device (and sometimes on the server for the account).
+2. **No flag? Show onboarding.** Usually the carousel first, then the required setup.
+3. **The user moves through the steps.** Next, Back, Skip, maybe answering a permission request.
+4. **The app saves the answers and the flag.** Only when the required parts are really done.
+5. **Next launch: straight to Home.** The flag says onboarding is done, so the user never sees it again (unless something is deliberately new, like a short "What's new" screen).
+
+</Steps>
+
+### First-run detection: when should onboarding appear?
+
+This is the most common source of onboarding bugs. The right answer depends on where the flag lives, so ask your team and test each row:
+
+| Situation | Usually expected | Why it breaks |
+| --- | --- | --- |
+| First launch after install | Onboarding | No flag yet |
+| Restart, or phone restart | Straight to Home | Flag not saved, or saved too late |
+| **App update** | Home, maybe a short "What's new" | Flag tied to the app version, or wiped by a data migration |
+| Reinstall | Onboarding again (often), or log in | iOS Keychain and Android Auto Backup can bring old data back |
+| Log out, then log in | Login screen, then Home | Logout clears the device flag too |
+| Same account on a new phone | Login, no full tour | Flag only stored on the old device |
+
+Read [Install, update and uninstall](/mobile/install-update-uninstall) for how app data survives (or doesn't) these events. On Android, <Term id="auto-backup" /> can restore the flag after a reinstall; on iOS, data in the <Term id="keychain" /> can survive an uninstall. Both surprise teams regularly.
+
+### Skip, Back and progress
+
+- **Skip** should skip only what's optional. Skipping the welcome slides is fine; skipping the account setup leaves the app without the data it needs. If something is required, Skip must not jump over it, or the app must handle the missing data gracefully.
+- **Back** should go one step back and **keep** what the user already chose. Losing your answers because you pressed Back is one of the most annoying bugs there is.
+- **Progress indicators** (dots, "Step 2 of 3", a bar) must match the real number of steps. A fifth dot that never fills makes people think they're stuck.
+- **The system Back button and back gesture** on Android must behave like the on-screen Back, and must not close the app in the middle of setup without warning.
+
+### Permission priming: ask in context
+
+For every permission type, the system dialogs and what happens after each answer, see [App Permissions](/features/app-permissions).
+
+Many onboarding flows ask for permissions: notifications, location, camera, Health data. Both iOS and Android only let an app show the system permission dialog a limited number of times (on iOS just **once**). If the user says no, the app can't ask again; only system Settings can change it.
+
+That's why good apps use <Term id="permission-priming">permission priming</Term>: they first explain *why* in their own screen (or a <Term id="modal" />, see [Modal](/components/modal)), at the moment it makes sense, and only then trigger the system dialog.
+
+<Compare>
+<Dont title="System dialog on the first screen">
+
+<div class="not-prose demo-screen my-3"><PermissionPrimer variant="cold" /></div>
+
+The user doesn't know the app yet and has no reason to say yes. Many tap **Don't Allow**, and the app has lost its only chance to ask.
+
+</Dont>
+<Do title="Explain first, in context">
+
+<div class="not-prose demo-screen my-3"><PermissionPrimer variant="primed" /></div>
+
+Right after the user picked workout days, the benefit is obvious. Only **Turn on reminders** triggers the system dialog. **Not now** leaves it for later.
+
+</Do>
+</Compare>
+
+Things to test around permissions:
+
+- The system dialog appears **only after** the explanation, never on launch.
+- **Not now** doesn't trigger the system dialog, so the app can still ask later.
+- After **Don't Allow**, the app keeps working, and offers a way back: a short explanation plus a button that opens the app's page in system Settings.
+- The app notices when the user turns the permission on in Settings and comes back.
+
+The [Push notifications](/features/push-notifications) lesson covers the notification permission in detail.
+
+### Personalization steps
+
+Setup wizards often ask questions that shape the app: goal, level, interests, home city, preferred language. Test that:
+
+- Every answer is **really used** afterwards (the plan matches the goal, the feed matches the interests).
+- Answers can be **changed later** in Settings, and changing them has the same effect.
+- Required questions are validated (no empty name, at least one day), and optional ones can really be left empty.
+- Answers are saved **to the account**, so they're still there on a new phone or after a reinstall and login.
+
+### Onboarding on the web
+
+Websites use the same ideas: a welcome modal, a **product tour** with tooltips that point at buttons ("This is where you create a project"), checklists like "3 of 5 steps done", and empty states. The "already seen" flag is usually stored in a <Term id="cookie" /> or <Term id="local-storage" />, or on the server for logged-in users. So test:
+
+- A **private/incognito window** and **clearing site data**: does the tour come back? (Fine for visitors, annoying for logged-in users if the flag should be on the account.)
+- **A second browser or computer** with the same account.
+- **Tooltips on small screens**: does the tour point at a button that's hidden in a menu on mobile? Does it go off-screen?
+- **Keyboard and screen readers**: can you reach Next and Close with Tab, and does Esc close the tour?
+
+## Example requirements
+
+<Callout type="example" title="User story: First-run onboarding">
+
+**As a** new Pulse user, **I want to** understand what the app does and set up my plan in under a minute **so that** I can start my first workout right away.
+
+**Acceptance criteria**
+
+1. Onboarding appears **only on the first launch after install**. Restarting or **updating** the app goes straight to Home.
+2. The welcome carousel has **3 slides** with matching progress dots, and **Skip** and **Next** on every slide.
+3. **Skip** skips the slides only. Setup (name, goal, level, workout days) is **required** and can't be skipped.
+4. Setup shows "Step X of 3". **Back** returns to the previous step and keeps all answers.
+5. The notification permission is requested on the **Reminders** step, after a short explanation, and only when the user taps **Turn on reminders**.
+6. If notifications are denied, onboarding finishes normally and the app explains how to turn reminders on in Settings.
+7. All text is readable with the **largest text size** (iOS Dynamic Type, Android font size) and works with VoiceOver and TalkBack.
+8. Analytics events are sent for `onboarding_started`, each `onboarding_step_viewed`, `onboarding_skipped` and `onboarding_completed`.
+9. **Log out** leads to the login screen, not to onboarding.
+
+</Callout>
+
+## What usually goes wrong
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Onboarding comes back** | Shown on every launch, or again after an update for existing users | High |
+| 2 | **Skip skips too much** | Required setup skipped, app in a broken state ("Hi, undefined") | High |
+| 3 | **Back loses data** | Back jumps to the start and clears all choices | Medium |
+| 4 | **Wrong progress** | 4 dots for 3 slides, "Step 3 of 2" | Low |
+| 5 | **Permission asked too early** | System dialog before any explanation; no recovery after "Don't Allow" | High (business) |
+| 6 | **Text cut off** | Slides unreadable with large text or in German | Medium–High |
+| 7 | **Interruption breaks the flow** | A phone call or rotation sends the user back to step 1 | Medium |
+| 8 | **Answers not used** | Chose "Beginner", got an advanced plan | Medium |
+| 9 | **Missing or duplicate analytics** | `onboarding_completed` never fires, or fires twice | Medium |
+| 10 | **Not accessible** | Carousel only works by swiping; screen reader can't reach Skip | High (for affected users) |
+
+## Find the bug
+
+Pulse, a fitness app, has a first-run onboarding with **six bugs**. Use the device controls to restart, update, reinstall and log out, and watch what the app stores on the device. Try this:
+
+- Read the system dialog that appears at launch. Was it explained? Deny it, then look for a way back.
+- Count the slides and the dots.
+- Tap **Skip** (then **Reinstall** to start over).
+- Fill in setup, go forward to step 3, then press Back.
+- Finish onboarding, then **Restart**, **Update** and **Log out**.
+- Turn on **Larger text** and look at every screen.
+
+<BugHunt
+  title="Pulse onboarding"
+  bugs={[
+    {
+      title: 'Onboarding shows again after an app update',
+      hint: 'Finish onboarding, tap Restart (fine), then tap Update app.',
+      detail: 'Restart correctly goes to Home, but after updating to 2.4.0 a logged-in user sees the whole onboarding again. The storage panel shows why: the flag is saved as <code>onboarding_done_v2.3.0</code>, tied to the app version. Expected: existing users go straight to Home (at most a short "What\'s new").',
+    },
+    {
+      title: 'Skip jumps over the required setup',
+      hint: 'On a fresh install, tap Skip on the first slide.',
+      detail: 'Skip marks onboarding as done and logs the user in without a name, goal or plan. Home says <strong>"Hi, undefined"</strong>, the plan is "undefined · undefined", and <strong>Start today\'s workout</strong> fails with <code>plan_not_found</code>. There is no way back to setup. Expected: Skip skips the slides only and leads to setup.',
+    },
+    {
+      title: 'Progress dots show 4 pages for 3 slides',
+      hint: 'Tap Next until the last slide and look at the dots.',
+      detail: 'There are three slides, but four dots. On the last slide ("Get started") the fourth dot is still empty, so it looks like there\'s one more page. Screen readers announce "Page 3 of 4" too. Expected: the number of dots matches the number of slides.',
+    },
+    {
+      title: 'Back on step 3 jumps to step 1 and clears every choice',
+      hint: 'Fill in steps 1 and 2, go to step 3, then press Back.',
+      detail: 'Back on step 2 correctly returns to step 1 with the answers kept. Back on step 3 jumps straight to <strong>step 1</strong> and empties the name, goal, level and days. Expected: Back goes to step 2 and keeps all answers.',
+    },
+    {
+      title: 'Permission asked on launch, and no recovery after denial',
+      hint: 'Look at the very first screen after install. Tap "Don\'t Allow", finish setup, then tap "Turn on reminders".',
+      detail: 'The system notification dialog appears before the user knows what the app does or why it wants to send notifications. After <strong>Don\'t Allow</strong>, the Reminders step offers "Turn on reminders", but iOS won\'t show the dialog a second time, and the app shows nothing: no explanation, no link to Settings. Expected: ask on the Reminders step after the explanation; after a denial, explain how to enable it in Settings and link there.',
+    },
+    {
+      title: 'Carousel text is cut off with larger text',
+      hint: 'Turn on Larger text and look at the welcome slides.',
+      detail: 'The slide text sits in a fixed-height box with hidden overflow, so with large text the description is cut off mid-sentence (setup screens scroll correctly). People who need large text can\'t read what the app is about. Expected: the text box grows or scrolls, nothing is clipped.',
+    },
+  ]}
+>
+  <BuggyOnboardingApp client:visible />
+</BugHunt>
+
+<Callout type="tip" title="Notice what works">
+Some things are right on purpose: **Restart** goes to Home, **Log out** shows a login screen instead of onboarding, **Reinstall** shows onboarding again (expected for a fresh install), **Back on step 2** keeps the answers, and **Continue** stays disabled until required answers are given. Comparing them with the broken parts makes great evidence for a bug report.
+</Callout>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Onboarding shown again to existing users after updating from 2.3.0 to 2.4.0
+
+**Preconditions:** Pulse 2.3.0 installed, onboarding completed, user logged in.
+
+**Steps:** 1. Restart the app: Home opens (correct). 2. Update the app to 2.4.0 (TestFlight / internal build). 3. Open the app.
+
+**Expected:** Home opens with the user's plan (maybe a short "What's new").
+**Actual:** The full onboarding (welcome slides and setup) starts again. App storage shows `onboarding_done_v2.3.0 = true` but no flag for 2.4.0.
+
+**Severity:** High (every existing user is affected on every update) · **Reproducible:** Always
+
+</Callout>
+
+## Test scenarios
+
+### Functional
+
+- Fresh install: onboarding appears, every slide and step can be completed, and the user lands on Home.
+- **Next**, **Back** and **Skip** do exactly what the spec says on every screen.
+- Every answer from setup is saved and used (plan, name, reminders).
+- Completing onboarding sets the flag: restarting goes to Home.
+- Permission is asked in context, and both Allow and Don't Allow lead to a working app.
+
+### Install, update, reinstall and logout
+
+This is where onboarding bugs hide, so it deserves its own group. It's also part of <Term id="upgrade-testing" />:
+
+- **Restart** the app and the phone after finishing onboarding: no onboarding.
+- **Update** from the previous version (install the old build, finish onboarding, then install the new build over it): no onboarding.
+- **Kill the app halfway** through onboarding, then open it: it continues or restarts cleanly, never half-broken.
+- **Reinstall**: check what the team expects (onboarding or login), especially with iOS Keychain and Android Auto Backup.
+- **Log out and log in**, and **log in as a different user** on the same device.
+- **Same account on a second device**.
+
+### Negative
+
+- Required fields empty or invalid: Continue is disabled or shows a clear <Term id="error-message" />.
+- Skip on every screen: nothing required is skipped.
+- Deny every permission: the app still works and explains how to enable it later.
+- No internet during setup: the answers aren't lost, and there's a clear retry.
+
+### Edge cases and interruptions
+
+- **<Term id="interruption">Interruptions</Term>:** a phone call, a notification, switching apps, locking the phone in the middle of step 2. Coming back, the user is on the same step with the same answers.
+- **Rotation** (<Term id="orientation" />) and split screen: the step and the answers stay. On Android this is a <Term id="configuration-change" /> that can reset screens.
+- **Double tap** on Next or Get started: no skipped steps, no double account.
+- **Very long names**, emoji and accents (`Zoë`, `José`).
+- **Dark mode**: illustrations and text stay visible.
+
+### UI & usability
+
+- The whole flow is short (ideally under a minute) and every slide says something useful.
+- Skip and Back are easy to find; the progress indicator matches the real number of steps.
+- Swiping works on the carousel, **and** there are buttons for people who don't swipe.
+- Nothing is cut off on small phones, with the keyboard open, or in **<Term id="localization">other languages</Term>** (German text is often 30% longer).
+
+### Accessibility
+
+- With a <Term id="screen-reader" /> (VoiceOver, TalkBack), every slide is read, buttons have names, and the carousel can be moved without swiping ("Page 2 of 3").
+- **<Term id="dynamic-type">Large text</Term>** (iOS Dynamic Type, Android font size): nothing is clipped, buttons stay reachable (scrolling is fine).
+- Auto-advancing carousels can be paused, or don't auto-advance at all.
+- Animations respect **Reduce Motion** (iOS) and **Remove animations** (Android).
+- On the web: **keyboard only**, a visible focus ring, a logical <Term id="focus-order" />, and Esc closes a tour.
+
+### Analytics
+
+Product teams measure onboarding closely ("how many people finish step 2?"). Check with your developers or an analytics debug view that:
+
+- Each event (`onboarding_started`, `onboarding_step_viewed`, `onboarding_skipped`, `onboarding_completed`) fires **once**, at the right moment, with the right step number.
+- No personal data (like the name the user typed) is sent in the events.
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-ONB-001',
+      title: 'Onboarding appears on first launch and not after restart',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['App freshly installed'],
+      steps: ['Open the app', 'Complete the slides and setup', 'Force quit and reopen the app'],
+      data: 'Name: Sam / Goal: Build strength / Level: Beginner / Days: Mon, Wed, Fri',
+      expected: 'Onboarding appears only on the first launch. After reopening, Home shows "Hi, Sam" and the chosen plan.',
+    },
+    {
+      id: 'TC-ONB-002',
+      title: 'No onboarding after updating the app',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Previous version 2.3.0 installed, onboarding completed, user logged in'],
+      steps: ['Install version 2.4.0 over the old one', 'Open the app'],
+      expected: 'Home opens with the existing plan. Onboarding is not shown (a "What\'s new" screen is allowed).',
+    },
+    {
+      id: 'TC-ONB-003',
+      title: 'Skip does not skip required setup',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['App freshly installed'],
+      steps: ['Open the app', 'Tap Skip on the first slide'],
+      expected: 'The setup wizard (Step 1 of 3) opens. Home is not reachable until required answers are given.',
+    },
+    {
+      id: 'TC-ONB-004',
+      title: 'Back keeps answers',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Fill in step 1 and step 2', 'On step 3, select Mon and Fri', 'Tap Back twice', 'Tap Continue twice'],
+      expected: 'Back goes 3 → 2 → 1. All answers (name, goal, level, days) are still selected on the way back and forward.',
+    },
+    {
+      id: 'TC-ONB-005',
+      title: 'Notification permission is asked in context',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['App freshly installed'],
+      steps: ['Open the app and go through the slides and setup', 'On the Reminders step, read the explanation', 'Tap "Turn on reminders"'],
+      expected: 'No system dialog appears before the Reminders step. The dialog appears only after tapping "Turn on reminders".',
+    },
+    {
+      id: 'TC-ONB-006',
+      title: 'Recovery after denying notifications',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Notifications were denied in the system dialog'],
+      steps: ['Finish onboarding', 'Open Settings › Reminders in the app'],
+      expected: 'The app explains reminders are off and offers a button that opens the app\'s page in system Settings. Turning them on there is detected when the user returns.',
+    },
+    {
+      id: 'TC-ONB-007',
+      title: 'Onboarding with the largest text size',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['iOS: Settings › Accessibility › Display & Text Size › Larger Text at the maximum (or Android font size at max)'],
+      steps: ['Reinstall and open the app', 'Go through every slide and step'],
+      expected: 'All text is fully readable (wrapping or scrolling), nothing is cut off, all buttons are reachable.',
+    },
+    {
+      id: 'TC-ONB-008',
+      title: 'Interruption during setup keeps progress',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Fill in step 1 and go to step 2', 'Receive a phone call (or switch to another app for 1 minute)', 'Return to the app', 'Rotate the phone'],
+      expected: 'Step 2 is still shown and the step 1 answers are kept, also after rotation.',
+    },
+  ]}
+/>
+
+## Mobile vs web
+
+<Tabs labels={['Mobile app', 'Website']}>
+<Tab>
+
+- **Where the flag lives:** on iOS, simple settings are deleted on uninstall, but the Keychain can survive. Android stores them in app data, which **Auto Backup** may restore after a reinstall. Test reinstall on both, and ask the team what's expected.
+  <DevNote>iOS stores simple settings in UserDefaults.</DevNote>
+- **Updates:** install the previous build from TestFlight, Firebase App Distribution or the store, complete onboarding, then update. Repeat for a jump of several versions.
+- **Permissions:** iOS shows each system dialog once; Android 11+ stops asking after two denials (see [App Permissions](/features/app-permissions)). Test Allow, Don't Allow and "Allow once" (location and camera on newer OS versions).
+- **System Back (Android):** must go one step back in setup, not quit the app or skip ahead.
+- **Text size and display size:** iOS Dynamic Type including the extra accessibility sizes; Android font size *and* display size.
+- **Tablets and foldables:** the carousel images and buttons still look right in landscape and on large screens.
+
+</Tab>
+<Tab>
+
+- **Where the flag lives:** a cookie, localStorage, or the user's account on the server. Test incognito windows, clearing site data and a second browser.
+- **Product tours:** tooltips must point at the right element at every <Term id="breakpoint" />. On a phone, the target may be hidden in a menu.
+- **Modals:** a welcome modal needs a visible close button, Esc to close, and a <Term id="focus-trap" /> while it's open.
+- **Browser permissions:** location or notification prompts should follow a click on an explaining button, not appear on page load (some browsers block or hide prompts that appear without a click).
+- **Logged-out vs logged-in:** a tour for visitors shouldn't reappear for a customer who already finished it on another device.
+- **Keyboard and screen readers:** the whole tour works without a mouse.
+
+</Tab>
+</Tabs>
+
+## Checklist
+
+<Checklist
+  title="Onboarding checklist"
+  storageKey="onboarding"
+  items={[
+    'Onboarding appears on the first launch after install',
+    'Restart, phone restart and app update go straight to Home',
+    'Reinstall, logout and a second device behave as the team expects',
+    'Skip skips only optional parts; required setup cannot be bypassed',
+    'Back goes one step back and keeps every answer',
+    'Progress dots or "Step X of Y" match the real number of steps',
+    'Permissions are asked in context after an explanation; denial has a recovery path',
+    'Answers are saved to the account and actually used',
+    'Interruptions and rotation keep the current step and answers',
+    'Readable with the largest text size and in long languages like German',
+    'Works with VoiceOver/TalkBack and (web) keyboard only',
+    'Analytics events fire once each, without personal data',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'After updating the app, existing users see the welcome slides again. What is the most likely cause?',
+      options: ['The users cleared their cache', 'The "onboarding done" flag is tied to the app version or was lost in the update', 'The server is down', 'It is expected after every update'],
+      answer: 1,
+      explain: 'A flag like onboarding_done_v2.3.0, or a migration that wipes settings, makes every update look like a first launch. Existing users should go straight to Home.',
+    },
+    {
+      q: 'Which is the best moment to ask for notification permission in a fitness app?',
+      options: ['On the very first screen', 'Right after the user chooses workout days, with an explanation first', 'Never, notifications are on by default everywhere', 'After the user deletes the app'],
+      answer: 1,
+      explain: 'In context the benefit is clear, so more people say yes. On iOS you only get one chance with the system dialog.',
+    },
+    {
+      q: 'The user taps Skip on the welcome carousel and lands on Home with "Hi, undefined". What kind of bug is it?',
+      options: ['A cosmetic typo', 'Skip bypassed required setup and left the app in a broken state', 'A performance bug', 'Expected behavior'],
+      answer: 1,
+      explain: 'Skip should only skip optional parts. Required data (name, plan) is missing, so the rest of the app breaks.',
+    },
+    {
+      q: 'On iOS the user tapped "Don\'t Allow" for notifications. What should the app do when they later tap "Turn on reminders"?',
+      options: ['Show the system dialog again', 'Explain that reminders are off and open the app\'s page in Settings', 'Do nothing', 'Restart the onboarding'],
+      answer: 1,
+      explain: 'iOS shows the system dialog only once. The only way back is Settings, so the app should explain and link there.',
+    },
+    {
+      q: 'Which of these is NOT a typical onboarding test?',
+      options: ['Reinstall the app and check whether onboarding appears', 'Go through onboarding with the largest text size', 'Measure the server CPU during checkout', 'Get a phone call during setup and come back'],
+      answer: 2,
+      explain: 'Server load during checkout is a performance test for another feature. The others all target first-run behavior.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Onboarding is the **first impression**: carousels, interactive tutorials, contextual tips, empty states and setup wizards.
+- The biggest risk is **first-run detection**: test install, restart, **update**, reinstall, logout and a second device.
+- **Skip** must never skip required setup; **Back** must keep answers; **progress indicators** must match the real steps.
+- Ask for permissions **in context** after an explanation, and always offer a **way back** after a denial.
+- Test with **interruptions, rotation, large text, screen readers and other languages**, and check the analytics events.
+
+</KeyTakeaways>

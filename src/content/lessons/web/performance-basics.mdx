@@ -1,0 +1,344 @@
+---
+title: Performance Basics
+description: Why speed is a quality issue, what Core Web Vitals mean, and how a manual tester measures, explains and reports a slow page with DevTools, Lighthouse and PageSpeed Insights.
+order: 6
+level: beginner
+minutes: { short: 30 }
+platform: web
+tags: [performance, core web vitals, lighthouse, devtools, network]
+---
+
+import PageLoadLab from '@/components/demos/web-quality/PageLoadLab';
+import WaterfallDetective from '@/components/demos/web-quality/WaterfallDetective';
+import FixMatcher from '@/components/demos/web-quality/FixMatcher';
+
+It's Black Friday. A fashion shop launches a new product page with a gorgeous full-screen photo. On the office Wi-Fi it looks perfect. On a phone on a train, customers stare at a blank white screen for six seconds, then the photo slowly paints in, then a promo banner pops in and pushes the "Add to cart" button down just as they tap it. They tap the banner by mistake. Many of them leave.
+
+Nothing was "broken" in the functional sense. Every button worked. But the page **failed** for the people who mattered most. That's why performance is a quality issue, and why testers should notice it, measure it and report it well.
+
+## Why it matters
+
+- **Users leave.** Google's research found that as mobile page load time goes from 1 to 3 seconds, the chance that a visitor bounces rises by about a third. Slow checkouts mean abandoned carts.
+- **Frustration and mistakes.** Content that jumps around makes people tap the wrong thing: the wrong product, the wrong amount, an ad.
+- **Search ranking.** Google uses page experience signals, including Core Web Vitals, as part of its ranking.
+- **Cost and fairness.** Many users are on cheap phones and expensive mobile data. A 4 MB image costs them real money and battery.
+
+### Perceived vs real performance
+
+There are two kinds of "fast":
+
+| | Real performance | Perceived performance |
+| --- | --- | --- |
+| **What it is** | Measured time: how many seconds until things load | How fast it *feels* to the user |
+| **Examples** | Load time, bytes transferred, server response time | Something useful appears quickly, skeleton screens, instant feedback on taps |
+| **Example bug** | The page needs 7.4 MB and 14 requests to show a product | The page shows a blank screen for 3 seconds, even though the total load is only 4 seconds |
+
+A page that shows the main content in 1 second and finishes loading the footer later **feels** faster than one that shows everything at once after 3 seconds. Testers should report both: the numbers, and how it felt.
+
+## Core Web Vitals in one table
+
+<Term id="core-web-vitals" /> are Google's three key metrics for user experience. Learn these thresholds; you'll see them in every tool:
+
+| Metric | Measures | Good | Needs improvement | Poor |
+| --- | --- | --- | --- | --- |
+| **LCP**: Largest Contentful Paint | **Loading.** When the biggest visible element (hero image, headline) appears | ≤ 2.5 s | 2.5–4 s | > 4 s |
+| **INP**: Interaction to Next Paint | **Responsiveness.** How long the page takes to visibly react after a tap, click or key press | ≤ 200 ms | 200–500 ms | > 500 ms |
+| **CLS**: Cumulative Layout Shift | **Visual stability.** How much content unexpectedly jumps around | ≤ 0.1 | 0.1–0.25 | > 0.25 |
+
+<Callout type="info" title="Other numbers you'll see">
+**FCP** (First Contentful Paint) is when *anything* first appears. **TTFB** (Time to First Byte) is how long the server takes to start answering. **TBT** (Total Blocking Time) is how long the main thread was too busy to respond during load; Lighthouse uses it as a lab stand-in for INP, because INP needs real interactions. INP replaced the older FID metric in March 2024.
+</Callout>
+
+## Page load lab
+
+This lab simulates loading a shop page. It starts on **Fast 4G with a 4× CPU slowdown**. (Lighthouse's mobile test uses the same 4× CPU slowdown with an even slower network, similar to Slow 4G, to imitate a mid-range phone.) Try this:
+
+<Steps>
+
+1. **Look at the waterfall.** Which bar is longest? Notice `app.js` is marked *blocking*: nothing appears until it's done.
+2. **Replay the load** and watch the filmstrip. When is the screen blank? When does content jump (red ⚡)?
+3. **Tap "Add"** on the first product and feel the delay. That's INP.
+4. **Turn the fixes on one at a time** and see which metric each one improves.
+5. **Change the network** to Slow 4G or 3G, and the CPU to no throttling. How different does the same page look on a fast laptop?
+
+</Steps>
+
+<PageLoadLab client:visible />
+
+<Callout type="tip" title="Your laptop is lying to you">
+Developers and testers often have fast laptops on office Wi-Fi. Many real users don't. In the lab, set **No throttling + No CPU throttling**: everything looks fine and INP is "Good". The same page on **Slow 4G + 4×** is poor. Always test with throttling on.
+</Callout>
+
+## What manual testers can observe and measure
+
+### The waterfall (DevTools Network panel)
+
+The Network panel (new to it? see [DevTools for Testers](/web/devtools-for-testers)) lists every request the page makes, with a **waterfall** showing when each started and finished. Read it like this:
+
+- **Long bars** = slow downloads (big files) or slow servers (long waiting time).
+- **Waiting (TTFB)** in the Timing tab = the server is slow. Report to the backend team.
+- **Many bars stacked one after another** = requests that depend on each other (a "chain"): script → API → images.
+- **Size column**: anything over a few hundred KB for an image is suspicious. "(memory cache)" or "(disk cache)" means it wasn't downloaded.
+- **Repeated rows** with the same URL = the same data fetched many times.
+- At the bottom: total **requests**, **transferred** bytes, and **Load** time.
+
+### Common things to look for
+
+| # | Problem | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Huge images** | A 3–5 MB photo for a 400 px wide slot. *Hurts: LCP* | High |
+| 2 | **Render-blocking scripts or CSS** | Blank screen until a large file in the head downloads. *Hurts: FCP, LCP* | High |
+| 3 | **Slow API or server** | Long "Waiting (TTFB)" bar; spinner for seconds. *Hurts: Perceived speed (LCP if it holds the main content)* | High |
+| 4 | **Layout shifts** | Content jumps when an image, ad, banner or font loads. *Hurts: CLS* | Medium–High |
+| 5 | **Too many requests** | Dozens of small files, or the same call repeated. *Hurts: Load time, server load* | Medium |
+| 6 | **Slow interactions** | Tap "Add to cart", nothing happens for half a second. *Hurts: INP* | High |
+| 7 | **No caching** | Second visit downloads everything again. *Hurts: Load time, data usage* | Medium |
+| 8 | **Memory leak** | The tab gets slower and slower after 20 minutes of use, then crashes. *Hurts: Responsiveness, crashes* | Medium–High |
+
+<Callout type="note" title="Memory leaks in long sessions">
+Single-page apps (dashboards, email, chat) often stay open for hours. If memory keeps growing, the page eventually becomes sluggish or the tab crashes. To check: open **DevTools › More tools › Performance monitor**, use the app for a while (open and close the same view 20 times), and watch **JS heap size**. If it climbs and never comes back down, report it with the steps and the numbers.
+</Callout>
+
+### Lab data vs field data
+
+- **Lab data** comes from a test you run in a controlled setup: Lighthouse, DevTools, WebPageTest. It's repeatable and great for debugging, but it's **one device, one network, one moment**.
+- **Field data** comes from **real users** on real devices. Google's **Chrome UX Report (CrUX)** collects it from Chrome users who opted in, and **PageSpeed Insights** shows it at the top of the report (for pages and sites with enough traffic), based on the last 28 days. Core Web Vitals are judged at the **75th percentile**: 3 out of 4 visits should be "good".
+
+If lab and field data disagree, both can be right: maybe your test was on a fast network but real users are on slow phones, or the slow part only happens after interactions that Lighthouse doesn't do.
+
+## Find the culprits
+
+Here's a recorded waterfall from a slow sneaker product page, as you'd capture it in DevTools. It has **five performance problems**. Use the filters, sort by size or time, and click requests to read their details.
+
+<BugHunt
+  title="Sneaker product page waterfall"
+  bugs={[
+    {
+      title: 'A 4.2 MB hero image is the LCP element',
+      hint: 'Sort by Size. Then check which element is the LCP element.',
+      detail: '<code>hero-sneakers.jpg</code> is 4.2 MB and takes about 4.4 s to download on Fast 4G. It is the LCP element, so LCP is 5.0 s (poor). A correctly sized WebP or AVIF would be around 100–250 KB.',
+    },
+    {
+      title: 'A 1.1 MB JavaScript bundle blocks rendering',
+      hint: 'Which file must finish before anything is painted? Look at the Render-blocking field.',
+      detail: '<code>app.bundle.js</code> is loaded with a plain <code>&lt;script&gt;</code> in the head, without <code>defer</code>. The screen stays blank until it downloads and runs, so FCP is 2.4 s. Its long tasks also slow down taps (INP).',
+    },
+    {
+      title: 'The recommendations API waits 3.1 s for the server',
+      hint: 'Filter by Fetch/XHR and look at the Waiting (TTFB) time of each request.',
+      detail: '<code>api/recommendations</code> spends 3,080 ms waiting for the first byte and only 30 ms downloading. The problem is on the server, not the network. The "You may also like" section stays empty, and the product images can only start after it.',
+    },
+    {
+      title: 'A late promo banner causes a big layout shift',
+      hint: 'Look at the Layout shifts track and open its details.',
+      detail: 'At 5.7 s a script from <code>cdn.adsnet.example</code> inserts <code>div.promo-banner</code> above the product, pushing everything down by 120 px. CLS is 0.19 (needs improvement). The space should be reserved in advance.',
+    },
+    {
+      title: 'The cart count is requested 20 times',
+      hint: 'Filter by Fetch/XHR and count the rows with the same name.',
+      detail: '<code>api/cart/count</code> is called 20 times during one page load by <code>CartBadge.render()</code>, probably once per re-render. One request is enough. It wastes data, battery and server capacity, and under load it can take the API down.',
+    },
+  ]}
+>
+  <WaterfallDetective client:visible />
+</BugHunt>
+
+Now decide what to do about each problem:
+
+<FixMatcher client:visible />
+
+### Writing a useful performance bug report
+
+"The page is slow" can't be fixed. A good performance report is **specific and measurable**, so a developer can reproduce it and confirm the fix. Include:
+
+- **Conditions:** device (or "MacBook, Chrome 4× CPU throttling"), browser and version, network (Wi-Fi, "Fast 4G" throttling), cache disabled or not, logged in or not, first or repeat visit.
+- **Numbers:** LCP, CLS, INP or TBT, load time, transferred size, and the slow request with its timings. Measure **3–5 times** and give the median, because single runs vary.
+- **The culprit, if you found it:** "hero-sneakers.jpg is 4.2 MB", "api/recommendations TTFB 3.1 s".
+- **Before/after or comparison:** "Was 2.1 s LCP in release 4.12, 5.0 s in 4.13", or "Competitor page loads in 1.8 s on the same setup".
+- **Evidence:** a screen recording or the Performance panel's screenshots, a Lighthouse report (save as HTML or JSON), and a <Term id="har-file" /> exported from the Network panel.
+
+<Compare>
+<Do title="Measurable">
+
+**Product page: LCP 5.0 s on Fast 4G due to 4.2 MB hero image (was 1.9 s in 4.12)**
+
+Chrome (latest), Lighthouse mobile, cache disabled, median of 5 runs. LCP element: `img.hero` (hero-sneakers.jpg, 4.2 MB, 4.4 s download). Lighthouse report and HAR attached.
+
+</Do>
+<Dont title="Vague">
+
+**Product page slow**
+
+The product page takes forever to load on my phone. Please make it faster.
+
+</Dont>
+</Compare>
+
+See [How to Write Bug Reports](/tutorials/writing-bug-reports) for the general structure.
+
+## Tools and how to use them
+
+### Lighthouse (in Chrome DevTools)
+
+<Steps>
+
+1. Open the page in a **Chrome Incognito window** (extensions can skew results).
+2. Open <Term id="devtools" /> (<kbd>F12</kbd> or <kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>I</kbd>) and go to the **Lighthouse** tab.
+3. Choose **Navigation** mode, device **Mobile**, and the **Performance** category.
+4. Click **Analyze page load**. <Term id="lighthouse" /> loads the page with simulated mobile throttling and gives a score from 0 to 100, the metrics, and a list of **Insights/Diagnostics** like "Improve image delivery" or "Render-blocking requests".
+5. Run it **3 times**: scores vary from run to run. Treat the score as a summary; the individual metrics and diagnostics are what you report.
+
+</Steps>
+
+### DevTools Network panel
+
+- Tick **Disable cache** to simulate a first visit (only while DevTools is open).
+- Use the **throttling** dropdown (**Fast 4G**, **Slow 4G**, **3G**, or custom) to simulate slow networks. See <Term id="network-throttling" />.
+- Filter by type (**Fetch/XHR**, **JS**, **CSS**, **Img**…), sort by **Size** or **Time**, and click a request to see **Headers** and **Timing** (Queueing, Waiting for server response, Content download).
+- Right-click › **Save all as HAR (sanitized)**, or use the ↓ export icon, to attach the full recording to a bug.
+
+### DevTools Performance panel
+
+- Open the **Performance** panel. Its landing view shows **live LCP, CLS and INP** for your own interactions on the page, so you can measure INP manually: click around and watch the number.
+- Use the **CPU throttling** setting (4× or 6× slowdown) to imitate a mid-range or low-end phone.
+- Click **Record and reload** to capture a load with screenshots (a filmstrip), long tasks on the main thread, and a **Layout shifts** track.
+- In **More tools › Rendering**, tick **Layout shift regions** to flash a highlight wherever content shifts.
+
+### PageSpeed Insights
+
+Go to **pagespeed.web.dev** and enter a public URL. The top section shows **field data** from real Chrome users (if the page has enough traffic); the bottom shows a **Lighthouse lab run** from Google's servers. It's the quickest way to see whether real users have a problem.
+
+<Callout type="warning" title="Load testing is a different specialty">
+Everything in this lesson is about how fast the page is for **one user**. Testing what happens when **10,000 users** hit the site at once is **load or stress testing**, done with tools like **JMeter**, **k6**, **Gatling** or **Locust**. It needs scripting skills and a safe environment (never against production without permission). Read more under <Term id="performance-testing" />.
+</Callout>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-PERF-001',
+      title: 'Product page meets LCP target on a mobile profile',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Chrome Incognito', 'Lighthouse: Mobile, Navigation, Performance'],
+      steps: ['Open the product page', 'Run Lighthouse 3 times', 'Note LCP and the LCP element for each run'],
+      expected: 'Median LCP is 2.5 s or less. The LCP element is the product image or title.',
+    },
+    {
+      id: 'TC-PERF-002',
+      title: 'No large layout shifts while the page loads',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['DevTools › Rendering › Layout shift regions enabled', 'Network: Slow 4G'],
+      steps: ['Reload the page', 'Watch for highlighted regions until loading finishes', 'Check CLS in the Performance panel'],
+      expected: 'CLS is 0.1 or less. Banners, images, ads and fonts do not push visible content around.',
+    },
+    {
+      id: 'TC-PERF-003',
+      title: '"Add to cart" responds quickly on a slow device',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Performance panel open, CPU 4× slowdown'],
+      steps: ['Wait for the page to load', 'Tap "Add to cart" 3 times on different products', 'Read INP in the live metrics'],
+      expected: 'Each interaction shows visual feedback within 200 ms (INP ≤ 200 ms).',
+    },
+    {
+      id: 'TC-PERF-004',
+      title: 'Images are reasonably sized',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Network panel open, Disable cache ticked'],
+      steps: ['Reload the page', 'Filter by Img and sort by Size'],
+      expected: 'No image is larger than the agreed budget (e.g. 300 KB). Images below the fold load only when scrolled near.',
+    },
+    {
+      id: 'TC-PERF-005',
+      title: 'No duplicate API requests on page load',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Reload the page with the Network panel open', 'Filter by Fetch/XHR', 'Look for identical URLs'],
+      expected: 'Each API endpoint is called once per page load, unless the requirements say otherwise.',
+    },
+    {
+      id: 'TC-PERF-006',
+      title: 'Repeat visit uses the cache',
+      priority: 'low',
+      type: 'positive',
+      preconditions: ['Disable cache NOT ticked'],
+      steps: ['Load the page once', 'Navigate away and back, or reload'],
+      expected: 'Static files (CSS, JS, fonts, images) come from memory or disk cache; transferred size drops significantly.',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="Performance test checklist"
+  storageKey="performance-basics"
+  items={[
+    'Tested with network throttling (Fast 4G / Slow 4G) and CPU slowdown, not only on fast Wi-Fi',
+    'LCP is 2.5 s or less on a mobile profile (median of several runs)',
+    'CLS is 0.1 or less: no content jumps when images, ads, banners or fonts load',
+    'Interactions (add to cart, open menu, filter) respond within 200 ms',
+    'No screen stays blank for long: something useful appears quickly',
+    'Images are compressed and sized for their slot; below-the-fold images lazy-load',
+    'The hero / LCP image is not lazy-loaded',
+    'No large render-blocking scripts in the head',
+    'No duplicate or unnecessary API requests',
+    'Slow server responses (high TTFB) are reported with timings',
+    'Repeat visits load static files from the cache',
+    'Long sessions do not keep growing memory (Performance monitor)',
+    'Field data (PageSpeed Insights / CrUX) checked for key pages, if available',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'What is the "good" threshold for Largest Contentful Paint?',
+      options: ['1 second or less', '2.5 seconds or less', '4 seconds or less', '10 seconds or less'],
+      answer: 1,
+      explain: 'LCP ≤ 2.5 s is good, up to 4 s needs improvement, above 4 s is poor.',
+    },
+    {
+      q: 'A banner appears late and pushes the product down. Which metric gets worse?',
+      options: ['LCP', 'INP', 'CLS', 'TTFB'],
+      answer: 2,
+      explain: 'Unexpected movement of visible content is a layout shift, measured by CLS. Fix it by reserving space for the banner.',
+    },
+    {
+      q: 'In the Network panel, a request spends 3 s in "Waiting for server response" and 20 ms downloading. What is the likely cause?',
+      options: ['The file is too big', 'The user\'s network is slow', 'The server or API is slow (high TTFB)', 'The browser cache is full'],
+      answer: 2,
+      explain: 'Almost all the time is spent before the first byte arrives, so the server is slow. Report it to the backend team with the timings.',
+    },
+    {
+      q: 'Lighthouse shows LCP 1.8 s, but PageSpeed Insights field data says real users see 4.2 s. Which statement is best?',
+      options: ['Lighthouse is broken', 'Field data is always wrong', 'Real users probably have slower devices or networks than your test setup; investigate with heavier throttling', 'There is no problem because the lab score is good'],
+      answer: 2,
+      explain: 'Lab data is one controlled run. Field data shows what real users experience. Both are useful, and a gap tells you to test under worse conditions.',
+    },
+    {
+      q: 'Which detail makes a performance bug report most useful?',
+      options: ['"It feels slow to me"', 'The exact conditions (device, browser, throttling, cache) and measured numbers from several runs', 'A screenshot of the finished page', 'The Lighthouse score only'],
+      answer: 1,
+      explain: 'Performance depends on conditions, so a developer needs them to reproduce it, plus numbers to confirm the fix.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Performance is a **quality** issue: slow and jumpy pages lose users and cause mistakes.
+- Know the **Core Web Vitals**: **LCP ≤ 2.5 s**, **INP ≤ 200 ms**, **CLS ≤ 0.1**.
+- Always test with **network and CPU throttling**: your laptop is much faster than most users' phones.
+- In the **waterfall**, look for huge files, render-blocking scripts, slow server waits (TTFB), repeated requests and late content that shifts the layout.
+- **Lab data** (Lighthouse, DevTools) helps you debug; **field data** (PageSpeed Insights / CrUX) shows what real users experience.
+- Report performance bugs with **conditions, numbers from several runs, the culprit, a comparison and evidence** (Lighthouse report, HAR, recording).
+- Load and stress testing (JMeter, k6) is a separate specialty.
+
+</KeyTakeaways>

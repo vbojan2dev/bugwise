@@ -1,0 +1,43 @@
+teaser: "Why can't you ever click Contact at the bottom of some web shops? Infinite scroll has a few tricks up its sleeve."
+cards:
+  - type: flip
+    front: "What is the sentinel in infinite scroll?"
+    back: "An invisible element after the last item. When it comes near the visible area, the app requests the next page."
+  - type: flip
+    front: "What does the prefetch distance control?"
+    back: "How early the next page loads. About one screen ahead means people on a normal connection rarely see a spinner."
+  - type: quiz
+    q: "After scrolling fast, products 13–24 appear twice. The log shows two requests with cursor=a12. What's missing?"
+    options: ["A bigger page size", "An already-loading guard", "A skeleton screen"]
+    answer: 1
+    explain: "Without an in-flight check, the trigger fires again before the first answer arrives. Both requests fetch the same page."
+  - type: quiz
+    q: "Loading the next page fails. What's the best behavior?"
+    options: ["Hide the spinner silently", "Retry on every scroll event", "Inline error row with Retry"]
+    answer: 2
+    explain: "Loaded items stay valid. An inline error with Retry avoids both the silent dead end and a flood of automatic retries."
+  - type: truefalse
+    statement: "When the server says there's no next page, the loading row should keep spinning."
+    answer: false
+    explain: "The end is a normal state. Stop the spinner and say so, like You've seen all 7 items, or users wait forever."
+  - type: truefalse
+    statement: "Back from a product should restore the loaded items and the scroll position."
+    answer: true
+    explain: "Returning to the top with only page 1 loaded throws away the user's place. Test after rotation and app restarts too."
+  - type: thisorthat
+    prompt: "A web shop's footer holds Contact, Returns and Imprint. The product list loads endlessly on scroll."
+    left: "Load more button"
+    right: "Pure infinite scroll"
+    answer: left
+    explain: "With pure infinite scroll the footer runs away every time you get close. A Load more button after a few pages keeps it reachable."
+  - type: spotbug
+    screen: ["Tab: product 24 focused", "...12 more products load...", "Tab: product 1 focused", "Page jumps to the top"]
+    bug: "Keyboard focus jumps to the top after loading."
+    explain: "Focus must stay on the item the user was on (WCAG 2.4.3 Focus Order). Otherwise keyboard users can never get past the first loads."
+  - type: spotbug
+    screen: ["Sale · 7 products", "Network: 200 · next: null", "Loading more products…", "(spinning for 2 minutes)"]
+    bug: "No end-of-list message, the spinner shows forever."
+    explain: "next: null means there's nothing more. The app should stop loading and say all 7 sale items are shown."
+  - type: tip
+    title: "Test on a huge screen"
+    text: "If the first page doesn't fill a tall window, there's nothing to scroll, and many apps never load page 2. Use a big monitor and a small page size."

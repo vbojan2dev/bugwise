@@ -1,0 +1,61 @@
+---
+import Icon from '@/components/ui/Icon.astro';
+
+interface Props {
+  short: number;
+  long: number;
+}
+const { short, long } = Astro.props;
+---
+
+<div class="not-prose inline-flex rounded-xl border border-line bg-subtle p-1 text-sm" role="radiogroup" aria-label="Lesson length" data-mode-toggle>
+  <button type="button" role="radio" data-mode="short" class="mode-btn flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium text-muted transition-all">
+    <Icon name="sparkles" size={15} /> Quick <span class="text-xs opacity-90">{short} min</span>
+  </button>
+  <button type="button" role="radio" data-mode="long" class="mode-btn flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium text-muted transition-all">
+    <Icon name="layers" size={15} /> Detailed <span class="text-xs opacity-90">{long} min</span>
+  </button>
+</div>
+
+<style>
+  :global(html[data-lesson-mode='short']) .mode-btn[data-mode='short'],
+  :global(html:not([data-lesson-mode='short'])) .mode-btn[data-mode='long'] {
+    background: var(--surface);
+    color: var(--fg);
+    box-shadow: var(--shadow-sm);
+  }
+</style>
+
+<script>
+  const sync = () => {
+    const mode = document.documentElement.dataset.lessonMode === 'short' ? 'short' : 'long';
+    document.querySelectorAll<HTMLButtonElement>('[data-mode-toggle] [data-mode]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.mode === mode)));
+  };
+  const setMode = (mode: string, remember = true) => {
+    document.documentElement.dataset.lessonMode = mode;
+    if (remember) {
+      try {
+        localStorage.setItem('lesson-mode', mode);
+      } catch {}
+    }
+    sync();
+    dispatchEvent(new Event('lessonmode'));
+  };
+  document.querySelectorAll<HTMLButtonElement>('[data-mode-toggle] [data-mode]').forEach((b) =>
+    b.addEventListener('click', () => setMode(b.dataset.mode!)),
+  );
+  sync();
+
+  // A link to a heading that only exists in the Detailed version switches to Detailed,
+  // otherwise the target would be hidden and the link would seem broken.
+  const revealHashTarget = () => {
+    const id = decodeURIComponent(location.hash.slice(1));
+    const target = id && document.getElementById(id);
+    if (target && target.closest('.mode-long') && document.documentElement.dataset.lessonMode === 'short') {
+      setMode('long', false);
+      requestAnimationFrame(() => target.scrollIntoView());
+    }
+  };
+  addEventListener('hashchange', revealHashTarget);
+  revealHashTarget();
+</script>

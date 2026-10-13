@@ -1,0 +1,429 @@
+---
+title: Pull to Refresh
+description: Drag a list down from the top and let go to load the newest items. Learn when it fits, how threshold, resistance and spinner states work, what should happen on errors and offline, and how testers break it.
+category: content
+aka: [Swipe to refresh, Refresh control]
+platforms: [ios, android, web]
+minutes: 35
+order: 4
+---
+
+import States from '@/components/demos/pull-to-refresh/States';
+import RefreshLab from '@/components/demos/pull-to-refresh/RefreshLab';
+import { BuggyFeedApp } from '@/components/demos/pull-to-refresh/BuggyFeedApp';
+
+You're waiting for a refund. You open your banking app, pull the transactions list down, the spinner turns... and turns... and turns. Is the bank down? Is your internet down? Did the refund arrive? Nothing tells you. You close the app, open it again, and there it is: the refund was in the response all along, but the spinner never stopped.
+
+Pull to refresh is one of the smallest components in an app, and one of the most used. It's also full of **timing** bugs: double requests, endless spinners, duplicate items and lists that jump. Let's learn it properly.
+
+<Callout type="info" title="This page vs. the Gestures lesson">
+The [Gestures](/mobile/gestures) lesson explains how a pull is recognized as a <Term id="gesture" /> among taps, swipes and scrolls. This page covers the **component**: its states, what it loads, how it handles errors, and the alternatives it needs.
+</Callout>
+
+## What is pull to refresh?
+
+Pull to refresh lets people **reload a list by dragging it down when it's already scrolled to the top**, then letting go. A spinner shows while new data loads, and fresh items appear at the top.
+
+You'll find it in:
+
+- **Feeds:** social posts, news, friends' workouts.
+- **Inboxes:** mail, messages, notifications.
+- **Time-sorted lists:** bank transactions, orders and deliveries, flight status.
+
+It's a **shortcut**. Good apps also refresh automatically (when you open the screen, when the app returns from the background) and offer a visible way to refresh. Pulling is what impatient people do when they think something new should be there.
+
+### The four states
+
+Every pull goes through the same states. Most bugs happen at the borders between them.
+
+<States />
+
+### Threshold and resistance
+
+Two numbers decide how a pull feels:
+
+- **Threshold:** how far you must pull before letting go triggers a refresh. Too low and it fires by accident while you scroll up; too high and people give up. Most apps need roughly 60–120 points of pull. The indicator usually "fills up" as you approach it, and many apps give a <Term id="haptic-feedback">haptic</Term> tick when you pass it.
+- **Resistance:** the list moves **less** than your finger (often around half), so it feels like stretching a rubber band. Without resistance the list can be dragged halfway down the screen. With too much, the threshold feels unreachable.
+
+One more rule matters: **the pull only counts if the gesture started at the top**. If you start scrolled down and flick back up to the top in one movement, that's scrolling, not a request to refresh.
+
+### How it differs from similar patterns
+
+| Pattern | What it does | Typical use |
+| --- | --- | --- |
+| **Pull to refresh** | Loads **newer** items at the **top** on request | Feeds, inboxes, time-sorted lists |
+| **Refresh button** | The same, without a gesture | Toolbars, desktop web, the accessible alternative |
+| **Auto refresh / live updates** | New items arrive by themselves | Chats, live scores, order tracking |
+| **"New posts" pill** | Tells you new items are waiting above | Long feeds where you've scrolled down |
+| **<Term id="infinite-scroll" /> / Load more** | Loads **older** items at the **bottom** | Long lists, search results |
+
+## Try it: refresh lab
+
+This news app does pull to refresh correctly on iOS and Android. Play with the threshold and resistance, then try to break it: pull during a slow refresh, scroll down and flick back to the top, switch to **Server error** and **Offline**, and use the refresh button instead of the gesture. Watch the network log.
+
+<RefreshLab client:visible />
+
+<Callout type="dev" title="Platform names">
+On iOS it's a **refresh control** (`UIRefreshControl` in UIKit, `.refreshable` in SwiftUI). On Android it's **swipe to refresh** (`SwipeRefreshLayout` for Views) or **pull to refresh** (`PullToRefreshBox` in Jetpack Compose Material 3). On the web, mobile browsers have their **own** pull to refresh that reloads the whole page.
+</Callout>
+
+## When to use it
+
+Pull to refresh is a good choice when:
+
+- The list is sorted by **time, newest first**, so "new" has an obvious place: the top.
+- Content changes **often** and people check back for updates: inbox, feed, order status.
+- The data might be **stale** even after auto refresh (on a weak connection, after a long time in the background).
+
+## Good and bad uses
+
+<Compare>
+<Do title="Feeds, inboxes, transactions">
+
+A list of orders sorted by date. Pulling down checks for new deliveries and updates the statuses.
+
+</Do>
+<Dont title="Forms and editable screens">
+
+A checkout form or a profile editor. A refresh would throw away what the user typed, and there's nothing "new" to load. Scrolling up at the top of a long form shouldn't risk that.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Newest at the top">
+
+A news list or a notification list, where new things appear above old ones.
+
+</Do>
+<Dont title="Newest at the bottom">
+
+A chat conversation. New messages arrive at the **bottom** in real time, and pulling down at the top usually means "load **older** messages". Pull to refresh there would confuse both users and code.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Simple vertical lists">
+
+A list that scrolls vertically and has nothing else that reacts to a downward drag.
+
+</Do>
+<Dont title="Maps, canvases and sheets">
+
+A map pans when you drag down. A [bottom sheet](/components/bottom-sheet) closes when you drag down. A drawing canvas draws. Adding pull to refresh to these makes gestures fight.
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Tester mindset">
+For every pull to refresh, ask: **"What exactly is reloaded, and what happens to what's already on screen?"** Then test the unhappy paths: slow, failing, offline, and pulling twice.
+</Callout>
+
+## How good pull to refresh behaves
+
+### One request at a time
+
+While a refresh is running, pulling again should **not** start a second request. The app either ignores the new pull or keeps showing the spinner. The same goes for a refresh while the screen is still doing its **first load**, or while it's loading the next page at the bottom. Two overlapping requests are the classic source of duplicates and of a <Term id="race-condition" /> where an older response overwrites a newer one.
+
+### New items, no duplicates, no jumps
+
+- When the user pulled from the top, the new items appear **at the top**, and the list shows them.
+- Items that were already there are **not duplicated**. The app should merge by item ID, not just stick the response on top.
+- Items that changed (an order went from "On the way" to "Delivered") update **in place**.
+- The list doesn't **jump** to a random position. If an app auto-refreshes while you're reading further down, it should keep your place and show a "3 new posts" pill instead of moving the content under your thumb.
+
+### Errors stop the spinner
+
+When the request fails, the spinner **must stop**. The old content stays on screen, and the user gets a clear, polite <Term id="error-message" />: a [toast](/components/toast) or an inline banner like "Couldn't load new orders. Retry". An endless spinner is the worst outcome: the user can't tell whether to wait, retry or give up. Also check what happens on a <Term id="timeout" />: a request that never answers should end in an error after a reasonable time.
+
+### Offline is not an error you wait for
+
+When the device is offline (<Term id="airplane-mode" />, no signal, a <Term id="captive-portal" />), good apps answer **immediately**: "You're offline. Showing saved orders." They keep the cached list and don't pretend to load. See [Network conditions](/mobile/network-conditions) for how to simulate this.
+
+### "Last updated" tells the truth
+
+Many apps show **"Updated 9:41"** or **"Updated just now"** under the title or in the indicator. It must change after **every successful** refresh, and must **not** change after a failed one. A stale timestamp makes users distrust everything else on the screen.
+
+### It plays nicely with other gestures
+
+Pulling only starts at the top. Horizontal swipes on rows ([swipe actions](/components/swipe-list)), carousels inside the list, and the system's own gestures must still work. On the web, the app's pull to refresh must not fight the **browser's** pull to refresh.
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Endless spinner** | On an error or offline, the spinner never stops; no message | High |
+| 2 | **Double request** | Pulling again during a refresh sends another request | Medium |
+| 3 | **Duplicate items** | The same posts or transactions appear twice after refreshing | High |
+| 4 | **List jumps** | After a refresh you're in the middle of the list, not at the new items | Medium |
+| 5 | **Fires by accident** | Normal scrolling up to the top triggers a refresh (threshold too low or wrong start rule) | Medium |
+| 6 | **Never fires** | The threshold is unreachable, or the pull doesn't work on short lists that don't scroll | Medium |
+| 7 | **Stale "Updated" time** | Still says 8:15 after a successful refresh, or updates after a failed one | Low–Medium |
+| 8 | **No alternative** | No refresh button or menu; keyboard, switch and voice users can't refresh | High (for affected users) |
+| 9 | **Lost input** | A refresh wipes a half-typed comment or a filter the user set | Medium–High |
+| 10 | **Browser reloads the page** | On a mobile website, pulling reloads the whole page instead of the list | Medium |
+
+<Callout type="bug" title="Why #2 and #3 go together">
+Each request asks the server "what's new since my last update?". If two requests start before either finishes, **both** ask with the same starting point and get the **same** new items. If the app simply adds every response to the top, you see everything twice. To catch it: make the network **slow** (or use a <Term id="proxy-breakpoint" /> to hold the response), pull, then pull again while the spinner is turning.
+</Callout>
+
+## Find the bug
+
+This fitness app shows your friends' activity with pull to refresh, and it has **six bugs**. Each request takes about 2.5 seconds. Explore it like a tester:
+
+- Pull to refresh once and watch the list, the spinner, the header and the network log.
+- Pull again **while** the spinner is turning.
+- Scroll down a bit, then drag the list back up to the top in one movement.
+- Use the device panel: turn on **server errors** or **airplane mode**, then pull.
+- Try to refresh without dragging.
+
+<BugHunt
+  title="Activity feed"
+  bugs={[
+    {
+      title: 'The spinner never stops when the refresh fails',
+      hint: 'Turn on server errors (or airplane mode) and pull to refresh.',
+      detail: 'The network log shows <code>500</code> (or <em>no connection</em>), but the spinner keeps turning forever and no message appears. Expected: the spinner stops, the old content stays, and the app says “Couldn’t refresh” with a way to retry. Offline should be reported immediately.',
+    },
+    {
+      title: 'Pulling during a refresh sends a second request, and new activities appear twice',
+      hint: 'Pull, then pull again before the first refresh finishes. Watch the network log and the top of the feed.',
+      detail: 'Each pull sends <code>GET /api/feed?page=0</code>, even while one is pending: there is no “already refreshing” check. Both requests ask for the same page, and the app adds every response to the top without checking IDs, so Grace, Noah and Ivy appear <strong>twice</strong>. Expected: one request at a time (extra pulls are ignored), and new items are merged by ID.',
+    },
+    {
+      title: 'The list jumps away from the new items after refreshing',
+      hint: 'Pull once from the top and watch where you end up when the new items arrive.',
+      detail: 'The app tries to “keep your place” using a wrong row height, so the list scrolls down by about 350 px and lands in the middle of older activities. The new items are hidden above. Expected: when the user pulled from the top, the list stays at the top and shows the new items.',
+    },
+    {
+      title: 'A normal scroll back to the top triggers a refresh',
+      hint: 'Scroll down a little, then drag the list down to scroll back up, past the top.',
+      detail: 'The pull is measured from the moment the list reaches the top, not from where the gesture started, and the threshold is only <strong>14 px</strong>. A slight overshoot while scrolling sends a request. Expected: a refresh only starts if the gesture began at the top, and it needs a deliberate pull (around 60–120 pt).',
+    },
+    {
+      title: 'There is no way to refresh without the gesture',
+      hint: 'Look for a refresh button or menu item. Try with the keyboard only.',
+      detail: 'Pull to refresh is the only way to load new activities. Keyboard, Switch Control and Voice Control users have no way to refresh, and there is no Retry after an error. Expected: a visible Refresh button or menu item (WCAG 2.5.1 Pointer Gestures / 2.5.7 Dragging Movements).',
+    },
+    {
+      title: '“Updated 8:15” never changes',
+      hint: 'Refresh successfully and read the header.',
+      detail: 'New activities marked “Just now” arrive, but the header still says <strong>Updated 8:15</strong>. Expected: the time updates after every successful refresh (and only then).',
+    },
+  ]}
+>
+  <BuggyFeedApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #2?">
+
+The double request and the duplicates share one root cause, so one report with both symptoms is better than two.
+
+**Title:** Activity: pulling to refresh during a refresh sends a second request and shows new activities twice
+
+**Steps:** 1. Open Activity, scrolled to the top. 2. Pull down to refresh. 3. While the spinner is still turning (within ~2 s), pull down again. 4. Wait 5 seconds.
+
+**Expected:** One `GET /api/feed` request. Grace, Noah and Ivy appear once at the top.
+**Actual:** Two `GET /api/feed?page=0` requests are sent. Grace, Noah and Ivy each appear **twice**.
+
+**Severity:** High (wrong data shown) · **Reproducible:** 10/10 on a slow connection · **Evidence:** network log screenshot, screen recording
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Pull to refresh test checklist"
+  storageKey="pull-to-refresh"
+  items={[
+    'Pulling from the top past the threshold refreshes; a short pull snaps back without a request',
+    'Scrolling up to the top in one movement does not trigger a refresh',
+    'The indicator shows pulling, armed, refreshing and done states clearly',
+    'Exactly one request per refresh, also when pulling repeatedly or during the first load',
+    'New items appear at the top with no duplicates; changed items update in place',
+    'The list does not jump to a random position after refreshing',
+    'On a server error or timeout the spinner stops, old content stays and an error with Retry appears',
+    'Offline: an immediate, clear message and cached content, no endless spinner',
+    '"Last updated" changes after a successful refresh and only then',
+    'A visible Refresh button or menu item does the same thing without a gesture',
+    'Screen readers announce the refresh and its result (e.g. "3 new stories")',
+    'Works on a short list that does not fill the screen',
+    'Typed text, filters and open rows are not lost by a refresh',
+    'Web: the browser does not reload the whole page when the app has its own refresh',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-PTR-001',
+      title: 'Pull past the threshold loads new items',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Server has 3 new activities', 'Feed is scrolled to the top'],
+      steps: ['Pull the feed down past the threshold', 'Release', 'Wait for the spinner to disappear'],
+      expected: 'Exactly one request is sent. The 3 new activities appear at the top, the list stays at the top, and the header says "Updated just now".',
+    },
+    {
+      id: 'TC-PTR-002',
+      title: 'Short pull does not refresh',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Scroll to the top', 'Pull down about 1 cm and release'],
+      expected: 'The list snaps back. No request is sent.',
+    },
+    {
+      id: 'TC-PTR-003',
+      title: 'Pulling during a refresh sends no second request',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Network throttled to "Slow 3G" or a proxy breakpoint holds the response'],
+      steps: ['Pull to refresh', 'While the spinner is visible, pull to refresh again', 'Release the response'],
+      expected: 'Only one feed request is sent. New items appear once; nothing is duplicated.',
+    },
+    {
+      id: 'TC-PTR-004',
+      title: 'Server error stops the spinner and offers Retry',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Proxy tool returns HTTP 500 for the feed request'],
+      steps: ['Pull to refresh', 'Wait 5 seconds'],
+      expected: 'The spinner stops. The previous items are still shown. A message like "Couldn\'t refresh. Retry" appears, and "Updated" keeps its old time.',
+    },
+    {
+      id: 'TC-PTR-005',
+      title: 'Offline refresh answers immediately',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Airplane mode is on'],
+      steps: ['Pull to refresh'],
+      expected: 'Within a second the app says it is offline and keeps showing cached content. No endless spinner.',
+    },
+    {
+      id: 'TC-PTR-006',
+      title: 'Scrolling back to the top does not refresh',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Scroll the feed down by about one screen', 'Drag (or flick) the list down to scroll back up, overshooting the top'],
+      expected: 'The list stops at the top (maybe with a small bounce). No request is sent.',
+    },
+    {
+      id: 'TC-PTR-007',
+      title: 'Refresh is possible without the gesture',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Voice Control (iOS) or a hardware keyboard is used'],
+      steps: ['Open the feed', 'Activate the Refresh button (say "Tap Refresh" or Tab to it and press Enter)'],
+      expected: 'The feed refreshes exactly like after a pull, and the result is announced.',
+    },
+    {
+      id: 'TC-PTR-008',
+      title: 'Mobile web: browser does not reload the page',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Chrome on Android', 'Web app has its own pull to refresh on the feed'],
+      steps: ['Scroll the feed to the top', 'Pull down past the threshold'],
+      expected: 'Only the app\'s own refresh runs. The browser does not reload the page, and typed text elsewhere on the page is kept.',
+    },
+  ]}
+/>
+
+### Tools
+
+- **Slow it down:** <Term id="network-throttling" /> (Network Link Conditioner on iOS, the emulator's network settings on Android, DevTools on the web) gives you time to pull twice.
+- **Hold or break responses:** a <Term id="proxy-tool" /> like Charles or Proxyman can pause a response with a breakpoint, return a `500`, or add a long delay to check <Term id="timeout" /> handling. See [Proxy tools](/mobile/proxy-tools).
+- **Go offline:** airplane mode on a real device, or **Offline** in Chrome DevTools' Network panel.
+- **Watch the requests:** count them. One pull, one request. Check the query (`since=`, `page=`, cursor) to see whether two requests asked for the same thing.
+- **Precise pulls on Android:** `adb shell input swipe 540 600 540 1100 400` drags down 500 px in 400 ms; change the distance to find the threshold. See [ADB basics](/mobile/adb-basics).
+
+## Accessibility
+
+Pull to refresh is a **dragging** gesture, so some people can't do it at all: people with motor impairments, people using Switch Control, Voice Control or a keyboard. Check these:
+
+- **A visible alternative:** a Refresh button in the toolbar, a menu item, or automatic refresh when the screen opens. <Term id="wcag" /> 2.5.1 Pointer Gestures (Level A) and 2.5.7 Dragging Movements (Level AA) ask for a way to do gesture and drag actions with a simple tap or click instead.
+- **Screen readers:** <Term id="screen-reader">VoiceOver</Term> users scroll with **three fingers**. With a standard iOS refresh control, a three-finger swipe down at the top of the list often triggers the refresh, but not reliably, and custom implementations often don't support it at all. TalkBack users need a Refresh button or action. Test the real thing, not the documentation.
+- **Announce the state:** "Refreshing", then the result: "3 new stories" or "Couldn't refresh". The spinner needs an accessible label, and the result should be announced without moving focus.
+- **Don't move focus:** when new items arrive at the top, focus should stay on the item the user was on.
+- **Reduced motion:** with Reduce Motion on, the refresh should still work and be visible, just with less animation.
+- **Keyboard (web):** the Refresh button is reachable with <kbd>Tab</kbd>, has a visible focus ring and a clear name ("Refresh orders", not just an icon).
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- The spinner stays until the work finishes, so a request that never ends means a spinner that never ends.
+  <DevNote>Built in: `UIRefreshControl` (UIKit) and `.refreshable` (SwiftUI). With `.refreshable`, the spinner stays until the async work finishes.</DevNote>
+- The list moves down and the spinner sits in the gap; a haptic tick can mark the threshold.
+- Test with VoiceOver's three-finger scroll, Voice Control and Reduce Motion.
+
+</Tab>
+<Tab>
+
+<DevNote>Built in: `SwipeRefreshLayout` (Views) and `PullToRefreshBox` (Compose Material 3).</DevNote>
+
+- A small circular indicator slides down **over** the list; the list itself usually stays put. Android 12+ also shows a "stretch" overscroll effect elsewhere.
+- Check that the indicator doesn't clash with the top app bar or tabs, and that TalkBack users have a Refresh action.
+
+</Tab>
+<Tab>
+
+- Mobile browsers have their **own** pull to refresh that reloads the whole page (Chrome on Android, Safari on iOS 15 and later).
+- A web app with its own pull to refresh has to stop the browser's version. Support differs between browsers and versions, so test on a real iPhone and Android phone.
+  <DevNote>It uses the CSS `overscroll-behavior` property (for example `overscroll-behavior-y: contain`).</DevNote>
+- Desktop has no pull at all: the page needs a visible Refresh button (and browser reload must not lose the user's work).
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'Where does pull to refresh fit best?',
+      options: ['A checkout form', 'A chat where new messages appear at the bottom', 'An inbox sorted newest first', 'A map of nearby restaurants'],
+      answer: 2,
+      explain: 'Pull to refresh loads newer items at the top of a time-sorted list. Forms lose input, chats load older messages when you pull at the top, and maps pan.',
+    },
+    {
+      q: 'You pull twice quickly and every new post appears twice. What is the most likely cause?',
+      options: ['The threshold is too high', 'Two requests ran at once and both responses were added', 'Dark mode is on', 'The spinner animation is too slow'],
+      answer: 1,
+      explain: 'Without an "already refreshing" guard, both requests ask for the same new items. Adding both responses without merging by ID creates duplicates.',
+    },
+    {
+      q: 'The server returns an error during a refresh. What should the user see?',
+      options: ['The spinner keeps turning until it works', 'An empty list', 'The old content, a stopped spinner and an error with Retry', 'Nothing, errors should be silent'],
+      answer: 2,
+      explain: 'Keep the old data, stop the spinner and say what happened, with a way to try again.',
+    },
+    {
+      q: 'You scroll down, then drag the list back up to the top in one movement, and it refreshes. Which rule is broken?',
+      options: ['A pull should only count if the gesture started at the top', 'Only one row can be open at a time', 'The list should load older items', 'The haptic should be stronger'],
+      answer: 0,
+      explain: 'Scrolling back to the top is not a request to refresh. The pull must start at the top and cross a deliberate threshold.',
+    },
+    {
+      q: 'Why does a pull-to-refresh screen need a visible Refresh button too?',
+      options: ['To look modern', 'Some users can\'t drag; WCAG asks for a simple tap or click alternative', 'Buttons load faster', 'It is required by the App Store'],
+      answer: 1,
+      explain: 'Keyboard, Switch Control and Voice Control users can\'t pull. A visible control gives everyone the same feature.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Pull to refresh reloads **time-sorted lists** (feeds, inboxes, transactions); avoid it on forms, maps, sheets and bottom-anchored chats.
+- It moves through **pulling → armed → refreshing → done (or error)**; the pull must start at the top and pass a deliberate **threshold**.
+- Test the timing: **one request at a time**, **no duplicates**, **no jumps**, and a spinner that **always stops**, including on errors and offline.
+- "Last updated" must tell the truth.
+- Always provide a **visible Refresh** and announce the result for screen reader users.
+
+</KeyTakeaways>

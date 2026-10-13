@@ -1,0 +1,458 @@
+---
+title: Shopping Cart and Checkout
+description: How a cart and checkout flow works, where the money bugs hide (quantities, coupons, shipping, rounding, double charges), and how to test it safely with test cards.
+order: 3
+level: beginner
+minutes: { short: 35 }
+platform: both
+tags: [e-commerce, payments, checkout, cart, test design]
+---
+
+import CheckoutStepper from '@/components/demos/checkout/CheckoutStepper';
+import PriceCalculator from '@/components/demos/checkout/PriceCalculator';
+import { BuggyCheckout } from '@/components/demos/checkout/BuggyCheckout';
+
+You add a pair of running shoes to your cart on your phone during lunch, finish the order on your laptop that evening, and get an email a minute later: "Thanks for your order!" Behind those few taps sit stock checks, price calculations, a <Term id="payment-gateway">payment gateway</Term>, and an email service, and every one of them can go wrong.
+
+Checkout is where an app makes its money, so bugs here hurt twice: customers get charged the wrong amount (or twice), and the business loses sales when people give up. That makes it one of the most valuable features you'll ever test.
+
+## How it works
+
+Most stores split checkout into a few clear steps. The names change from app to app, but the flow is almost always the same. Click through each step to see what happens there and what to test.
+
+<CheckoutStepper client:visible />
+
+<Steps>
+
+1. **Cart.** The shopper reviews items, changes quantities, removes items or moves them to "Save for later", and enters a coupon. The cart shows a running subtotal.
+2. **Shipping.** A delivery address is entered (guest) or picked from saved addresses (logged-in user). The country often changes the shipping price and tax.
+3. **Delivery.** The shopper picks standard, express or store pickup. Each option has its own price and estimated delivery date.
+4. **Payment.** The shopper pays by card, Apple Pay, Google Pay or PayPal. The payment gateway (Stripe, Adyen, Braintree and so on) approves or declines the payment, sometimes after an extra bank check called <Term id="three-d-secure" />.
+5. **Review.** One last summary: items, address, delivery, payment method and the final total. Some apps merge this into the payment step.
+6. **Confirmation.** The order number appears, the cart is emptied, stock is reserved, and a confirmation email or push notification goes out.
+
+</Steps>
+
+### Cart behaviors to know
+
+The cart looks like a simple list, but it has a lot of rules:
+
+- **Quantity.** The minimum is 1 (going lower should remove the item or be blocked). The maximum is usually the available stock, sometimes a per-customer limit ("max 2 per order").
+- **Remove and save for later.** Both must update the item count, subtotal, discounts and shipping instantly.
+- **Stock limits.** Items can sell out while they sit in the cart. The app should warn ("Only 1 left") and stop you from paying for something that's gone.
+- **Persistence.** A logged-in user's cart is stored on the server, so it should follow them across sessions and devices. A guest cart is usually kept in a <Term id="cookie" /> or on the device. This is <Term id="state-persistence">state persistence</Term>, and it's a classic source of bugs.
+- **Guest vs logged-in merge.** If a guest adds items and then logs in to an account that already has items, the two carts must be **merged** according to the rules (combine quantities? keep the newest?) without losing or duplicating anything.
+
+### The price math
+
+Every total on a checkout screen is a small calculation. Your job is to know the formula, so you can calculate the expected total yourself.
+
+| Line | What it is | What to watch for |
+| --- | --- | --- |
+| **Subtotal** | Sum of price × quantity for every item | Updates after every change, including removals |
+| **Discounts / coupons** | Percentage (10% off) or fixed amount ($5 off), sometimes with a minimum order | Applied once, stacking rules, expiry date, upper/lower case codes |
+| **Shipping** | Flat price, by weight or by country; often free over a threshold | Is the threshold checked **before or after** the discount? |
+| **Tax / VAT** | US sales tax is added at checkout; EU and UK prices usually **include** VAT | Correct rate per country or state; tax on discounted price |
+| **Rounding** | Money is shown with 2 decimals (0 for currencies like JPY) | No `59.900000001`, no totals that are off by one cent |
+
+<Callout type="bug" title="Why totals end up a cent off">
+
+Computers store decimal numbers in binary, so `0.1 + 0.2` gives `0.30000000000000004` in JavaScript. Good apps calculate money in whole cents (or use a decimal type) and round **once, at defined points**. When they don't, you'll see long decimals on screen, or a total that differs by a cent from the sum of the lines. Always check: do the lines add up to the total, to the cent?
+
+</Callout>
+
+Try it yourself. Work out each total on paper, then check your answer:
+
+<PriceCalculator client:visible />
+
+### Payments: always use test cards
+
+<Callout type="warning" title="Never use real cards">
+
+Never enter your own (or anyone's) real card on a test or staging <Term id="environment" />. Payment gateways provide **test mode** with published **test card numbers** that simulate every outcome without moving real money. Use only the numbers from your gateway's documentation.
+
+</Callout>
+
+Here are a few of Stripe's published <Term id="test-card">test cards</Term> as an example (check [Stripe's testing docs](https://docs.stripe.com/testing) for the current list). Any future expiry date and any 3-digit CVC (4 digits for American Express) work. Other gateways (Adyen, Braintree, PayPal) publish their own lists.
+
+| Scenario | Test card (Stripe) | Expected result |
+| --- | --- | --- |
+| Approved | `4242 4242 4242 4242` | Payment succeeds, order is created |
+| Generic decline | `4000 0000 0000 0002` | "Your card was declined." No order, cart kept |
+| Insufficient funds | `4000 0000 0000 9995` | Clear message, user can try another card |
+| 3-D Secure required | `4000 0027 6000 3184` | Bank challenge appears; pass, fail and cancel it |
+| Expired card | `4000 0000 0000 0069` | "Your card has expired." |
+| Wrong CVC | `4000 0000 0000 0127` | "Your card's security code is incorrect." |
+
+**3-D Secure** is an extra step where the bank asks the shopper to confirm the payment, usually in their banking app or with a code. The checkout opens a bank page (or a pop-up), waits, and then continues. It's a hand-off between three systems, which makes it a favorite place for bugs: test passing, failing, canceling, and closing the challenge.
+
+### Double charges and idempotency
+
+What happens if a shopper taps **Pay** twice because nothing seemed to happen? Or the network drops just after the payment went through, and the app retries? Without protection, you get two orders and two charges. This is a <Term id="double-submit" /> bug.
+
+Good checkouts defend in two layers:
+
+- **In the UI:** the Pay button is disabled and shows a <Term id="loading-state" /> right after the first tap.
+- **On the server:** each payment attempt carries a unique **idempotency key**. If the same request arrives twice, the server returns the first result instead of charging again. That's <Term id="idempotency" />: doing something twice has the same effect as doing it once.
+
+<Callout type="tip" title="Tester mindset">
+Watch the **network log** in <Term id="devtools">DevTools</Term> or a [proxy tool](/mobile/proxy-tools) while you double tap, and check the gateway's test dashboard afterwards. The screen may show one order while the backend created two.
+</Callout>
+
+### Order confirmation emails
+
+The confirmation email is part of the feature. Check that exactly **one** email arrives, quickly, with the right order number, items, quantities, prices, discount, shipping, tax, total, address and delivery estimate. In test environments, emails are usually caught by a tool like Mailtrap or MailHog so they never reach real customers.
+
+## Example requirements
+
+<Callout type="example" title="User story">
+
+As a **shopper**, I want to **review my cart and pay in a few steps** so that **I know exactly what I'm paying before I confirm**.
+
+**Acceptance criteria**
+
+- Quantity can be set from 1 up to the available stock. Decreasing below 1 asks to remove the item.
+- Removing an item updates the item count, subtotal, discount, shipping and total immediately.
+- Coupon `SAVE10` gives 10% off the items, once per order. Codes are not case sensitive. Expired codes show "This code has expired".
+- Shipping is $4.99 and free when the total **after discounts** is $50.00 or more.
+- All amounts are shown in the store currency with exactly 2 decimals and add up to the cent.
+- The Pay button is disabled after the first tap until the payment finishes. One checkout creates at most one order and one charge.
+- A declined payment shows the reason, keeps the cart and lets the user try again.
+- After a successful payment the user sees the order number, the cart is emptied, and one confirmation email is sent within 2 minutes.
+
+</Callout>
+
+Notice how specific these are. "Free shipping over $50" alone would leave testers and developers guessing about discounts. If a requirement is vague, ask before you test. See <Term id="acceptance-criteria" /> and <Term id="user-story" /> in the glossary.
+
+## What usually goes wrong
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Quantity below 1** | Item shows quantity 0 or −1 and a negative price, lowering the total | High |
+| 2 | **Coupon stacking** | The same code can be applied twice, or two "not combinable" codes both apply | High |
+| 3 | **Wrong shipping threshold** | Free shipping uses the subtotal before discount (or after tax) | Medium |
+| 4 | **Rounding errors** | `$53.928`, `59.900000001`, or lines that don't add up to the total | Medium–High |
+| 5 | **Double charge** | Double tap or retry creates two orders and two charges | Critical |
+| 6 | **Stale totals** | Removing an item or changing country doesn't update the summary | High |
+| 7 | **Out-of-stock item paid for** | Item sold out during checkout but the order still goes through | High |
+| 8 | **Price changed silently** | Price changes between cart and payment and the user isn't told | High |
+| 9 | **Cart lost or duplicated** | Items disappear after login, or quantities double when carts merge | Medium–High |
+| 10 | **Broken 3-D Secure return** | After approving in the bank app, the user lands on an error or an empty cart | Critical |
+| 11 | **Wrong confirmation email** | No email, two emails, or the email shows a different total | Medium |
+
+## Find the bug
+
+This little store app has **six bugs** in its cart and checkout. The test data card lists the valid coupon codes and the shipping rule. Explore it like a tester:
+
+- Calculate the expected total yourself before you trust the screen.
+- Push quantities to their limits in both directions.
+- Apply coupons more than once.
+- Remove an item and look at the summary.
+- Tap **Pay** quickly, twice, and watch the network log.
+
+<BugHunt
+  title="Cart & checkout"
+  bugs={[
+    {
+      title: 'Quantity can go to 0 and below',
+      hint: 'Keep tapping minus on one item.',
+      detail: 'The minus button is never disabled, so quantity goes to <strong>0</strong>, then <strong>−1</strong>, and the item stays in the cart with a <strong>negative price</strong> that lowers the total. Expected: the minimum is 1 (minus disabled, or a prompt to remove the item).',
+    },
+    {
+      title: 'The same coupon can be applied again and again',
+      hint: 'Apply SAVE10, then apply it again.',
+      detail: 'Each <code>SAVE10</code> is added as another chip and takes another 10% off, so three copies give 30% off. Expected: the second attempt shows "This code is already applied" and the discount stays at 10%.',
+    },
+    {
+      title: 'Free shipping uses the subtotal before the discount',
+      hint: 'Lower the USB-C cable to 1, then apply SAVE10. Is shipping still free?',
+      detail: 'With one USB-C cable instead of two, the subtotal is <strong>$51.43</strong>. After SAVE10 the order is about <strong>$46.29</strong>, which is under $50, yet shipping still says <strong>Free</strong>. Expected: $4.99 shipping, because the rule says "after discounts".',
+    },
+    {
+      title: 'The total is not rounded to cents',
+      hint: 'Apply SAVE10 and read the Total line carefully. Compare it with the Pay button.',
+      detail: 'The total shows <code>$53.928</code> (three decimals), and sometimes values like <code>$17.939999999999998</code>, while the Pay button says $53.93. The discount is rounded for display but the raw value is used in the math. Expected: every amount has exactly 2 decimals and the lines add up to the total.',
+    },
+    {
+      title: 'Double tapping Pay creates two orders',
+      hint: 'Tap Pay twice quickly and check the network log.',
+      detail: 'The button stays enabled while "Processing…" and sends no idempotency key, so two <code>POST /api/orders</code> requests both succeed: <strong>two orders, two charges</strong>, while the confirmation screen shows only one. Expected: the button is disabled after the first tap and the server ignores the duplicate.',
+    },
+    {
+      title: 'Removing an item does not update the totals',
+      hint: 'Remove an item and look at the summary (and the Pay button).',
+      detail: 'The item disappears and the cart count drops, but the subtotal and total keep the old values until you change something else. Tapping Pay right away would charge for the removed item. Expected: the summary updates immediately after a removal.',
+    },
+  ]}
+>
+  <BuggyCheckout client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #5?">
+
+**Title:** Checkout: double tapping "Pay" creates two orders and charges the card twice
+
+**Steps:** 1. Add any item to the cart. 2. Open the cart. 3. Tap **Pay** twice within 1 second.
+
+**Expected:** One `POST /api/orders` request, one order, one charge. The button is disabled after the first tap.
+**Actual:** Two requests, both `201`. Orders #10431 and #10432 are created and the test card is charged twice. The confirmation screen shows only #10431.
+
+**Severity:** Critical (customers lose money) · **Reproducible:** 10/10
+
+</Callout>
+
+## Test scenarios
+
+A <Term id="test-scenario" /> is a one-line idea of what to check. Group them, so you can see what you've covered.
+
+### Functional
+
+- Add, increase, decrease and remove items; the count, subtotal and total update every time.
+- Move an item to "Save for later" and back; prices and totals stay correct.
+- Apply a valid percentage coupon and a valid fixed-amount coupon; the discount is right.
+- Shipping changes with the delivery option and the country, and becomes free at the threshold.
+- Tax or VAT matches the rate for the address.
+- Pay with each method (card, Apple Pay, Google Pay, PayPal) using test accounts.
+- Successful payment shows the order number, empties the cart and sends one confirmation email.
+- A logged-in user's cart is the same on phone and web; a guest cart merges correctly after login.
+
+### Negative
+
+- Declined card, insufficient funds and expired card show a clear <Term id="error-message" /> and keep the cart.
+- 3-D Secure failed or canceled: no order is created, and the user can try again.
+- Invalid, expired and already-used coupon codes are rejected with a helpful message.
+- Coupon whose minimum order is no longer met after removing items stops applying.
+- Required address fields left empty or in the wrong format are caught by <Term id="input-validation">validation</Term>.
+- Network drops during payment: the user sees what happened, and there is no double charge after a retry.
+
+### Edge cases
+
+Use <Term id="boundary-value-analysis" /> on every number in the flow:
+
+- **Quantity:** 0, 1, −1, max stock, max stock + 1, 999, and typed values like `1.5` or `abc` if the field accepts typing.
+- **Coupons:** stacking the same code, two codes that shouldn't combine, an expired code, a code that expires *during* checkout, `save10` vs `SAVE10` vs ` SAVE10 ` with spaces.
+- **Thresholds:** order totals of $49.99, $50.00 and $50.01, before and after a discount.
+- **Price changes during checkout:** the price changes after the item was added to the cart. The user must be told before paying.
+- **Out of stock:** the item sells out (another user buys the last one) while you're on the payment step.
+- **Session timeout:** leave the checkout open for 30+ minutes, then pay. Is the <Term id="session" /> renewed or are you sent back safely, with the cart kept?
+- **Back button during payment:** go back from the 3-D Secure page or the processing screen. No duplicate order, no lost cart.
+- **Very large orders:** 50 different items, or a total with many digits. Does the layout break?
+
+### UI & usability
+
+- The total and what's included (tax, shipping) are visible before the user taps Pay.
+- Progress through the steps is clear, and the user can go back and edit without losing data.
+- Errors appear next to the field that caused them, in plain language.
+- Pay button shows a loading state and can't be tapped twice.
+- Prices use the right currency format for the <Term id="locale" />: `$1,234.50` in the US, `1.234,50 €` in Germany.
+
+### Security
+
+- Never trust prices from the client: changing the price or quantity in a request (with a proxy tool) must not change what is charged.
+- Coupon codes can't be brute-forced (rate limiting) and one-time codes can't be reused from another account.
+- Card details go straight to the gateway (hosted fields or SDK), never through your own server or logs.
+- Order confirmation pages and order IDs can't be viewed by other users by changing a number in the URL.
+- Fields like the address and order notes are safe against <Term id="xss" /> and <Term id="sql-injection" />.
+
+### Accessibility
+
+- Quantity buttons have labels a <Term id="screen-reader" /> reads ("Decrease Phone case, quantity 1"), and quantity changes are announced.
+- Each button is at least 44×44 pt (iOS) or 48×48 dp (Android); quantity steppers are often too small.
+- Errors (declined card, invalid coupon) are announced, not just shown in red.
+- The whole checkout works with a keyboard on the web, including the 3-D Secure pop-up and the payment form.
+- Text and prices meet <Term id="wcag" /> contrast (4.5:1), and the layout works with large text.
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-CHK-001',
+      title: 'Successful card payment creates one order',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Staging store in payment test mode', 'Cart contains 1 × Wireless earbuds ($29.99)'],
+      steps: ['Open the cart and tap Checkout', 'Enter a valid shipping address', 'Choose Standard delivery', 'Pay with the approved test card', 'Confirm on the review screen'],
+      data: 'Card: 4242 4242 4242 4242, expiry 12/30, CVC 123',
+      expected: 'Confirmation screen shows an order number. The cart is empty. Exactly one order and one charge appear in the admin and gateway dashboard. One confirmation email arrives with the same total.',
+    },
+    {
+      id: 'TC-CHK-002',
+      title: 'Declined card keeps the cart and shows a clear error',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Cart contains at least one item'],
+      steps: ['Go to the payment step', 'Pay with the generic decline test card'],
+      data: 'Card: 4000 0000 0000 0002',
+      expected: 'Message "Your card was declined. Try another card." appears. No order is created. Cart and entered address are kept.',
+    },
+    {
+      id: 'TC-CHK-003',
+      title: 'Double tap on Pay charges only once',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Network throttled to "Slow 3G"', 'Proxy or DevTools recording traffic'],
+      steps: ['Go to the payment step with a valid test card', 'Tap Pay twice within 1 second'],
+      expected: 'The button is disabled after the first tap. One order request (or a duplicate rejected by idempotency key). One order, one charge.',
+    },
+    {
+      id: 'TC-CHK-004',
+      title: 'Free shipping threshold is checked after the discount',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Cart subtotal is $51.43'],
+      steps: ['Apply coupon SAVE10', 'Look at the shipping line and total'],
+      data: 'Coupon: SAVE10',
+      expected: 'Discount −$5.14, shipping $4.99, total $51.28. Shipping is not free because $46.29 is under $50.',
+    },
+    {
+      id: 'TC-CHK-005',
+      title: 'The same coupon cannot be applied twice',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Apply coupon SAVE10', 'Enter SAVE10 again and tap Apply', 'Enter save10 (lower case) and tap Apply'],
+      expected: 'Both repeat attempts show "This code is already applied". The discount stays at 10%.',
+    },
+    {
+      id: 'TC-CHK-006',
+      title: 'Quantity cannot go below 1',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Cart contains 1 × Phone case'],
+      steps: ['Tap the minus button next to Phone case'],
+      expected: 'Minus is disabled at quantity 1, or the app asks "Remove Phone case from your cart?". Quantity never shows 0 or a negative number.',
+    },
+    {
+      id: 'TC-CHK-007',
+      title: 'Removing an item updates all totals immediately',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Cart contains 3 different items'],
+      steps: ['Tap Remove on one item'],
+      expected: 'Item count, subtotal, discount, shipping and total update straight away and match a manual calculation.',
+    },
+    {
+      id: 'TC-CHK-008',
+      title: '3-D Secure challenge can be completed and canceled',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Pay with the 3-D Secure test card', 'Complete the challenge', 'Repeat with a new cart and cancel the challenge'],
+      data: 'Card: 4000 0027 6000 3184',
+      expected: 'Completed: order is created and confirmation shown. Canceled: no order, the user returns to the payment step with the cart intact and a clear message.',
+    },
+    {
+      id: 'TC-CHK-009',
+      title: 'Guest cart merges after login',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Account already has 1 × USB-C cable in its saved cart'],
+      steps: ['Log out', 'As a guest, add 1 × Phone case', 'Log in to the account'],
+      expected: 'Cart contains both the USB-C cable and the Phone case, each once, and the totals are correct.',
+    },
+    {
+      id: 'TC-CHK-010',
+      title: 'Item sells out during checkout',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Item has stock 1', 'A second test account is available'],
+      steps: ['Account A adds the item and goes to the payment step', 'Account B buys the same item', 'Account A taps Pay'],
+      expected: 'Account A sees "This item is no longer available", is not charged, and can update the cart.',
+    },
+  ]}
+/>
+
+## Mobile vs web
+
+<Tabs labels={['Mobile app', 'Website']}>
+<Tab>
+
+- **Apple Pay and Google Pay.** Test with an Apple Pay **sandbox tester** account (set up in App Store Connect) and Google Pay's **test environment**, which return test payment tokens. Check the payment sheet shows the right merchant name, items and total, and test canceling the sheet.
+- **App backgrounding during 3-D Secure.** The bank challenge often opens the banking app or a browser. Switch apps, wait, and come back: the checkout must resume, not restart or hang on "Processing…". Also test the OS killing the app while it's in the background.
+- **Returning from the bank.** The app usually comes back via a <Term id="deep-link" /> or universal link. Check it lands on the confirmation (or a clear error), never an empty cart.
+- **Interruptions.** Incoming call, notification, lock screen or losing signal in the middle of paying (see [Interruptions](/mobile/interruptions)).
+- **Push notifications.** If the app sends an order <Term id="push-notification" />, check it arrives once and opens the right order.
+- **Small screens and the keyboard.** The Pay button and the total must stay visible when the keyboard is open on a small phone.
+
+</Tab>
+<Tab>
+
+- **Browser refresh during payment.** Refresh on the "Processing…" screen and on the confirmation page. Neither may create a second order.
+- **Back button.** Press Back from the 3-D Secure page, the payment step and the confirmation page. The order must not be repeated, and the cart must not come back after a successful order.
+- **Multiple tabs.** Open the cart in two tabs, change it in one, pay in the other. The order must match the latest cart.
+- **Autofill.** Browser and password manager autofill should fill address and card fields correctly (and the right fields).
+- **Pop-up blockers.** Some 3-D Secure flows use pop-ups or iframes; make sure they still work with strict browser settings and in Safari.
+- **Cookies and sessions.** Test with cookies blocked, in private mode, and after the session expires. Clear the <Term id="cache" /> and check the guest cart behavior.
+- **Wallets on the web.** Apple Pay is built into Safari (some other browsers can offer it through a code you scan with an iPhone), and Google Pay works in Chrome and other browsers. Check the buttons only appear where they're supported.
+
+</Tab>
+</Tabs>
+
+## Checklist
+
+<Checklist
+  title="Cart & checkout checklist"
+  storageKey="shopping-cart-and-checkout"
+  items={[
+    'Quantity stays between 1 and available stock; going below 1 removes or is blocked',
+    'Remove and save for later update count, subtotal, discount, shipping and total immediately',
+    'Each coupon applies once; expired, invalid and lower-case codes behave as specified',
+    'Free shipping threshold uses the correct amount (usually after discounts)',
+    'Tax / VAT is correct for the address, and every amount has 2 decimals and adds up to the cent',
+    'Cart persists across sessions and devices; guest cart merges correctly after login',
+    'Price changes and sold-out items are caught before payment, with a clear message',
+    'Approved, declined, insufficient funds and 3-D Secure test cards all behave correctly',
+    'Double tap, refresh, back button and retry never create a second order or charge',
+    'Confirmation shows the order number, empties the cart and sends exactly one correct email',
+    'Mobile: Apple Pay / Google Pay sheets, backgrounding during 3-D Secure and deep link return',
+    'Prices cannot be changed by editing requests; card data never touches our own server',
+    'Screen reader labels, touch target sizes and keyboard access across the whole flow',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'You need to test a declined payment on staging. What should you use?',
+      options: ['Your own card with a low balance', 'A colleague\'s expired card', 'The gateway\'s published decline test card in test mode', 'Any random 16-digit number'],
+      answer: 2,
+      explain: 'Payment gateways publish test cards for every outcome. Real cards never belong in a test environment.',
+    },
+    {
+      q: 'Subtotal $54.00, coupon 10% off, free shipping when the total after discounts is $50 or more. Shipping is $4.99. What is the correct total?',
+      options: ['$48.60', '$53.59', '$54.00', '$58.99'],
+      answer: 1,
+      explain: '54.00 − 5.40 = 48.60, which is under $50, so shipping is added: 48.60 + 4.99 = $53.59.',
+    },
+    {
+      q: 'A user double taps "Pay" and gets charged twice. Which fix protects against this even if the UI fails?',
+      options: ['Making the button bigger', 'An idempotency key checked by the server', 'A confirmation email', 'Showing the total in bold'],
+      answer: 1,
+      explain: 'Disabling the button helps, but the server-side idempotency key guarantees the same payment request is processed only once, even after retries.',
+    },
+    {
+      q: 'Which quantity values are the best boundary tests for a cart with 3 items in stock?',
+      options: ['1 and 2', '0, 1, 3 and 4', 'Only 999', '2 only'],
+      answer: 1,
+      explain: 'Test just below, at and just above each boundary: 0 and 1 for the minimum, 3 and 4 for the stock limit.',
+    },
+    {
+      q: 'The total on screen shows $59.900000001. What kind of bug is this?',
+      options: ['A localization bug', 'A floating-point rounding bug', 'A security bug', 'A performance bug'],
+      answer: 1,
+      explain: 'Money was calculated with binary floating-point numbers and never rounded to cents before being shown.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Checkout runs **cart → shipping → delivery → payment → review → confirmation**. Test each step and the hand-offs between them.
+- **Calculate the expected total yourself**: subtotal, discount, shipping threshold, tax and rounding. Lines must add up to the cent.
+- Classic cart bugs: **quantity below 1, coupon stacking, wrong shipping threshold, stale totals, lost or doubled carts**.
+- **Never use real cards.** Use the gateway's test cards for approved, declined, insufficient funds and 3-D Secure.
+- **Double taps, refreshes, back buttons and retries** must never create a second order. Look for idempotency.
+- On mobile, test **Apple Pay / Google Pay** and **app backgrounding during 3-D Secure**; on the web, **refresh, back and multiple tabs**.
+
+</KeyTakeaways>

@@ -1,0 +1,519 @@
+---
+title: In-App Purchases and Subscriptions
+description: How App Store and Google Play purchases, free trials and subscriptions work, how to test them with sandbox accounts, and the bugs that cost real money.
+order: 15
+level: intermediate
+minutes: { short: 40 }
+platform: mobile
+tags: [in-app purchases, subscriptions, payments, app store, google play, test scenarios]
+---
+
+import PurchaseFlow from '@/components/demos/in-app-purchases/PurchaseFlow';
+import { BuggyPaywall } from '@/components/demos/in-app-purchases/BuggyPaywall';
+
+Maja pays €39.99 for a year of Premium in her meditation app. A month later she gets a new phone, installs the app, taps **Restore purchases**… and nothing happens. No error, no Premium. She writes a one-star review ("They took my money!"), asks Apple for a refund and gets it. The company loses the subscription, the money, and a little of its rating.
+
+In-app purchases are where **bugs turn directly into lost money**: either the customer pays and doesn't get what they bought, or they get it without paying. Both happen all the time, mostly in situations a quick "tap Buy, it works" test never reaches: a second device, a refund, an expired card, a renewal in the middle of the night. This lesson shows you how purchases really work and how to test all of those situations without spending a cent.
+
+## How it works
+
+### What you can sell
+
+Both stores know the same basic kinds of products:
+
+| Product type | Examples | Restorable? |
+| --- | --- | --- |
+| **Consumable** | Coins, gems, extra lives, 10 photo credits. Used up, can be bought again. | No: once used, it's gone |
+| **Non-consumable** | Remove ads, "Pro" unlock, a filter pack. Bought once, kept forever. | **Yes**, on every device |
+| **Auto-renewable subscription** | Premium monthly or yearly. Renews until the user cancels. | **Yes** |
+| **Non-renewing subscription** | A 3-month season pass. Ends by itself; the app must track the end date. | Yes, by your own server |
+
+Apple uses exactly these four names. Google Play calls them **one-time products** (consumable or not, depending on whether the app *consumes* them) and **subscriptions** (auto-renewing or prepaid).
+
+### The store handles the money
+
+When you buy something inside an app, you don't pay the app. You pay **Apple (App Store)** or **Google (Google Play Billing)**. The store shows its own purchase sheet, charges the payment method saved in the user's account, and takes a commission. The app **never sees the card number**. It only gets a signed record that a purchase happened.
+
+That's different from buying a pizza or a taxi ride, where the app uses its own <Term id="payment-gateway" /> (covered in [Shopping cart and checkout](/features/shopping-cart-and-checkout)). As a rule of thumb, **digital** content and features used inside the app go through the store; **physical** goods and services go through a normal checkout. The exact rules differ between countries and change over time, so check what applies to your app.
+
+<PurchaseFlow />
+
+<Steps>
+
+1. **The app loads products from the store.** IDs like `premium_monthly` are configured in App Store Connect or the Play Console. The store returns the name and the **price in the user's currency**.
+2. **The user taps Subscribe**, and the store's own sheet appears with the price, the trial and the payment method. The app can't change what's on it.
+3. **The store charges the user.** This can include a bank check (<Term id="three-d-secure" />), a parent's approval, or a slow payment method that takes days.
+4. **The app gets a result:** purchased, canceled by the user, **pending**, or failed. Each one needs its own UI.
+5. **The server verifies the purchase** with Apple or Google and stores an **entitlement** ("Maja has Premium until 15 Nov 2026") on her account.
+6. **The app unlocks the content right away**, then marks the transaction as handled: it **finishes** it on iOS and **acknowledges** it on Android. On Google Play, a purchase that isn't acknowledged within three days is automatically refunded.
+7. **Later, the store tells the server about changes:** renewals, failed payments, cancellations, refunds. The server updates the entitlement, and the app follows.
+
+</Steps>
+
+<Callout type="tip" title="Why testers care about this flow">
+Notice how many parties are involved: the app, the store, the user's bank, your server, and maybe a second device. Most IAP bugs live in the **gaps between them**: the store charged but the server didn't record it, the server knows but the app didn't refresh, the store refunded but nobody told the app.
+</Callout>
+
+### The life of a subscription
+
+A subscription isn't a single purchase. It's a state machine that keeps changing for months, mostly while the app is closed:
+
+| State | What it means | Should the user have Premium? |
+| --- | --- | --- |
+| **Free trial / intro offer** | Free (or cheaper) for a while, then the full price. Usually **once per user**. | Yes |
+| **Active** | Paid, renews automatically. | Yes |
+| **Canceled** | Auto-renew is off, but the paid period hasn't ended. | **Yes, until the end date** |
+| **Grace period** | A renewal payment failed (expired card), the store keeps retrying. | Yes, if the app enabled a grace period |
+| **Billing retry / account hold** | Payment still failing after the grace period. | No, but it comes back if the payment is fixed |
+| **Expired** | Ended and not renewed. | No |
+| **Refunded / revoked** | The store gave the money back. | **No, immediately** |
+
+**Plan changes** are their own little world:
+
+- **Upgrade** (e.g. to a higher tier): on the App Store it usually takes effect immediately, and the unused part of the old plan is refunded proportionally.
+- **Downgrade:** usually takes effect at the next renewal date.
+- **Crossgrade** (same level, e.g. monthly to yearly): on the App Store it depends on the duration; on Google Play the app chooses a *replacement mode* (with proration, deferred, and so on).
+- In every case the user must end up with **one** subscription and **one** charge per period, never two.
+
+<Callout type="info" title="Canceling is not refunding">
+When users cancel, they only turn off auto-renew. They paid for the month, so they keep Premium until the end of it. Taking Premium away right after "Cancel" is a bug. A **refund** is different: the money goes back, so access should end right away.
+</Callout>
+
+### Restore, new devices and family
+
+People change phones, reinstall apps and own tablets. Everything **restorable** (non-consumables and subscriptions) must follow the store account:
+
+- **Restore purchases:** Apple's review guidelines require a way to restore restorable purchases, usually a **Restore purchases** button on the paywall or in settings. On Android, apps typically query existing purchases automatically when they start, but many also show a Restore button.
+- **Second device:** the same Apple ID or Google account on a tablet should get Premium after a restore, or automatically.
+- **App account vs store account:** if your app has its own login, which one owns the subscription? What happens when Maja logs in to her husband's account on her phone? The spec must say, and you must test it.
+- **Family Sharing (Apple):** if the developer enables it, family members can share non-consumables and subscriptions. They should get access, and lose it when they leave the family group. On Google Play, sharing in-app purchases with family is much more limited, so check the current rules.
+
+### Receipts, servers and entitlements
+
+The phone is not a safe place to decide "is this user Premium?". A flag in local storage can be edited, lost on reinstall, or simply forgotten when a refund happens. Robust apps work like this:
+
+- The app sends the signed transaction (iOS) or the **purchase token** (Android) to **your server**.
+- The server verifies it with Apple or Google and stores an **entitlement** with an end date.
+- The server receives **store notifications** (App Store Server Notifications, Google Play Real-time developer notifications) about renewals, refunds and billing problems.
+- Every device asks the server, so Premium follows the **account**, not the phone.
+
+**Cross-platform entitlements** build on this. If Maja bought Premium on the company's **website** (paid by card through a normal payment gateway), her iPhone app should unlock Premium when she logs in, because the server knows about it. Then you test the hard questions: what if she also subscribes on iOS (double payment)? Where can she cancel? What does the app show if the web subscription expires?
+
+### Prices, currencies and tax
+
+- Prices are set per **country** (storefront) in the store, often not as an exact conversion: $4.99 in the US might be €5.49 in Germany.
+- The app must show the **price string the store returns**, never a hard-coded `$4.99`. The store also formats it for the user's <Term id="locale" />.
+- **The store account's country decides the currency**, not the phone's language. A Serbian Google account on an English-language phone pays in dinars.
+- **Tax:** in many countries the store price already includes VAT; in some, like the US, sales tax may be added at checkout. That's another reason to show the store's price, not your own calculation.
+- **Price increases** for existing subscribers are announced by the store, and depending on the store, country and size of the increase, the user may have to accept it or the subscription ends.
+
+### Interrupted and pending purchases
+
+Not every purchase completes in one go:
+
+- **Ask to Buy (Apple) / parental approval:** a child taps Buy, a parent must approve it on their own device. The purchase is **pending**, maybe for hours, maybe forever.
+- **Bank verification (Strong Customer Authentication, 3-D Secure):** in Europe the bank may ask the user to confirm in their banking app. The store handles it inside its sheet, but the purchase can be interrupted or take longer. The same idea in normal checkouts is covered in [Shopping cart and checkout](/features/shopping-cart-and-checkout).
+- **Slow payment methods:** in some countries Google Play lets people pay in cash at a shop. The purchase stays **pending** until they do.
+- **The app is killed mid-purchase**, the network drops, or the phone restarts. When the transaction finally completes, the app must deliver it on the next launch.
+
+### Testing without spending money
+
+You never test purchases with your own card. Both stores have test environments:
+
+| | Apple | Google Play |
+| --- | --- | --- |
+| **Local testing** | **StoreKit Testing in Xcode:** a `.storekit` configuration file, no server needed. Speed up time, simulate failures, Ask to Buy, interrupted purchases and refunds. | Test the billing flows of a build installed from a Play testing track |
+| **Test accounts** | **Sandbox Apple Accounts**, created in App Store Connect (Users and Access › Sandbox), signed in on the device in the sandbox account settings, not as the main Apple ID | **License testers**, added in the Play Console (Settings › License testing) |
+| **Payment** | Free, no real charge | **Test cards**: "always approves", "always declines", slow cards that approve or decline after a few minutes |
+| **Beta builds** | <Term id="testflight" /> purchases are free (no real charge); subscriptions renew once a day, up to 6 times | Internal, closed and open testing tracks |
+
+**Subscriptions renew much faster in test environments**, so you can watch a whole year of renewals during a coffee break. Typical values for Apple sandbox accounts and Google Play license testers (they change, so check the current docs; TestFlight is slower, see above):
+
+| Real period | Apple sandbox | Google Play test |
+| --- | --- | --- |
+| 1 week | about 3 minutes | about 5 minutes |
+| 1 month | about 5 minutes | about 5 minutes |
+| 1 year | about 1 hour | about 30 minutes |
+
+Test subscriptions also **renew only a limited number of times** and then stop on their own, and Apple lets you adjust the sandbox renewal rate in the sandbox account settings. Keep a stopwatch or a log open, because renewals happen while you're doing something else.
+
+<Callout type="warning" title="Sandbox is not production">
+Sandbox stores can be slow, flaky, or behave slightly differently from the real thing. If something fails only in sandbox, retest before panicking, and note it in the bug report. Some things can't be tested in sandbox at all, so teams often do a final check with a real purchase (and refund it) before a big release.
+</Callout>
+
+## Example requirements
+
+<Callout type="example" title="User story: Subscribe to Premium">
+
+**As a** Stillwater user, **I want to** subscribe to Premium monthly or yearly, with a free trial the first time, **so that** I can use all sessions on all my devices.
+
+**Acceptance criteria**
+
+1. The paywall shows **Monthly** and **Yearly** with prices, periods and trial terms **loaded from the store**, in the store account's currency.
+2. New subscribers get **one** 7-day free trial per account. Users who already had a trial see the normal price.
+3. After a successful purchase, Premium unlocks **immediately**, without restarting the app.
+4. Premium works on **every device** signed in to the same store account, after **Restore purchases** or automatically.
+5. **Restore purchases** shows a clear result: "Premium restored" or "No purchases found".
+6. Switching from Monthly to Yearly **replaces** the current plan; the user is never charged twice for the same period.
+7. Canceling keeps Premium until the end of the paid period. **Expiry** and **refunds** remove Premium.
+8. Pending purchases (Ask to Buy, slow payments) show "Waiting for approval" and unlock once approved.
+9. The paywall shows the auto-renew terms, how to cancel, and links to Terms and Privacy.
+10. Premium status is decided by the **server**, not only by data stored on the device.
+
+</Callout>
+
+## What usually goes wrong
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Restore doesn't work** | New phone or reinstall: Restore spins and nothing happens, or "No purchases" for a paying user | Critical |
+| 2 | **Paid but not unlocked** | Purchase succeeds, content stays locked until restart, or forever | Critical |
+| 3 | **Premium after expiry or refund** | Access stays after the subscription ended or the money was returned | High (lost revenue) |
+| 4 | **Premium lost too early** | Canceling removes access immediately, or a renewal isn't picked up | High |
+| 5 | **Trial offered again** | Paywall says "7 days free", the store charges immediately | High (misleading, store rejection) |
+| 6 | **Wrong or hard-coded prices** | `$4.99` shown to a user who pays in dinars or euros | High |
+| 7 | **Double charge on plan change** | Upgrading creates a second subscription instead of replacing the first | Critical |
+| 8 | **Pending purchases ignored** | Ask to Buy approved hours later, but nothing unlocks | High |
+| 9 | **Purchase not acknowledged / finished** | Android refunds it after three days; iOS replays the transaction on every launch | Critical |
+| 10 | **Consumables delivered twice or not at all** | 100 coins become 200, or 0, after a crash or a slow network | High |
+| 11 | **Cancel in the store sheet treated as an error** | User cancels and sees "Purchase failed, try again" | Low–Medium |
+| 12 | **Missing legal info on the paywall** | No renewal terms, no Terms or Privacy links, unclear trial end | Medium (store rejection) |
+
+<Callout type="bug" title="Why bug #3 is so common">
+Unlocking is easy: the app gets a success callback and sets `isPremium = true`. **Locking** is the part people forget, because it happens later, outside the app: a renewal fails at 3 a.m., a refund is approved a week later. If nothing listens to the store's notifications, the flag stays true forever. Always test what happens *after* expiry and refund, not only after purchase.
+</Callout>
+
+## Find the bug
+
+Stillwater, a meditation app, sells Premium on Google Play. You're signed in as a **license tester**, so every purchase uses a test card, and you control a **test clock**. The demo has **six bugs**. Explore like a tester:
+
+- Buy a plan. Does Premium unlock straight away? What about after **Restart app**?
+- Switch to the **Tablet** (same account, new install) and use **Restore purchases**.
+- Use the **Google Play › Subscriptions** panel to **Cancel** or **Refund**, then move the **test clock**. Let a trial run out first if you need a paid charge.
+- After a subscription ends, open the paywall again and compare it with the **Google Play sheet**.
+- Change the **Play account country** to Serbia and compare prices.
+- With Monthly active, try **Switch to Yearly** and read the order history.
+
+<BugHunt
+  title="Stillwater Premium paywall"
+  bugs={[
+    {
+      title: 'Restore purchases does nothing on a new device',
+      hint: 'Subscribe on the Phone, then switch to the Tablet and tap Restore purchases.',
+      detail: 'On the tablet the spinner turns for a second and then <strong>nothing happens</strong>: no Premium, not even "No purchases found". The app only looks for purchases made on <em>this</em> device, although the subscription belongs to the Google account. On the phone, Restore works, which hides the bug from anyone testing on one device. Expected: Premium is restored on every device with the same account, and Restore always shows a result.',
+    },
+    {
+      title: 'Premium stays active after a refund',
+      hint: 'Let the trial turn into a paid subscription (+1 week), then press Refund in the Subscriptions panel.',
+      detail: 'Google Play shows the subscription as <strong>Refunded</strong> and the order history shows the money going back, but the app still says "Premium is active", even after a restart. The app treats a refunded subscription like an active one until its old end date. Expected: refunds (and revocations) remove Premium immediately. Canceling, by contrast, correctly keeps Premium until the end of the period.',
+    },
+    {
+      title: 'Free trial offered again to a user who already used it',
+      hint: 'Cancel during the trial, move the clock until it expires, then open See plans again.',
+      detail: 'The paywall shows <strong>"Start 7-day free trial"</strong> and "Free for 7 days", but the Google Play sheet says the price is <strong>billed today</strong>. The app decides trial eligibility from its own "not Premium" flag instead of the account\'s trial history. Users feel tricked and the store can reject the app for it. The same happens on the tablet. Expected: show the trial only when the store says the user is eligible.',
+    },
+    {
+      title: 'Premium is not unlocked until the app restarts',
+      hint: 'Buy any plan and look at the lock icons and the Free badge right after the toast.',
+      detail: 'The toast says <strong>"Purchase complete. Welcome to Premium!"</strong>, but the sessions are still locked and the badge says Free. Only <em>Restart app</em> (or moving the clock) unlocks them, because the app reads the entitlement only on launch. Many real users would buy again, or ask for a refund. Expected: Premium unlocks immediately after a successful purchase.',
+    },
+    {
+      title: 'Prices shown in USD for a Serbian store account',
+      hint: 'Set the Play account country to Serbia, open the paywall, then tap the button.',
+      detail: 'The paywall shows <strong>$4.99 / month</strong> and <strong>$39.99 / year</strong>, but the Google Play sheet charges <strong>RSD 599.00</strong> per month. The prices are hard-coded in the app instead of loaded from the store. Expected: the paywall shows the localized price string returned by Google Play for the user\'s country.',
+    },
+    {
+      title: 'Switching from Monthly to Yearly charges both',
+      hint: 'With Monthly active (restart after buying), use Manage plan › Switch to Yearly. Move the clock a week, then read Google Play › Subscriptions and the order history.',
+      detail: 'The app starts a brand-new Yearly purchase instead of a plan change. Google Play now lists <strong>two active subscriptions</strong>, and once the Monthly trial ends the order history shows both being charged, and both keep renewing. Expected: the purchase replaces Monthly (with proration or from the next renewal date, as specified), and the user pays for one plan at a time.',
+    },
+  ]}
+>
+  <BuggyPaywall client:visible />
+</BugHunt>
+
+<Callout type="tip" title="Notice what works">
+The **Google Play sheet** is always right: correct currency, correct trial eligibility, and it refuses to sell the same plan twice. Canceling keeps Premium until the period ends, and expiry removes it. In real projects, the store's own screens are your <Term id="test-oracle" />: when the app and the store disagree, the app is usually wrong.
+</Callout>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Restore purchases does nothing on a second device with the same Google account
+
+**Environment:** Stillwater 4.1.0 (internal testing track), Pixel 8 (Android 15) and Galaxy Tab S9 (Android 14), license tester account `qa.tester@example.com`
+
+**Steps:** 1. On the phone, subscribe to Monthly (test card, always approves). 2. Restart the app and confirm Premium is active. 3. On the tablet, install the app and sign in to the same Google account. 4. Open the paywall and tap **Restore purchases**.
+
+**Expected:** Premium is restored on the tablet and a "Premium restored" message is shown.
+**Actual:** A spinner shows for about a second, then nothing: no message, sessions stay locked. Restore on the phone works.
+
+**Severity:** Critical (paying users can't access what they bought) · **Reproducible:** Always · Order ID and screen recording attached.
+
+</Callout>
+
+Always include the **store account type** (sandbox or license tester), the **order or transaction ID** and the **time** of the purchase in IAP bug reports. Developers will look them up in App Store Connect, the Play Console or the server logs.
+
+## Test scenarios
+
+### Functional
+
+- Load the paywall: every product appears with the right name, price, period and trial from the store.
+- Buy each product type: consumable (credits appear once), non-consumable (unlocked forever), subscription (Premium active).
+- Premium unlocks **immediately**, and stays after an app restart, a phone restart and an app update.
+- **Restore** on a reinstall and on a second device; Restore with nothing to restore shows a clear message.
+- **Upgrade, downgrade and crossgrade** between plans: correct timing, one subscription, correct charges.
+- **Cancel** in the store: Premium stays until the end date, then ends. **Resubscribe** before and after expiry.
+- **Refund:** Premium (or the consumable) is removed. Check what happens to content already used.
+- **Family Sharing** (if enabled): a family member gets access, and loses it when they leave.
+- **Cross-platform:** a web subscription unlocks the app after login; an app subscription shows correctly on the web.
+
+### Subscription lifecycle with the test clock
+
+- Trial converts to a paid subscription on the right day, with the right price.
+- Renewals happen on time and the end date moves forward in the app.
+- **Failed renewal** (Google test card "always declines"; on iOS, a failed renewal in StoreKit Testing, or turning off **Allow Purchases & Renewals** for the sandbox account): grace period keeps access if enabled, billing retry or account hold removes it, fixing the payment brings it back.
+- **Intro offer** or promo price applies only to the first periods, then the normal price.
+- **Price increase:** the user is informed, and what happens if they don't accept matches the spec.
+
+### Negative
+
+- Cancel the store sheet: the app returns quietly to the paywall, no error message.
+- Declined payment: a clear message, no Premium, no half-unlocked state.
+- No network while loading the paywall: a helpful message instead of empty prices or `$0.00`.
+- Buying a plan you already own: the store refuses, and the app explains it.
+- Signed out of the store, or store account restricted (parental controls): sensible messages.
+
+### Edge cases
+
+- **Kill the app** right after tapping Subscribe, or during "Processing". On the next launch the purchase is delivered once.
+- **Airplane mode** right after paying: the purchase is delivered when the network is back (see [Network conditions](/mobile/network-conditions)).
+- **Double tap** on Subscribe or Buy coins: one purchase, one charge (<Term id="double-submit" />).
+- **Pending purchases:** Ask to Buy or a slow test card. The app shows "Waiting for approval" and unlocks when it completes, even days later.
+- **Different store account** on the device than the one that bought, or the app account belongs to someone else.
+- **Changing the store country** with an active subscription.
+- **Time and date:** a manually changed device clock must not extend or end Premium.
+
+### UI and usability
+
+- The paywall clearly shows price, period, trial length and **what happens after the trial**.
+- Auto-renew terms, how to cancel, and links to **Terms of Use** and **Privacy Policy** are visible before purchase.
+- A **Restore purchases** button is easy to find.
+- Long localized prices and plan names fit (see [Localization and RTL](/features/localization-and-rtl)).
+- The paywall can always be closed. Premium users see their plan and a way to manage it, not a sales screen.
+
+### Security
+
+- Premium can't be unlocked by editing local data, a modified app, or a <Term id="proxy-tool" /> that changes the server's response. The server must decide.
+- The server verifies every transaction with the store and doesn't accept the same receipt or token for two accounts.
+- Consumables are granted by the server once per transaction, even if the app sends the same purchase twice (<Term id="idempotency" />).
+- No payment details appear in app logs or analytics.
+
+### Accessibility
+
+- With a screen reader, each plan announces name, price, period and selected state ("Yearly, 39.99 dollars per year, selected").
+- Trial terms and the price after the trial are readable by screen readers, not just shown in a tiny grey label.
+- Close and Restore buttons have names and are at least 44×44 pt (iOS) / 48×48 dp (Android).
+- Large text doesn't hide the price or push the Subscribe button off screen.
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-IAP-001',
+      title: 'Subscribe with a free trial unlocks Premium immediately',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Fresh sandbox / license tester account that never subscribed', 'App installed from the testing track'],
+      steps: ['Open the paywall', 'Select Yearly and tap "Start 7-day free trial"', 'Confirm in the store sheet'],
+      expected: 'The store sheet shows the 7-day trial and the price after it. Right after confirming, Premium content is unlocked without a restart. The subscription appears in the store account.',
+    },
+    {
+      id: 'TC-IAP-002',
+      title: 'Restore on a second device',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Active subscription bought on device A', 'Device B signed in to the same store account, app freshly installed'],
+      steps: ['Open the app on device B', 'Tap "Restore purchases"'],
+      expected: 'Premium is active on device B and a confirmation message is shown.',
+    },
+    {
+      id: 'TC-IAP-003',
+      title: 'Restore with no purchases shows a clear message',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Store account that never bought anything'],
+      steps: ['Open the paywall', 'Tap "Restore purchases"'],
+      expected: 'A message like "No purchases found for this account" appears. Premium stays locked.',
+    },
+    {
+      id: 'TC-IAP-004',
+      title: 'Canceled subscription keeps access until the end date',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Active paid monthly subscription in sandbox'],
+      steps: ['Cancel the subscription in the store settings', 'Check Premium in the app', 'Wait for the accelerated period to end (about 5 minutes) and reopen the app'],
+      expected: 'Premium stays active after canceling, shows "Ends on <date>", and is removed after the period ends.',
+    },
+    {
+      id: 'TC-IAP-005',
+      title: 'Refund removes Premium',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Active paid subscription', 'Refund possible (StoreKit Testing in Xcode, or a Play Console refund for a license tester)'],
+      steps: ['Refund the latest transaction', 'Bring the app to the foreground', 'Restart the app'],
+      expected: 'Premium is removed (at the latest after the server receives the refund notification). Content is locked again on all devices.',
+    },
+    {
+      id: 'TC-IAP-006',
+      title: 'No second free trial',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Account that used the free trial and whose subscription expired'],
+      steps: ['Open the paywall', 'Read the button and the terms', 'Tap the button and read the store sheet'],
+      expected: 'The paywall shows the normal price (no trial wording), matching the store sheet.',
+    },
+    {
+      id: 'TC-IAP-007',
+      title: 'Upgrade from Monthly to Yearly replaces the plan',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Active paid monthly subscription'],
+      steps: ['Open Manage plan and choose Yearly', 'Confirm in the store sheet', 'Open the store\'s subscription list and the order history'],
+      expected: 'Only the Yearly subscription is active. Monthly is replaced as specified (prorated credit or switch at renewal). No double charge for the same period.',
+    },
+    {
+      id: 'TC-IAP-008',
+      title: 'Prices follow the store account country',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Test account in Serbia (RSD), device language English'],
+      steps: ['Open the paywall', 'Compare the prices with the store sheet'],
+      expected: 'The paywall shows the same price and currency as the store sheet, e.g. "RSD 599.00 / month". No hard-coded dollars.',
+    },
+    {
+      id: 'TC-IAP-009',
+      title: 'Purchase completed while the app was killed',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Slow test card (approves after a few minutes) or Ask to Buy'],
+      steps: ['Start a purchase', 'Force-quit the app while it is pending', 'Wait for approval', 'Open the app again'],
+      expected: 'Premium is unlocked exactly once. The purchase is acknowledged/finished, so it is not refunded and not delivered again on the next launch.',
+    },
+  ]}
+/>
+
+## iOS vs Android
+
+<Tabs labels={['iOS (App Store)', 'Android (Google Play)', 'Bought on the web']}>
+<Tab>
+
+- **StoreKit Testing in Xcode** is the fastest start: create a `.storekit` file with your products, run from Xcode, and use the transaction manager to refund, expire, fail renewals, approve Ask to Buy or trigger interrupted purchases. It runs entirely on your Mac, so it doesn't prove that App Store Connect is set up correctly.
+- **Sandbox Apple Accounts** test against the real (sandbox) App Store. Create them in App Store Connect, then sign in on the device in the sandbox account section of the settings, not as the device's main Apple ID. Each new account is a "new customer" again, perfect for trial eligibility.
+- **TestFlight** purchases are free, so beta testers never pay (see [Beta distribution](/mobile/beta-distribution)). Subscriptions there renew once a day (up to 6 times), so use a sandbox account or StoreKit Testing for fast lifecycle tests.
+- **Restore purchases** must exist in the UI. App Review checks it.
+- **Ask to Buy** creates a *deferred* transaction: test the "Waiting for approval" state and the later approval or decline.
+- **Manage subscriptions:** the system subscription screen (in Settings or the App Store) is where users cancel and change plans. Test that links from the app open it.
+- **Refunds:** users request them from Apple; the app can also offer an in-app refund request sheet. Your server learns about refunds through App Store Server Notifications.
+
+</Tab>
+<Tab>
+
+- **License testers** (Play Console › Settings › License testing) buy with test cards and are never charged. The app must be installed from Google Play (an internal or closed testing track), with the tester's Google account.
+- **Test cards** include "always approves", "always declines" and **slow** cards that approve or decline after a few minutes, which is perfect for pending states.
+- **Acknowledge within three days:** if the app never acknowledges a purchase, Google refunds it automatically. Test by checking the purchase status in the Play Console a few days after a test purchase, or ask developers how it's handled.
+- **Plan changes** use a *replacement mode* chosen by the app (immediate with proration, deferred, and so on). Check that the right one is used and that only one subscription remains.
+- **Account hold and pause:** Google can put a subscription on hold after failed payments, and users may be able to pause it. The app must lock Premium during hold/pause and unlock it when it resumes.
+- **Pending purchases:** cash or other slow payment methods. Purchases arrive later, often when the app is closed.
+- **Multiple Google accounts** on one device are common. Check which account the purchase sheet uses and which account the app thinks is subscribed.
+
+</Tab>
+<Tab>
+
+- Many apps also sell subscriptions on their **website** (a normal card payment). The server then grants the same entitlement, and the app unlocks Premium after login.
+- **Test both directions:** bought on the web → used on iOS and Android; bought in the app → shown correctly on the web account page.
+- **Double subscriptions:** a web subscriber shouldn't be pushed to subscribe again in the app. The paywall should recognize them.
+- **Canceling:** the app can't cancel a web subscription, and the website can't cancel an App Store one. Users must be sent to the right place.
+- **Expiry and refunds** on the web must also lock the app. Test with the payment provider's <Term id="test-card">test cards</Term>, including <Term id="three-d-secure" /> cards.
+- **Store rules** on mentioning or linking to web purchases differ by store and country and change often. Check with the team before treating a missing link as a bug.
+
+</Tab>
+</Tabs>
+
+## Checklist
+
+<Checklist
+  title="In-app purchases checklist"
+  storageKey="in-app-purchases"
+  items={[
+    'Every product loads with name, price, period and trial from the store',
+    'Prices are in the store account\'s currency, never hard-coded',
+    'Purchases unlock immediately, without restarting the app',
+    'Restore works on a reinstall and a second device, and always shows a result',
+    'The free trial is offered only to eligible users and matches the store sheet',
+    'Canceling keeps access until the end date; expiry removes it',
+    'Refunds and revocations remove access',
+    'Renewals, failed payments, grace period and account hold behave as specified (use the test clock)',
+    'Upgrades, downgrades and crossgrades leave exactly one subscription and no double charge',
+    'Pending purchases (Ask to Buy, slow payments) are delivered once when they complete',
+    'Killing the app or losing the network mid-purchase never loses or duplicates a purchase',
+    'Purchases are finished (iOS) and acknowledged (Android)',
+    'The server verifies purchases; Premium cannot be unlocked by editing local data',
+    'Web and app purchases unlock the same account on every platform',
+    'Paywall shows renewal terms, how to cancel, Terms and Privacy links, and works with a screen reader',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A user removed ads for $2.99 and installs the app on a new phone. What type of product is this, and what should happen?',
+      options: ['Consumable: they must buy it again', 'Non-consumable: Restore purchases brings it back', 'Subscription: it expired', 'Nothing, purchases are tied to the phone'],
+      answer: 1,
+      explain: 'Non-consumables are bought once and kept forever. They belong to the store account, so they must be restorable on every device.',
+    },
+    {
+      q: 'A user cancels their monthly subscription on day 10 of 30. What should the app do?',
+      options: ['Remove Premium immediately', 'Keep Premium until day 30, then remove it', 'Refund the remaining 20 days', 'Keep Premium forever'],
+      answer: 1,
+      explain: 'Canceling only turns off auto-renew. The user paid for the whole month, so access continues until the period ends.',
+    },
+    {
+      q: 'How do testers buy subscriptions without paying real money?',
+      options: ['Using their own card and asking for a refund', 'Sandbox Apple Accounts, StoreKit Testing in Xcode, and Google Play license testers with test cards', 'By changing the device date', 'By editing the app\'s local storage'],
+      answer: 1,
+      explain: 'Both stores offer test environments with free purchases and much faster renewals, so you can test months of a subscription in minutes.',
+    },
+    {
+      q: 'The paywall shows $4.99, but the Google Play sheet for a Serbian test account shows RSD 599.00. Which one is wrong?',
+      options: ['The store sheet', 'The paywall: prices must come from the store', 'Neither, the user can convert', 'Both'],
+      answer: 1,
+      explain: 'The store decides the price and currency for each country. The app must display the localized price string it gets from the store.',
+    },
+    {
+      q: 'After a refund, the user still has Premium. What is the most likely cause?',
+      options: ['The store forgot the refund', 'The app or server does not handle refund notifications and only ever sets Premium to true', 'Refunds take a year', 'It is correct behavior'],
+      answer: 1,
+      explain: 'Unlocking happens in the app at purchase time, but refunds arrive later from the store. If nothing listens for them, the entitlement never gets removed.',
+    },
+    {
+      q: 'Why should the server, not the phone, decide whether a user is Premium?',
+      options: ['Phones are too slow', 'Local data can be edited or lost, and only the server receives renewals, refunds and purchases from other platforms', 'Stores require a server for every app', 'It makes the app smaller'],
+      answer: 1,
+      explain: 'A local flag can be tampered with and never hears about refunds, renewals or web purchases. A server-side entitlement is the single source of truth for all devices.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Know the **product types**: consumables are used up, non-consumables and subscriptions must be **restorable** on every device.
+- The **store handles payment**; the app gets a transaction, the **server verifies it** and keeps the entitlement. The store's own sheet is your test oracle.
+- A subscription is a **state machine**: trial, active, canceled, grace period, billing retry, expired, refunded. Test what happens **after** the purchase, not just the purchase.
+- Use **sandbox accounts, StoreKit Testing and license testers** with accelerated renewals. Never your own card.
+- Classic bugs: **Restore does nothing, paid but locked, Premium after refund, trial offered twice, hard-coded prices, double charge on plan change.**
+- Test interruptions: **pending purchases, killed app, lost network, double taps**, and purchases made on **another device or the web**.
+
+</KeyTakeaways>

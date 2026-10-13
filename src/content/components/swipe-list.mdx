@@ -1,0 +1,479 @@
+---
+title: List with Swipe Actions
+description: List rows that reveal buttons like Archive or Delete when you swipe them. Learn the anatomy, leading vs trailing actions, full swipe, Undo vs confirmation, the alternatives every swipe needs, and the state bugs testers find in these rows.
+category: content
+aka: [Swipe to delete, Swipe actions, Swipeable list item]
+platforms: [ios, android, web]
+minutes: 35
+order: 2
+---
+
+import Anatomy from '@/components/demos/swipe-list/Anatomy';
+import VariantsGallery from '@/components/demos/swipe-list/VariantsGallery';
+import Playground from '@/components/demos/swipe-list/Playground';
+import { BuggyChatsApp } from '@/components/demos/swipe-list/BuggyChatsApp';
+
+Swipe an email to the left in iPhone Mail: red **Trash**, orange **Flag**, grey **More** slide out from behind the row. Swipe a chat in WhatsApp: **Archive**. Swipe a saved card in a banking app: **Remove**. These rows look like a plain list until your finger moves, and then they become a little toolbar.
+
+That hidden toolbar is where the bugs live. Which row is open? What happens when you scroll? Does "Archive" really archive? Can someone who can't swipe still do the same thing? Let's learn the component properly.
+
+<Callout type="info" title="This page vs. the Gestures lesson">
+The [Gestures](/mobile/gestures) lesson covers the **finger movement** itself: thresholds, accidental swipes while scrolling, direction lock and the back-gesture conflict, with its own swipe-to-delete bug hunt. This page is about the **component**: the row, its actions, its state and its alternatives.
+</Callout>
+
+## What is a list with swipe actions?
+
+A list with swipe actions is a normal vertical list where each row hides **extra actions** that appear when you swipe the row sideways. Tapping the row still does the main thing (open the email, open the chat, open the product). Swiping is a **shortcut** for the secondary things you'd otherwise do from inside the item or from a menu.
+
+You'll find it in:
+
+- **Mail and messaging:** Archive, Delete, Mark as read, Pin, Mute.
+- **Shopping:** Remove from cart or wishlist, Move to "Save for later".
+- **Banking and finance:** Remove a saved payee or card, hide a transaction.
+- **To-do and notes:** Complete, Delete, Flag.
+
+### Anatomy
+
+Every row is a normal list item first. Learn its parts, because many bugs are "text overlaps chevron" or "secondary line missing" rather than anything to do with swiping.
+
+<Anatomy />
+
+### Leading vs. trailing actions
+
+The two sides have names that work in every language:
+
+- **Trailing actions** sit at the **trailing edge** (the right in English) and appear when you swipe toward the leading edge (to the **left**). This is where **destructive** actions live: Delete, Archive, Remove.
+- **Leading actions** sit at the **leading edge** (the left in English) and appear when you swipe to the **right**. They're usually **positive and reversible**: Mark as read, Pin, Add to cart.
+
+In right-to-left languages like Arabic and Hebrew (<Term id="rtl">RTL</Term>), everything mirrors: trailing actions appear on the **left**. A row that still reveals Delete on the right in Arabic is a localization bug.
+
+### Reveal buttons vs. full swipe
+
+There are two ways a swipe can end:
+
+| Style | What happens | Risk |
+| --- | --- | --- |
+| **Reveal** | A short swipe snaps the row open and shows buttons. You tap one. | Low: two steps, you see what you'll get |
+| **Full swipe** | Keep swiping past a point and the outermost action runs on release | Higher: one movement, easy to do by accident |
+| **Swipe to dismiss** | No buttons; the row slides away and the action runs (Gmail style) | Highest: must come with Undo |
+
+iOS uses **reveal + optional full swipe** (iPhone Mail: a full swipe left trashes or archives). Android apps usually use **swipe to dismiss** with a colored background and an icon (Gmail archives). A good full swipe gives feedback at the point of no return: the outermost button **stretches** across the row and the phone gives a small <Term id="haptic-feedback">haptic</Term> tick. If you let go before that point, nothing happens.
+
+### How it differs from similar patterns
+
+Swipe actions are never the only way to do something. These are the patterns they're usually paired with:
+
+| Pattern | How it's triggered | Good for |
+| --- | --- | --- |
+| **Swipe actions** | Swiping one row | Fast, frequent actions on one item |
+| **Edit mode** | An **Edit** or **Select** button, then checkboxes | Acting on many items at once |
+| **Long-press menu** | Touch and hold a row | Discoverable list of all actions |
+| **Buttons in the detail view** | Open the item, use its toolbar | The always-available, visible path |
+
+## Designs & variants
+
+The same idea looks and behaves differently on each platform. Try each one with your finger or by dragging with a mouse.
+
+<VariantsGallery client:visible />
+
+<Callout type="dev" title="Platform names">
+On iOS these are **swipe actions** (`swipeActions` in SwiftUI, `UISwipeActionsConfiguration` in UIKit). On Android you'll hear **swipe to dismiss** (`SwipeToDismissBox` in Jetpack Compose, `ItemTouchHelper` for RecyclerView). On the web there is no standard; teams build it themselves or use a library.
+</Callout>
+
+## When to use it
+
+Swipe actions are a good choice when:
+
+- People **process many items**, one after another: triaging an inbox, clearing notifications, checking off a shopping list.
+- The actions are **frequent** and **quick** (one tap or one swipe), like Archive or Mark as read.
+- The same actions are **also available elsewhere**: in the item's detail screen, a long-press menu or an edit mode.
+- The result is **easy to undo**, or the action is protected by Undo or a confirmation.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Quick, reversible actions">
+
+Archive a chat, mark an email as read, remove an item from a wishlist, with an **Undo** toast right after.
+
+</Do>
+<Dont title="The only way to do something">
+
+Canceling a subscription or deleting a saved card only by swiping. People who don't know the gesture (or can't do it) are stuck. Put a visible button in the detail view too.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Two or three actions">
+
+**Archive** and **Delete** on the trailing side, **Read** on the leading side. Each button is at least as tall as the row and has a short label.
+
+</Do>
+<Dont title="Five buttons crammed in">
+
+Delete, Archive, Flag, Move, Share, Mute all on one side. Labels truncate, buttons get narrower than a fingertip, and the row has to be swiped across the whole screen. Put the extras behind a **More** button.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Lists of separate items">
+
+A list of emails, chats, products, alarms: each row is one thing you can act on.
+
+</Do>
+<Dont title="Rows that already move sideways">
+
+A row with a horizontal carousel or a slider inside, or a list inside a screen that itself swipes between tabs. The gestures fight each other. See [Gestures](/mobile/gestures#when-gestures-collide).
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Tester mindset">
+For every swipe action, ask two questions: **"How else can I do this?"** and **"How do I get it back?"** If the answer to either is "you can't", you have a finding.
+</Callout>
+
+## How good swipe rows behave
+
+These are the rules to test against. Most of them aren't written in any requirement, but users expect them because the built-in apps behave this way.
+
+### Only one row is open at a time
+
+Open the actions on one row, then start swiping another: the first row **closes**. Two open rows look broken and, worse, can confuse the code about **which** item an action belongs to.
+
+### An open row closes when you do something else
+
+Scrolling the list, tapping the open row, tapping another row, pulling to refresh or leaving the screen should all **close** the open row. Tapping an open row should only close it, **not** also open the item.
+
+### The action happens to the right item
+
+The button you tap must act on **its own row**, even after you've scrolled, after another row was deleted, or after new items arrived at the top. In long lists, rows are **recycled** (the same row view is reused for a different item as you scroll). If the "open" state is stored on the recycled view or by **position** instead of by item, it jumps to the wrong item. That's a <Term id="state-persistence" /> bug in disguise.
+
+<DevNote>Rows are recycled in `UITableView`, `RecyclerView`, `LazyColumn` and most web virtual lists.</DevNote>
+
+### Labels tell the truth
+
+"Archive" must archive (the item can be found in Archived), "Delete" must delete (maybe to a Trash folder), "Mute" must mute. Check the result **after** the action, not just that the row disappeared.
+
+### Destructive actions: Undo or confirmation
+
+| Use… | When | Example |
+| --- | --- | --- |
+| **Undo** in a <Term id="toast" /> or snackbar | The action is common and easy to reverse | Archive a chat, delete an email to Trash |
+| **Confirmation** (an action sheet or dialog) | The action is permanent or expensive to reverse | Delete a saved card, cancel a booking |
+| **Neither** | Only when the action is harmless | Mark as read, Pin |
+
+Don't confirm everything: a dialog on every archive teaches people to tap **Delete** without reading. And Undo must really restore the item, **in its original position**, with its state (unread, pinned) intact.
+
+### Haptics and feedback
+
+While swiping, the row should show **what will happen**: the color, icon and label of the action. On iOS a full swipe gives a light haptic tick when it passes the point of no return. Haptics should follow the system setting and can only be checked on a <Term id="real-device" />.
+
+### Large text, small screens and RTL
+
+With the largest text size (<Term id="dynamic-type" /> on iOS, Font size on Android), the row grows taller, text wraps or truncates **inside its own area**, and the action buttons grow with it. Text must never run underneath or on top of the buttons. In RTL languages, the sides swap.
+
+### Long lists stay smooth
+
+A list of 2,000 transactions must scroll and swipe without stutter. Rows are usually created only when they come on screen (<Term id="lazy-loading" />, <Term id="infinite-scroll" />). Test swiping right after scrolling fast, and on an older, slower phone.
+
+## Try it: swipe lab
+
+This wishlist does everything right. Change the settings, then try to break it: open two rows, scroll with a row open, remove an item and undo it, switch to the largest text, and use **Edit** to remove items without any gesture. Watch the event log.
+
+<Playground client:visible />
+
+<Callout type="info" title="Swipe on the web">
+Swipe actions are rare on websites. Mouse and keyboard users can't swipe, and mobile browsers already use horizontal swipes for Back and Forward. If a web app does offer swipe on touch screens, the same actions must also be in a visible menu or button, like the ⋮ menu in the gallery above. On desktop, buttons that appear on **hover** must also appear on keyboard **focus**.
+</Callout>
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Several rows open** | Two or more rows show their buttons at the same time | Low–Medium |
+| 2 | **Action hits the wrong item** | Tap Delete on "Mom", and "Emma" disappears | Critical |
+| 3 | **Row stays open** | Buttons still showing after scrolling, opening the item or coming back | Low–Medium |
+| 4 | **Tap on an open row opens the item** | Instead of closing, the row opens the detail screen | Low |
+| 5 | **Label lies** | "Archive" deletes; "Mark as read" also mutes | High |
+| 6 | **State jumps to another row** | After a delete, or after scrolling a long list, a different row appears open | Medium–High |
+| 7 | **No Undo / no confirmation** | A permanent delete happens with one swipe | High |
+| 8 | **Layout breaks** | Text runs over the buttons at large text sizes; labels truncate in German | Medium |
+| 9 | **Gesture-only** | No edit mode, menu or detail button; screen reader users can't reach the action | High (for affected users) |
+| 10 | **Not mirrored in RTL** | In Arabic, Delete still appears on the right | Medium |
+
+<Callout type="bug" title="Why #2 and #6 happen">
+Developers often remember the open row by its **position** ("row 3 is open") instead of by **item** ("the chat with Mom is open"). As soon as rows move (a delete, an insert, a refresh, a recycled row), position 3 is a different item. To catch it: open a row, then make the list change **while it's open**, and check which item each action affects.
+</Callout>
+
+## Find the bug
+
+This chat app has swipe actions on every row and **six bugs** in the component. It has the right threshold and a direction lock, so this time the gesture isn't the problem. Explore it like a tester:
+
+- Open the actions on **two** chats. Then try the buttons.
+- Leave a row open and scroll. Tap an open row.
+- Archive a chat, then look for it. Compare with the Archive button inside a chat.
+- Delete a chat and look at the row that moves up.
+- Use the device panel: **Larger text** and **VoiceOver**.
+
+<BugHunt
+  title="Chats"
+  bugs={[
+    {
+      title: 'Tapping an action on one row affects a different row',
+      hint: 'Open the actions on two different chats, then tap Archive on the second one.',
+      detail: 'Opening a second row doesn’t close the first, and every action button acts on the <strong>first</strong> open row. Archiving “Running club” removes “Emma Clarke” instead. Expected: only one row is open at a time, and each button acts on its own row.',
+    },
+    {
+      title: 'Open rows stay open while scrolling, and tapping one opens the chat',
+      hint: 'Open a row, scroll the list, then tap the open row.',
+      detail: 'The buttons stay revealed during and after scrolling, and a tap on the open row opens the chat. Expected: scrolling closes the open row, and tapping an open row only closes it.',
+    },
+    {
+      title: '“Archive” deletes the chat',
+      hint: 'Swipe-archive a chat, then open the Archived folder at the top of the list.',
+      detail: 'The snackbar says “Chat archived”, but the chat never appears in <strong>Archived</strong> (the count stays 0). It’s gone for good once the snackbar disappears. The Archive button inside a chat works correctly, which proves the swipe action does something different. Expected: both paths move the chat to Archived.',
+    },
+    {
+      title: 'Message preview runs over the buttons with large text',
+      hint: 'Turn on Larger text, then swipe a chat to the left.',
+      detail: 'At the accessibility text size, the preview no longer truncates with an ellipsis. It runs out of its area, over the unread badge and across the revealed <strong>Archive</strong> and <strong>Delete</strong> buttons. Expected: text truncates or wraps inside the row; buttons stay readable.',
+    },
+    {
+      title: 'Swipe actions are not available to VoiceOver',
+      hint: 'Turn on VoiceOver, tap a chat and listen for the actions.',
+      detail: 'VoiceOver reads the chat but never says <em>“Actions available”</em>, and swiping down finds no actions. Archive, Delete and Read can’t be reached from the list at all. Expected: each swipe action is exposed as an accessibility custom action (iOS) / TalkBack action (Android).',
+    },
+    {
+      title: 'After a delete, the next chat appears already open',
+      hint: 'Swipe a chat left, tap Delete, and look at the chat that moves up.',
+      detail: 'The open state is stored by <strong>row position</strong>, not by chat. After the delete, the next chat slides into that position and shows its Archive and Delete buttons, one tap away from a second accidental delete. Expected: after an action, no row is left open.',
+    },
+  ]}
+>
+  <BuggyChatsApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Chats: Archive on one row archives a different chat when two rows are open
+
+**Steps:** 1. Open Chats. 2. Swipe "Emma Clarke" left to reveal its buttons. 3. Swipe "Running club" left as well. 4. Tap **Archive** on "Running club".
+
+**Expected:** Only one row is open at a time (step 3 closes "Emma Clarke"), and "Running club" is archived.
+**Actual:** Both rows stay open. After step 4, **"Emma Clarke"** disappears and "Running club" stays in the list. The snackbar says "Chat archived".
+
+**Severity:** Critical (the action affects the wrong conversation) · **Reproducible:** 10/10 · **Device:** iPhone 15, iOS 18.1
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Swipe actions test checklist"
+  storageKey="swipe-list"
+  items={[
+    'Each row shows the right leading and trailing actions, with clear labels and icons',
+    'A short swipe snaps open or closed; it never stops halfway',
+    'Full swipe (if supported) runs only the outermost action, with visual and haptic feedback',
+    'Only one row is open at a time',
+    'Scrolling, tapping the open row, or leaving the screen closes the open row',
+    'Every action affects its own row, also after deletes, inserts, refreshes and fast scrolling',
+    'The result matches the label (Archive really archives, Delete really deletes)',
+    'Destructive actions have Undo or a confirmation, and Undo restores the item in place',
+    'No row is left open after an action',
+    'Every swipe action is also available without swiping (detail view, long-press menu or edit mode)',
+    'VoiceOver and TalkBack offer the swipe actions as accessibility actions',
+    'Layout holds at the largest text size, in long languages and in RTL (sides mirrored)',
+    'Swiping works with a finger, a stylus, and (web) a mouse or trackpad if supported',
+    'Long lists stay smooth while swiping and scrolling on an older device',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-SWL-001',
+      title: 'Opening a second row closes the first one',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Chat list has at least 5 chats'],
+      steps: ['Swipe the first chat left until its buttons show', 'Swipe the third chat left'],
+      expected: 'The first chat closes as soon as the third one starts moving. Only the third chat shows its buttons.',
+    },
+    {
+      id: 'TC-SWL-002',
+      title: 'Archive moves the chat to Archived',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Swipe "Mom" left', 'Tap Archive', 'Wait until the snackbar disappears', 'Open the Archived folder'],
+      expected: '"Mom" is no longer in Chats, the Archived count increases by 1, and "Mom" is listed in Archived.',
+    },
+    {
+      id: 'TC-SWL-003',
+      title: 'Undo restores a deleted chat in its original position',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Note the position of the third chat', 'Swipe it left and tap Delete', 'Tap Undo within 4 seconds'],
+      expected: 'The chat is back in the third position, with the same unread count. No row is left open.',
+    },
+    {
+      id: 'TC-SWL-004',
+      title: 'No row inherits the open state after a delete',
+      priority: 'high',
+      type: 'edge',
+      steps: ['Swipe the second chat left', 'Tap Delete', 'Look at the chat that moved into the second position'],
+      expected: 'The new second chat is closed (no buttons visible).',
+    },
+    {
+      id: 'TC-SWL-005',
+      title: 'Scrolling closes an open row',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Swipe a chat left to reveal its buttons', 'Scroll the list down and back up'],
+      expected: 'The row closes as soon as scrolling starts.',
+    },
+    {
+      id: 'TC-SWL-006',
+      title: 'Tapping an open row only closes it',
+      priority: 'low',
+      type: 'negative',
+      steps: ['Swipe a chat left to reveal its buttons', 'Tap the row content (not a button)'],
+      expected: 'The row closes. The chat does not open.',
+    },
+    {
+      id: 'TC-SWL-007',
+      title: 'Swipe actions are available with VoiceOver',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['VoiceOver is on'],
+      steps: ['Swipe right until a chat is focused', 'Listen to the announcement', 'Swipe down repeatedly'],
+      expected: 'VoiceOver says "Actions available"; swiping down offers Archive, Delete and Mark as read. Double tap runs the chosen action.',
+    },
+    {
+      id: 'TC-SWL-008',
+      title: 'Row layout at the largest text size',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['iOS Settings › Accessibility › Display & Text Size › Larger Text at maximum'],
+      steps: ['Open Chats', 'Swipe a chat left'],
+      expected: 'Name and preview truncate or wrap inside the row. Nothing overlaps the unread badge or the revealed buttons; button labels are readable.',
+    },
+    {
+      id: 'TC-SWL-009',
+      title: 'Actions are mirrored in Arabic',
+      priority: 'low',
+      type: 'edge',
+      preconditions: ['Device language set to Arabic'],
+      steps: ['Open Chats', 'Swipe a chat to the right'],
+      expected: 'Archive and Delete appear on the left side (the trailing edge in RTL). Swiping left reveals the Read action.',
+    },
+  ]}
+/>
+
+### Tools
+
+- **Accessibility Inspector** (Xcode › Open Developer Tool) shows a row's **Custom Actions**. If the list is empty, VoiceOver users can't reach the swipe actions.
+- **Android Studio Layout Inspector** and the **Accessibility Scanner** app show whether a row has accessibility actions; TalkBack's **Actions** menu is the real-world check.
+- **Settings for stress:** largest text size, a long language (German), an RTL language (Arabic), and **Reduce Motion** (the row should still open and close, just without the slide).
+- **Network log or <Term id="proxy-tool" />:** after Archive or Delete, check that **one** request goes to the server, for the **right** item ID. Then reopen the app to make sure the change was saved and not only hidden on screen.
+
+## Accessibility
+
+Swiping is a path-based gesture, so it's one of the hardest things to do for people with tremors, limited dexterity, or who can't see the screen. Check these:
+
+- **Screen readers:** with <Term id="screen-reader">VoiceOver or TalkBack</Term> on, a swipe moves focus, it never reaches the row. Every swipe action must be exposed as an **accessibility action**. On iOS, standard swipe actions do this automatically ("Actions available", then swipe up or down to choose). TalkBack lists them in its Actions menu.
+  <DevNote>Standard swipe actions are the ones in `List` and `UITableView`. Custom-built rows need `accessibilityCustomActions` (UIKit) or `.accessibilityAction` (SwiftUI). On Android, Compose uses `customActions` in semantics; Views use `ViewCompat.addAccessibilityAction`.</DevNote>
+- **A visible alternative:** <Term id="wcag" /> 2.5.1 Pointer Gestures (Level A) requires a single-pointer way without a path, such as a button in the detail view, a long-press menu or an **Edit** mode. Voice Control and Switch Control users rely on these.
+- **Clear labels:** icon-only action buttons need text labels for assistive tech ("Archive", not "button").
+- **Announce the result:** after Archive or Delete, the screen reader should hear "Chat archived" and focus should move to a sensible place (the next row), not jump to the top.
+- **<Term id="touch-target">Touch targets</Term>:** revealed buttons are at least 44×44 pt (iOS) / 48×48 dp (Android), and as tall as the row. On the web, WCAG 2.5.8 (AA) asks for at least 24×24 CSS px; 44×44 px (2.5.5, AAA) is the comfortable target.
+- **Keyboard (web):** every action is reachable with <kbd>Tab</kbd> and <kbd>Enter</kbd>. Hover-only buttons must also show on focus. See [Accessibility basics](/web/accessibility-basics).
+
+<Callout type="tip">
+In the swipe lab above, press <kbd>Tab</kbd> to move through the wishlist. When focus reaches a hidden action, the row opens to show it, and <kbd>Esc</kbd> closes it.
+</Callout>
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+<DevNote>Built in: SwiftUI `.swipeActions` (with `allowsFullSwipe`) and `.onDelete`, UIKit `UISwipeActionsConfiguration` (`performsFirstActionWithFullSwipe` is on by default). Edit mode: `EditButton`.</DevNote>
+
+- **Leading and trailing** actions, reveal buttons plus full swipe of the outermost action.
+- **Edit** mode gives red delete circles and multi-select: the standard alternative.
+- Standard rows expose swipe actions to VoiceOver for free; custom rows often don't.
+
+</Tab>
+<Tab>
+
+- No standard "reveal buttons" component in Material Design. Most apps use **swipe to dismiss** with one action per direction and a **snackbar Undo**.
+  <DevNote>Compose `SwipeToDismissBox`, RecyclerView `ItemTouchHelper`.</DevNote>
+- The common alternative is **selection mode**: long press or tap the avatar, then use the top app bar.
+- Watch for the system **Back gesture** from the screen edges colliding with row swipes.
+- Test TalkBack's Actions menu and **Switch Access**.
+
+</Tab>
+<Tab>
+
+- No native component: built by hand or with a library, so quality varies a lot.
+- Check that vertical scrolling still works on swipeable rows.
+  <DevNote>Swiping needs Pointer or Touch Events and `touch-action: pan-y` so vertical scrolling still works.</DevNote>
+- Mobile browsers use edge swipes for **Back / Forward**, which can clash with row swipes.
+- Always provide visible buttons or a menu for mouse, keyboard and assistive tech.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'In English, where do trailing swipe actions like Delete usually appear?',
+      options: ['On the left, after swiping right', 'On the right, after swiping left', 'At the top of the list', 'Only in edit mode'],
+      answer: 1,
+      explain: 'The trailing edge is the right in left-to-right languages. You swipe left (toward the leading edge) to reveal them. In RTL languages it mirrors.',
+    },
+    {
+      q: 'You delete the second chat, and the chat that moves into second place shows its buttons already open. What is the most likely cause?',
+      options: ['A network timeout', 'The open state is stored by row position instead of by item', 'The swipe threshold is too low', 'Dark mode is on'],
+      answer: 1,
+      explain: 'When rows move, "position 2" becomes a different item. Open state (and any per-row state) must belong to the item, not the position.',
+    },
+    {
+      q: 'Which is the best protection for deleting a saved bank card with a swipe?',
+      options: ['Nothing, swipes are deliberate', 'An Undo toast for 2 seconds', 'A confirmation that names the card', 'A haptic tick'],
+      answer: 2,
+      explain: 'Removing a saved card is hard to reverse, so a short confirmation is right. Undo fits frequent, easy-to-reverse actions like archiving.',
+    },
+    {
+      q: 'VoiceOver is on. How should a user archive a chat from the list?',
+      options: ['Swipe the row left with one finger', 'Focus the row, swipe down to the "Archive" action, double tap', 'Shake the phone', 'It is fine if they can\'t'],
+      answer: 1,
+      explain: 'With VoiceOver on, swipes move focus. Swipe actions must be exposed as accessibility custom actions, which VoiceOver offers with swipe up/down.',
+    },
+    {
+      q: 'Which is NOT expected behavior for a good swipe row?',
+      options: ['Scrolling closes the open row', 'Tapping an open row opens the item', 'Only one row is open at a time', 'Undo restores the item in place'],
+      answer: 1,
+      explain: 'Tapping an open row should only close it. Opening the item at the same time is a common bug.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Swipe actions are **shortcuts** on list rows: **trailing** (swipe left) for destructive actions, **leading** (swipe right) for positive ones, mirrored in RTL.
+- Know the three styles: **reveal buttons**, **full swipe** and **swipe to dismiss**, and the feedback each needs.
+- Test **state**: only one row open, rows close on scroll and tap, actions hit the **right item**, nothing inherits an open state after a delete.
+- Check that labels tell the truth and that destructive actions have **Undo or confirmation**.
+- Every swipe action needs an alternative: **edit mode, long-press menu or detail button**, plus **accessibility actions** for VoiceOver and TalkBack.
+
+</KeyTakeaways>

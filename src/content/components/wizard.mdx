@@ -1,0 +1,397 @@
+---
+title: Wizard / Stepper
+description: A long task split into steps with a progress indicator, like Contact › Shipping › Payment › Review. Learn when to use steps, linear vs non-linear flows, validation, Back, drafts and URLs per step, and the data-loss bugs testers find in checkouts and bookings.
+category: navigation
+aka: [Multi-step form, Step indicator, Progress stepper, Checkout steps]
+platforms: [ios, android, web]
+minutes: 35
+order: 7
+---
+
+import Anatomy from '@/components/demos/wizard/Anatomy';
+import VariantsGallery from '@/components/demos/wizard/VariantsGallery';
+import Playground from '@/components/demos/wizard/Playground';
+import { BuggyCheckout } from '@/components/demos/wizard/BuggyCheckout';
+
+You're booking a holiday apartment. Step 1, guests. Step 2, your address. Step 3, payment. You notice a typo in the address and press **Back**. The address form is empty. You type it all again, press **Continue**... and the payment step is empty too. Then the phone rings, you come back, refresh the page, and you're on step 1 with nothing filled in.
+
+A wizard turns one long, scary form into a few short ones. It also adds **navigation and memory**: which step am I on, what did I already enter, where does Back go? Every one of those is a place where a user's work can quietly disappear.
+
+## What is it?
+
+A **wizard** (also called a multi-step form or stepper) splits a long task into an **ordered series of steps**, one screen or section at a time, with a **step indicator** showing where you are: *Contact › Shipping › Payment › Review*. You'll meet wizards in checkouts, bookings, sign-ups, loan and insurance applications, onboarding, and setup flows ("connect your smartwatch").
+
+<Callout type="info" title="Not the + / − stepper">
+"Stepper" means two different things. This page is about **steps in a process**. The small control with a minus button, a number and a plus button (quantity in a cart) is also called a <Term id="stepper" />; it has [its own page](/components/stepper).
+</Callout>
+
+### Anatomy
+
+<Anatomy />
+
+### Linear or non-linear?
+
+| Type | How it works | Good for |
+| --- | --- | --- |
+| **Linear** | Steps in a fixed order. You can't open step 3 before step 2 is valid. Completed steps can be revisited. | Checkouts, payments, anything where later steps depend on earlier ones |
+| **Non-linear** | Every step can be opened at any time, in any order. The final step checks that everything is complete. | Profiles, settings, long applications users fill in over several days |
+
+The indicator must make the rule visible: in a linear wizard, upcoming steps look (and are) not clickable; in a non-linear one, every step looks clickable and shows whether it's done.
+
+## Designs & variants
+
+Press **Next step** and **Back** under each example:
+
+<VariantsGallery client:visible />
+
+- **Material steppers:** Material Design (version 2) defined horizontal, vertical and mobile steppers. Material 3 no longer includes a stepper, but web libraries like MUI, Angular Material and Vuetify still ship one, so you'll see that look everywhere.
+- **No native stepper on iOS or Android.** Apps usually show one screen per step with a progress bar or "Step 2 of 4", and use the [navigation bar](/components/navigation-bar) back button.
+- **Optional steps** are labelled "Optional" and can be skipped. **Error states** mark a step with a red icon when it needs attention.
+- **Progress without labels** (dots or a bar) is common in onboarding. It shows *how far*, but not *what's next*.
+
+## When to use it
+
+- The form is **long** (more than one screen of fields) and falls naturally into **groups**: who, where, how to pay.
+- Later steps **depend** on earlier ones: shipping options depend on the address, payment options on the country.
+- Users benefit from a **review** before committing: orders, bookings, applications, transfers.
+- The task takes a while and users may **pause and come back**: then steps and drafts help a lot.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Five fields on one screen">
+
+A newsletter sign-up with email and name. One short form, one button.
+
+</Do>
+<Dont title="A wizard for a short form">
+
+Step 1: email. Step 2: name. Step 3: done. Three loading screens, three chances to drop off, and nothing gained.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Tabs for sibling sections">
+
+A product page with Overview, Specs and Reviews: the user reads them in any order and nothing is "completed". Use [tabs](/components/tabs).
+
+</Do>
+<Dont title="Steps for sections without an order">
+
+A "wizard" for account settings where every step is independent. Users are forced through screens they didn't want to change.
+
+</Dont>
+</Compare>
+
+## How good wizards behave
+
+### Validation happens per step
+
+Each step checks its own fields when the user presses **Continue**, with clear <Term id="error-message">error messages</Term> next to the fields, and doesn't move on until they're fixed. Don't wait until the last step to say "ZIP code is invalid" without saying where. Also don't validate the whole wizard on step 1 ("Payment method is required" before the user has seen payment). See [text field](/components/text-field) for field-level <Term id="input-validation" />.
+
+### Back keeps everything
+
+**Back** goes to the previous step **with all its data still there**. That includes choices like radio buttons and checkboxes, not just text. Going back and forward several times must never lose, duplicate or reset anything. This is <Term id="state-persistence" />, and it's the first thing to test in any wizard.
+
+### Progress is saved
+
+Users get interrupted: a phone call, a lost connection, a closed tab. Good wizards save a **draft** (in the browser, on the server, or both) so a refresh or a return visit lands on the **same step with the same data**, sometimes with a message like "Welcome back, you were on step 3". Ask how long a draft lives, whether it follows the user to another device, and what's **not** saved on purpose (card numbers and passwords usually aren't).
+
+On mobile, the same idea is <Term id="state-restoration" />: the OS can kill an app in the background, and the user should come back to the same step.
+
+### Every step has an address (web)
+
+On the web, each step should change the URL: `/checkout/shipping`, `/checkout/payment`. Then the **browser Back button** goes to the previous step (not out of the checkout), **Refresh** stays on the step, and support can send a <Term id="deep-link" /> to a specific step. Test what happens when you open a later step's URL **directly** in a linear wizard: you should land on the first incomplete step, not on a half-broken payment page.
+
+On Android, the **system Back** gesture or button should go to the previous step too. On iOS, the **swipe from the left edge** does the same in a navigation stack. If Back closes the whole flow, the user at least deserves a "Leave checkout? Your progress is saved" message.
+
+### Editing from the review page
+
+The review step shows everything with **Edit** links. Edit opens that step, and saving should **return to Review** ("Save and return to review"), keeping every other step as it was. Walking the user through all later steps again, or worse, clearing them, is a common bug. One exception: if the change really affects later steps (a new country changes the shipping options), the wizard should **say so** and ask only for what changed.
+
+### Errors send the user to the right step
+
+When the server rejects the order at the end (address can't be delivered, card declined), the user should land **on the step that needs fixing**, with the error shown on the field, and their other data intact. A generic "Something went wrong" on the review page, or a restart from step 1, are both bugs.
+
+### The indicator never lies
+
+The highlighted step, the "Step 2 of 4" text, the page title and the form on screen must always agree: after Continue, Back, browser Back, Edit, refresh and deep links.
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Back loses data** | The previous step's fields are empty after going back | High |
+| 2 | **Browser/system Back leaves the flow** | One Back press and you're out of the checkout | High |
+| 3 | **Indicator out of sync** | "Step 3" is highlighted while step 2 is shown | Medium |
+| 4 | **Skipping required steps** | Clicking the indicator opens Payment without a valid address | High |
+| 5 | **Edit from Review wipes later steps** | After editing Shipping, Payment is empty again | Medium–High |
+| 6 | **No draft** | Refresh or app restart goes back to step 1, empty | Medium–High |
+| 7 | **Errors on the wrong step** | Server error shows on Review, the field to fix isn't highlighted | Medium |
+| 8 | **Double submit** | Pressing Place order twice creates two orders | Critical |
+| 9 | **Stale later steps** | Changing the country keeps a shipping method that's no longer available | Medium |
+| 10 | **Indicator doesn't fit** | Labels overlap or overflow on a 360 px screen | Low–Medium |
+
+<Callout type="tip" title="The back-and-forth test">
+Fill every step with **distinctive** data (not "test"), then go Back to step 1 and forward to Review using the in-app Back, the browser or system Back, the indicator and Edit links. Then refresh. Every value you typed must still be there, exactly once.
+</Callout>
+
+## Stress-test it
+
+A correct checkout wizard. Use **Fill this step with test data** to move fast. Try the browser **Back**, **Forward** and **Reload** buttons on every step, switch between **Linear** and **Non-linear**, and set the **Server answer** to *Bad ZIP* or *Declined* before you press **Place order**. Switch **Layout** to *Phone* to see a compact indicator, and watch what a screen reader hears.
+
+<Playground client:visible />
+
+## Find the bug
+
+This checkout has **six bugs**. The ticket's acceptance criteria are in the panel below it. Explore like a tester:
+
+- Fill the steps and go all the way to **Review**. Then go **Back** step by step.
+- Use the browser **Back** and **Forward** buttons on step 2 or 3.
+- On step 1, click **Payment** in the indicator.
+- On Review, press **Edit** next to *Contact* or *Shipping*, then continue.
+- On step 3, press **Reload**.
+
+<BugHunt
+  title="Checkout wizard"
+  bugs={[
+    {
+      title: 'Back clears the previous step',
+      hint: 'Fill Shipping, continue to Payment, then press the Back button under the form.',
+      detail: 'The Shipping form comes back <strong>empty</strong>: street, city and ZIP are gone, and the delivery speed is reset to Standard. The same happens from every step. Back must return to the previous step with everything the user entered.',
+    },
+    {
+      title: 'Browser Back leaves the whole checkout',
+      hint: 'On step 2 or 3, press the browser Back button. Then press Forward.',
+      detail: 'The address bar always says <code>/checkout</code>, so the browser history has only one entry for the whole wizard. Browser Back goes straight to the cart, and Forward starts the checkout again from step 1 with empty fields. Expected: each step has its own URL (<code>/checkout/shipping</code>) and browser Back goes to the previous step.',
+    },
+    {
+      title: 'The indicator shows the wrong step',
+      hint: 'Go to Payment, then press Back. Compare the indicator and the text above it with the form.',
+      detail: 'The indicator and the “Step 3 of 4: Payment” text show the <strong>furthest</strong> step reached, not the current one. After going back, the Shipping form is shown with Payment highlighted. It also happens after Edit on Review. Screen reader users get the wrong position too.',
+    },
+    {
+      title: 'You can jump to Payment without completing Shipping',
+      hint: 'On step 1, click Payment or Review in the indicator.',
+      detail: 'Every step in the indicator is clickable, even ones not reached yet. You can open Payment and Review with no address and even <strong>place an order with no shipping address</strong> (look at the confirmation and the POST in the Network log). The ticket says steps are completed in order; upcoming steps must not be clickable, and Place order must re-check every step.',
+    },
+    {
+      title: 'Editing from Review wipes the later steps',
+      hint: 'Complete all steps. On Review, press Edit next to Shipping, then Continue.',
+      detail: 'After saving Shipping, you land on Payment instead of Review, and the payment method you chose is <strong>gone</strong>. Edit Contact and both Shipping and Payment are cleared. Expected: “Save and return to review”, with every other step kept.',
+    },
+    {
+      title: 'Refresh restarts the checkout with nothing saved',
+      hint: 'Fill steps 1 and 2, then press Reload on step 3.',
+      detail: 'The checkout restarts on step 1 with all fields empty. No draft is saved, and the step isn’t in the URL either. Users who refresh, lose the connection or come back later must type everything again, and many won’t. Expected: the same step with the same data.',
+    },
+  ]}
+>
+  <BuggyCheckout client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Checkout: Back from Payment clears the Shipping step
+
+**Steps:** 1. Add any item and open checkout. 2. Complete Contact. 3. On Shipping enter "1200 Lakeview Avenue", "Portland", "97205", choose Express, Continue. 4. On Payment press **Back**.
+
+**Expected:** The Shipping step shows the address and Express delivery entered in step 3.
+**Actual:** All Shipping fields are empty and delivery is reset to Standard. Same behavior going back from Review to Payment (payment method cleared).
+
+**Severity:** High (users must re-enter data, likely checkout drop-off) · **Reproducible:** 10/10 · **Environment:** Chrome 141, staging
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Wizard test checklist"
+  storageKey="wizard"
+  items={[
+    'Each step validates its own fields on Continue, with errors next to the right fields',
+    'In-app Back keeps every value on every step (text, radios, checkboxes, dropdowns)',
+    'Browser Back (web) or system Back / swipe back (mobile) goes to the previous step, not out of the flow',
+    'Each step has its own URL; Refresh and Forward keep the step; a direct link to a later step lands on the first incomplete step',
+    'The indicator, "Step X of Y" text and page title always match the step on screen',
+    'Linear: upcoming steps cannot be opened from the indicator; completed steps can',
+    'Edit from Review returns to Review and keeps all other steps',
+    'Changing an earlier answer that affects later steps (country, date) updates or re-asks only what changed',
+    'A draft survives refresh, closing the tab or the app being killed, and sensitive data is not stored in it',
+    'Server errors at the end send the user to the right step with the error on the field',
+    'Place order / Submit cannot be triggered twice',
+    'Indicator fits at 360 px (compact version or wrapping), labels are not cut off in a confusing way',
+    'Screen reader hears "Step 2 of 4: Shipping" on each step; focus moves to the step heading',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-WIZ-001',
+      title: 'Back keeps the previous step\'s data',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Cart with 2 items'],
+      steps: ['Complete Contact and Shipping (Express)', 'On Payment, press Back', 'Press Back again'],
+      data: 'Street: 1200 Lakeview Avenue, City: Portland, ZIP: 97205',
+      expected: 'Shipping shows the same address and Express; Contact shows the same email and phone.',
+    },
+    {
+      id: 'TC-WIZ-002',
+      title: 'Browser Back moves between steps',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Complete Contact and Shipping', 'On Payment, press the browser Back button', 'Press browser Forward'],
+      expected: 'Back opens /checkout/shipping with the data kept; Forward returns to /checkout/payment. The user never leaves the checkout.',
+    },
+    {
+      id: 'TC-WIZ-003',
+      title: 'Cannot skip a required step',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Open checkout (Contact step)', 'Click Payment and Review in the indicator', 'Open /checkout/payment directly in the address bar'],
+      expected: 'Payment and Review are not clickable; the direct URL redirects to the first incomplete step.',
+    },
+    {
+      id: 'TC-WIZ-004',
+      title: 'Edit from Review returns to Review',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['All steps completed, on Review'],
+      steps: ['Press Edit next to Shipping', 'Change the street', 'Press Save and return to review'],
+      expected: 'Review shows the new street; Contact and Payment are unchanged.',
+    },
+    {
+      id: 'TC-WIZ-005',
+      title: 'Draft survives a refresh',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Complete Contact and Shipping', 'On Payment, refresh the page', 'Close the tab, reopen the shop and go to checkout'],
+      expected: 'Both times the checkout opens on Payment with Contact and Shipping filled in.',
+    },
+    {
+      id: 'TC-WIZ-006',
+      title: 'Declined payment returns to the Payment step',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Test card that is always declined'],
+      steps: ['Complete all steps with the declining test card', 'Press Place order'],
+      expected: 'The Payment step opens with "Your card was declined" next to the payment method. Other steps keep their data; no order is created.',
+    },
+    {
+      id: 'TC-WIZ-007',
+      title: 'Step announced to screen readers',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Turn on VoiceOver or TalkBack', 'Complete step 1 and continue'],
+      expected: 'The screen reader announces "Step 2 of 4: Shipping" (or reads the step heading, which has focus).',
+    },
+  ]}
+/>
+
+### Tools
+
+- **The address bar and DevTools › Application** (see [DevTools for testers](/web/devtools-for-testers) and [cookies, sessions and storage](/web/cookies-sessions-and-storage)): watch the URL change per step, and find the draft in Local Storage, Session Storage or a server request. Check no card number or CVC is stored there.
+- **DevTools › Network:** see when each step is saved, and that Place order sends **one** request even if you double-click.
+- **Android:** *Developer options › Don't keep activities* to test the draft after the OS kills the app; test the system Back gesture on every step.
+- **iOS:** swipe back from the left edge on every step; background the app for a while and return.
+- **Screen readers:** VoiceOver, TalkBack or NVDA to hear the step changes.
+
+## Accessibility
+
+- **Announce the step.** When a new step opens, move focus to its heading ("Step 2 of 4: Shipping") or announce it in a live region. Otherwise a <Term id="screen-reader" /> user doesn't know anything changed after pressing Continue.
+- **Mark the current step.** Say each step's state in text ("Contact, completed"). A check mark or color alone is not enough (WCAG 1.4.1 Use of Color, Level A).
+  <DevNote>In the indicator use a list, with `aria-current="step"` on the current one.</DevNote>
+- **Errors.** Link error messages to their fields, move focus to the first invalid field or an error summary, and don't rely on red alone. See <Term id="aria" /> and [text field](/components/text-field).
+  <DevNote>Errors are linked with `aria-describedby`.</DevNote>
+- **<Term id="keyboard-navigation">Keyboard</Term>.** Every field, the indicator links and Back / Continue reachable with <kbd>Tab</kbd> in a logical <Term id="focus-order" />. <kbd>Enter</kbd> in a field shouldn't accidentally submit the whole order.
+- **Time limits.** If the wizard times out (common in banking and ticket sales), warn the user and let them extend it (WCAG 2.2.1 Timing Adjustable, Level A).
+- **Don't make them type it twice.** WCAG 3.3.7 Redundant Entry (Level A) asks that information already entered in the same process is filled in or selectable, for example "Billing address same as shipping". A Back button that clears fields fails users here too.
+- **<Term id="touch-target">Touch targets</Term>.** At least 44×44 pt on iOS and 48×48 dp on Android. On the web, WCAG 2.5.8 (AA) asks for at least 24×24 CSS px; 44×44 px (2.5.5, AAA) is the comfortable target. Small step circles in the indicator are a typical failure.
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- No stepper component: each step is usually a screen pushed onto a **navigation stack**, with "Step 2 of 4" or a progress bar. The back button and the **left-edge swipe** must go to the previous step with data kept.
+- A modal flow (sheet) may have **Cancel** instead of Back: does it ask "Discard your changes?" before throwing away a half-filled booking?
+- Background the app on step 3 and come back later, and test **Dynamic Type** at the largest size: does the indicator still fit?
+
+</Tab>
+<Tab>
+
+- No native stepper either: steps are usually screens or fragments. The **system Back** gesture/button must go to the previous step; if it closes the flow, it should confirm first.
+- Test **rotation** and **process death** (*Don't keep activities*): same step, same data afterwards.
+- Check the **keyboard** (IME) doesn't cover the Continue button on small screens, and that **predictive back** shows the previous step, not the screen before the wizard.
+
+</Tab>
+<Tab>
+
+- Each step should have its own **URL**: test Back, Forward, Refresh, bookmarks and opening a later step directly.
+- Test the **draft**: refresh, close the tab, open the site in a second tab (do the two tabs fight?), log in on another device.
+- Check the **responsive** layout: at 360 px the horizontal indicator should switch to a compact or vertical version.
+- **Double submit**: double-click Place order and check only one order is created.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A user on step 3 of a checkout presses Back. What should they see?',
+      options: ['Step 2, empty, so they can check it', 'Step 2 with everything they entered', 'Step 1', 'The cart'],
+      answer: 1,
+      explain: 'Back goes to the previous step and keeps all its data. Clearing it forces users to retype and is a classic wizard bug.',
+    },
+    {
+      q: 'On a web checkout, the browser Back button on the Payment step takes the user to the cart. What is the most likely cause?',
+      options: ['The steps don\'t have their own URLs', 'The cart is cached', 'The payment provider is slow', 'Correct behavior'],
+      answer: 0,
+      explain: 'If the URL stays /checkout for every step, the browser history has one entry for the whole wizard, so Back leaves it.',
+    },
+    {
+      q: 'In a linear wizard, the user is on step 1. What should happen when they click "Payment" (step 3) in the indicator?',
+      options: ['Open Payment', 'Nothing: upcoming steps are not clickable', 'Show Review', 'Reset the form'],
+      answer: 1,
+      explain: 'In a linear wizard, steps must be completed in order. Only completed steps (and the current one) can be opened.',
+    },
+    {
+      q: 'The user presses Edit next to Shipping on the Review page and saves. Where should they land?',
+      options: ['On Payment, with an empty form', 'Back on Review, with everything else kept', 'On step 1', 'On the order confirmation'],
+      answer: 1,
+      explain: 'Edit is a detour: open the step, save, return to Review. Only data that the change really affects should be asked again.',
+    },
+    {
+      q: 'Which is NOT the +/− stepper from the component library?',
+      options: ['A quantity control in a cart', 'A step indicator: Contact › Shipping › Payment › Review', 'A "Guests: − 2 +" control in a booking'],
+      answer: 1,
+      explain: 'Both share the name "stepper". The step indicator belongs to a wizard (steps in a process); the +/− control changes a number.',
+    },
+    {
+      q: 'How should a screen reader user learn that the next step has opened?',
+      options: ['A color change in the indicator', 'Focus moves to the step heading, e.g. "Step 2 of 4: Shipping"', 'A sound effect', 'They have to scroll up and look'],
+      answer: 1,
+      explain: 'Moving focus to the heading (or using a live region) announces the new step. Color and visual changes are not announced.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A wizard splits a long task into **ordered steps** with an indicator. It is not the **+/− stepper**.
+- Use it for long forms with natural groups and dependencies; not for short forms or independent sections (use tabs).
+- **Back keeps data**, always. Test in-app Back, browser or system Back, the indicator and Edit links.
+- On the web, every step has a **URL**; a **draft** lets refresh and return visits continue where the user stopped.
+- **Linear** wizards don't let users skip ahead; **Edit from Review** returns to Review; **server errors** open the right step.
+- The **indicator never lies**, and each new step is **announced** to screen readers ("Step 2 of 4: Shipping").
+
+</KeyTakeaways>

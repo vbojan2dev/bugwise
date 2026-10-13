@@ -1,0 +1,46 @@
+teaser: "A price slider from €0 to €249 in €10 steps. Can you guess which price nobody will ever be able to pick?"
+cards:
+  - type: flip
+    front: "Continuous vs discrete slider?"
+    back: "Continuous allows any value (volume, brightness). Discrete snaps to steps like 1 km or €10, often with tick marks."
+  - type: thisorthat
+    prompt: "A sign-up form needs the user's exact age, 18 to 99."
+    left: "Slider"
+    right: "Number field"
+    answer: right
+    explain: "82 values on a short track means many tries to hit exactly 34. Sliders suit rough values; exact values need a text field."
+  - type: spotbug
+    screen: ["Price  €0 – €240", "[●━━━━━━━━━━━━━━━━●  ]", "Limits: €0 … €249", "Showing 11 of 12"]
+    bug: "The maximum price can't be reached."
+    explain: "249 isn't a multiple of the €10 step, so the thumb stops at €240 and the €249 product disappears. Always drag to both ends."
+  - type: quiz
+    q: "A rating slider with 0.1 steps shows \"3.5000000000000004\". What's the cause?"
+    options: ["A slow network", "Unrounded floating-point math", "A localization bug"]
+    answer: 1
+    explain: "Computers can't store 0.1 exactly. Values must be rounded to the step's decimals before showing, sending or comparing them."
+  - type: truefalse
+    statement: "In a range slider, the minimum thumb should be able to pass the maximum thumb."
+    answer: false
+    explain: "Crossed thumbs give \"€200 – €90\" and an empty list. The thumbs should stop at each other (or swap)."
+  - type: thisorthat
+    prompt: "A price filter slider calls the server. When should it send the request?"
+    left: "When the user lets go"
+    right: "On every movement"
+    answer: left
+    explain: "One drag fires dozens of change events. Applying on release (or debounced) avoids a flood of requests and a flickering list."
+  - type: quiz
+    q: "Which keys should move a focused web slider?"
+    options: ["Only Tab", "Enter and Space only", "Arrows, Page Up/Down, Home, End"]
+    answer: 2
+    explain: "Arrows change one step, Page Up/Down a bigger step, Home and End jump to min and max. That's the ARIA slider pattern."
+  - type: spotbug
+    screen: ["VoiceOver:", "\"Minimum price, 40, adjustable\""]
+    question: "What's missing for screen reader users?"
+    bug: "The value has no unit: should be €40."
+    explain: "A bare number is ambiguous. aria-valuetext (or the platform's accessibility value) should say \"€40\", \"35 %\" or \"1 minute 24 seconds\"."
+  - type: flip
+    front: "How big should a slider thumb's touch area be?"
+    back: "At least 44×44 pt on iOS and 48×48 dp on Android, even if the visible thumb is smaller."
+  - type: tip
+    title: "Always drag to both ends"
+    text: "Drag every thumb fully left and right, slowly and quickly, and read the label. Boundary bugs in sliders hide exactly at the ends."

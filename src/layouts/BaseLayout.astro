@@ -1,0 +1,109 @@
+---
+import { metaDescription } from '@/lib/seo';
+// Preloading the main fonts avoids a layout shift when they replace the fallback font.
+import interFont from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
+import monoFont from '@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2?url';
+import '@/styles/global.css';
+import Header from '@/components/layout/Header.astro';
+import Footer from '@/components/layout/Footer.astro';
+import Search from '@/components/layout/Search.astro';
+import ProgressMarks from '@/components/layout/ProgressMarks.astro';
+import { site } from '@/data/site';
+import { getNav } from '@/lib/content';
+import { href } from '@/lib/url';
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** Extra class for <main>. */
+  mainClass?: string;
+  /** Full-height app-like page without the footer. */
+  bare?: boolean;
+  /** Keep the page out of search results (e.g. the newsletter thank-you page). */
+  noindex?: boolean;
+  /** Structured data (schema.org) for this page. */
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+}
+
+const { title, description: rawDescription = site.description, mainClass, bare = false, noindex = false, jsonLd } = Astro.props;
+const description = metaDescription(rawDescription);
+const ld = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
+const fullTitle = title ? `${title} · ${site.name}` : `${site.name} · ${site.tagline}`;
+const nav = await getNav();
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = new URL(href('/og-default.png'), Astro.site);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href={href('/favicon.svg')} />
+    <link rel="icon" type="image/png" sizes="32x32" href={href('/favicon-32.png')} />
+    <link rel="apple-touch-icon" href={href('/apple-touch-icon.png')} />
+    <link rel="manifest" href={href('/manifest.webmanifest')} />
+    <link rel="preload" href={interFont} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={monoFont} as="font" type="font/woff2" crossorigin />
+    <meta name="apple-mobile-web-app-title" content={site.name} />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="sitemap" href={href('/sitemap-index.xml')} />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Bugwise: learn manual QA testing for mobile apps and websites" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#5b4bff" />
+    {ld.map((d) => <script type="application/ld+json" is:inline set:html={JSON.stringify(d).replace(/</g, '\\u003c')} />)}
+    {
+      import.meta.env.PROD && (
+        <script is:inline define:vars={{ swUrl: href('/sw.js'), swScope: href('/') }}>
+          // PWA: register the service worker, and keep the install prompt for the "Install the app" button.
+          addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            window.__bwInstallPrompt = e;
+            dispatchEvent(new Event('bw-installable'));
+          });
+          if ('serviceWorker' in navigator) {
+            addEventListener('load', () => navigator.serviceWorker.register(swUrl, { scope: swScope }).catch(() => {}));
+          }
+        </script>
+      )
+    }
+    <script is:inline>
+      (() => {
+        let theme;
+        try {
+          theme = localStorage.getItem('theme');
+        } catch {}
+        if (!theme) theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = theme;
+        try {
+          const mode = localStorage.getItem('lesson-mode');
+          if (mode) document.documentElement.dataset.lessonMode = mode;
+        } catch {}
+      })();
+    </script>
+  </head>
+  <body class="flex min-h-dvh flex-col">
+    <a href="#main" class="sr-only z-[60] rounded-lg bg-brand px-3 py-2 text-brand-fg focus:not-sr-only focus:fixed focus:top-3 focus:left-3">
+      Skip to content
+    </a>
+    <Header nav={nav} />
+    <main id="main" class:list={['flex-1', mainClass]}>
+      <slot />
+    </main>
+    {!bare && <Footer />}
+    <Search />
+    <ProgressMarks />
+  </body>
+</html>

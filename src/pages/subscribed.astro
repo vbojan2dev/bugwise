@@ -1,0 +1,42 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/ui/Icon.astro';
+import { href } from '@/lib/url';
+
+const next = [
+  { title: 'Start with the fundamentals', text: 'What testing is and the words every tester uses.', href: '/fundamentals', icon: 'graduation-cap' },
+  { title: 'Practice interview questions', text: 'Model answers and flashcards, from junior to senior.', href: '/interview', icon: 'messages-square' },
+  { title: 'Try the capstone', text: 'Test a whole app release and earn a certificate.', href: '/capstone', icon: 'flag' },
+];
+---
+
+<BaseLayout title="You're subscribed" description="Thanks for confirming your Bugwise newsletter subscription." noindex>
+  <section class="container-page py-20 sm:py-28">
+    <div class="mx-auto max-w-2xl text-center">
+      <span class="mx-auto grid size-14 place-items-center rounded-2xl bg-ok-soft text-ok">
+        <Icon name="mail-check" size={26} />
+      </span>
+      <h1 class="mt-6 text-3xl font-bold tracking-tight sm:text-4xl">You're subscribed!</h1>
+      <p class="mt-4 text-lg text-muted">
+        Thanks for confirming. We'll email you when something new is added: new lessons, interview questions and, when it's ready, the Automation
+        track. You can unsubscribe from any email.
+      </p>
+    </div>
+    <ul class="mx-auto mt-12 grid max-w-4xl gap-4 sm:grid-cols-3">
+      {
+        next.map((n) => (
+          <li>
+            <a href={href(n.href)} class="group card flex h-full flex-col p-6 transition-all hover:-translate-y-1 hover:shadow-soft">
+              <span class="grid size-10 place-items-center rounded-xl bg-brand-soft text-brand">
+                <Icon name={n.icon} size={19} />
+              </span>
+              <h2 class="mt-4 font-semibold">{n.title}</h2>
+              <p class="mt-1 flex-1 text-sm text-muted">{n.text}</p>
+              <span class="mt-4 text-sm font-medium text-brand">Go →</span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+</BaseLayout>

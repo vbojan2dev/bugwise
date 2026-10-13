@@ -1,0 +1,402 @@
+---
+title: Toggle Switch
+description: A two-state control that turns a setting on or off immediately. Learn when to use it instead of a checkbox, how it saves to the server, and how testers catch switches that lie.
+category: input
+aka: [Switch, Toggle, On/off switch]
+platforms: [ios, android, web]
+minutes: 30
+order: 4
+---
+
+import Anatomy from '@/components/demos/toggle-switch/Anatomy';
+import VariantsGallery from '@/components/demos/toggle-switch/VariantsGallery';
+import SavePlayground from '@/components/demos/toggle-switch/SavePlayground';
+import { SwitchRows, SignupForm, Units } from '@/components/demos/toggle-switch/Examples';
+import { BuggySettingsApp } from '@/components/demos/toggle-switch/BuggySettingsApp';
+
+Open Settings on any phone and you'll see a column of little pills: **Wi-Fi**, **Bluetooth**, **Airplane Mode**. Flip one and something happens right away. That's a <Term id="toggle-switch">toggle switch</Term>.
+
+A switch has only two states, so what could go wrong? Quite a lot: the switch says "on" while the server says "off", the setting is forgotten after a restart, or the label is so confusing that nobody knows what "on" means. Let's learn to catch all of that.
+
+## What is a toggle switch?
+
+A toggle switch is a control with **exactly two states, on and off**, that **takes effect immediately**. There's no Save button: flipping the switch *is* the action. It mimics a physical light switch.
+
+You'll see it used for:
+
+- **Device and app settings**: *Dark theme*, *Wi-Fi*, *Face ID for payments*.
+- **Notifications and privacy**: *Order updates*, *Share precise location*, *Personalized ads*.
+- **Turning a feature on or off in place**: *Show prices with VAT*, *Auto-play videos*.
+
+### Anatomy
+
+<Anatomy />
+
+### Toggle vs checkbox vs segmented control
+
+These three are mixed up all the time. The key question is: **does the change happen immediately, or after the user presses a button?**
+
+| Component | States | When it takes effect | Typical use |
+| --- | --- | --- | --- |
+| **Toggle switch** | On / off | **Immediately** | Settings: Dark theme, Notifications |
+| **[Checkbox](/components/checkbox)** | Checked / unchecked (or mixed) | **After Submit / Save** | Forms: "I agree to the terms", picking several items |
+| **[Segmented control](/components/segmented-control)** | One of 2–5 named options | Immediately | Two options that aren't on/off: km / miles, List / Map |
+| **[Radio buttons](/components/radio-button)** | One of several | Usually after Submit | Forms: choose a delivery option |
+| **Button** | No lasting state | When tapped | Actions: Save, Pay, Delete |
+
+<Callout type="dev" title="Platform names">
+Apple and Google both call it a **switch** (`UISwitch`, SwiftUI `Toggle`, Material `Switch`). Designers and web libraries often say **toggle**. On the web it's usually a checkbox or button styled to look like a switch, with `role="switch"`.
+</Callout>
+
+## Designs & variants
+
+<VariantsGallery client:visible />
+
+<Callout type="tip" title="Label tapping is a platform difference">
+In the iOS Settings app, tapping a row's text does nothing; only the switch reacts. On Android, Material list rows with a switch are usually tappable across the whole row. On the web, clicking the `<label>` should toggle the switch. Know which behavior your app is supposed to follow, and test it.
+</Callout>
+
+### When does the setting really save?
+
+Most switches change something on a server: your notification preferences, your privacy settings. That's where the nastiest bugs live. The UI can say one thing while the server stores another.
+
+<SavePlayground client:visible />
+
+There are two common patterns:
+
+- **Optimistic UI**: the switch flips instantly and the request is sent in the background. If the request fails, the switch must **roll back** and tell the user. This feels fast and is the usual choice.
+- **Pessimistic UI**: the switch shows progress and only flips after the server confirms. It's slower, but makes sense for important settings like *Two-factor authentication* or *Allow card payments abroad*.
+
+The bug is the third option nobody plans for: **optimistic without rollback**. The switch shows *on*, the server has *off*, and the user finds out only when they miss an important notification.
+
+## When to use it
+
+A toggle switch is the right choice when:
+
+- The setting has **two clear states** that can be described as on and off.
+- The change applies **immediately**, without a Save button.
+- The label names a **thing that is on or off**: *Dark theme*, *Order updates*.
+- The user might switch it back and forth, and both states are safe.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Instant setting">
+
+<div class="not-prose demo-screen my-3"><SwitchRows rows={[{ label: 'Dark theme', on: true }, { label: 'Order updates', sub: 'Rider location and arrival time', on: true }]} /></div>
+
+Flip it and the app changes right away. No Save button needed.
+
+</Do>
+<Dont title="Switches in a form with Submit">
+
+<div class="not-prose demo-screen my-3"><SignupForm useSwitch /></div>
+
+Did flipping the switch already do something, or only after "Create account"? Users can't tell. Use checkboxes in forms.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Checkboxes in a form">
+
+<div class="not-prose demo-screen my-3"><SignupForm /></div>
+
+Nothing happens until the user submits. That's what checkboxes communicate.
+
+</Do>
+<Dont title="Two options that aren't on/off">
+
+<div class="not-prose demo-screen my-3"><Units asSwitch /></div>
+
+If "Metric units" is off, is it miles? Feet? Name both options with a segmented control instead.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Positive, clear labels">
+
+<div class="not-prose demo-screen my-3"><SwitchRows rows={[{ label: 'Personalized ads', sub: 'Based on your order history', on: false }, { label: 'Email notifications', on: true }]} /></div>
+
+On means the thing is on. Off means it's off. No thinking required.
+
+</Do>
+<Dont title="Negative or double-negative labels">
+
+<div class="not-prose demo-screen my-3"><SwitchRows rows={[{ label: 'Turn off personalized ads', on: false }, { label: 'Disable no-reply emails', on: true }]} /></div>
+
+"Turn off personalized ads: off" means ads are *on*. Users have to solve a logic puzzle to understand their own settings.
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Tester mindset">
+Read every switch label out loud with "on" and "off" after it: *"Dark theme: on"* makes sense, *"Disable no-reply emails: off"* doesn't. If you need to think twice, report it as a usability issue.
+</Callout>
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Silent failure** | The switch flips, the request fails (500 or offline), and the switch stays flipped with no message | High |
+| 2 | **Not persisted** | The setting is back to its old value after restarting the app, logging out and in, or on another device | High |
+| 3 | **Out of sync** | The switch shows "on" but the feature behaves as "off" (e.g. notifications still arrive) | High |
+| 4 | **Race condition on fast toggling** | Quick on/off/on taps end in the wrong final state, because responses arrive out of order | Medium |
+| 5 | **Dependent switches not disabled** | Child options stay active while the parent switch ("Push notifications") is off | Medium |
+| 6 | **Label does nothing** | Tapping the label or row doesn't toggle, where the platform says it should (Android rows, web labels) | Low–Medium |
+| 7 | **Confusing label** | Negative or double-negative wording, so users don't know what "on" means | Medium |
+| 8 | **Wrong default** | Marketing or tracking switches default to "on" without consent (a legal risk under GDPR) | High |
+| 9 | **State shown only by color** | Users with color blindness can't tell on from off, especially in dark mode | Medium |
+| 10 | **Screen reader silence** | VoiceOver / TalkBack doesn't say "switch", "on" or "off", just the label | High (for affected users) |
+
+<Callout type="bug" title="Why switches lie">
+Most bugs above come from one thing: there are **two copies** of the setting, one on the screen and one on the server. Every time they can disagree, a tester should ask: what does the user see, what is stored, and what happens after a restart? Testing <Term id="state-persistence" /> means checking that the screen and the server agree after every possible interruption.
+</Callout>
+
+## Find the bug
+
+This Android settings screen of a food delivery app has **six bugs**. Explore it like a tester:
+
+- Flip every switch, then press **Restart app**. Did everything stick?
+- Turn on **Server errors** and flip switches again.
+- Tap the row text, not just the switch.
+- Turn off **Push notifications** and look at the switches below it.
+- Flip a switch on and off very quickly. Read every label carefully.
+
+<BugHunt
+  title="Settings screen"
+  bugs={[
+    {
+      title: 'Failed saves are silent and not rolled back',
+      hint: 'Turn on Server errors, flip a switch, and watch the network log.',
+      detail: 'The request returns <code>500</code>, but the switch stays in its new position and no message appears. After <strong>Restart app</strong> it jumps back. Expected: the switch rolls back to its previous state and a message like "Couldn’t update. Try again." is shown.',
+    },
+    {
+      title: 'Dark theme is forgotten after a restart',
+      hint: 'Turn on Dark theme, then restart the app.',
+      detail: 'Dark theme switches back to off. The network log shows that no request is sent for it, and it isn’t stored on the device either. Expected: the choice survives restarts (saved locally or on the server).',
+    },
+    {
+      title: 'Tapping the row text does nothing',
+      hint: 'Tap the words "Order updates" instead of the switch.',
+      detail: 'Only the small switch reacts. In Android settings lists the whole row is the touch target, so users expect the text to toggle the switch too. Expected: tapping anywhere on the row toggles it.',
+    },
+    {
+      title: 'Child switches stay active when notifications are off',
+      hint: 'Turn off Push notifications, then look at the two switches below.',
+      detail: 'Order updates and Offers still look enabled and can be changed, although no notifications will be sent. Expected: dependent switches become disabled (greyed out) or hidden while the parent is off.',
+    },
+    {
+      title: 'Quick on/off leaves Offers in the wrong state',
+      hint: 'Turn Offers & promotions on and immediately off again. Wait 2 seconds.',
+      detail: 'Your last tap was <strong>off</strong>, but after a moment the switch jumps back <strong>on</strong>. The slow <code>offers=true</code> response arrives after the fast <code>offers=false</code> response and overwrites it. This is a <em>race condition</em>. Expected: the final state always matches the last tap.',
+    },
+    {
+      title: 'Negative label: "Turn off personalized ads"',
+      hint: 'Read every label with "on" and "off" after it.',
+      detail: 'When the switch is <strong>on</strong>, ads are <strong>off</strong>. When it’s off, personalized ads are on. This double negative confuses users about their privacy. Expected: a positive label like "Personalized ads", where on means on.',
+    },
+  ]}
+>
+  <BuggySettingsApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Settings: switch stays flipped when saving fails (500), no error shown
+
+**Steps:** 1. Simulate a server error for `PATCH /api/settings` (proxy or test environment). 2. Open Settings. 3. Turn off **Share precise location**. 4. Restart the app.
+
+**Expected:** After the failed request, the switch returns to **on** and a message explains that the change wasn't saved.
+**Actual:** The switch stays **off** with no message. After restart it shows **on** again. The user believes location sharing is off when it isn't.
+
+**Severity:** High (privacy setting silently not applied) · **Reproducible:** 10/10 while the API returns 500
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Toggle switch test checklist"
+  storageKey="toggle-switch"
+  items={[
+    'Each switch shows the correct state on first load (matches the server)',
+    'Default values are correct, and privacy or marketing switches are off by default',
+    'Flipping a switch has an immediate, visible effect (no hidden Save button needed)',
+    'The setting is still correct after restarting the app, logging out and in, and on a second device',
+    'On a failed request the switch rolls back and an error message is shown',
+    'Offline: the app either queues the change clearly or rolls back with a message',
+    'Fast repeated taps end in the state of the last tap, on screen and on the server',
+    'Dependent switches are disabled or hidden when their parent is off',
+    'Tapping the label/row toggles the switch where the platform expects it (Android rows, web labels)',
+    'Labels are positive and clear: "on" means the named thing is on',
+    'On and off are distinguishable without color, in light mode, dark mode and high contrast',
+    'Touch target is at least 44×44 pt (iOS) / 48×48 dp (Android)',
+    'Screen reader announces label, "switch" and the on/off state, and Space toggles it on the web',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-SW-001',
+      title: 'Turning a setting off is saved and persists after restart',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['User is logged in', '"Order updates" is on'],
+      steps: ['Open Settings', 'Turn off "Order updates"', 'Force-close and reopen the app', 'Open Settings'],
+      expected: '"Order updates" is off. No order update notifications arrive for the next order.',
+    },
+    {
+      id: 'TC-SW-002',
+      title: 'Setting syncs to another device',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Same account logged in on phone A and phone B'],
+      steps: ['On phone A turn on "Offers & promotions"', 'On phone B open Settings (pull to refresh if available)'],
+      expected: '"Offers & promotions" is on on phone B.',
+    },
+    {
+      id: 'TC-SW-003',
+      title: 'Switch rolls back when the server returns an error',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['PATCH /api/settings returns 500 (mock or proxy rule)'],
+      steps: ['Open Settings', 'Turn off "Share precise location"'],
+      expected: 'The switch returns to on within a few seconds and an error message is shown. Restarting the app shows on.',
+    },
+    {
+      id: 'TC-SW-004',
+      title: 'Changing a setting while offline',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Airplane mode is on'],
+      steps: ['Open Settings', 'Turn on "Dark theme"', 'Turn off "Order updates"'],
+      expected: 'Local-only settings (Dark theme) apply. Server settings either roll back with an "You\'re offline" message or are clearly queued and saved when the connection returns.',
+    },
+    {
+      id: 'TC-SW-005',
+      title: 'Rapid toggling ends in the last selected state',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Network throttled to "Slow 3G"'],
+      steps: ['Tap "Offers & promotions" 5 times quickly (ending on off)', 'Wait 10 seconds', 'Restart the app'],
+      expected: 'The switch is off before and after restart. The last request sent has offers=false and the server stores false.',
+    },
+    {
+      id: 'TC-SW-006',
+      title: 'Child settings are disabled when the parent is off',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Open Settings', 'Turn off "Push notifications"'],
+      expected: '"Order updates" and "Offers & promotions" are greyed out and cannot be changed. Turning push back on restores their previous values.',
+    },
+    {
+      id: 'TC-SW-007',
+      title: 'Screen reader announces role and state',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['TalkBack (Android) or VoiceOver (iOS) is on'],
+      steps: ['Swipe to the "Dark theme" row', 'Double-tap to toggle'],
+      expected: 'Announces "Dark theme, switch, off", then "on" after double-tapping.',
+    },
+  ]}
+/>
+
+## Accessibility
+
+- **Role and state:** <Term id="screen-reader">Screen readers</Term> must announce the label, the role ("switch" or "toggle button") and the state ("on"/"off").
+  <DevNote>On the web use `role="switch"` with `aria-checked`, or a native `<input type="checkbox" role="switch">`.</DevNote>
+- **A real label:** the switch must be connected to its visible label, not just placed next to it. Otherwise VoiceOver says only "switch, on". For what?
+  <DevNote>`<label for>` or `aria-labelledby`.</DevNote>
+- **Not color alone:** the handle position already helps; Material's check/cross icons and iOS's optional on/off labels (Settings › Accessibility › Display & Text Size › On/Off Labels) help more. Check contrast of the track and handle: at least **3:1** against the background.
+- **<Term id="touch-target">Touch target</Term>:** at least 44×44 pt on iOS and 48×48 dp on Android. On the web, WCAG 2.5.8 (AA) asks for at least 24×24 CSS px; 44×44 px (2.5.5, AAA) is the comfortable target. A whole tappable row is even better.
+- **Keyboard (web):** <kbd>Tab</kbd> reaches the switch, <kbd>Space</kbd> toggles it, and the focus ring is visible.
+- **Announce failures:** if a save fails and the switch rolls back, announce the error message too, or screen reader users will never know.
+
+<Callout type="tip">
+Try the web switches in the gallery with your keyboard: press <kbd>Tab</kbd> to reach one, then <kbd>Space</kbd>. Click the label text too.
+</Callout>
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- Green track when on, grey when off. The color can be customized, so check contrast.
+  <DevNote>Native: `UISwitch` (UIKit) or `Toggle` (SwiftUI).</DevNote>
+- In grouped Settings-style lists, the switch sits on the **right**; tapping the row text usually does nothing.
+- Optional **On/Off Labels** accessibility setting shows I/O marks on the switch. Test with it on.
+- VoiceOver reads "Label, switch button, on". Double-tap toggles.
+
+</Tab>
+<Tab>
+
+- Material 3 switch: the handle grows when on, and can show **check / cross icons**. The whole list row is usually tappable.
+- Test with **TalkBack**, **font scale** and **display size**, plus dark theme (the colors change completely).
+- Watch for **process death**: Android may kill the app in the background. Coming back, are the switches still correct?
+- Older apps may still use Material 2 switches: a thin track with a larger round handle. Mixed styles on one screen are a visual bug.
+
+</Tab>
+<Tab>
+
+- No cross-browser HTML switch element, so quality varies. Inspect it in <Term id="devtools">DevTools</Term>.
+  <DevNote>It's built from a checkbox or a button with `role="switch"`. (Safari has started supporting a `switch` attribute on checkboxes, but other browsers don't yet.)</DevNote>
+- Check that clicking the **label** toggles it, that <kbd>Space</kbd> works, and that the focus ring is visible.
+- Use DevTools to throttle or block the settings request and check rollback and error messages.
+- Inside forms, ask: does this switch save immediately, or only when the form is submitted? If the answer is "on submit", it should probably be a checkbox.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A sign-up form has "I agree to the Terms" and a "Create account" button. Which control fits the agreement best?',
+      options: ['Toggle switch', 'Checkbox', 'Segmented control', 'Button'],
+      answer: 1,
+      explain: 'It only takes effect when the form is submitted. Checkboxes communicate "chosen now, applied on submit". Switches mean "applied immediately".',
+    },
+    {
+      q: 'You turn off "Order updates", the network log shows a 500 error, and the switch stays off. What is the bug?',
+      options: ['No bug, the switch shows what the user chose', 'Missing rollback and error message after a failed save', 'A localization bug', 'A touch target bug'],
+      answer: 1,
+      explain: 'The server still has "on". The switch should roll back and tell the user the change was not saved.',
+    },
+    {
+      q: 'Which label is clearest for a privacy switch?',
+      options: ['Turn off personalized ads', 'Disable no ad tracking', 'Personalized ads', 'Ads: don\'t hide'],
+      answer: 2,
+      explain: 'A positive noun phrase: on means personalized ads are on, off means they are off.',
+    },
+    {
+      q: 'What is the most reliable way to check that a switch setting was really saved?',
+      options: ['Look at the switch color', 'Restart the app (or check on a second device) and see if the setting is still the same', 'Tap it again', 'Take a screenshot'],
+      answer: 1,
+      explain: 'The screen can lie. Reloading from the server shows what was actually stored.',
+    },
+    {
+      q: 'A user wants to choose between kilometers and miles. What should the design use?',
+      options: ['A switch labeled "Metric units"', 'A segmented control with km / miles', 'Two separate switches', 'A FAB'],
+      answer: 1,
+      explain: 'Both options have names and neither is "off". A segmented control shows both choices clearly.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A toggle switch has **two states** and **takes effect immediately**. In forms that need Submit, use checkboxes.
+- If both options have names (km / miles), use a segmented control, not a switch.
+- Labels must be **positive**: on means the named thing is on.
+- The screen and the server are two copies of the setting. Test **failed saves (rollback + message)**, **restarts**, **second devices** and **fast toggling**.
+- Check **dependent switches**, **label/row tapping**, **color-independent state**, and **screen reader** announcements.
+
+</KeyTakeaways>

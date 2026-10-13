@@ -1,0 +1,22 @@
+---
+import CapstoneShell from '@/components/capstone/CapstoneShell.astro';
+import PlanForm from '@/components/capstone/PlanForm';
+import { href } from '@/lib/url';
+---
+
+<CapstoneShell
+  path="/capstone/plan"
+  phase="plan"
+  title="Write a one-page test plan"
+  description="Capstone phase 2: write a one-page risk-based test plan for the FoodDash 2.0 release, then compare it with a model plan and a self-check rubric."
+  lead="Sara asks: “Before you start clicking, send me a one-pager. What will you test, what won't you, what scares you most, and how will we know you're done?”"
+>
+  <div class="mb-8 grid max-w-4xl grid-cols-1 gap-4 text-sm leading-relaxed text-muted sm:grid-cols-3">
+    <p><strong class="text-fg">Keep it short.</strong> A plan nobody reads is worthless. Bullet points are fine.</p>
+    <p><strong class="text-fg">Think in risks.</strong> Where would a failure hurt users or the business most? That's where your time goes.</p>
+    <p>
+      <strong class="text-fg">Use the brief.</strong> Keep the <a class="text-brand underline" href={href('/capstone/brief')}>brief</a> open; the idea buttons only get you started.
+    </p>
+  </div>
+  <PlanForm client:load />
+</CapstoneShell>

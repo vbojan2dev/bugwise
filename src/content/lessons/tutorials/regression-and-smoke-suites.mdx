@@ -1,0 +1,423 @@
+---
+title: Regression and Smoke Suites
+description: Build a fast smoke suite that tells you if a build is testable and a regression suite that protects what already works, then learn to pick the right subset for each change, keep suites healthy and decide what to automate.
+order: 7
+level: intermediate
+minutes: { short: 13, long: 25 }
+platform: both
+tags: [regression, smoke testing, test suites, test management, release]
+---
+
+import SmokeSuiteBuilder from '@/components/demos/tutorial-workflow/SmokeSuiteBuilder';
+import ImpactAnalysis from '@/components/demos/tutorial-workflow/ImpactAnalysis';
+
+It's Tuesday, 9:40. A new <Term id="build" /> of the food delivery app **QuickBite 3.8.0** has just landed on <Term id="staging" />. Your lead posts in the team chat: *"Can you smoke it before stand-up? And we release Thursday, so plan the regression too. The payment SDK was updated in this one."*
+
+That message contains two very different jobs. The first takes **15 minutes** and answers one question: *is this build even worth testing?* The second takes **a day or two** and answers another: *did any of the new work break something that used to work?* Both are run from a ready-made list of tests called a <Term id="test-suite">suite</Term>, and building good suites is one of the most valuable things a tester does.
+
+## Two suites, two questions
+
+| | Smoke suite | Regression suite |
+| --- | --- | --- |
+| **Question** | Is this build testable at all? | Did the change break anything that worked before? |
+| **Size** | About 10-20 checks | Dozens to hundreds of checks |
+| **Time** | Minutes | Hours to days (less if automated) |
+| **Depth** | Wide and shallow: the main path only | Wide and deep: negative cases, edge cases, platforms |
+| **If it fails** | Reject the build, testing stops | Report bugs, decide if the release can go |
+
+<Callout type="example" title="Think of a restaurant kitchen">
+
+Before opening, the chef checks: gas on, fridge cold, fresh bread delivered. Five minutes. If the gas is off, nobody starts cooking: that's the **smoke check**. Once a week the kitchen also runs a deep inspection of every appliance, recipe and storage rule: that's the **regression run**. You need both, and you never confuse one for the other.
+
+</Callout>
+
+<Short>
+
+## The essentials
+
+### Smoke suite
+
+<Term id="smoke-testing">Smoke testing</Term> is a quick pass over the **critical user journeys** of a new build: the app starts, you can sign in, find a restaurant, add to cart, pay and see the order. 10-20 checks, a few minutes each, happy path only. If any of them fails, the build goes back to the developers and deeper testing waits. Running a big regression suite on a build where sign-in is broken just wastes everyone's day.
+
+<Callout type="note" title="Smoke or sanity?">
+
+Teams use "smoke" and <Term id="sanity-testing">"sanity"</Term> inconsistently. The most common meaning: smoke is broad and shallow on every new build; sanity is a narrow check of one area after a small fix. Ask what *your* team means.
+
+</Callout>
+
+### Regression suite
+
+<Term id="regression-testing">Regression testing</Term> re-runs existing tests to make sure new changes didn't break old features. It is not the same as <Term id="retesting" />, which checks that one specific bug is fixed. The suite is built from:
+
+- **Critical user journeys**: what customers do most and what earns money.
+- **Risk**: payments, personal data, anything legal or hard to undo.
+- **Bug history**: every serious bug that escaped once gets a test so it can't sneak back.
+- **Usage analytics**: the screens, devices and OS versions real users actually have.
+
+### Prioritize in tiers
+
+| Tier | What's in it | When it runs |
+| --- | --- | --- |
+| **P1** | Critical journeys and money paths | Every release, no exceptions |
+| **P2** | Important features, main negative cases | Most releases, or when the area changed |
+| **P3** | Rare paths, cosmetic checks | Before big releases, or when time allows |
+
+### Pick a subset for each change
+
+You rarely have time to run everything. Ask **"what did this change touch?"** That's impact analysis. A payment SDK update means the whole checkout and payment area (P1 to P3), a quick pass on things connected to it (promo codes, order creation), and the smoke suite on top. Unrelated areas like ratings can wait.
+
+### Keep the suites healthy
+
+Remove tests for features that no longer exist, update tests when the app changes, merge duplicates, and never ignore a <Term id="flaky-test" />: fix it or take it out until it's fixed. A suite nobody trusts is a suite nobody runs.
+
+Switch to **Detailed** for the full method: building each suite step by step, a worked smoke suite for QuickBite, impact analysis in depth, manual vs automated regression, how often to run what, and test management tools.
+
+</Short>
+
+<Long>
+
+## The smoke suite: is this build testable?
+
+<Term id="smoke-testing">Smoke testing</Term> gets its name from hardware: plug in a new circuit board, and if smoke comes out, there's no point testing further. In software, a smoke suite is a **short list of checks covering the critical user journeys** of the app, run on every new build before anything else.
+
+A good smoke suite is:
+
+- **Small**: around 10-20 checks. If it grows to 60, it's a mini regression suite.
+- **Fast**: 10-30 minutes manually, a few minutes automated.
+- **Wide and shallow**: it touches every critical journey once, on the happy path. No negative cases, no edge cases.
+- **Stable**: the same checks every time, so a failure means something.
+- **Decisive**: it ends with a clear yes or no. *"Build 409 smoke: passed, testing can start"* or *"Build 409 rejected: sign-in fails with error 500."*
+
+<Callout type="note" title="Smoke vs sanity: the honest answer">
+
+You'll hear both words used for the same thing. The most common usage: **smoke** is a broad, shallow check of a whole new build, and **<Term id="sanity-testing">sanity</Term>** is a narrow, quick check of one area after a small change or fix ("the promo code fix is in, let's sanity-check the promo screen"). Some teams swap them or only use one word. Ask your team, and use their words.
+
+</Callout>
+
+Smoke checks are also a common **<Term id="entry-criteria">entry criterion</Term>**: "testing of a build starts only after the smoke suite passes." That one rule saves teams huge amounts of wasted effort.
+
+## The regression suite: did we break what used to work?
+
+A **regression** is a feature that worked before and stops working after a change. It happens all the time, because code is connected in ways nobody fully sees: a developer changes how prices are rounded for a new currency, and suddenly promo codes give the wrong discount.
+
+<Term id="regression-testing">Regression testing</Term> means re-running existing tests after a change to catch these side effects. The **regression suite** is the collection of those tests, usually organized by feature area: Sign in, Address, Search, Cart, Checkout, Tracking, Profile and so on.
+
+<Callout type="info" title="Regression testing vs retesting">
+
+They're often confused in interviews. **<Term id="retesting">Retesting</Term>** checks that a **specific bug is fixed**: you run the exact steps from the bug report again. **Regression testing** checks that the fix (or any change) **didn't break anything else**. After a bug fix you usually do both.
+
+</Callout>
+
+## Where the tests come from
+
+Don't build a regression suite by writing a test for every button. Build it from four sources, in this order:
+
+<Steps>
+
+1. **Critical user journeys.** The end-to-end paths that matter most: for QuickBite, *open app → sign in → choose address → find restaurant → add to cart → pay → track order*. If any of these break, the business stops. Write these first; they are the backbone of both suites.
+2. **Risk.** Where would a bug hurt most? Money (payments, refunds, promo codes, prices), personal data (addresses, cards, passwords), legal duties (age checks for alcohol, consent), and anything hard to undo (canceling a paid order). See [severity vs priority](/fundamentals/severity-vs-priority) for how impact is judged.
+3. **Bug history.** Every serious bug that reached users, or nearly did, gets a regression test. If the cart badge once showed 0 after restarting the app, there's now a test for it. Areas that broke before tend to break again.
+4. **Usage analytics.** Ask the product team for real data: which screens are used most, which payment methods, which devices and OS versions, which languages. If 70% of orders use Apple Pay or Google Pay, those deserve P1 tests. If nobody uses the fax-receipt option, it's P3 at most.
+
+</Steps>
+
+## Prioritizing: P1, P2, P3
+
+A regression suite grows over time. Without tiers, you end up with "run everything" (impossible) or "run whatever we feel like" (risky). Most teams use three tiers:
+
+| Tier | What belongs here | QuickBite examples |
+| --- | --- | --- |
+| **P1: critical** | Critical journeys, money, data, escaped serious bugs | Pay with saved card · Declined card creates no order · Order appears in tracking |
+| **P2: important** | Main features and their main negative cases | Promo codes · Edit address · Search filters · Push notifications |
+| **P3: nice to have** | Rare paths, cosmetic and low-impact checks | Dark mode on Settings · Rate the courier · About screen |
+
+<Callout type="tip">
+
+Smoke checks are a **subset of P1**: the fastest happy-path check from each critical journey. If your smoke suite contains something that isn't P1, ask why it's there.
+
+</Callout>
+
+## Building a suite, step by step
+
+<Steps>
+
+1. **List the critical journeys.** Write them as short user goals: "sign in", "set delivery address", "find food", "build a cart", "pay", "track order". Ask the product owner whether you missed one.
+2. **Pick one fast happy-path check per journey for smoke.** The cheapest check that proves the journey works end to end. Aim for 10-20 checks and under 30 minutes.
+3. **Expand each area for regression.** Add negative cases, edge cases, other platforms and payment methods, accessibility basics. Reuse your existing <Term id="test-case">test cases</Term> (see [How to Write Test Cases](/tutorials/writing-test-cases)).
+4. **Add tests from bug history.** Go through the last few months of serious bugs and make sure each has a test.
+5. **Tag every test with a tier and an area.** For example *P1 · Checkout*. Tags make it easy to select subsets later.
+6. **Estimate time.** Note roughly how long each test takes. Then you can tell your lead "P1 + P2 for Checkout is about 3 hours" instead of guessing.
+7. **Review with the team.** Developers know which parts of the code are fragile; product knows what matters to customers. Ten minutes of review catches big gaps.
+
+</Steps>
+
+## Worked example: a smoke suite for QuickBite 3.8.0
+
+Here's a complete smoke suite for a food delivery app release. Nine checks, about 16 minutes, run on one Android and one iOS device on staging.
+
+| # | Check | Passes when | Min |
+| --- | --- | --- | --- |
+| S1 | Cold start | App opens to Home, no crash | 1 |
+| S2 | Sign in | Email + password lands on Home, signed in | 2 |
+| S3 | Choose saved address | Address shows in the header | 2 |
+| S4 | Restaurant list | Restaurants near the address appear | 1 |
+| S5 | Search | "pizza" returns pizza places | 2 |
+| S6 | Menu | A restaurant opens with items and prices | 1 |
+| S7 | Add to cart | Cart badge shows 1, cart shows the item | 2 |
+| S8 | Pay | Order placed with saved <Term id="test-card" /> | 3 |
+| S9 | Tracking | New order shows status "Preparing" | 2 |
+
+<Callout type="example" title="Why these and not others?">
+
+Each line touches a different critical journey once, with the cheapest possible check. Notice what's **missing**: Apple Pay, promo codes, declined cards, dark mode, German language. They all matter, but they belong in the regression suite. The smoke suite only has to answer "can we start testing?". And because the lead mentioned the payment SDK, you'd add **one temporary extra check** for this build only: *pay with Google Pay or Apple Pay*. Smoke suites can flex a little for a risky change.
+
+</Callout>
+
+The result goes in the team chat in one line:
+
+```text
+Smoke 3.8.0 (409), Pixel 8 / Android 15 + iPhone 15 / iOS 18, staging: 9/9 passed + Google Pay OK. Ready for testing.
+```
+
+or, on a bad day:
+
+```text
+Smoke 3.8.0 (409): FAILED at S8, Pay returns "Payment unavailable" on both devices (SHOP-161). Build rejected, regression on hold.
+```
+
+## Choosing a regression subset: impact analysis
+
+Before each release, you'll rarely run the full suite. Instead you choose a subset with **impact analysis**: working out which areas a change could affect. Ask:
+
+<Steps>
+
+1. **What changed?** Read the release notes, the tickets in the release and, if you can, the list of changed files or the pull request titles. Ask the developer: "what else uses this code?"
+2. **What does it touch directly?** That area gets its full P1 and P2 tests, sometimes P3 too.
+3. **What is connected to it?** Data flows: an address feeds the restaurant list, the order and the courier map. Those areas get a quick pass of their P1 tests.
+4. **What is risky no matter what?** Payment and sign-in P1 checks run in almost every release, because a silent break there is too expensive.
+5. **What can wait?** Areas with no connection to the change, covered by the smoke suite anyway.
+
+</Steps>
+
+| Change | Test fully | Quick pass |
+| --- | --- | --- |
+| Payment provider SDK updated | Checkout and payment (all methods, declined, 3-D Secure) | Promo codes, order creation |
+| Translation strings changed | Languages, text <Term id="truncation" /> on every screen | Checkout buttons, push texts |
+| New address <Term id="autocomplete" /> | Address screen | Restaurant list, order address, courier map |
+
+<Callout type="warning" title="'Small change' is not a test plan">
+
+"It's just a library update" and "only the texts changed" are famous last words. A library update can change behavior everywhere it's used, and a longer German word can push the **Pay** button off the screen. Impact analysis is about following the connections, not trusting the size of the change.
+
+</Callout>
+
+## Manual or automated regression?
+
+Regression suites are the classic candidate for automation: the same checks, over and over, on every release. But not everything is worth automating.
+
+| Worth automating | Better kept manual |
+| --- | --- |
+| Stable, repeated checks (sign in, add to cart, pay) | Features that change every sprint |
+| Many data combinations (prices, currencies, tax) | Look and feel, layout, animations |
+| API-level checks of the backend | One-off checks for a rare release |
+| Smoke suite on every build | Exploratory testing of new features |
+| Checks that are slow or boring for humans | Things that need real devices, cameras, real payments |
+
+<Callout type="info" title="How automation and manual testing fit together">
+
+Most teams follow the <Term id="test-pyramid" />: many fast unit tests, fewer API tests, and a small number of UI tests. Automated smoke and P1 regression run in <Term id="continuous-integration" /> on every build or nightly. Manual testers then spend their time on new features, risky areas, real devices and [exploratory testing](/tutorials/exploratory-testing), where humans find the bugs that scripts miss. As a manual tester, your well-written regression cases are often what automation engineers turn into scripts.
+
+New to pipelines and build numbers? See [Git and CI for Testers](/tutorials/git-and-ci-for-testers).
+
+</Callout>
+
+## How often to run each
+
+| What | When | Typical owner |
+| --- | --- | --- |
+| Smoke suite | Every new build that reaches QA | Automated in CI, or the tester on duty |
+| P1 regression | Nightly (automated) and on every <Term id="release-candidate" /> | Automation + QA |
+| Change-based subset | When a feature or fix lands | The tester of that area |
+| Full regression (P1-P3) | Before major releases, after big refactors | Whole QA team |
+| Sanity check | After a <Term id="hotfix" /> or small fix | Tester who verifies the fix |
+
+## Keeping suites healthy
+
+Suites rot. Features change, screens get redesigned, tests get copied. A rotten suite wastes time and, worse, gives false confidence. Keep it healthy with a few habits:
+
+- **Remove obsolete tests.** If the "Pay by invoice" option was removed, delete its tests (or archive them). Running tests for features that don't exist teaches people to ignore failures.
+- **Update tests right after a change.** When a story changes a flow, updating the affected regression tests is part of the story's work, not "later".
+- **Avoid duplication.** If three people wrote "sign in with email" three times, merge them into one. Duplicates cost time on every run and drift apart.
+- **Handle flaky tests.** A <Term id="flaky-test" /> passes and fails without any code change (timing, test data, network). Never just re-run until green. Investigate, fix the cause, and if that takes time, move it out of the suite into a "quarantine" list so it doesn't hide real failures.
+- **Review the suite every few releases.** Ask: which tests never fail and cost a lot? Which areas had escaped bugs but few tests? Rebalance.
+
+<Compare>
+<Do title="A healthy smoke check">
+
+**S8 · P1 · Checkout.** Place an order with the saved test card Visa 4242. **Passes when:** the confirmation screen shows an order number and the order appears in *Orders* with status "Preparing". *(3 min)*
+
+</Do>
+<Dont title="A check that doesn't belong">
+
+**Smoke 23.** Check all payment methods, promo codes and error messages work correctly on all devices.
+
+</Dont>
+</Compare>
+
+The bad one is vague, enormous and can't be finished in a smoke run. It's at least ten regression tests hiding in one line.
+
+## Tracking suites in a test management tool
+
+Small teams can live with a spreadsheet. As suites grow, most teams move to a **test management tool**, which stores test cases, groups them into suites, and records each **test run** (which tests ran on which build, by whom, with what result).
+
+- **TestRail** is a standalone tool that integrates with <Term id="jira" />.
+- **Xray** and **Zephyr** are apps that live inside Jira, so test cases and runs can be linked directly to stories and bugs (in Xray, each test is itself a Jira issue).
+
+Whatever the tool, the ideas are the same: tag tests with tier and area, create a run for each build or release, mark each test Passed / Failed / Blocked, link failures to bug tickets, and share the run report. That report is the backbone of a <Term id="test-summary-report" /> and lets you show <Term id="test-coverage" />: which requirements were tested and which weren't. See [Working with Jira](/tutorials/working-with-jira) for the Jira side.
+
+## Common mistakes
+
+<Callout type="bug" title="Watch out for these">
+
+- **A smoke suite that keeps growing.** Every incident adds "just one more check" until smoke takes two hours. Move extras to P1 regression.
+- **Running full regression on a build that failed smoke.** Reject the build first; you'll only have to run it again.
+- **"We changed X, so only test X."** Follow the connections: what uses X, what feeds into X.
+- **Never deleting tests.** Obsolete tests fail for no reason and teach people to ignore red.
+- **Re-running flaky tests until they pass.** That hides real bugs. Fix or quarantine.
+- **No tiers.** Without P1/P2/P3 you can't make a time-boxed plan or explain what was skipped.
+- **Keeping the subset decision in your head.** Write down what you ran and what you skipped, and why, so the release decision is informed.
+
+</Callout>
+
+## A template you can copy
+
+```text
+Suite: QuickBite Smoke           Version/build: 3.8.0 (409)
+Environment: Staging             Devices: Pixel 8 / Android 15, iPhone 15 / iOS 18
+Tester: ______                   Date: ______
+
+| ID | Area     | Tier | Check                         | Passes when                    | Min | Result |
+|----|----------|------|-------------------------------|--------------------------------|-----|--------|
+| S1 | Launch   | P1   | Cold start                    | Home opens, no crash           | 1   |        |
+| S2 | Sign in  | P1   | Sign in with email + password | Home shows "Hi, <name>"        | 2   |        |
+| …  |          |      |                               |                                |     |        |
+
+Verdict: PASS / FAIL (build rejected)     Bugs: ______
+Extra checks for this build (risky changes): ______
+```
+
+</Long>
+
+## Practice: build the smoke suite
+
+QuickBite 3.8.0 is on staging. Pick the checks that tell you, as quickly as possible, whether the build is testable. Then press **Check my suite** to see how you did.
+
+<SmokeSuiteBuilder client:visible />
+
+## Practice: what did this change touch?
+
+Four changes are going into the next release. For each one, choose the regression areas you'd retest, then check your picks.
+
+<ImpactAnalysis client:visible />
+
+## Before you plan a regression run
+
+<Checklist
+  title="Before you plan a regression run"
+  storageKey="regression-and-smoke-suites"
+  items={[
+    "The smoke suite passed on this build (or the build was rejected)",
+    "I know what changed: release notes, tickets and the developer's view",
+    "Directly affected areas get their full P1 and P2 tests",
+    "Connected areas get at least a quick P1 pass",
+    "Payment and sign-in P1 checks are included",
+    "Tests for recently escaped bugs are included",
+    "I wrote down what I'm skipping and why",
+    "Flaky tests are fixed or quarantined, not silently re-run",
+    "The run is recorded in our test management tool or sheet, with bugs linked",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "A new build arrives and sign-in fails with an error for every user. What should happen?",
+      options: [
+        "Run the full regression suite and report everything that fails",
+        "The smoke suite fails, the build is rejected and deeper testing waits",
+        "Skip sign-in and test the rest of the app",
+        "Mark it as a low-priority bug",
+      ],
+      answer: 1,
+      explain: "That's exactly what smoke testing is for: if a critical journey is broken, the build isn't testable, so it goes back before anyone wastes time on regression.",
+    },
+    {
+      q: "Which check belongs in a smoke suite for a food delivery app?",
+      options: [
+        "An expired promo code shows the correct error text",
+        "The app switches correctly to German",
+        "An order can be placed with a saved test card",
+        "Dark mode colors on the Settings screen",
+      ],
+      answer: 2,
+      explain: "Placing an order is a critical journey on the happy path. The others are valuable, but they're regression tests.",
+    },
+    {
+      q: "What is the difference between retesting and regression testing?",
+      options: [
+        "They are the same thing",
+        "Retesting checks a specific bug is fixed; regression checks nothing else broke",
+        "Retesting is automated; regression testing is manual",
+        "Regression testing only happens after a release",
+      ],
+      answer: 1,
+      explain: "Retesting re-runs the bug's own steps. Regression testing re-runs other existing tests to catch side effects of the change.",
+    },
+    {
+      q: "The developers updated the payment provider SDK. No UI changed. What's the best regression plan?",
+      options: [
+        "Nothing, because the UI didn't change",
+        "Full checkout and payment tests, a quick pass on promo codes and order creation, plus smoke",
+        "Only the ratings and reviews area",
+        "Every test in the suite, P1 to P3, for every area",
+      ],
+      answer: 1,
+      explain: "Impact analysis: the SDK runs every payment, so that area gets the full treatment. Connected areas get a quick pass. Running everything wastes time; running nothing ignores the risk.",
+    },
+    {
+      q: "A regression test passes and fails randomly without any code change. What should you do?",
+      options: [
+        "Re-run it until it passes",
+        "Delete it and forget about it",
+        "Investigate the cause, and quarantine it until it's fixed",
+        "Mark it as passed",
+      ],
+      answer: 2,
+      explain: "A flaky test that's re-run until green can hide a real bug. Find out why it flakes (timing, data, network) and keep it out of the suite until it's reliable.",
+    },
+    {
+      q: "Which of these is usually the best candidate for automation?",
+      options: [
+        "Exploratory testing of a brand-new feature",
+        "Checking an animation looks smooth",
+        "A stable sign-in and checkout path run on every build",
+        "A one-off check for a feature that will be removed next month",
+      ],
+      answer: 2,
+      explain: "Stable, frequently repeated checks give automation the best return. New, visual or one-off checks are usually better done by a human.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A **smoke suite** is 10-20 fast, happy-path checks of the critical journeys that answer "is this build testable?". If it fails, the build is rejected.
+- A **regression suite** protects existing features. Build it from critical journeys, risk, bug history and usage analytics.
+- Tag every test with a **tier** (P1/P2/P3) and an **area**, so you can plan time-boxed runs.
+- For each change, do **impact analysis**: full tests for what it touches, a quick pass on what's connected, smoke on top.
+- Keep suites healthy: delete obsolete tests, update after changes, merge duplicates, fix or quarantine flaky tests.
+- Automate stable, repetitive checks; keep humans on new features, visuals and exploration.
+
+</KeyTakeaways>

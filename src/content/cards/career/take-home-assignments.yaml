@@ -1,0 +1,45 @@
+teaser: "Candidates often fail take-home QA tasks with plenty of bugs found. What do reviewers actually look for?"
+cards:
+  - type: flip
+    front: "What goes at the top of a take-home submission?"
+    back: "A short summary: what you tested, on what, for how long, your top findings, what you didn't test and why."
+  - type: flip
+    front: "'48 hours, about four hours of work.' What's the difference?"
+    back: "48 hours is the deadline. Four hours is the effort they expect. Plan around the effort, and send before the deadline."
+  - type: quiz
+    q: "You found 1 critical bug, 3 major bugs and 25 typos. How do you present them?"
+    options: ["All 29 in the order found", "Severe bugs first, typos as a short list", "Only the typos"]
+    answer: 1
+    explain: "Reviewers should see your most important finding in seconds. Trivial issues still count, as one-liners at the end."
+  - type: quiz
+    q: "While testing a take-home, you find an /admin page. What do you do?"
+    options: ["Mention it neutrally, don't try to log in", "Try a few common passwords", "Run a scanner for more pages"]
+    answer: 0
+    explain: "Guessing passwords or scanning is an attack, even on a test site, and out of scope. Mentioning what you saw during normal use is fine."
+  - type: truefalse
+    statement: "A 'Not tested, and why' section makes your submission look weaker."
+    answer: false
+    explain: "It shows deliberate choices and an understanding that testing is never complete. It's what testers write in real summary reports."
+  - type: truefalse
+    statement: "Running a load test on the company's site is a good way to stand out."
+    answer: false
+    explain: "Load testing someone's system without permission can hurt real users and their business. Only do it if the instructions ask, on the environment given."
+  - type: thisorthat
+    prompt: "The brief asks for bug reports in their spreadsheet template. You prefer writing documents."
+    left: "Use their template"
+    right: "Send a document"
+    answer: left
+    explain: "Following instructions is part of the test. On the job, you'll use the team's tools and templates too."
+  - type: thisorthat
+    prompt: "The brief covers checkout. You have spare time and notice the careers page has bugs."
+    left: "Write it up fully"
+    right: "Stay on checkout"
+    answer: right
+    explain: "Scope creep looks like you didn't read the brief. Go deeper on checkout; at most, add a one-line note."
+  - type: spotbug
+    screen: ["BUG-7: Checkout is broken", "Steps: try to pay", "Expected: works"]
+    bug: "Vague title, no real steps, no actual result."
+    explain: "Nobody can reproduce or fix this. Say where, what and when, list exact steps, and separate expected from actual."
+  - type: tip
+    title: "Ask one good email of questions"
+    text: "If the brief is unclear, send two or three questions early in one email, state your assumptions, and start testing meanwhile."

@@ -1,0 +1,34 @@
+teaser: "A typo in your brand name and a crash nobody can reach. Which do you fix first? It's not as obvious as it sounds."
+cards:
+  - type: flip
+    front: "Severity vs priority in one sentence each?"
+    back: "Severity = how badly the bug hurts the product. Priority = how soon the team should fix it."
+  - type: thisorthat
+    prompt: "The brand name is misspelled on the homepage. Launch is tomorrow."
+    left: "Low priority"
+    right: "High priority"
+    answer: right
+    explain: "Low severity (nothing breaks), but very visible right before launch, so it jumps to the top of the list."
+  - type: thisorthat
+    prompt: "The app crashes when exporting a 2019 report, on Android 9 only. 0.1% of users have used it this year."
+    left: "Fix this sprint"
+    right: "Can wait"
+    answer: right
+    explain: "High severity (a crash), but so few users are affected that most teams schedule it later. Severity and priority are independent."
+  - type: quiz
+    q: "Who usually decides a bug's priority?"
+    options: ["The tester who found it", "The product owner or lead", "The developer who fixes it"]
+    answer: 1
+    explain: "Testers propose severity based on impact. Priority is a business decision, usually made by the product owner or lead in triage."
+  - type: truefalse
+    statement: "A high-severity bug always gets high priority."
+    answer: false
+    explain: "A crash in a feature almost nobody uses can be high severity and low priority. The two are separate questions."
+  - type: spotbug
+    screen: ["BUG-311 · Severity: Critical", "Title: Settings icon 2px too low", "Steps: open Settings, look at the gear icon"]
+    question: "What's wrong with this report?"
+    bug: "The severity is inflated."
+    explain: "A slightly misaligned icon is Trivial or Minor. Inflating severity makes the team stop trusting your ratings."
+  - type: tip
+    title: "Argue with evidence, not volume"
+    text: "To raise a bug's priority, show how many users it affects, the money at stake, or a screen recording. Never just add more exclamation marks."

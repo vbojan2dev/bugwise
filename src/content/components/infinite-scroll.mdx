@@ -1,0 +1,463 @@
+---
+title: Infinite Scroll
+description: New items load by themselves as you reach the bottom of a list. Learn how the sentinel, prefetch distance and cursors work, what the loading, error and end states must look like, and how testers find duplicates, lost positions, unreachable footers and keyboard traps.
+category: content
+aka: [Endless scroll, Lazy loading list, Load on scroll]
+platforms: [ios, android, web]
+minutes: 35
+order: 6
+---
+
+import Anatomy from '@/components/demos/infinite-scroll/Anatomy';
+import ScrollLab from '@/components/demos/infinite-scroll/ScrollLab';
+import { BuggyShopFeed } from '@/components/demos/infinite-scroll/BuggyShopFeed';
+
+You're looking for hiking boots. You scroll through 80 products, spot a nice pair, tap it, read the details and press **Back**. You're at the top of the list again, with 12 products. The other 68 are gone, and so is your place. You try to find the Returns policy in the footer instead, but every time you get close, twelve more products push it away. You close the tab.
+
+<Term id="infinite-scroll" /> feels effortless when it works. Underneath, it's a little machine: something **watches** the end of the list, **requests** the next page, **appends** it, and has to handle slow networks, errors, the end of the data, the Back button and people who don't use a mouse. Every part of that machine has its own bugs.
+
+<Callout type="info" title="This page vs. Pagination">
+[Pagination](/components/pagination) compares numbered pages, "Load more" and infinite scroll, and covers the page math (off-by-one, the last page, page 999). This page goes deep on **infinite scroll itself**: how the loading is triggered, its states, and the bugs that only happen when the next page loads by itself.
+</Callout>
+
+## What is infinite scroll?
+
+Infinite scroll **loads the next batch of items automatically when the user nears the bottom** of a list. There's no "Next" button: scrolling *is* the action. You know it from social feeds, photo streams, news apps, shop categories and search results in many apps.
+
+It's still pagination underneath. The app asks the server for a **page** of items (say 20), shows them, and asks for the next page when it's needed. The difference is only **who decides when**: the scroll position, not a tap.
+
+### Anatomy
+
+<Anatomy />
+
+### How it works
+
+<Steps>
+
+1. **A sentinel marks the end.** After the last loaded item sits an invisible element, the sentinel.
+   <DevNote>On the web, an `IntersectionObserver` watches it; on iOS and Android, the list reports when its last rows are about to appear (`prefetchDataSource` or `willDisplay` in UIKit, `.onAppear` on the last row in SwiftUI, the Paging library on Android).</DevNote>
+2. **The prefetch distance decides how early.** The observer can fire *before* the sentinel is visible, e.g. one screen ahead. Too small, and people stare at a spinner at the bottom. Too large, and the app loads pages nobody will see.
+   <DevNote>On the web: `rootMargin: "0px 0px 800px 0px"`.</DevNote>
+3. **One request asks for the next page.** Feeds usually use <Term id="cursor-pagination" />: "20 items **after** item r40" (`?limit=20&after=r40`), instead of "skip 40, take 20". The response contains the items and the cursor for the next page, or `null` when there's nothing more.
+4. **The app appends and waits.** New items are added at the bottom, the sentinel moves down with them, and nothing happens until it comes close again. While a request is running, the app must **not** start another one.
+5. **The list ends, or fails, clearly.** When the next cursor is `null`, the app stops loading and says so. When a request fails, it shows an error row with Retry, right where the new items would have appeared.
+
+</Steps>
+
+The page size matters too: **10–30 items** is typical. Tiny pages mean many requests and frequent waits; huge pages mean slow responses and lots of memory on cheap phones.
+
+### How it differs from similar patterns
+
+| Pattern | What triggers loading | Typical use |
+| --- | --- | --- |
+| **Infinite scroll** | Reaching the end of the list | Feeds, photo streams, browsing |
+| **"Load more" button** | A tap or click | Shop lists, search results, comments |
+| **Numbered [pagination](/components/pagination)** | Choosing a page | Shops, tables, results people come back to |
+| **[Pull to refresh](/components/pull-to-refresh)** | Pulling down at the top | Loading **newer** items at the top |
+| **<Term id="lazy-loading" /> (images)** | An image nearing the viewport | Saving data on long pages; the items already exist |
+| **Virtualization** | Not loading at all: rendering only visible rows | Keeping long lists fast in memory |
+
+## Designs & variants
+
+- **Endless feed (list):** one column of posts or articles, newest first. Social apps, news.
+- **Product or photo grid:** two to four columns. Each page fills whole rows, or the last row looks broken.
+- **Reverse list (chat):** older messages load at the **top** when you scroll up, and the list must keep your place while they're inserted above you.
+- **Hybrid "load more":** the first two or three pages load on scroll, then a **Load more** button appears. It keeps the footer reachable and gives keyboard users a stop.
+- **With helpers:** a "Back to top" button after a long scroll, a "New posts" pill when fresh items wait above, or a result count ("312 results").
+
+## Try it: scroll lab
+
+A correct infinite scroll on a recipes feed. The red dashed line is the **sentinel**, the blue one shows where loading starts. Play with the settings and watch the counters and the network log:
+
+- Scroll to the bottom with prefetch **0 px** (you wait for the spinner), then with **1 screen** (you rarely see it).
+- Switch the network to **Fails**, scroll down, then back to **Fast** and tap **Retry**. Nothing loads on its own after an error until you retry.
+- Use **45** recipes to reach the **end** and the footer. Use **1,000**, load a few pages and turn on **Virtualize**: the rows in the DOM drop to a handful.
+- Open a recipe far down the list and go **Back**. Try **Load more button** mode with the keyboard.
+
+<ScrollLab client:visible />
+
+## When to use it
+
+Infinite scroll fits when people **browse without a specific goal**:
+
+- **Feeds and streams:** social posts, news, photos, short videos, activity.
+- **Discovery lists:** "Inspiration", "For you", a category people scroll through for fun.
+- **Mobile lists** where tapping a tiny "Next" would be awkward, and nothing important lives below the list.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Browsing a feed">
+
+A photo feed. Nobody needs to come back to "the 213th photo", and there's no footer.
+
+</Do>
+<Dont title="Finding and comparing">
+
+Search results or a shop category where people compare, open items and come back. They need a sense of position, working Back, and shareable links: [pagination](/components/pagination) or **Load more** suits them better.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Footer links elsewhere">
+
+A feed app where Help, Contact and Privacy live in a menu or settings screen.
+
+</Do>
+<Dont title="A footer below an endless list">
+
+A web shop with Contact, Returns and Imprint in the footer. The footer runs away every time you scroll toward it.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Long lists, short tasks">
+
+A news feed people scroll for a few minutes.
+
+</Do>
+<Dont title="Goal-oriented or regulated lists">
+
+Bank transactions for a tax year, an admin table of 10,000 orders. People need totals, filters, exports, and to know where the list ends.
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Tester mindset">
+For every infinite list, ask: **"What happens at the bottom?"** (loading, error, end), **"What happens when I leave and come back?"** (Back, refresh, rotate, app switch) and **"Can I use it without scrolling a mouse wheel?"** (keyboard, screen reader, footer).
+</Callout>
+
+## How good infinite scroll behaves
+
+### One request per page, no duplicates or gaps
+
+Only **one** request may run at a time. The classic bug: the trigger fires, the user keeps scrolling while the page loads, the trigger fires again (a throttle or debounce doesn't help if the request is slower than it), and the **same cursor** is requested twice. The page then shows the same items twice. Good apps keep an "already loading" flag and also merge results **by item ID**.
+
+Data also changes while people scroll: new posts arrive, items sell out. With offset paging ("skip 40") that causes duplicates and skipped items; cursor paging avoids most of it. The [Pagination](/components/pagination#data-that-changes-between-pages) page has a live demo of both. Test it by adding or deleting items (with a second device or an admin tool) while you're halfway down the list.
+
+### A small loading row, not a full-screen spinner
+
+While the next page loads, a short row with a spinner at the bottom ("Loading more…") is enough. The items already on screen stay usable. With a good prefetch distance, people on a normal connection rarely see it at all. See [Progress & spinners](/components/progress-indicators) for indicator timing.
+
+### Errors stay inline, with Retry
+
+If a page fails, the loaded items **stay**, and an error row appears at the bottom: "Couldn't load more. Retry". Two common bugs are opposites of each other:
+
+- **Silent dead end:** the spinner disappears, nothing more ever loads, and nothing says why. Users think they've reached the end.
+- **Retry storm:** the app retries automatically on every scroll event and floods the server (and the battery). Automatic retries need limits and a growing delay (<Term id="retry-backoff" />).
+
+### The end is an end
+
+When the server says there are no more items, the spinner **stops** and a message says so: "You've seen all 45 recipes" or "You're all caught up". Without it, users keep scrolling and waiting. Test the end with a **short list** too: a filter or a category with only 7 items is the fastest way to reach it.
+
+### Back returns to the same place
+
+After opening an item and going **Back**, the list must look **exactly** as before: the same loaded items, the same scroll position, the same filters. On iOS and Android this usually works when the list stays in memory, and breaks after the OS kills the app in the background (<Term id="state-restoration" />), on rotation or when the app reloads the list "to be safe". On the web, the browser restores the position for normal page loads, but a single-page app that rebuilds the list from page 1 has to store the loaded pages and position itself.
+
+### Deep links and refresh
+
+Infinite lists are hard to link to. Good web apps write the position into the URL (`?page=4` or `?after=r80`) or an anchor for the item, so **Refresh**, **Back** and **shared links** land near the same spot instead of the top. In apps, a <Term id="deep-link" /> to an item opens the item, and Back goes somewhere sensible, not an empty list.
+
+### The footer stays reachable
+
+If a footer is below the list, people can't reach it: each time they get close, more items load. Fixes: switch to **Load more** after a few pages, put the footer links in a menu, or stop auto-loading at a fixed limit. As a tester, **try to click every footer link** on a page with infinite scroll.
+
+### Thousands of items stay fast
+
+A list that has loaded 2,000 items can get slow, janky and memory-hungry, especially on older phones. Native lists only create views for visible rows. On the web, apps use **virtualization**: only the rows near the viewport exist in the page, the rest are empty space. It's a performance fix with side effects: the browser's **Find in page** can't find rows that aren't rendered, and screen readers may not see the whole list. Test long sessions: scroll for a few minutes, then check speed, memory and that scrolling back up still shows the right items.
+
+<DevNote>Native lists: `UITableView`, `UICollectionView`, SwiftUI `List`, `RecyclerView`, Compose `LazyColumn`.</DevNote>
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Duplicate page** | The same items appear twice after scrolling fast | High |
+| 2 | **Lost position** | Back from an item returns to the top with only the first page | High |
+| 3 | **Endless spinner at the end** | No "that's all" message; the loading row never goes away | Medium |
+| 4 | **Silent dead end** | A failed request stops loading forever, with no message or Retry | High |
+| 5 | **Unreachable footer** | Contact, Returns, Imprint run away as you scroll | Medium–High |
+| 6 | **Focus jumps** | After new items load, keyboard focus goes back to the top | High (for affected users) |
+| 7 | **Never loads** | Short screens or big monitors: the first page doesn't fill the screen, so no scroll happens and nothing more loads | Medium |
+| 8 | **Retry storm** | Hundreds of requests per minute after an error | High |
+| 9 | **Slow after a while** | Jank, memory warnings or a crash after a few hundred items | Medium–High |
+| 10 | **Skipped items** | Items added or removed during scrolling are missing (offset paging) | Medium |
+
+<Callout type="bug" title="Why #7 happens">
+Many implementations only check the sentinel when the user **scrolls**. On a large monitor or a tablet in landscape, the first 10 items might not fill the screen, so there's nothing to scroll and the list stops at 10. Always test on a **big screen** and with a **small page size**: the app must keep loading until the screen is full.
+</Callout>
+
+## Find the bug
+
+This outdoor shop loads products as you scroll, and it has **six bugs**. Each request takes about 1.3 seconds. Explore it like a tester:
+
+- Scroll down **quickly** and **keep scrolling** while "Loading more…" is shown. Then look closely at the products and the network log.
+- Scroll a long way, open a product, then press **Back to products**.
+- Open the **Sale** category and scroll to the bottom. Wait.
+- Turn on **server errors**, scroll down, then turn them off again and keep scrolling.
+- Try to open **Contact** or **Imprint** in the footer of **All products**.
+- Click **All products**, then use only the <kbd>Tab</kbd> key to move through the products.
+
+<BugHunt
+  title="Outdoor shop"
+  bugs={[
+    {
+      title: 'Scrolling fast loads the same page twice',
+      hint: 'Scroll to the bottom and keep scrolling while “Loading more…” shows. Compare the network log with the products.',
+      detail: 'The log shows two (or more) requests with the <strong>same cursor</strong>, e.g. <code>cursor=a24</code> twice, and the same 12 products appear twice in a row. The app only limits loading to one request every 0.5 s, but a request takes 1.3 s: scrolling at the bottom while it loads starts another one, because there is no “already loading” check. Expected: one request per page, and results merged by product ID.',
+    },
+    {
+      title: 'Back from a product returns to the top of the list',
+      hint: 'Scroll down past a few loads, open a product, then click Back to products.',
+      detail: 'The list is rebuilt from scratch: only the first 12 products are shown and the scroll position is at the top (the log shows a fresh request without a cursor). Expected: the same loaded products and the same scroll position as before opening the product.',
+    },
+    {
+      title: 'At the end of the list, the spinner shows forever',
+      hint: 'Open the Sale category and scroll to the bottom. Check the response in the network log.',
+      detail: 'The API answers <code>7 items · next: null</code>, so there is nothing more to load, but “Loading more products…” keeps spinning and there is no end message. Users wait for products that will never come. Expected: the loading row disappears and a message like “That’s all 7 sale items” appears.',
+    },
+    {
+      title: 'A failed load stops loading forever, with no message or Retry',
+      hint: 'Turn on server errors, scroll to the bottom, then turn errors off and keep scrolling.',
+      detail: 'The request returns <code>500</code>, the loading row disappears, and nothing is shown. Even after the server works again, scrolling never loads more: the app marked the list as failed and stopped listening. Users think they have seen everything. Expected: an inline error row (“Couldn’t load more products. Retry”) that keeps the loaded products and loads the page again on Retry.',
+    },
+    {
+      title: 'The footer with Contact, Returns and Imprint can never be reached',
+      hint: 'In All products, try to click Contact or Imprint in the footer.',
+      detail: 'The footer sits below an endless list of 250 products. Every time it comes into view, 12 more products load and push it down again. Legal and support links must be reachable. Expected: put them somewhere else (header, menu), stop auto-loading after a few pages and show a Load more button, or both.',
+    },
+    {
+      title: 'Keyboard focus jumps back to the top after new items load',
+      hint: 'Click All products, then press Tab repeatedly through the products until more load. Where does the next Tab take you?',
+      detail: 'After every load the app moves focus to the “All products” heading (without scrolling). The next <kbd>Tab</kbd> lands on the first product and the page jumps back to the top, so keyboard users can never get past the first few loads. Expected: focus stays on the product the user was on, and new items are announced politely (WCAG 2.4.3 Focus Order, A).',
+    },
+  ]}
+>
+  <BuggyShopFeed client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Product list: scrolling during loading requests the same page twice and shows 12 products twice
+
+**Steps:** 1. Open shop.example.com/gear (All products). 2. Scroll to the bottom. 3. While "Loading more products…" is visible, keep scrolling down for about 1 second. 4. Wait for loading to finish.
+
+**Expected:** One `GET /api/products?cat=all&limit=12&cursor=a12` request. Products 13–24 appear once.
+**Actual:** Two identical requests with `cursor=a12` are sent. Products 13–24 appear twice in a row.
+
+**Severity:** High (wrong data, users can't trust the list) · **Reproducible:** 8/10 when scrolling continuously · **Evidence:** screen recording, HAR file
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Infinite scroll test checklist"
+  storageKey="infinite-scroll"
+  items={[
+    'Next page loads before or right when the user reaches the end, with a small loading row',
+    'Exactly one request per page, also when scrolling fast or flinging; no duplicate items',
+    'Cursor or page parameters advance correctly; no items are skipped between pages',
+    'The end of the data shows a clear end message; the spinner stops and no more requests are sent',
+    'A failed page shows an inline error with Retry; loaded items stay; Retry loads the right page',
+    'No automatic retry storm after errors or offline',
+    'Back from an item restores the loaded items and the exact scroll position',
+    'Refresh and shared links land on a sensible position (web)',
+    'Rotation, app switching and process death keep the list and position (mobile)',
+    'Big screens and short first pages still load until the screen is full',
+    'Footer links are reachable (or available elsewhere)',
+    'Keyboard: focus stays where it was after new items load; a Load more alternative exists',
+    'Screen readers: new items are announced; list uses a feed or list structure with positions',
+    'Long sessions (hundreds of items) stay smooth, with no memory warnings or crashes',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-INF-001',
+      title: 'Next page loads at the end of the list',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['250 products, 12 per page', 'Network: Fast 4G'],
+      steps: ['Open All products', 'Scroll to the end of the first 12 products', 'Wait for loading to finish'],
+      expected: 'One request with the next cursor is sent. Products 13–24 appear below 1–12, with no duplicates and no gap.',
+    },
+    {
+      id: 'TC-INF-002',
+      title: 'Fast scrolling sends one request per page',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Network throttled to "3G"'],
+      steps: ['Fling the list to the bottom', 'Keep scrolling while "Loading more" is visible', 'Check the network log'],
+      expected: 'Only one request per cursor value. Every product appears once.',
+    },
+    {
+      id: 'TC-INF-003',
+      title: 'End of list',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Sale category has 7 products'],
+      steps: ['Open Sale', 'Scroll to the bottom', 'Wait 10 seconds'],
+      expected: 'No loading row is shown. An end message says all 7 items are shown. No further requests are sent.',
+    },
+    {
+      id: 'TC-INF-004',
+      title: 'Error while loading the next page',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Proxy returns HTTP 500 for the second page request'],
+      steps: ['Scroll to the end of page 1', 'Wait for the error', 'Remove the proxy rule', 'Tap Retry'],
+      expected: 'Page 1 stays visible. An inline error with Retry appears at the bottom. Retry loads page 2 once; no duplicates.',
+    },
+    {
+      id: 'TC-INF-005',
+      title: 'Back restores position',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Scroll until about 60 products are loaded', 'Open product #50', 'Go back (browser Back, Back button, or system back gesture)'],
+      expected: 'The list shows all 60 loaded products, scrolled so product #50 is where it was.',
+    },
+    {
+      id: 'TC-INF-006',
+      title: 'Footer links are reachable',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Open All products', 'Try to open Contact, Returns and Imprint'],
+      expected: 'Each link can be reached and opened without loading the entire catalog (e.g. via a Load more button after a few pages, or links in the header or menu).',
+    },
+    {
+      id: 'TC-INF-007',
+      title: 'Keyboard focus after loading',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Desktop browser, keyboard only'],
+      steps: ['Tab through the products until the next page loads', 'Press Tab once more'],
+      expected: 'Focus moves to the next product (the first newly loaded one), not back to the top of the page.',
+    },
+    {
+      id: 'TC-INF-008',
+      title: 'Large screen fills itself',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Browser window 2560×1440, or a tablet in landscape', 'Page size 10'],
+      steps: ['Open the list', 'Do not scroll'],
+      expected: 'The app keeps loading pages until the screen is full or the data ends, so the user can scroll.',
+    },
+  ]}
+/>
+
+### Tools
+
+- **Network log:** DevTools › Network on the web, a [proxy tool](/mobile/proxy-tools) like Charles or Proxyman for apps. Filter by the list's API path and compare the cursor or page parameter of every request. Two identical requests are proof of the duplicate bug.
+- **Throttle:** <Term id="network-throttling" /> ("3G" in Chrome DevTools, Network Link Conditioner on iOS, emulator settings on Android) makes loading rows, double requests and race conditions visible.
+- **Break a single page:** use a proxy rule or <Term id="proxy-breakpoint" /> to fail only the second or third page request, then check the error row and Retry.
+- **Force the end:** filter or search for something with very few results, or use a test account with little data.
+- **State restoration:** on Android, Developer options › *Don't keep activities*; on iOS, put the app in the background and stop it from Xcode, then reopen. Rotate mid-scroll.
+- **Performance:** scroll for several minutes. Watch memory in Xcode's Debug navigator, Android Studio's Profiler or DevTools' Performance monitor.
+
+## Accessibility
+
+Infinite scroll is one of the hardest patterns to make accessible. Check these:
+
+- **Keyboard focus stays put.** When items are appended, focus must stay on the item the user was on. Re-rendering the whole list or moving focus to the top sends <Term id="keyboard-navigation">keyboard</Term> users back to the start (WCAG 2.4.3 Focus Order, A). See also <Term id="focus-order" />.
+- **Offer "Load more".** A visible button lets keyboard, switch and screen reader users decide when to load, and lets them reach what's below the list. Many sites load the first pages automatically, then show the button.
+- **Announce new items.** A polite live region ("12 more products loaded") tells <Term id="screen-reader" /> users something changed without moving focus (WCAG 4.1.3 Status Messages, AA). Announce the end and errors too.
+- **Give it structure.** A feed or a plain list with a heading and a result count.
+  <DevNote>On the web, the ARIA **feed** pattern fits: `role="feed"` on the container, each item an `article` with `aria-posinset` and `aria-setsize` (`-1` if the total is unknown), and `aria-busy="true"` on the feed while it loads. A plain list (`ul`/`li`) with a heading and a result count also works.</DevNote>
+- **The footer and skip links.** Keyboard users must reach everything after the list. A "Skip to footer" link or footer links in the header avoid an endless Tab journey.
+- **VoiceOver and TalkBack** swipe through items one by one. Check that new items are reached naturally when swiping past the last one, and that the loading row and errors are read out.
+- **Virtualized lists** can confuse screen readers ("item 5 of 12" when there are 400). Check positions and counts are announced correctly.
+- **Touch targets** for Retry and Load more: at least 44×44 pt on iOS and 48×48 dp on Android. On the web, WCAG 2.5.8 (AA) asks for at least 24×24 CSS px; 44×44 px (2.5.5, AAA) is the comfortable target.
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+<DevNote>UIKit lists load more from `collectionView(_:willDisplay:forItemAt:)` or a prefetch data source; SwiftUI apps often use `.onAppear` on the last row of a `List` or `LazyVStack`.</DevNote>
+
+- Pushing an item on a navigation stack keeps the list in memory, so Back usually works. Test what happens after the app is killed in the background, after a memory warning and on a tab switch.
+- Tapping the status bar scrolls to the top: does the list stay loaded, and does it keep loading correctly afterwards?
+- Test VoiceOver: swiping past the last item should reach newly loaded ones.
+
+</Tab>
+<Tab>
+
+- The loading row, error row and end message: test all three.
+  <DevNote>Most apps use the Paging library with `RecyclerView` or Compose `LazyColumn`. Its load states (append loading, error, end of pagination) map directly to them.</DevNote>
+- Rotation and process death (Developer options › *Don't keep activities*) are the classic causes of lost positions and reloads from page 1.
+- Fling hard through hundreds of items: watch for duplicates, placeholders that never fill and jumps.
+- Use <Term id="airplane-mode" /> mid-scroll: an error row with Retry, not a frozen spinner.
+
+</Tab>
+<Tab>
+
+- Resize the window: very tall windows and zoomed-out pages expose the "never fills the screen" bug.
+  <DevNote>Loading is usually triggered by an `IntersectionObserver` on a sentinel.</DevNote>
+- Back, Forward and Refresh: the browser restores scroll for normal pages (and the back/forward cache can restore the whole page), but single-page apps often rebuild the list and must restore it themselves. Check the URL changes as you load more (`?page=` or a cursor) if the product needs deep links.
+- Try **Find in page** (Ctrl/Cmd+F) for an item you've already scrolled past: virtualized lists may not find it.
+- Check the footer, the keyboard (Tab and Shift+Tab around a load) and a screen reader (NVDA, VoiceOver) on desktop.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'What usually triggers loading the next page in infinite scroll?',
+      options: ['A timer every few seconds', 'An invisible sentinel after the last item coming close to the viewport', 'The user tapping Next', 'Pulling down at the top'],
+      answer: 1,
+      explain: 'An observer watches a sentinel element at the end of the list and fires when it is within the prefetch distance of the visible area.',
+    },
+    {
+      q: 'After scrolling fast, products 13–24 appear twice. The network log shows two requests with cursor=a12. What is missing?',
+      options: ['A bigger page size', 'An "already loading" guard (and merging by ID)', 'A skeleton screen', 'A longer timeout'],
+      answer: 1,
+      explain: 'Without an in-flight check, the trigger can fire again before the first response arrives. Both requests ask for the same page.',
+    },
+    {
+      q: 'The server answers with next: null, but "Loading more…" keeps spinning. What should happen?',
+      options: ['Keep spinning in case new items arrive', 'Stop loading and show an end message like "You’ve seen all 7 items"', 'Reload the first page', 'Show an error'],
+      answer: 1,
+      explain: 'The end of the data is a normal state. The spinner must stop and users should know there is nothing more.',
+    },
+    {
+      q: 'Loading the next page fails. Which behavior is best?',
+      options: ['Hide the spinner and do nothing', 'Retry automatically on every scroll event', 'Keep loaded items and show an inline error row with Retry', 'Clear the list and show a full-screen error'],
+      answer: 2,
+      explain: 'The loaded items are still valid. An inline error with Retry explains the problem without a silent dead end or a flood of retries.',
+    },
+    {
+      q: 'Why is a footer with Contact and Imprint a problem on an infinite list?',
+      options: ['Footers are slow to render', 'Every time the user gets close, more items load and push it away', 'Search engines ignore footers', 'It is not a problem'],
+      answer: 1,
+      explain: 'The footer is effectively unreachable. Use Load more after a few pages, or move the links somewhere reachable.',
+    },
+    {
+      q: 'A keyboard user tabs to product 24, more products load, and the next Tab goes to product 1. Which WCAG criterion is affected?',
+      options: ['1.4.3 Contrast (Minimum)', '2.4.3 Focus Order', '1.1.1 Non-text Content', '2.5.8 Target Size (Minimum)'],
+      answer: 1,
+      explain: 'Focus must move in a meaningful order. Losing focus or moving it to the top after a load breaks keyboard navigation.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Infinite scroll is **pagination triggered by scrolling**: a sentinel, a prefetch distance, a page size and usually a **cursor**.
+- Test the three bottoms: a small **loading row**, an inline **error with Retry**, and a clear **end message**.
+- **One request per page**: scroll fast and watch the network log for duplicate cursors.
+- **Back must restore** the loaded items and the position; check rotation, process death and refresh too.
+- Keep the **footer reachable**, keep **keyboard focus** in place, offer **Load more**, and **announce** new items.
+- Long lists need **virtualization** or native recycling; test long sessions for speed and memory.
+
+</KeyTakeaways>

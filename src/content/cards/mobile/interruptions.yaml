@@ -1,0 +1,46 @@
+teaser: "Maya tapped Send on a payment, declined a call from her mom, and paid twice. How did a phone call cost her money?"
+cards:
+  - type: flip
+    front: "What four things should an app do when it's interrupted?"
+    back: "Pause what should pause, save what the user typed, keep time correct, and resume cleanly without doing anything twice."
+  - type: flip
+    front: "What is an idempotency key?"
+    back: "An ID sent with a request like a payment, so the server processes it only once, even if the app sends the same request twice."
+  - type: quiz
+    q: "Which interruption should normally change nothing in the app?"
+    options: ["An accepted phone call", "An SMS notification banner", "Locking the screen"]
+    answer: 1
+    explain: "A banner covers part of the screen for a few seconds, but the app stays in the foreground and should keep working."
+  - type: quiz
+    q: "You need to test an incoming call on iOS. What do you use?"
+    options: ["The iOS Simulator's Phone menu", "adb emu gsm call", "A real iPhone and a second phone"]
+    answer: 2
+    explain: "The iOS Simulator can't receive calls or SMS, and adb only works with Android. Call a real iPhone from a second phone."
+  - type: truefalse
+    statement: "When Bluetooth headphones disconnect, playback should continue through the phone speaker."
+    answer: false
+    explain: "The convention on iOS and Android is to pause, so audio never blasts out loud in public by surprise."
+  - type: truefalse
+    statement: "A workout the user paused should still be paused after an alarm ends."
+    answer: true
+    explain: "Resuming everything after an interruption is a bug. Only a timer that was running should keep running; a paused one stays paused."
+  - type: thisorthat
+    prompt: "Bluetooth earbuds connect while your music app is open with playback paused."
+    left: "Start playing"
+    right: "Stay paused"
+    answer: right
+    explain: "Connecting headphones shouldn't auto-play. The user didn't ask for music, so the app waits for them to tap Play."
+  - type: thisorthat
+    prompt: "Planning interruption tests for a release that changes the payment screen."
+    left: "Real phones too"
+    right: "Emulators only"
+    answer: left
+    explain: "Emulator calls don't route audio like real calls, and the iOS Simulator can't do calls at all. Do one round on a real iPhone and Android."
+  - type: spotbug
+    screen: ["Payment: €25.00 to Anna Lee", "Send · incoming call · declined", "POST /payments  key=a91", "POST /payments  key=c07", "Recent: 2 payments of €25.00"]
+    bug: "The payment was sent twice after the call."
+    explain: "On return the app re-submitted the pending payment with a new key. It should check whether the request already went out and show its result."
+  - type: spotbug
+    screen: ["Video playing at 1:20", "Incoming call ringing", "You hear: ringtone + video audio"]
+    bug: "The video keeps playing under the call."
+    explain: "Media must pause as soon as a call or alarm starts, at the same position, so it never plays under the call."

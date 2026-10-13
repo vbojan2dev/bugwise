@@ -1,0 +1,424 @@
+---
+title: Image Upload
+description: How photo and file uploads work on iOS, Android and the web, why HEIC, EXIF rotation, big files and bad networks break them, and how to test uploads end to end.
+order: 9
+level: intermediate
+minutes: { short: 35 }
+platform: both
+tags: [upload, images, files, permissions, privacy, network]
+---
+
+import ExifInspector from '@/components/demos/image-upload/ExifInspector';
+import { BuggyUploadApp } from '@/components/demos/image-upload/BuggyUploadApp';
+
+A seller on a second-hand marketplace takes three photos of her sofa and taps **Publish**. The first photo shows up lying on its side. The second fails with "Something went wrong". The third uploads fine, and with it, hidden inside the file, the **GPS coordinates of her living room**, which any buyer can now download.
+
+Profile pictures, receipts in expense apps, ID checks in banking apps, damage photos in insurance claims, food photos in reviews: image upload is everywhere. It looks like one button, but behind it are cameras, permissions, a dozen file formats, huge files, flaky networks and real privacy risks. That's why upload is a feature where testers who know *what to feed it* find a lot of serious bugs.
+
+## How it works
+
+<Steps>
+
+1. **The user picks a source.** On a phone: take a new photo with the **camera**, or choose from the **photo library** (the system photo picker) or the **Files** app. On the web: a file chooser (`<input type="file">`), **drag and drop**, or **paste** from the clipboard. On phones, the browser's file chooser also offers the camera and photo library.
+2. **The app may need permission.** Using the camera inside the app needs the user's permission (on Android, an app that simply hands off to the system camera app may not). Photo library access depends on how the app asks (more below).
+3. **The app checks the file.** Is it an allowed type? Is it under the size limit? Are there too many files? Good apps check *before* uploading, so the user doesn't wait a minute just to get an error.
+4. **The app prepares the image.** Often it **resizes and compresses** (a 12-megapixel photo is rarely needed for a 400-pixel avatar), converts formats, applies rotation and removes private metadata.
+5. **The upload runs.** The file is sent over HTTPS, ideally with a **progress bar** and a **Cancel** button. On a slow network this can take a long time, so the app must handle drops, retries and the user leaving the screen.
+6. **The server validates it again.** It checks the real content (not just the file name), the size, and the type, then usually re-encodes the image and creates thumbnails. **Never trust the client**: anyone can skip the app's checks.
+7. **The app shows the result.** A thumbnail, a clear error, or a "Retry" option. The uploaded image should look exactly like the one the user picked.
+
+</Steps>
+
+### Sources and permissions
+
+| Source | iOS | Android | Web |
+| --- | --- | --- | --- |
+| **Camera** | Permission prompt on first use | Permission prompt on first use `capture` on a file input opens the phone's camera app; a live camera view inside the page makes the browser ask for permission |
+| **Photo picker** | System picker: no permission. Full library access: prompt with **Limit Access** | **Photo Picker**: no permission. Media access: Android 14+ allows **selected photos only** | File input opens the phone picker or desktop dialog |
+| **Files / drag & drop / paste** | Files app via document picker | Files via the system file chooser | Drag onto a drop zone, or paste a screenshot with Ctrl/Cmd+V |
+
+<Term id="app-permissions">Permissions</Term> create their own test cases. The system shows a [modal](/components/modal) the app can't style, and the user can say **Don't Allow**, pick **Limit Access** / **selected photos only**, or later revoke access in Settings. Each answer needs a sensible result: no crash, no empty screen, and a clear way to the Settings app if the user changes their mind. The differences between platforms are covered in [iOS vs Android](/mobile/ios-vs-android).
+
+<Callout type="tip" title="Limited access is the forgotten case">
+With limited access, the app sees only the photos the user selected. A gallery screen built for "all photos" suddenly shows three images, or none. Check that the app offers a way to **select more photos**, and doesn't keep nagging for full access every time.
+</Callout>
+
+### Formats, sizes and the files you should keep ready
+
+| Format | Where it comes from | What to watch |
+| --- | --- | --- |
+| **JPEG** | Most cameras, Android, older iPhones | Big files from modern cameras, EXIF rotation |
+| **HEIC** | iPhone camera default ("High Efficiency") | Servers and browsers that don't support it; must be accepted or converted |
+| **PNG** | Screenshots, logos, graphics | Transparency turned black or white; large file sizes |
+| **WebP** | Web downloads, some Android apps | Accepted by the server? Shown correctly everywhere? |
+| **GIF** | Memes, animations | Animation lost after resizing, or rejected without a clear message |
+
+Every product has **limits**: allowed types, a maximum file size (for example 10 MB), maybe a maximum resolution and a maximum number of files. Treat them like any other rule and use <Term id="boundary-value-analysis" />: just under, exactly at, and just over the limit. And the user must be **told the limit**, ideally before they pick, and again in the error.
+
+<Callout type="note" title="Build an upload test kit">
+Keep a folder (and the same photos on your test phones) with: a HEIC from an iPhone, a portrait photo taken holding the phone upright, a huge photo (over the limit), a file just under the limit, a transparent PNG, an animated GIF, a WebP, a tiny 1×1 image, a very wide panorama, a photo **with** location data, a 0-byte file, and a text file renamed to `.jpg`. This is your <Term id="test-data" /> for every upload feature you'll ever test.
+</Callout>
+
+### EXIF: rotation and location hidden in the file
+
+Phone cameras don't actually rotate the image when you hold the phone upright. They save the pixels as the sensor saw them, and add a small **EXIF** tag (photo metadata) called **Orientation** that says "rotate this 90° when you show it". Apps that ignore that tag show portrait photos **sideways**. EXIF can also contain the camera model, the date and the **exact GPS location** where the photo was taken.
+
+Try it: pick the portrait photo, then switch the app's handling on and off. Then see what the server keeps.
+
+<ExifInspector client:visible />
+
+<Callout type="warning" title="Stripping metadata can create the rotation bug">
+If a server removes **all** EXIF data without first rotating the pixels, the Orientation tag disappears too, and every portrait photo is suddenly sideways. The safe order is: rotate the pixels, then strip the metadata. That's also why testing only landscape photos (usually Orientation 1) never finds this bug.
+</Callout>
+
+### Upload on a real network
+
+A 4 MB photo takes a fraction of a second on office Wi-Fi and half a minute on a weak mobile signal. Testers check what happens in between:
+
+- **Progress:** the bar moves, and after reaching 100% the app shows that the server is still **processing** (instead of a full bar that seems frozen).
+- **Cancel:** the user can stop an upload that's taking too long or was the wrong photo.
+- **Lost connection:** the app tells the user, keeps the photo, and retries when the network returns (or offers a **Retry** button). It never silently drops the photo. See [Network conditions](/mobile/network-conditions) for how to simulate this.
+- **Leaving the app:** if the user switches apps or locks the phone, either the upload continues in the **background** (iOS and Android both support background transfers) or it resumes cleanly when the app returns ([Background and foreground](/mobile/background-and-foreground)).
+- **Double submit:** tapping **Post** twice must not upload the same photo twice.
+
+### Server-side validation (the defensive basics)
+
+File upload is one of the classic places where attackers try to sneak in something that isn't an image. You don't need to be a security expert to check the basics in a **test environment** with harmless test files:
+
+- Rename a text file (or a PDF) to `photo.jpg` and upload it. The server should reject it because it looks at the **content**, not the name. A clear message like "This file isn't a valid image" is enough.
+- Upload a file over the size limit through the web version and through the app. Both should be rejected **by the server** too, not only by the app.
+- After a successful upload, open the stored image's URL. It should be served as an image, from a random-looking file name, and the original file name shouldn't be used in the path.
+- Check the stored file's metadata: no location data where the spec says it must be removed.
+
+Report anything suspicious and let the security team go deeper. See [Security basics](/web/security-basics) for the wider picture.
+
+## Example requirements
+
+<Callout type="example" title="User story: Add photos to a listing">
+
+**As a** Swapsy seller, **I want to** add photos of my item from my camera or photo library **so that** buyers can see what they're buying.
+
+**Acceptance criteria**
+
+1. The user can add up to **5 photos** from the camera, the photo library or Files (web: file chooser, drag and drop, paste).
+2. Accepted formats: **JPEG, PNG, HEIC, WebP**. HEIC is converted to JPEG automatically.
+3. Max size **10 MB** per photo. The limit is shown on the screen, and a larger file shows: "This photo is larger than 10 MB. Choose a smaller one." **before** uploading.
+4. Photos are shown and stored **the right way up** (EXIF orientation applied).
+5. **Location and camera metadata are removed** before photos are stored or shown to other users.
+6. Each photo shows upload progress, a **Processing** state after 100%, and a **Cancel** option.
+7. If the connection drops, the photo stays in the list with "Waiting for connection" and uploads automatically when the network is back.
+8. Unsupported or broken files show a specific message that names the problem.
+9. Denying camera or photo access shows an explanation and a button to open Settings.
+10. Every photo can have an optional description (<Term id="alt-text" />) for screen reader users.
+
+</Callout>
+
+## What usually goes wrong
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **HEIC not supported** | iPhone photos fail, often with a generic error | High (many users affected) |
+| 2 | **EXIF orientation ignored** | Portrait photos sideways or upside down, in the app, on the web or only in thumbnails | Medium–High |
+| 3 | **Size limit hidden** | Big files upload for a minute and then fail, with no limit mentioned | Medium |
+| 4 | **No progress, no cancel** | Spinner forever, bar stuck at 100%, no way to stop | Medium |
+| 5 | **Network loss handled badly** | Photo silently disappears, or the app hangs; no retry | High |
+| 6 | **Location metadata kept** | Downloaded photo reveals where the user lives | High (privacy) |
+| 7 | **Transparency lost** | Transparent PNG logo gets a black background | Low–Medium |
+| 8 | **Over-compression** | Uploaded photo is blurry or blocky, text in receipts unreadable | Medium |
+| 9 | **Permission edge cases** | Crash or blank screen after "Don't Allow" or limited access | High |
+| 10 | **Content not validated on the server** | A renamed non-image file is accepted and stored | High (security) |
+| 11 | **Duplicates** | Double tap or retry uploads the same photo twice | Low–Medium |
+| 12 | **Accessibility gaps** | Upload button with no label, progress not announced, drag and drop only | Medium–High |
+
+## Find the bug
+
+Swapsy's "New listing" screen below has **six bugs**. Use the test photo library like a tester would:
+
+- Add photos one at a time **and** several at once. Read every message.
+- Compare each thumbnail with the photo in the picker.
+- Switch the network to **Slow 3G**, watch the progress bar, then try **Offline** in the middle of an upload.
+- Tap uploaded photos to see what the server stored, and watch the **network log**.
+- Check the **Files** tab too.
+
+<BugHunt
+  title="Swapsy photo upload"
+  bugs={[
+    {
+      title: 'HEIC photos fail with a generic error',
+      hint: 'Add IMG_2041.HEIC, the iPhone camera default format.',
+      detail: 'The server answers <code>415 Unsupported Media Type</code> and the app shows only "Something went wrong. Please try again." The spec says HEIC is accepted (converted to JPEG). Retrying can never help, so the message is also misleading. Expected: HEIC is converted and uploaded, or at least a specific message such as "HEIC isn\'t supported, choose a JPEG or PNG".',
+    },
+    {
+      title: 'Portrait photo appears sideways',
+      hint: 'Add IMG_2087.JPG and compare the thumbnail with the picker.',
+      detail: 'The system picker shows the photo upright, but the app draws the raw pixels and ignores the EXIF <strong>Orientation</strong> tag, so the person lies on their side. The stored size (4032 × 3024, landscape) confirms the rotation was never applied. Expected: portrait photos are shown and stored upright.',
+    },
+    {
+      title: 'The 12 MB photo fails without mentioning the limit',
+      hint: 'Add DSC_0912.JPG (12.4 MB) and read the error.',
+      detail: 'Nothing checks the size before upload, so the whole file is sent, then the server rejects it with <code>413 Payload Too Large</code>. The app says "Upload failed. Please try again.", and <strong>Try again</strong> fails the same way. The 10 MB limit is shown nowhere. Expected: the size is checked before uploading and the message names the limit.',
+    },
+    {
+      title: 'Uploads cannot be canceled and the bar freezes at 100%',
+      hint: 'Switch to Slow 3G and add a photo. Try to stop it.',
+      detail: 'There is no cancel button and tapping a photo during upload does nothing. After the bar reaches 100%, it sits full for seconds while the server processes the file, with no "Processing…" text, so the app looks frozen. Expected: a Cancel (×) control on every uploading photo and a visible processing state.',
+    },
+    {
+      title: 'Going offline silently loses the photo',
+      hint: 'Start an upload on Slow 3G, then switch to Offline.',
+      detail: 'The photo simply disappears from the grid. No message, no retry, and the photo counter goes back down. Only the network log shows <em>failed · connection lost</em>. Expected: the photo stays with "Waiting for connection" and uploads when the network returns, or shows a clear error with Retry.',
+    },
+    {
+      title: 'Location metadata is not removed',
+      hint: 'Tap an uploaded phone photo and read what the server stored.',
+      detail: 'PXL_0315.jpg (and the portrait photo) still contain <strong>GPS coordinates</strong> and the camera model on the server. Buyers who download the photo can see where the seller lives. Expected (spec): location and camera metadata are stripped before storing. The PNG and the camera export without GPS look fine, which is why you have to test with a real phone photo.',
+    },
+  ]}
+>
+  <BuggyUploadApp client:visible />
+</BugHunt>
+
+<Callout type="tip" title="Notice what works">
+The transparent PNG keeps its transparency, the renamed `invoice.jpg` is rejected with a clear message because the server checks the real content, the PDF is greyed out in Files, and the 5-photo limit is enforced. Use those as the "good example" in your reports: "invoice.jpg gets a specific error, HEIC should too."
+</Callout>
+
+<Callout type="example" title="How would you report bug #6?">
+
+**Title:** Listing photos: GPS location metadata not removed from stored images (privacy)
+
+**Steps:** 1. On a phone with Location enabled for the Camera, take a photo. 2. In Swapsy, create a listing and add that photo. 3. After upload, open the photo details (or download the stored image and inspect its EXIF data).
+
+**Expected:** No location or camera metadata in the stored file, as required by AC 5. **Actual:** The stored file contains `GPS 45.8150 N, 15.9819 E` and `Camera: Pixel 8`.
+
+**Severity:** High (privacy, user's home address exposed) · **Reproducible:** Always with JPEG photos that contain GPS data
+
+</Callout>
+
+## Test scenarios
+
+### Functional
+
+- Add a photo from the **camera**, the **photo library** and **Files**. On the web: file chooser, **drag and drop**, **paste**.
+- Add **one** photo, then **several at once**, then exactly the maximum, then try one more.
+- Each accepted format uploads and looks right: JPEG, PNG, **HEIC**, WebP (and GIF if supported).
+- Remove a photo, reorder photos (if supported), replace the cover photo.
+- The uploaded image looks the same in the app, on the web, and in notifications or emails that show it.
+
+### Negative
+
+- A file over the size limit, a format that isn't allowed, a 0-byte file, a corrupted image.
+- A non-image file renamed to `.jpg` (use a harmless text file).
+- **Don't Allow** for camera or photos; then enable it later in Settings and come back.
+- Cancel the picker without choosing anything: the app should return to where it was.
+
+### Edge cases
+
+- **Boundaries:** a file just under, exactly at and just over the size limit; the maximum number of photos and one more.
+- **Rotation:** portrait, landscape, upside down and selfie (front camera) photos. Check thumbnails, full view and the web version.
+- **Extreme shapes:** a very wide panorama, a 1×1 pixel image, a huge-resolution image under the size limit.
+- **Transparency:** a transparent PNG keeps its transparency (or gets an intentional background).
+- **Limited photo access** on iOS and Android 14+: only selected photos are visible, and the user can add more.
+- **Same photo twice**, and double tapping **Upload** or **Post**.
+
+### Network and app lifecycle
+
+- Upload on a slow network: progress moves, a processing state follows, **Cancel** works at every stage.
+- Switch to <Term id="airplane-mode" /> mid-upload, then back. The photo is kept and resumes or offers Retry.
+- Send the app to the background, lock the phone, or take a call during an upload ([Interruptions](/mobile/interruptions)).
+- Kill the app mid-upload and reopen it: no half-uploaded, broken image is shown as "done".
+- Watch requests with a proxy or <Term id="devtools" />: one request per photo, sensible <Term id="http-status-code">status codes</Term>, no duplicates on retry.
+
+### Security and privacy
+
+- Uploaded photos have **no GPS location** if the spec requires stripping. Download one and check its metadata with an EXIF viewer.
+- The server rejects renamed non-image files and oversized files, even when you bypass the app (for example by uploading through the website or <Term id="api" /> client in a test environment).
+- Other users can't see a photo before the listing is published, and a deleted photo's URL stops working.
+
+### Accessibility
+
+- The upload button has a clear label ("Add photos"), and each thumbnail is announced with its state ("Photo 2 of 3, uploading, 40%").
+- Errors are announced by the <Term id="screen-reader" />, not just shown in red.
+- On the web, everything works with the **keyboard**: drag and drop must have a normal button alternative.
+- Where users publish images for others (posts, listings), they can add <Term id="alt-text" />. See [Accessibility basics](/web/accessibility-basics).
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-UPL-001',
+      title: 'Upload a HEIC photo from an iPhone',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['iPhone camera format set to High Efficiency', 'A new photo taken with the camera'],
+      steps: ['Open New listing', 'Tap Add photos and choose the photo', 'Wait for the upload to finish', 'Open the listing on the website'],
+      expected: 'The photo uploads without errors and is shown correctly in the app and on the website (stored as JPEG).',
+    },
+    {
+      id: 'TC-UPL-002',
+      title: 'Portrait photo is shown upright',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Photo taken holding the phone upright (EXIF orientation 6)'],
+      steps: ['Add the photo to a listing', 'Check the thumbnail, the full-screen view and the website'],
+      expected: 'The photo is upright everywhere. Stored dimensions are portrait (e.g. 3024 × 4032).',
+    },
+    {
+      id: 'TC-UPL-003',
+      title: 'Size limit boundaries',
+      priority: 'high',
+      type: 'edge',
+      steps: ['Add a 9.9 MB photo', 'Add a photo of exactly 10 MB', 'Add a 10.1 MB photo'],
+      data: 'Limit: 10 MB per photo',
+      expected: '9.9 MB and 10 MB upload. 10.1 MB is rejected before uploading with "This photo is larger than 10 MB. Choose a smaller one."',
+    },
+    {
+      id: 'TC-UPL-004',
+      title: 'Location metadata is removed',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['A JPEG photo that contains GPS coordinates'],
+      steps: ['Upload the photo', 'Download the stored image from the listing', 'Inspect it with an EXIF viewer'],
+      expected: 'No GPS or camera metadata in the stored image. The photo is still upright.',
+    },
+    {
+      id: 'TC-UPL-005',
+      title: 'Connection lost during upload',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Network throttled to a slow 3G profile'],
+      steps: ['Add a 4 MB photo', 'At about 50%, switch on airplane mode', 'Wait 10 seconds', 'Switch airplane mode off'],
+      expected: 'The photo stays in the grid with "Waiting for connection" and finishes uploading after the network returns. Only one copy is stored.',
+    },
+    {
+      id: 'TC-UPL-006',
+      title: 'Cancel an upload',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Slow network'],
+      steps: ['Add a large photo', 'Tap the cancel (×) button while it uploads'],
+      expected: 'The upload stops, the photo is removed from the grid, and the server does not store it.',
+    },
+    {
+      id: 'TC-UPL-007',
+      title: 'Renamed non-image file is rejected',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Test environment', 'A plain text file renamed to notes.jpg'],
+      steps: ['Upload notes.jpg from Files (app) or the file chooser (web)'],
+      expected: 'The upload is rejected by the server with a specific message ("This file isn\'t a valid image"). Nothing is stored.',
+    },
+    {
+      id: 'TC-UPL-008',
+      title: 'Photo access denied',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Fresh install'],
+      steps: ['Tap Add photos › Take photo', 'Choose "Don\'t Allow" for camera access', 'Tap Take photo again'],
+      expected: 'No crash. The app explains why it needs the camera and offers a button that opens the app\'s Settings page.',
+    },
+  ]}
+/>
+
+## Mobile vs web
+
+<Tabs labels={['Mobile app', 'Website']}>
+<Tab>
+
+- **Photo pickers:** the iOS system picker and the **Android Photo Picker** don't need library permission. Apps that build their own gallery do, and must handle full, limited and denied access. On Android, test both new and older OS versions, because the permission model changed several times ([iOS vs Android](/mobile/ios-vs-android)).
+- **HEIC:** iPhones save HEIC by default. Some apps let the system convert to JPEG when picking; others send HEIC as-is. Test with a real iPhone photo, not a downloaded JPEG.
+- **Camera:** test the front and back cameras, flash, and rotating the phone while the camera is open.
+- **Getting test photos onto devices:** drag images onto the iOS Simulator, or `adb push photo.jpg /sdcard/Pictures/` on Android (the gallery may need a moment, or a reboot of the emulator, to show it).
+- **Background uploads:** lock the phone or switch apps mid-upload. Does it finish, resume or fail clearly?
+- **Storage and memory:** picking ten 48-megapixel photos at once can crash apps that load full-size images into memory. Try it on an older, low-memory device.
+- **Network:** use the Network Link Conditioner (iOS) or emulator network settings (Android), and airplane mode on real devices ([Network conditions](/mobile/network-conditions)).
+
+</Tab>
+<Tab>
+
+- **File chooser:** check the `accept` filter (does the dialog hide non-images?), multiple selection, and that the "All files" option still gets validated.
+- **Drag and drop:** drop one file, several files, a folder, a non-image, and a file onto the page *outside* the drop zone (the browser shouldn't just open the image and leave your page).
+- **Paste:** paste a screenshot from the clipboard with Ctrl/Cmd+V, if the feature supports it.
+- **Mobile browsers:** on phones the file input offers camera, photo library and files. iOS Safari may convert HEIC to JPEG on the way (depending on the input's `accept` list); don't assume, check what the server received.
+- **DevTools:** throttle the network, watch the upload request, its size and status code ([DevTools for testers](/web/devtools-for-testers)). Try going **offline** from the Network panel mid-upload.
+- **Leaving the page:** refreshing or closing the tab during an upload should warn the user or resume cleanly.
+- **Cross-browser:** check Chrome, Safari and Firefox, especially for HEIC, WebP and EXIF rotation.
+
+</Tab>
+</Tabs>
+
+## Checklist
+
+<Checklist
+  title="Image upload checklist"
+  storageKey="image-upload"
+  items={[
+    'Camera, photo library and Files (web: chooser, drag and drop, paste) all work',
+    'Permission prompts: Allow, Don\'t Allow, limited access and changing it later in Settings',
+    'JPEG, PNG, HEIC and WebP upload and display correctly; GIF behaves as specified',
+    'Size limit tested just under, at and just over; the limit is shown and named in the error',
+    'Maximum number of files enforced, including when selecting several at once',
+    'Portrait, upside-down and selfie photos are upright everywhere (EXIF orientation)',
+    'Location and camera metadata removed where required',
+    'Transparency kept; compression doesn\'t make photos blurry',
+    'Progress, a processing state after 100%, and Cancel all work',
+    'Slow network, offline and app backgrounding: no silent loss, clear retry',
+    'No duplicate uploads from double taps or retries',
+    'Server rejects renamed non-image and oversized files, even without the app',
+    'Errors are specific and announced by screen readers; drag and drop has a button alternative',
+    'Alt text can be added where images are shown to other users',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'An iPhone user\'s portrait photo shows up sideways after upload, but landscape photos are fine. What is the most likely cause?',
+      options: ['The photo is corrupted', 'The EXIF Orientation tag is ignored', 'The server ran out of space', 'The network is too slow'],
+      answer: 1,
+      explain: 'Phones store the pixels as the sensor saw them and add an Orientation tag. Landscape photos usually have Orientation 1, so they look fine even when the tag is ignored.',
+    },
+    {
+      q: 'Uploads from iPhones fail, uploads from Android phones work. Which format should you test first?',
+      options: ['GIF', 'WebP', 'HEIC', 'PNG'],
+      answer: 2,
+      explain: 'HEIC is the iPhone camera default. Servers that only accept JPEG and PNG reject it, often with a generic error.',
+    },
+    {
+      q: 'The limit is 10 MB. Which set of files gives the best boundary test?',
+      options: ['1 MB and 50 MB', '9.9 MB, 10 MB and 10.1 MB', 'Only a 10 MB file', 'Any photo from the camera'],
+      answer: 1,
+      explain: 'Test just under, exactly at and just over the limit. Off-by-one and unit mistakes (MB vs MiB) hide right at the boundary.',
+    },
+    {
+      q: 'Why is location data in an uploaded photo a problem on a marketplace?',
+      options: ['It makes the file too big', 'Buyers can download the photo and see where the seller lives', 'It breaks the rotation', 'It is only a problem on Android'],
+      answer: 1,
+      explain: 'EXIF GPS coordinates are exact. A photo taken at home reveals the home address. Apps that publish user photos should strip it.',
+    },
+    {
+      q: 'You rename notes.txt to notes.jpg and the server accepts it. What does this tell you?',
+      options: ['Nothing, the extension is correct', 'The server checks only the name, not the content', 'The file was converted automatically', 'The app has a caching bug'],
+      answer: 1,
+      explain: 'File names and the type the client reports are easy to fake. The server must inspect the real content and reject anything that isn\'t an image.',
+    },
+    {
+      q: 'A photo is uploading on a weak signal and the user loses connection. What is the best behavior?',
+      options: ['Remove the photo quietly', 'Show "Something went wrong" and clear the form', 'Keep the photo, show "Waiting for connection" and resume or offer Retry', 'Freeze the progress bar until the app is restarted'],
+      answer: 2,
+      explain: 'The user should never lose their work silently. Keep the photo, explain what happened, and continue when the network is back.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Upload is a **flow**: source, permission, client checks, preparation (resize, rotate, strip metadata), upload, **server validation**, result. Bugs hide in every step.
+- Keep a **test kit**: HEIC, portrait, huge, just-under-the-limit, transparent PNG, GIF, WebP, a photo with GPS, a 0-byte file and a renamed non-image.
+- The classic bugs: **HEIC rejected, sideways photos, hidden size limits, no cancel or progress, silent loss when offline, and location data left in the file**.
+- Test uploads on **slow and lost networks** and while the app goes to the background.
+- **Never trust the client:** the server must check the real content, the size and the type, and errors must say exactly what's wrong.
+
+</KeyTakeaways>

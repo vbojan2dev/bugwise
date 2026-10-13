@@ -1,0 +1,45 @@
+teaser: "Your friend sends a link to a jacket. You tap it and land on the app's Home screen instead. Where did the jacket go?"
+cards:
+  - type: flip
+    front: "What is a deep link?"
+    back: "A link that opens one specific screen inside an app, like product 42, instead of just the app's start screen."
+  - type: flip
+    front: "What do Universal Links and App Links need on the website?"
+    back: "A verification file on every domain: apple-app-site-association for iOS, assetlinks.json for Android. It proves the app may open those links."
+  - type: quiz
+    q: "The app is NOT installed. Which link still shows the product?"
+    options: ["pinecone://product/42", "https://pinecone.example/product/42", "Neither of them"]
+    answer: 1
+    explain: "An https Universal Link or App Link falls back to the website. A custom scheme has no web page behind it."
+  - type: quiz
+    q: "pinecone.example links open the app, www.pinecone.example links open the browser. Likely cause?"
+    options: ["The www domain isn't verified", "The user is logged out", "The product was deleted"]
+    answer: 0
+    explain: "Each domain is checked separately. Without a verification file on www, the phone hands the link to the browser."
+  - type: truefalse
+    statement: "After logging in from a deep link, landing on the Home screen is fine."
+    answer: false
+    explain: "The app should remember where the link was going and continue there after login. Otherwise the link is wasted."
+  - type: truefalse
+    statement: "A deep link should work the same whether the app is open, in the background or killed."
+    answer: true
+    explain: "A killed app takes a different code path (a cold start), and that path breaks most often. Test all three states."
+  - type: thisorthat
+    prompt: "A link in an Instagram post opens your website inside Instagram, although the app is installed."
+    left: "App bug"
+    right: "Expected, check the web page"
+    answer: right
+    explain: "In-app browsers keep links inside the social app. The web page should work well and offer a clear Open in app button."
+  - type: thisorthat
+    prompt: "You want to send a product link in a marketing email to all customers."
+    left: "https link"
+    right: "Custom scheme"
+    answer: left
+    explain: "Many customers won't have the app. An https link opens the app if installed and the website if not."
+  - type: spotbug
+    screen: ["Tapped: /product/42?utm_source=email", "Pinecone app opens", "Page not found", "[ Go to Home ]"]
+    bug: "Tracking parameters break the app's routing."
+    explain: "Almost every marketing link carries utm parameters. The router must ignore the query string when matching the screen."
+  - type: tip
+    title: "Fire links without email"
+    text: "Android: adb shell am start -a android.intent.action.VIEW -d \"URL\". iOS Simulator: xcrun simctl openurl booted \"URL\". Kill the app first to test a cold start."

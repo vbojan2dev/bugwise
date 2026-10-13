@@ -1,0 +1,44 @@
+teaser: "Change your phone's time zone and your hotel booking moves a day. How is that even possible?"
+cards:
+  - type: thisorthat
+    prompt: "A sign-up form asks for the user's date of birth."
+    left: "Calendar grid"
+    right: "Three labeled fields"
+    answer: right
+    explain: "People know their birth date by heart. A calendar opens on today's month, so reaching 1991 takes hundreds of taps."
+  - type: spotbug
+    screen: ["Check-in:  Tue 20 Oct", "Check-out: Wed 21 Oct", "2 nights · €240"]
+    bug: "One night is counted as two."
+    explain: "Nights = check-out minus check-in. Counting calendar days (difference + 1) is a classic off-by-one bug with real money attached."
+  - type: quiz
+    q: "A UK user types 03/04/2026 and the app saves March 4th. What kind of bug is this?"
+    options: ["A time zone bug", "A locale date format bug", "A leap year bug"]
+    answer: 1
+    explain: "In en-GB, 03/04 means 3 April. The app parsed it month-first, US style. It doesn't crash, it just books the wrong day."
+  - type: spotbug
+    screen: ["Picked: 20 Oct  (Belgrade)", "Time zone changed to New York", "Check-in now shows: 19 Oct"]
+    bug: "The date shifted a day after a time zone change."
+    explain: "The date was stored as local midnight, a timestamp. A calendar date should be stored as a plain date like 2026-10-20."
+  - type: quiz
+    q: "Which pair of typed dates is the strongest boundary test?"
+    options: ["15 Mar and 16 Mar", "1 Jan and 2 Jan", "29 Feb 2027 and 29 Feb 2028"]
+    answer: 2
+    explain: "2027 isn't a leap year, so it must be rejected. 2028 is, so it must be accepted."
+  - type: spotbug
+    screen: ["Check-in: 31 Oct", "Tap next month ›", "Calendar shows: December 2026"]
+    bug: "Navigation skipped November."
+    explain: "The code kept the day and added a month. 31 November doesn't exist, so it rolled over to 1 December."
+  - type: flip
+    front: "Why is a calendar date not the same as a timestamp?"
+    back: "\"October 20\" isn't a moment in time. Saved as midnight in one zone, it's still October 19 elsewhere."
+  - type: truefalse
+    statement: "On the night clocks spring forward, one hour such as 02:00–02:59 doesn't exist."
+    answer: true
+    explain: "In autumn one hour happens twice. A 02:30 alarm in spring may never ring, so test DST change days."
+  - type: truefalse
+    statement: "If typing and picking both exist, testing one path is enough."
+    answer: false
+    explain: "They often run different validation code. A calendar may block 31 April while the typed field silently accepts it."
+  - type: tip
+    title: "Know your boundary dates"
+    text: "Month ends, Feb 29 in leap and normal years, Dec 31 to Jan 1, DST change days, and times around midnight."

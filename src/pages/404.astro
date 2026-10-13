@@ -1,0 +1,21 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/ui/Icon.astro';
+import { href } from '@/lib/url';
+---
+
+<BaseLayout title="Page not found" noindex>
+  <div class="container-page grid min-h-[60vh] place-items-center py-20 text-center">
+    <div>
+      <span class="mx-auto grid size-16 place-items-center rounded-2xl bg-danger-soft text-danger"><Icon name="bug" size={30} /></span>
+      <p class="mt-6 font-mono text-sm text-faint">Error 404</p>
+      <h1 class="mt-2 text-4xl font-bold tracking-tight">You found a bug! 🐞</h1>
+      <p class="mx-auto mt-3 max-w-md text-muted">
+        Well, sort of. This page doesn't exist. As a tester you'd write: <em>"Expected: page loads. Actual: 404."</em>
+      </p>
+      <a href={href('/')} class="mt-8 inline-flex h-11 items-center gap-2 rounded-xl bg-fg px-5 font-medium text-bg">
+        <Icon name="arrow-left" size={16} /> Back to home
+      </a>
+    </div>
+  </div>
+</BaseLayout>

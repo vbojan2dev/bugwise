@@ -1,0 +1,456 @@
+---
+title: Biometric Login
+description: How Face ID, Touch ID and Android fingerprint or face unlock really work in apps, what breaks around opt-in, fallbacks, lockouts and changed biometrics, and how to test it all on simulators, emulators and real phones.
+order: 10
+level: intermediate
+minutes: { short: 35 }
+platform: mobile
+tags: [authentication, biometrics, face id, fingerprint, security, mobile, test scenarios]
+---
+
+import BiometricFlow from '@/components/demos/biometrics/BiometricFlow';
+import { BuggyBiometricBank } from '@/components/demos/biometrics/BuggyBiometricBank';
+
+You open your banking app, glance at the phone, and your balance appears. No password, no code. It feels like magic, and because it's so effortless, people trust it completely. That trust is exactly why testers must be strict here. If a glance from **someone else's face** opens the account, or a tap on **Cancel** does, the "magic" is a security hole in millions of pockets.
+
+Biometric login is also full of awkward real-life moments: wet fingers, sunglasses, a phone handed to a child, a new fingerprint added by a partner, Face ID switched off in Settings. A good app handles each of them calmly. A buggy one locks people out or, worse, lets the wrong people in.
+
+<Callout type="info" title="Before you start">
+This lesson builds on [Login and Sign Up](/features/login-and-sign-up) (sessions, tokens, lockouts) and [Two-Factor Authentication](/features/two-factor-authentication) (factors, re-authentication). Read those first if words like <Term id="session-token">session token</Term> or <Term id="re-authentication" /> are new to you.
+</Callout>
+
+## How it works
+
+<Term id="biometric-authentication" /> in an app does **not** send your face or fingerprint anywhere. The phone checks you **locally**, and if it's really you, it releases a secret the app saved earlier. To the server, it looks just like a normal login with a token.
+
+<BiometricFlow />
+
+### The flow, step by step
+
+<Steps>
+
+1. **First login with a password.** Biometrics can't create an account or prove who you are the first time. The user always starts with their normal credentials (and 2FA, if the app uses it).
+2. **The app offers biometrics (opt-in).** "Use Face ID to log in next time?" The user decides. Many apps ask for one successful scan right away, to confirm it works.
+3. **The app stores a secret behind biometrics.** Usually a long-lived refresh token or a cryptographic key, saved in the iOS <Term id="keychain" /> or the Android Keystore with a rule: "only release this after a successful biometric check".
+4. **Next time: the app asks the OS.** The system shows its own sheet (Face ID, Touch ID or Android's **BiometricPrompt**). The app only gets back "success", "failed", "canceled" or an error, never the image or the fingerprint.
+5. **On success, the secret is released.** The app sends the token to the server, which starts a new <Term id="session" />. On failure or cancel, the app must stay locked and offer a **fallback**.
+
+</Steps>
+
+### Face ID, Touch ID and Android biometrics
+
+| Platform | What the user sees | Worth knowing |
+| --- | --- | --- |
+| **iPhone with Face ID** | A small Face ID sheet; a system prompt "Allow “App” to use Face ID?" the first time | The app needs a **Face ID usage description** in its settings file. Without it, Face ID doesn't work for the app. |
+| **iPhone/iPad with Touch ID** | "Touch ID for “App”" sheet | No extra permission prompt. A missing Face ID description is invisible on Touch ID test phones, so it slips through. |
+| **Android** | BiometricPrompt: a bottom sheet for fingerprint, face or iris | Biometrics come in classes. **Class 3 (strong)** can unlock Keystore keys; **Class 2 (weak)**, common for camera-based face unlock, can't. Banking apps often require Class 3. |
+
+<Callout type="tip" title="Strong vs weak on Android, in one sentence">
+If a banking app accepts fingerprint but ignores face unlock on some Android phones, that's often **by design**: the face sensor on that phone is Class 2 (weak), and the app requires Class 3 (strong). Check the requirements before you report it.
+</Callout>
+
+### Fallbacks and lockout
+
+Biometrics fail all the time: wet fingers, gloves, a mask, bad light. So every biometric login needs a way out.
+
+- **App fallback:** "Use password" (or a PIN set up in the app). It must be **always reachable**, not only after an error.
+- **Device passcode fallback:** the OS can offer the phone's passcode instead. Fine for some apps; banks often prefer their own password.
+  <DevNote>iOS policy "biometrics or passcode", Android `DEVICE_CREDENTIAL`.</DevNote>
+- **OS lockout:** after **5 failed attempts** iOS locks Face ID or Touch ID until the device passcode is entered. Android locks biometrics for about 30 seconds after several failures and requires the PIN, pattern or password after repeated lockouts. The app gets a "locked out" error and must show its fallback, not a dead end.
+- **Cancel means cancel.** Tapping Cancel, swiping the sheet away, or a phone call interrupting the scan must leave the app **locked**.
+
+### When the biometrics on the phone change
+
+Imagine Maya's partner adds their own fingerprint to Maya's phone, or sets up an "alternate appearance" in Face ID. Should the partner now get into Maya's bank?
+
+For sensitive apps the answer is **no**. Both platforms let the app notice the change:
+
+- **iOS:** the Keychain item can be tied to the **current set** of enrolled faces or fingers. Adding or removing one makes the item unusable.
+  <DevNote>The app can also compare a "domain state" value it saved earlier.</DevNote>
+- **Android:** a Keystore key can be set to be **invalidated when a new biometric is enrolled**. The next use fails with a "key permanently invalidated" error.
+
+The expected behavior: turn biometric login off, ask for the **password**, then offer biometrics again. The test: add a face or finger in Settings, open the app, and make sure the new biometric does **not** unlock it.
+
+### Not available, not set up, not allowed
+
+Before showing a "Use Face ID" button, the app must ask the OS whether biometrics are usable right now. Typical answers:
+
+| Situation | Example | What the app should do |
+| --- | --- | --- |
+| **No hardware** | Older Android phone, iPad without Touch ID | Never show biometric options |
+| **Not enrolled** | User never set up Face ID or fingerprint | Hide the option, or explain "Set up Face ID in Settings first" |
+| **Not allowed** | iOS user tapped "Don't Allow" on the Face ID prompt, or switched it off in Settings › Face ID & Passcode › Other Apps | Explain it and show password login |
+| **Locked out** | Too many failed scans | Show the password (or passcode) fallback |
+
+### Privacy around the prompt
+
+- **Nothing visible before unlock.** When the app comes back from the background, account data must be hidden until the user is authenticated. A translucent lock screen over the balance is a privacy bug.
+- **App switcher snapshot.** The app switcher shows a picture of the last screen. Banking apps cover or blur it. See [Background and Foreground](/mobile/background-and-foreground) for how to test this.
+- **Which secret is stored?** Storing the **password itself** behind biometrics is weaker than storing a token the server can revoke. Ask the developers; it changes what "log out everywhere" and "change password" should do to biometric login.
+
+## Example requirements
+
+<Callout type="example" title="User story: Unlock the banking app with Face ID or fingerprint">
+
+**As a** Kestrel Bank customer, **I want to** unlock the app with Face ID or my fingerprint **so that** I can check my balance quickly without typing my password.
+
+**Acceptance criteria**
+
+1. After the **first successful password login** on a device, the app asks "Use Face ID (or fingerprint) to log in next time?". Biometric login is turned on **only if the user agrees** and completes one successful scan.
+2. The option is **not shown** if the device has no biometric hardware or none is enrolled.
+3. When the app is opened or returns from the background after 5 minutes, account data is **hidden** until the user unlocks.
+4. **Cancel** or dismissing the biometric sheet keeps the app locked.
+5. **"Use password"** is available on the unlock screen at all times, including after the OS locks biometrics.
+6. If biometrics are turned off or not allowed in system Settings, the app explains this and shows password login.
+7. If faces or fingerprints are **added or removed** on the device, biometric login is turned off and the user must log in with the password.
+8. Android: only **Class 3 (strong)** biometrics are accepted.
+9. Biometric login can be turned off in the app's settings; logging out turns it off too.
+10. The app switcher shows a blurred screen, never the balance.
+
+</Callout>
+
+## What usually goes wrong
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **New biometric still unlocks** | A newly added finger or face opens the app without the password | Critical (security) |
+| 2 | **Cancel logs in** | Tapping Cancel on the sheet unlocks the app | Critical (security) |
+| 3 | **No fallback after lockout** | "Face ID is locked" with no way to use the password | High |
+| 4 | **Turned on without asking** | Biometric login is on after the first login, no opt-in | Medium–High |
+| 5 | **Dead button** | Biometrics off in Settings, but "Use Face ID" is shown and does nothing | Medium |
+| 6 | **Data behind the prompt** | Balance readable behind the lock screen or in the app switcher | High (privacy) |
+| 7 | **Crash without hardware** | App crashes on an emulator or old phone without a sensor | High |
+| 8 | **Missing Face ID description** | Works with Touch ID, fails on every Face ID iPhone | High |
+| 9 | **Still on after logout** | Another user logs in and the previous user's biometric login unlocks the account | Critical |
+| 10 | **Password change ignored** | Biometric login still works with a token the server should have revoked | High (security) |
+| 11 | **Prompt loop** | The biometric sheet opens again right after Cancel, so the user can't reach the fallback | Medium |
+| 12 | **Weak biometrics accepted** | A Class 2 face unlock opens a banking app that requires Class 3 | High (security) |
+
+<Callout type="bug" title="Why bug #1 matters so much">
+A phone often has more than one person's biometrics on it: partners, kids, a parent who helps with the phone. The device owner allowed those people to unlock the **phone**, not necessarily to open the **bank**. That's why sensitive apps tie their secret to the current set of biometrics.
+</Callout>
+
+## Find the bug
+
+Kestrel Bank's Face ID unlock below has **six bugs**. Next to the phone you control the device like the iOS Simulator does: enroll Face ID or remove it, scan a **matching** or **non-matching** face, add an alternate appearance in Settings, switch Face ID off for the app, and lock the phone. A **device log** shows what the app asks the OS and what it gets back.
+
+- Log in with the password and look around. What did the app decide for you?
+- **Lock the phone**, unlock it, and watch the screen while the Face ID sheet is open.
+- Try **Cancel**, a non-matching face (many times), and a new appearance.
+- Switch Face ID off (or remove it) and try to unlock.
+
+<BugHunt
+  title="Kestrel Bank Face ID unlock"
+  bugs={[
+    {
+      title: 'A newly added face unlocks the app',
+      hint: 'Use Settings › Set up an alternate appearance, lock the phone, then scan the new face.',
+      detail: 'The app never checks whether the device\'s Face ID data changed (the log shows the token was stored with <code>biometryAny</code>). Anyone whose face or finger is added to the phone gets into the bank. Expected: after a change, Face ID login is turned off and the password is required.',
+    },
+    {
+      title: 'No fallback after Face ID locks',
+      hint: 'Scan a non-matching face five times.',
+      detail: 'After 5 failures iOS locks Face ID (<code>biometryLockout</code>). The app shows "Face ID is locked. Try again later." and a Try again button that hits the same error. There is no <strong>Use password</strong> option, so the user is stuck (only locking the phone and typing the passcode, which most users won\'t think of, resets it). Expected: the password fallback is always available.',
+    },
+    {
+      title: 'Face ID login turned on without asking',
+      hint: 'Log in with the password, then look at the Security section.',
+      detail: '"Unlock with Face ID" is already on, and the user was never asked. The spec requires an opt-in question and one successful scan. Turning on a security-relevant feature silently also surprises people who share a device.',
+    },
+    {
+      title: 'Cancel unlocks the app',
+      hint: 'Lock and unlock the phone, then tap Cancel on the Face ID sheet.',
+      detail: 'The log shows <code>userCancel</code> followed by "app unlocked". The code treats every result except "failed" as success. Anyone holding the phone can open the account by tapping Cancel. Expected: cancel keeps the app locked and shows the unlock screen.',
+    },
+    {
+      title: '"Unlock with Face ID" does nothing when Face ID is unavailable',
+      hint: 'Turn off Enrolled, or switch Face ID off for Kestrel in Settings, then lock the phone and tap the button.',
+      detail: 'The OS answers <code>biometryNotEnrolled</code> or <code>biometryNotAvailable</code>, but the app ignores it: no sheet, no message, the button stays. Expected: hide the Face ID option, explain why ("Face ID is turned off for Kestrel in Settings") and show password login.',
+    },
+    {
+      title: 'Balance visible behind the lock screen',
+      hint: 'Lock the phone, unlock it, and look at what is behind the Face ID sheet.',
+      detail: 'The lock layer is semi-transparent, so the balance, IBAN and transactions are readable before anyone has authenticated. Expected: the account content is not rendered (or is fully covered) until unlock succeeds.',
+    },
+  ]}
+>
+  <BuggyBiometricBank client:visible />
+</BugHunt>
+
+<Callout type="tip" title="Notice what works">
+A **non-matching** face is rejected with "Face Not Recognized", the system **Face ID permission prompt** appears the first time, the in-app switch and **Log out** turn biometric login off, and entering the **device passcode** resets the OS lockout. Mention good behavior like this in your bug reports; it helps developers narrow down the cause.
+</Callout>
+
+## Test scenarios
+
+### Functional
+
+- **Opt-in:** after the first password login, the app asks; "Not now" leaves it off; "Yes" asks for one scan and turns it on.
+- **Unlock:** a matching face or finger unlocks; the account appears with the right user's data.
+- **Turn off** biometric login in the app's settings; the next unlock asks for the password.
+- **Logout** turns biometric login off; another user logging in on the same phone is asked to opt in again.
+- **Re-lock:** the app locks again after the agreed time in the background, and after a phone restart.
+- **Fallback:** "Use password" works from the unlock screen, after failures and after a lockout.
+
+### Negative
+
+- **Non-matching** face or finger: rejected, the app stays locked.
+- **Cancel**, swipe the sheet away, press the Home/Back gesture during the scan: the app stays locked.
+- **Lockout:** 5 failed scans (iOS) or repeated failures (Android): the fallback appears, never a dead end.
+- **Not allowed:** tap "Don't Allow" on the iOS Face ID prompt; switch it off later in Settings.
+- **Not enrolled / no hardware:** remove all faces or fingerprints; use a device or emulator without a sensor. No crash, no dead button.
+
+### Edge cases
+
+- **Biometrics changed:** add a new finger or an alternate appearance; remove one. The app must ask for the password (for sensitive apps).
+- **Password changed** on another device, or "log out of all devices": biometric login on this phone must stop working.
+- **Interruptions during the scan:** a phone call, a notification, locking the phone. See [Interruptions](/mobile/interruptions).
+- **App update and reinstall:** is biometric login kept after an update? After a reinstall, iOS Keychain items may survive (see [Install, Update, Uninstall](/mobile/install-update-uninstall)); the app must not unlock with a leftover token without the user opting in again.
+- **Device passcode removed:** on both platforms, removing the screen lock removes biometrics. The app must notice.
+- **Two accounts** on one phone (personal and business): biometrics unlock the right one.
+
+### UI & usability
+
+- The opt-in explains the benefit in plain words and uses the right name: **Face ID**, **Touch ID** or **fingerprint / face unlock**, matching the device.
+- The unlock screen shows **one clear action** and an always-visible "Use password".
+- Error messages say what happened and what to do ("Face ID is locked. Use your password.").
+- The sheet is not shown again in a loop right after Cancel.
+
+### Security
+
+- Cancel, failure and lockout **never** unlock the app.
+- A **new biometric** doesn't unlock without the password (if the requirements say so).
+- Nothing sensitive is visible behind the prompt or in the **app switcher**.
+- Logout, password change and "log out everywhere" disable biometric login.
+- Sensitive actions (adding a payee, changing the phone number) may still need the password even after biometric unlock. Check the requirements.
+
+### Accessibility
+
+- Users who **can't** use biometrics (no fingerprints, face covered, motor impairments) can always use the password or passcode.
+- The unlock screen and errors work with a <Term id="screen-reader" /> (VoiceOver, TalkBack). iOS also offers Face ID without "attention" (eyes open, looking at the screen) as an accessibility setting; the app should work with it.
+- Large text doesn't hide the "Use password" button.
+
+## How to test biometrics on simulators, emulators and real devices
+
+You don't need ten faces to test this. Both platforms let you fake scans. The general setup is in [Simulators and Emulators](/mobile/simulators-and-emulators).
+
+<Tabs labels={['iOS Simulator', 'Android Emulator', 'Real devices']}>
+<Tab>
+
+<Steps>
+
+1. **Pick a Face ID model** (any recent iPhone) or a Touch ID model (iPhone SE) in Xcode.
+2. **Enroll:** in the Simulator menu choose **Features › Face ID › Enrolled**. Untick it to test "not enrolled".
+3. **Trigger the sheet** in the app, then choose **Features › Face ID › Matching Face** for a success or **Non-matching Face** for a failure. Repeat Non-matching to reach the lockout.
+4. **Reset the Face ID permission:** delete the app and install it again, so the "Allow to use Face ID?" prompt appears again.
+
+</Steps>
+
+Limits: the Simulator can't simulate an "alternate appearance" or a newly added finger. Test biometric changes on a real device.
+
+</Tab>
+<Tab>
+
+<Steps>
+
+1. **Set a screen lock first:** in the emulator's Settings › Security, add a PIN. Biometrics require it.
+2. **Enroll a fingerprint:** Settings › Security › Fingerprint (the name varies by Android version). When it asks you to touch the sensor, open **Extended controls (⋮) › Fingerprint** and click **Touch the sensor** a few times.
+3. **Scan in the app:** with BiometricPrompt open, touch the sensor with the enrolled finger (success) or choose a different finger (failure).
+4. **From the command line:** `adb -e emu finger touch 1` touches the sensor with finger 1. Use another number for a non-enrolled finger. See [ADB basics](/mobile/adb-basics).
+
+</Steps>
+
+Limits: the emulator only simulates **fingerprints**. Face unlock and Class 2 vs Class 3 behavior need real devices.
+
+</Tab>
+<Tab>
+
+- **Cover both kinds:** at least one Face ID iPhone, one Touch ID device, a Pixel with fingerprint, and a Samsung (different biometric UI and settings).
+- **Change biometrics for real:** add a fingerprint, set up an alternate appearance, remove all biometrics, remove the screen lock.
+- **Real-life failures:** wet or gloved fingers, sunglasses, low light, holding the phone flat on a table.
+- **Lock and reopen** the app many times: background, phone lock, restart, app switcher.
+- **Use test accounts** only, never your personal bank. And never test with someone else's face or finger without asking.
+
+</Tab>
+</Tabs>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-BIO-001',
+      title: 'Opt in to Face ID after the first login',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Face ID is enrolled on the device', 'Fresh install, user logged out'],
+      steps: ['Log in with email and password', 'Answer "Use Face ID to log in next time?" with Yes', 'Allow Face ID in the system prompt and scan a matching face'],
+      expected: 'Biometric login is on. After locking and reopening the app, a matching face unlocks it.',
+    },
+    {
+      id: 'TC-BIO-002',
+      title: 'Biometric login stays off without opt-in',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Log in with the password on a fresh install', 'Answer the opt-in question with "Not now"', 'Lock and reopen the app'],
+      expected: 'The app asks for the password. No biometric sheet is shown and the setting is off.',
+    },
+    {
+      id: 'TC-BIO-003',
+      title: 'Cancel keeps the app locked',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Biometric login is on'],
+      steps: ['Lock and reopen the app', 'Tap Cancel on the Face ID sheet'],
+      expected: 'The app stays locked. The unlock screen shows "Unlock with Face ID" and "Use password". No account data is visible.',
+    },
+    {
+      id: 'TC-BIO-004',
+      title: 'Fallback after biometric lockout',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Biometric login is on', 'iOS Simulator with Face ID enrolled'],
+      steps: ['Reopen the app', 'Choose Non-matching Face 5 times'],
+      expected: 'The app says Face ID is locked and offers "Use password". Logging in with the password works.',
+    },
+    {
+      id: 'TC-BIO-005',
+      title: 'New fingerprint requires the password',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Real Android device with one enrolled fingerprint', 'Biometric login is on'],
+      steps: ['In Settings, enroll a second fingerprint', 'Open the app', 'Touch the sensor with the new finger'],
+      expected: 'The app explains that biometrics changed and asks for the password. The new finger does not unlock it.',
+    },
+    {
+      id: 'TC-BIO-006',
+      title: 'Face ID not allowed for the app',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Biometric login is on'],
+      steps: ['Settings › Face ID & Passcode › Other Apps: switch the app off', 'Reopen the app'],
+      expected: 'No Face ID sheet and no dead button. The app explains that Face ID is off for it and shows password login.',
+    },
+    {
+      id: 'TC-BIO-007',
+      title: 'No account data before unlock',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Biometric login is on', 'Home screen shows the balance'],
+      steps: ['Send the app to the background and open the app switcher', 'Lock the phone, unlock it and open the app'],
+      expected: 'The app switcher shows a covered or blurred screen. While the biometric sheet is shown, the balance is not visible.',
+    },
+    {
+      id: 'TC-BIO-008',
+      title: 'No biometric hardware',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Android emulator or device without a fingerprint sensor'],
+      steps: ['Install the app and log in with the password', 'Open the app settings'],
+      expected: 'No opt-in question and no biometric option. No crash.',
+    },
+  ]}
+/>
+
+## iOS vs Android vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- **Face ID needs a permission.** The first use shows "Allow “App” to use Face ID?". Test both answers and the per-app switch in **Settings › Face ID & Passcode › Other Apps**. Touch ID has no such prompt.
+- **Usage description:** check on a Face ID device that the prompt text is present and sensible. A missing description is a release blocker.
+- **Fallback button:** the iOS sheet can show the app's own fallback (for example "Enter Password") after a failed scan. Check it's there and leads somewhere useful.
+- **Keychain survives reinstall:** delete and reinstall the app, then check whether biometric login unexpectedly still works.
+
+</Tab>
+<Tab>
+
+- **BiometricPrompt** looks different on Pixel, Samsung and others, and can show fingerprint, face or both. Test on several makers ([Device Fragmentation](/mobile/device-fragmentation)).
+- **Classes:** know whether the app accepts Class 2 (weak) biometrics, Class 3 only, or also the device PIN. Test a phone with Class 2 face unlock.
+- **In-display fingerprint sensors** sit under the screen; check the app doesn't cover the sensor area with its own UI.
+- **No screen lock = no biometrics.** Remove the PIN and check the app handles it.
+
+</Tab>
+<Tab>
+
+- Websites can't use Face ID directly. They use **passkeys** (WebAuthn): the browser asks the OS to verify the user with biometrics or the device PIN, and the site gets a cryptographic signature, never the biometric.
+- Test passkey sign-in and the fallback (password or another device), and what happens when the user cancels the browser's passkey dialog.
+- The same principles apply: cancel never signs in, a fallback always exists, and nothing sensitive leaks before authentication.
+
+</Tab>
+</Tabs>
+
+## Checklist
+
+<Checklist
+  title="Biometric login checklist"
+  storageKey="biometric-login"
+  items={[
+    'Biometric login is opt-in after a password login, never switched on silently',
+    'The option is hidden when there is no hardware or nothing is enrolled',
+    'A matching face or finger unlocks; a non-matching one is rejected',
+    'Cancel, dismiss and interruptions keep the app locked',
+    'After the OS lockout, a password or passcode fallback is shown',
+    '"Use password" is always reachable from the unlock screen',
+    'Face ID "Don\'t Allow" and switching it off in Settings are handled with a clear message',
+    'Adding or removing a face or finger requires the password (sensitive apps)',
+    'Logout, password change and "log out everywhere" disable biometric login',
+    'No account data behind the prompt or in the app switcher',
+    'Face ID usage description is present (test on a Face ID device)',
+    'Android: accepted biometric class matches the requirements',
+    'Tested on Simulator/Emulator and on real Face ID, Touch ID and fingerprint devices',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'What does the banking server receive when you unlock the app with Face ID?',
+      options: ['A picture of your face', 'A mathematical model of your face', 'A token released from the phone\'s secure storage', 'Nothing, the app works offline'],
+      answer: 2,
+      explain: 'The face check happens on the phone. A match only releases a token or key the app stored earlier, and the server checks that token like after a password login.',
+    },
+    {
+      q: 'On the Face ID sheet you tap Cancel and the app opens your account. How do you report it?',
+      options: ['Not a bug: the user is the phone owner', 'A critical security bug: cancel must keep the app locked', 'A minor UI issue'],
+      answer: 1,
+      explain: 'Anyone holding the phone can tap Cancel. The app must treat cancel like a failed check and stay locked.',
+    },
+    {
+      q: 'A tester adds a second fingerprint to the test phone. For a banking app, what is the expected result next time?',
+      options: ['The new fingerprint unlocks the app', 'The app asks for the password before biometric login works again', 'The app deletes the account'],
+      answer: 1,
+      explain: 'A new biometric may belong to someone else. Sensitive apps tie their secret to the current set of biometrics and ask for the password after a change.',
+    },
+    {
+      q: 'How do you test a non-matching face on the iOS Simulator?',
+      options: ['Hold a photo in front of the webcam', 'Features › Face ID › Non-matching Face', 'It is not possible on the Simulator'],
+      answer: 1,
+      explain: 'With Face ID enrolled, the Features menu lets you send a matching or non-matching face to the app while its Face ID sheet is open.',
+    },
+    {
+      q: 'Fingerprint login works on an Android phone, but face unlock is never offered by the banking app. What should you check first?',
+      options: ['Whether the face unlock on that phone is Class 2 (weak) and the app requires Class 3', 'Whether the phone is in dark mode', 'Whether the server is down'],
+      answer: 0,
+      explain: 'Many camera-based face unlocks are Class 2. Apps that protect Keystore keys need Class 3, so this may be expected behavior.',
+    },
+    {
+      q: 'After five failed scans the app shows "Face ID is locked. Try again later." and nothing else. What is wrong?',
+      options: ['Nothing, the OS decided it', 'There is no fallback: the user must be able to use the password or passcode', 'The lockout should happen after one failure'],
+      answer: 1,
+      explain: 'The OS lockout is correct, but the app must handle it with a fallback. Otherwise users are locked out of their money.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Biometrics are checked **on the phone**. A match releases a stored token or key; the server never sees a face or fingerprint.
+- Biometric login is **opt-in** after a password login, and the password (or passcode) fallback must **always** be reachable.
+- **Cancel, failure, lockout and errors** must leave the app locked, and nothing sensitive may show behind the prompt or in the app switcher.
+- When the phone's biometrics **change**, sensitive apps must ask for the password again.
+- Use the **Simulator** (Features › Face ID) and **Emulator** (Fingerprint, `adb -e emu finger touch 1`) for fast checks, and **real devices** for biometric changes, face unlock and Android classes.
+
+</KeyTakeaways>

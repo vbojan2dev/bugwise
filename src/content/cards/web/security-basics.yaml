@@ -1,0 +1,46 @@
+teaser: "A tester changed one number in the address bar and saw a stranger's home address. No hacking skills needed. How?"
+cards:
+  - type: flip
+    front: "What is the first rule before any security check?"
+    back: "Only test systems you're authorized to test: your team's app, in a test environment, with test accounts and permission."
+  - type: spotbug
+    screen: ["Logged in as: Anna (test)", "shop.example/orders/1043", "Order for: Ben O.", "Ship to: 12 Elm Street"]
+    bug: "Anna can see Ben's order by changing the ID."
+    explain: "The server didn't check that the order belongs to the logged-in user. This IDOR is critical; the page should return 403 or 404."
+  - type: quiz
+    q: "The Admin link is hidden from customers' menus. When is the admin area actually secure?"
+    options: ["When the URL is hard to guess", "When the server refuses customers", "When the link is hidden"]
+    answer: 1
+    explain: "Hiding a link is cosmetic. Security means the server checks the user's role on every request."
+  - type: thisorthat
+    prompt: "You want to check whether a review field treats input as code. What do you type?"
+    left: "A copied hacker script"
+    right: "Harmless bold tags"
+    answer: right
+    explain: "If harmless formatting shows up bold, input is rendered as HTML. That proves the risk without harming anyone. Exploiting it is a specialist's job."
+  - type: spotbug
+    screen: ["Search: runner's", "500 Internal Server Error", "SQL syntax error near 's'", "at /srv/app/search.js:88"]
+    bug: "An apostrophe triggers a SQL error and stack trace."
+    explain: "Input probably reaches the database unsafely, and the page leaks internal details. Expected: normal results and a friendly error page."
+  - type: thisorthat
+    prompt: "Login form. A wrong email says \"No account found\", a wrong password says \"Wrong password\"."
+    left: "Fine"
+    right: "Security bug"
+    answer: right
+    explain: "Different messages reveal which emails are registered (account enumeration). Both should say something like 'Email or password is incorrect'."
+  - type: quiz
+    q: "Where do you check whether an API sends more personal data than the page shows?"
+    options: ["DevTools › Network › Response", "The browser history", "The page's visible text"]
+    answer: 0
+    explain: "The Network tab shows exactly what the server sent, including fields the UI never displays. If the browser receives it, anyone can read it."
+  - type: truefalse
+    statement: "A security bug should be posted in the big team channel so everyone sees it fast."
+    answer: false
+    explain: "Report privately, through a restricted ticket or the security contact, so the details don't spread before it's fixed."
+  - type: truefalse
+    statement: "A password visible in the URL after login is a bug, even on a test site."
+    answer: true
+    explain: "URLs end up in browser history, server logs and analytics. Login must send credentials in a POST body, never in the URL."
+  - type: tip
+    title: "Stop when you find it"
+    text: "One screenshot of another test user's data proves the bug. Don't keep digging, download data or test further. Write down the steps and report."

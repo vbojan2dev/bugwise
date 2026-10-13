@@ -1,0 +1,46 @@
+teaser: "Every test passed and developers built exactly what the spec said. So why are groceries arriving at people's offices on Saturday?"
+cards:
+  - type: flip
+    front: "Verification vs validation in one question each?"
+    back: "Verification: are we building the product right? Validation: are we building the right product?"
+  - type: flip
+    front: "Static vs dynamic testing?"
+    back: "Static testing checks things without running the software, like story or code reviews. Dynamic testing runs the software and checks what happens."
+  - type: quiz
+    q: "A tester reads a story and notes it never says what happens when the card is declined. What is this?"
+    options: ["Static testing (verification)", "User acceptance testing", "Beta testing"]
+    answer: 0
+    explain: "Nothing is being run, and a document is being checked for gaps. That's static testing, and it's the cheapest place to catch a problem."
+  - type: quiz
+    q: "Which is the clearest example of validation?"
+    options: ["A developer's code review", "Running TC-014 against acceptance criteria", "Bank staff trying a feature in UAT"]
+    answer: 2
+    explain: "UAT asks real users whether the product meets their needs. The other two compare the product with documents."
+  - type: truefalse
+    statement: "Verification is always static and validation is always dynamic."
+    answer: false
+    explain: "A handy myth. Running a test case against the spec is dynamic verification; showing a prototype to customers is validation without code. Ask what you compare against."
+  - type: truefalse
+    statement: "Showing paper sketches to five customers before development counts as validation."
+    answer: true
+    explain: "You're checking against real people's needs, not a document. It's the cheapest validation: the earlier you learn it's the wrong thing, the less you throw away."
+  - type: thisorthat
+    prompt: "A checkout passes every test case, but real customers keep sending orders to the wrong address."
+    left: "Failed verification"
+    right: "Failed validation"
+    answer: right
+    explain: "It matched the spec, so verification passed. But it doesn't work for real users. The spec itself was the problem."
+  - type: thisorthat
+    prompt: "Users love one-tap 'Buy now', but the spec and consumer law require showing total fees before payment."
+    left: "Failed verification"
+    right: "Failed validation"
+    answer: left
+    explain: "Users are happy, so validation looks fine. But it breaks a written rule, which is a verification failure that could get the company fined."
+  - type: spotbug
+    screen: ["Send money", "To: account 4471 0093 2210", "Amount: $250.00", "[ Confirm ]"]
+    question: "What did the spec forget?"
+    bug: "The payee's name isn't shown before confirming."
+    explain: "Every test passes because nobody wrote that rule. Customers send money to the wrong person, since a bare account number is easy to mistake."
+  - type: tip
+    title: "Report 'matches spec, but confusing'"
+    text: "Describe the user impact, quote the spec, suggest an alternative and let the product owner decide. It's not a classic defect, but it's worth raising."

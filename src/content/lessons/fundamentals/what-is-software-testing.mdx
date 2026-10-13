@@ -1,0 +1,309 @@
+---
+title: What Is Software Testing?
+description: A friendly introduction to software testing — what it is, why it matters, what a manual tester actually does, and the core ideas every tester should know.
+order: 1
+level: beginner
+minutes: { short: 6, long: 14 }
+platform: both
+tags: [fundamentals, basics, career]
+---
+
+Imagine you order a pizza through a food delivery app. You pick a large margherita, add extra olives, pay with your card, and wait. Forty minutes later a small pepperoni arrives. Somewhere between your tap and your doorbell, something went wrong.
+
+Now imagine that problem happens to **ten thousand customers** on a Friday night. That is exactly the kind of mess software testing exists to prevent.
+
+## What is software testing?
+
+<Term id="software-testing">Software testing</Term> is the process of checking that an app or website **does what it is supposed to do**, and finding the places where it doesn't — **before real users do**.
+
+<Callout type="example" title="An everyday analogy">
+
+Think of a restaurant kitchen. Before a plate leaves the kitchen, the head chef tastes the sauce, checks the steak is cooked properly, and makes sure the order matches the ticket. Nobody calls that "slowing down the kitchen". It is simply how good restaurants avoid sending a cold, wrong dish to a paying customer.
+
+A tester is the person tasting the sauce — for software.
+
+</Callout>
+
+<Short>
+
+## The quick version
+
+### Why it matters
+
+Bugs cost money, trust and sometimes much more. A banking app that shows the wrong balance, a shopping cart that charges twice, or a login screen that locks everyone out can turn into angry reviews, support calls and lost customers within hours. Finding a problem early is usually far cheaper than fixing it after launch.
+
+### What a manual tester does
+
+A manual tester uses the app the way a real person would — tapping, typing, swiping, clicking — and compares what happens with what *should* happen. They read <Term id="requirement">requirements</Term>, write <Term id="test-case">test cases</Term>, run them, and write clear <Term id="bug-report">bug reports</Term> when something is wrong.
+
+### Three words people mix up
+
+- **<Term id="error">Error</Term>** — a human mistake (a developer types the wrong number).
+- **<Term id="defect">Defect</Term>** (or <Term id="bug">bug</Term>) — the flaw that mistake leaves in the product.
+- **<Term id="failure">Failure</Term>** — what the user actually sees when that flaw is triggered (the app crashes).
+
+### Manual vs automated
+
+**Manual testing** means a human performs the checks. **Automated testing** means code performs them. Both are useful: humans are great at spotting confusing screens and odd behavior; scripts are great at repeating the same checks thousands of times. This site focuses on manual testing.
+
+<Callout type="tip">
+
+Switch to **Detailed** at the top of the page for the full story: the seven testing principles, QA vs QC, and how mobile and web testing differ.
+
+</Callout>
+
+</Short>
+
+<Long>
+
+## Why testing matters
+
+Software is written by people, and people make mistakes. Testing is how a team catches those mistakes while they are still cheap and private, instead of expensive and public.
+
+### Some real failures
+
+A few well-known examples show how far a small mistake can travel:
+
+- **Mars Climate Orbiter (1999).** Ground software from one team produced thruster data in imperial units (pound-force seconds), while the navigation software of another team expected metric units (newton-seconds). The mismatch went unnoticed, the spacecraft flew far too close to Mars, and the mission was lost.
+- **The CrowdStrike outage (July 2024).** A faulty configuration update to a widely used security product made Windows computers crash and get stuck restarting. Microsoft estimated that about 8.5 million devices were affected. Airlines, hospitals, banks and broadcasters were disrupted around the world.
+
+You probably won't test spacecraft. But the same idea applies at every scale.
+
+### Everyday app examples
+
+<Callout type="bug" title="What a missed bug looks like in real apps">
+
+- A **shopping app** applies a 20% discount code twice, so a $100 order costs $64. The store loses money on every order until someone notices.
+- A **banking app** shows yesterday's balance after a transfer. Customers panic and flood the support line.
+- A **food delivery app** lets you check out with an empty address field. The driver has nowhere to go.
+- A **login screen** works perfectly on a new iPhone but the "Sign in" button is hidden behind the keyboard on a small Android phone. A big chunk of users simply can't log in.
+
+</Callout>
+
+Each of these costs something: money, support time, app store ratings, and — hardest to win back — **trust**.
+
+## What a manual tester does day to day
+
+There is no single "typical day", but most manual testers spend their time on a mix of these:
+
+- **Reading and questioning requirements.** Going through <Term id="user-story">user stories</Term> and <Term id="acceptance-criteria">acceptance criteria</Term> and asking "what happens if…?" before any code is written.
+- **Designing tests.** Turning requirements into <Term id="test-scenario">test scenarios</Term> and detailed <Term id="test-case">test cases</Term>.
+- **Running tests.** Installing the latest <Term id="build" /> on phones, tablets and browsers and working through the checks.
+- **Exploring.** Doing <Term id="exploratory-testing" /> — using the app freely and curiously to find problems nobody thought to write down.
+- **Reporting bugs.** Writing clear, <Term id="reproducible" /> <Term id="bug-report">bug reports</Term> so developers can fix issues fast.
+- **Re-checking fixes.** <Term id="retesting">Retesting</Term> fixed bugs and running <Term id="regression-testing" /> to make sure nothing else broke.
+- **Talking to people.** Joining stand-ups, pairing with developers, and helping product owners decide what is ready to ship.
+
+<Callout type="info" title="Testing is a mindset, not just a task">
+
+Good testers are curious and a little bit suspicious. Where a developer asks "does this work?", a tester asks "how could this break?" — and then tries it.
+
+</Callout>
+
+## Error, defect, failure: three different things
+
+These words get used interchangeably in casual chat, but in testing they mean different things. They form a chain:
+
+| Word | What it is | Banking app example |
+| --- | --- | --- |
+| <Term id="error">Error</Term> | A human mistake | A developer writes "greater than" instead of "greater than or equal to" in the transfer limit rule. |
+| <Term id="defect">Defect</Term> / <Term id="bug">Bug</Term> | The flaw that mistake leaves in the code (or document) | The app now rejects transfers of *exactly* $1,000, even though $1,000 is allowed. |
+| <Term id="failure">Failure</Term> | What happens when the defect is triggered | A customer tries to send $1,000 and sees "Amount exceeds daily limit". |
+
+<Callout type="note">
+
+A defect can sit quietly in the code for months without causing a failure — if nobody ever sends exactly $1,000, nobody sees it. That is one reason testers love checking **boundaries** (see [Boundary Value Analysis](/fundamentals/boundary-value-analysis)).
+
+</Callout>
+
+## QA vs QC vs testing
+
+You will see these three terms on job ads, often used as if they mean the same thing. They overlap, but they are not identical.
+
+- **<Term id="quality-assurance">Quality assurance (QA)</Term>** is about the **process**. It aims to *prevent* defects: good requirements, code reviews, clear definitions of "done", agreed ways of working.
+- **<Term id="quality-control">Quality control (QC)</Term>** is about the **product**. It aims to *find* defects in what has been built, by checking it against requirements.
+- **<Term id="software-testing">Testing</Term>** is the hands-on activity of checking the product: mostly by running it, but also by reviewing documents and designs without running anything (static testing). It is the main tool of quality control.
+
+<Callout type="example" title="Back to the kitchen">
+
+**QA** is writing good recipes and training the cooks. **QC** is checking each plate before it goes out. **Testing** is the actual act of tasting the sauce.
+
+</Callout>
+
+In practice, a "QA tester" job usually involves mostly testing, with some QA work like reviewing requirements and suggesting process improvements.
+
+## The seven testing principles
+
+These seven ideas come from the ISTQB (International Software Testing Qualifications Board), whose Foundation Level is one of the most widely recognized testing certifications. The wording below is ours; the ideas are theirs. They sound abstract at first, but each one describes something you will run into on a real project.
+
+<Steps>
+
+1. **Testing shows that defects are present, not that they are absent.** Testing can prove a bug exists. It can never prove there are *zero* bugs. "We tested it and found nothing" means "we didn't find anything with the tests we ran" — not "it's perfect".
+2. **Exhaustive testing is impossible.** A simple sign-up form with a name, email, password and country could be filled in billions of ways, on hundreds of devices. You can't test them all, so you choose wisely using risk and techniques like <Term id="equivalence-partitioning" /> and <Term id="boundary-value-analysis" />.
+3. **Early testing saves time and money.** A missing rule caught while reading a user story costs a five-minute conversation. The same problem found after release can cost a hotfix, an app store review and a lot of unhappy users.
+4. **Defects cluster together.** Bugs are not spread evenly. A small number of areas — often the most complex ones, like payments or syncing — tend to hold most of the problems. When you find one bug, look around: its friends are often nearby.
+5. **Tests wear out (the pesticide paradox).** If you run exactly the same tests over and over, they stop finding new bugs — just like insects become resistant to the same pesticide. Keep reviewing and refreshing your tests, and mix in exploratory testing.
+6. **Testing depends on context.** Testing a banking app is different from testing a casual game. The banking app needs heavy focus on security and accuracy; the game needs more focus on performance and fun. There is no one-size-fits-all approach.
+7. **The absence-of-defects fallacy.** (Older syllabus versions say "absence-of-errors".) An app can pass every test and still fail if it solves the wrong problem or is painful to use. A bug-free checkout flow that takes nine screens to buy a T-shirt is still a bad product.
+
+</Steps>
+
+<Callout type="tip" title="Interview favorite">
+
+The seven principles come up a lot in junior tester interviews. You don't need to recite them word for word — explaining each one with a short example (like the ones above) is far more impressive. See the [interview prep](/interview) page for more.
+
+</Callout>
+
+## Manual vs automated testing
+
+Both are real, valuable jobs. They are good at different things.
+
+| | Manual testing | Automated testing |
+| --- | --- | --- |
+| Who runs the check | A human | A script or tool |
+| Great for | New features, usability, exploratory testing, visual checks, "does this feel right?" | Repetitive checks, large regression suites, running the same test on many devices, every build |
+| Weak at | Repeating the same 500 checks every day without getting tired | Noticing that a button is ugly, confusing or in the wrong place |
+| Setup cost | Low — you can start today | Higher — someone has to write and maintain the code |
+
+<Callout type="info">
+
+Automation doesn't replace manual testers. Someone still has to decide **what** to test, explore new features, and judge whether the app is actually pleasant to use. Many automation engineers started as manual testers — the thinking skills are the foundation.
+
+</Callout>
+
+## Where testing fits in development
+
+Software is built in a sequence of stages called the <Term id="sdlc">software development life cycle (SDLC)</Term>: requirements, design, development, testing, deployment, maintenance. Testing has its own matching life cycle, the <Term id="stlc">STLC</Term>. Both are explained in [SDLC and STLC](/fundamentals/sdlc-and-stlc).
+
+In older "waterfall" projects, testing happened near the end. In modern <Term id="agile" /> teams, testing happens **all the time**: testers review stories before a <Term id="sprint" /> starts, test features as soon as they are built, and keep checking until release.
+
+Testing also happens at different levels, from small to large:
+
+- <Term id="unit-testing" /> — developers check tiny pieces of code.
+- <Term id="integration-testing" /> — checking pieces work together (for example, the app and its <Term id="api" />).
+- <Term id="system-testing" /> — checking the whole app end to end. This is where most manual testers work.
+- <Term id="acceptance-testing" /> — checking the app meets the business and user needs, sometimes done by real users as <Term id="uat" />.
+
+We go deeper into each of these in [Levels of Testing](/fundamentals/levels-of-testing).
+
+## Mobile vs web testing at a glance
+
+The core skills are the same, but each platform brings its own surprises.
+
+<Tabs labels={["Mobile apps", "Websites"]}>
+<Tab>
+
+**Mobile apps** run on a huge variety of phones and tablets. Things to think about:
+
+- **Device <Term id="fragmentation" />** — different screen sizes, OS versions and manufacturers (especially on Android).
+- **Interruptions** — phone calls, notifications, switching apps, the screen locking.
+- **Network changes** — Wi-Fi to mobile data, tunnels, airplane mode.
+- **Hardware** — camera, GPS, fingerprint and face unlock, battery saver.
+- **Gestures** — swipes, long presses, pinch to zoom, and finger-sized <Term id="touch-target">touch targets</Term>.
+- **Testing tools** — a mix of <Term id="emulator">emulators</Term>, <Term id="simulator">simulators</Term> and <Term id="real-device">real devices</Term>.
+
+</Tab>
+<Tab>
+
+**Websites** run in many browsers on many screen sizes. Things to think about:
+
+- **<Term id="cross-browser-testing" />** — Chrome, Safari, Firefox and Edge don't always behave the same.
+- **<Term id="responsive-design" />** — the layout should work on a phone, a tablet and a wide monitor.
+- **Browser behavior** — back and forward buttons, refreshing mid-checkout, multiple tabs, bookmarks.
+- **Forms and links** — validation, broken links, keyboard navigation.
+- **<Term id="devtools" />** — built-in browser tools that let you inspect elements, see network calls and simulate slow connections.
+
+</Tab>
+</Tabs>
+
+</Long>
+
+## What you will learn on Bugwise
+
+This site takes you from "what is a bug?" to "ready for a junior QA interview", one practical step at a time:
+
+- **Fundamentals** — the core ideas, vocabulary and processes every tester needs.
+- **Tutorials** — hands-on skills like [writing test cases](/tutorials/writing-test-cases) and [writing bug reports](/tutorials/writing-bug-reports).
+- **UI components** — how to test real building blocks like a [segmented control](/components/segmented-control), with interactive "find the bug" demos.
+- **Mobile and web** — platform-specific tips and traps.
+- **[Glossary](/glossary)** — every term on the site in plain English. Hover over any dotted term (like <Term id="edge-case" />) to see a quick definition.
+- **[Interview prep](/interview)** — common questions with model answers.
+
+<Callout type="tip" title="Next step">
+
+Ready to get practical? Head to [How to Write Test Cases](/tutorials/writing-test-cases) and write your first real tests for a banking app's sign-in screen.
+
+</Callout>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "A developer forgets to handle an empty address field. Later, a customer checks out with no address and the order fails. Which part of that story is the failure?",
+      options: [
+        "The developer forgetting to handle the field",
+        "The missing check in the code",
+        "The customer's order failing",
+        "The requirement document",
+      ],
+      answer: 2,
+      explain: "The developer's slip is the error, the missing check in the code is the defect, and the order failing for the customer is the failure — the visible result.",
+    },
+    {
+      q: "Your team ran 300 tests and found no bugs. What can you honestly say?",
+      options: [
+        "The app has no bugs",
+        "The tests we ran didn't find any bugs",
+        "Testing is finished forever",
+        "Automated testing is no longer needed",
+      ],
+      answer: 1,
+      explain: "Testing shows the presence of defects, not their absence. Passing tests reduce risk, but they can't prove the app is bug-free.",
+    },
+    {
+      q: "Which activity is the best example of quality assurance (QA) rather than quality control (QC)?",
+      options: [
+        "Running test cases on the latest build",
+        "Logging a bug about a broken checkout button",
+        "Agreeing as a team that every user story needs clear acceptance criteria",
+        "Retesting a fixed bug",
+      ],
+      answer: 2,
+      explain: "QA focuses on the process and preventing defects. Improving how stories are written is a process change; the other options check the product itself (QC).",
+    },
+    {
+      q: "Why can't you test every possible input and device combination?",
+      options: [
+        "Because testers are lazy",
+        "Because exhaustive testing is impossible — there are far too many combinations",
+        "Because only automated tests can do that",
+        "Because bugs only appear in production",
+      ],
+      answer: 1,
+      explain: "Even a small form has a practically endless number of possible inputs. Testers use risk and test design techniques to pick the most valuable checks.",
+    },
+    {
+      q: "Which task is a better fit for manual testing than for automation?",
+      options: [
+        "Running the same 800 regression checks on every build",
+        "Judging whether a new onboarding flow is confusing",
+        "Checking the login API responds in every nightly build",
+        "Repeating a form submission 10,000 times",
+      ],
+      answer: 1,
+      explain: "Humans are great at judging usability, clarity and 'does this feel right?'. Scripts are better at fast, repetitive checks.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Software testing means checking that an app does what it should, and finding problems before real users do.
+- Bugs cost money and trust; finding them early is usually much cheaper.
+- An **error** (human mistake) causes a **defect** (flaw in the product), which can cause a **failure** (what the user sees).
+- QA improves the process, QC checks the product, and testing is the hands-on activity of checking.
+- Testing can't prove an app is bug-free, and you can't test everything — so you choose tests wisely.
+- Manual and automated testing complement each other; manual testers bring judgment, curiosity and a user's eye.
+
+</KeyTakeaways>

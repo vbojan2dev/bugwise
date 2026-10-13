@@ -1,0 +1,399 @@
+---
+title: Segmented Control
+description: A row of two to five connected buttons where exactly one is selected. Here's what it looks like, when it's the right choice, and how testers break it.
+category: navigation
+aka: [Segmented button, Button group, Toggle button group]
+platforms: [ios, android, web]
+minutes: 25
+order: 1
+---
+
+import { SegmentedControl } from '@/components/demos/segmented-control/SegmentedControl';
+import Anatomy from '@/components/demos/segmented-control/Anatomy';
+import VariantsGallery from '@/components/demos/segmented-control/VariantsGallery';
+import Playground from '@/components/demos/segmented-control/Playground';
+import { BuggyActivityApp } from '@/components/demos/segmented-control/BuggyActivityApp';
+
+Open the Calendar app on an iPhone and look at the top: **Day · Week · Month · Year**. Tap one and the view below changes. That small bar of connected buttons is a <Term id="segmented-control">segmented control</Term>, and you'll find it in almost every app: maps, banking, fitness, shopping filters.
+
+It looks simple, and that's exactly why bugs slip through. Let's learn it properly.
+
+## What is a segmented control?
+
+A segmented control is a **horizontal set of 2–5 options shown as one connected control**. The options are <Term id="mutually-exclusive">mutually exclusive</Term>, so selecting one deselects the others. Think of it as radio buttons dressed up as a single button bar.
+
+You'll usually see it used to:
+
+- **Switch between views of the same content**: *List / Map* in a restaurant app, *Day / Week / Month* in a calendar.
+- **Filter content**: *All / Unread* in a mail app, *Income / Expenses* in a banking app.
+- **Pick a setting with a few options**: *Walk / Transit / Drive* in a maps app.
+
+### Anatomy
+
+<Anatomy />
+
+### How it differs from similar components
+
+Beginners often mix these up. Knowing the differences helps you spot when the **wrong component** was used, and that's a valid finding too.
+
+| Component | Choices | Selection | Typical use |
+| --- | --- | --- | --- |
+| **Segmented control** | 2–5, short labels | Exactly one | Switch views or filter, right where the content is |
+| **[Tabs](/components/tabs)** | 2–7+ | Exactly one | Navigate between *different* sections or screens |
+| **[Radio buttons](/components/radio-button)** | ~2–6 | Exactly one | Forms, especially with long labels or descriptions |
+| **[Toggle switch](/components/toggle-switch)** | 1 (on/off) | On or off | A setting that takes effect immediately |
+| **[Dropdown](/components/dropdown)** | Many | One (or more) | Saving space when there are 5+ options |
+| **[Chips](/components/chips)** | Any | One or many | Filters, tags, multiple selection |
+
+<Callout type="dev" title="Platform names">
+Apple calls it a **segmented control**. Google's Material Design calls it a **segmented button**. On the web it's often called a **button group** or **toggle group**. In bug reports, use the name your team uses.
+</Callout>
+
+## Designs & variants
+
+The same idea looks different on every platform. Each variant comes with its own risks.
+
+<VariantsGallery client:visible />
+
+## When to use it
+
+A segmented control is a good choice when:
+
+- There are **2 to 5 options**, and all of them fit with **short labels** (1–2 words).
+- The options are **related and mutually exclusive**: you can only look at one time range at a time.
+- The user will **switch often** and wants to see all options at once.
+- The change applies **immediately** to content on the same screen, with no "Save" button.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Short, related views">
+
+<div class="not-prose demo-screen my-3"><SegmentedControl options={[{ label: 'List' }, { label: 'Map' }]} value={0} /></div>
+
+Two views of the same restaurants. Short labels, instant switch.
+
+</Do>
+<Dont title="Too many options">
+
+<div class="not-prose demo-screen my-3"><SegmentedControl options={[{ label: 'Mon' }, { label: 'Tue' }, { label: 'Wed' }, { label: 'Thu' }, { label: 'Fri' }, { label: 'Sat' }, { label: 'Sun' }]} value={2} size="sm" /></div>
+
+Seven cramped segments that are hard to tap. Use a dropdown, a date picker or scrollable tabs instead.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Mutually exclusive filter">
+
+<div class="not-prose demo-screen my-3"><SegmentedControl options={[{ label: 'Income' }, { label: 'Expenses' }]} value={1} /></div>
+
+You see one list or the other, never both.
+
+</Do>
+<Dont title="Actions instead of choices">
+
+<div class="not-prose demo-screen my-3"><SegmentedControl options={[{ label: 'Save' }, { label: 'Share' }, { label: 'Delete' }]} value={0} /></div>
+
+These are commands, not states. Nothing should stay "selected" after you share something. Use regular buttons.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Settings with a few clear values">
+
+<div class="not-prose demo-screen my-3"><SegmentedControl options={[{ label: 'Light' }, { label: 'Dark' }, { label: 'Auto' }]} value={2} /></div>
+
+Three short, exclusive values.
+
+</Do>
+<Dont title="Long labels or on/off settings">
+
+<div class="not-prose demo-screen my-3"><SegmentedControl options={[{ label: 'Receive notifications' }, { label: 'Do not receive' }]} value={0} /></div>
+
+Labels get truncated, and an on/off choice is clearer as a toggle switch.
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Tester mindset">
+If a design uses a segmented control where it doesn't fit (8 options, actions, or long text), raise it early as a **usability** finding. It's much cheaper to change a design than finished code.
+</Callout>
+
+## Common bugs
+
+These are the bugs testers report most often for segmented controls. Learn the patterns and you'll spot them in seconds.
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **No default selection** | The screen loads with no segment highlighted, or the highlighted one doesn't match the content | Medium |
+| 2 | **Content doesn't match selection** | "Day" is selected but the chart shows yearly data, often after fast tapping | High |
+| 3 | **State is lost** | Selection jumps back to the first segment after rotating, going back or returning from the background | Medium |
+| 4 | **Label truncation** | "Mon…" or clipped text in other languages or with large text | Medium |
+| 5 | **Invisible selection** | In dark mode or high contrast, you can't tell which segment is active | Medium–High |
+| 6 | **Double requests** | Tapping the selected segment again reloads data; fast taps fire many API calls | Low–Medium |
+| 7 | **Tiny touch targets** | Segments smaller than 44 pt (iOS) / 48 dp (Android) are hard to hit and you tap the wrong one | Medium |
+| 8 | **Screen reader silence** | VoiceOver or TalkBack doesn't say which segment is selected, or reads "button, button" | High (for affected users) |
+| 9 | **Disabled segment still works** | A greyed-out option can still be tapped or selected with the keyboard | Medium |
+| 10 | **Animation glitches** | The thumb lands between segments or flickers when you switch quickly | Low |
+
+<Callout type="bug" title="Why #2 happens: race conditions">
+When each tap triggers a network request, responses can arrive **out of order**. If the app shows whatever response arrives last, a slow "Year" response can overwrite a fast "Day" response. This is called a <Term id="race-condition">race condition</Term>. To catch it, tap segments quickly, ideally on a slow network.
+</Callout>
+
+## Stress-test it
+
+Good testers don't stop at "it works". They push the component to its limits. Try a **German** translation, a **narrow screen** and **160% text size**:
+
+<Playground client:visible />
+
+<Callout type="info">
+German and Finnish words are often **30–50% longer** than English. That's why <Term id="localization">localization</Term> testing finds so many <Term id="truncation">truncation</Term> bugs. The OS text-size setting (called <Term id="dynamic-type">Dynamic Type</Term> on iOS) makes things even tighter.
+</Callout>
+
+## Find the bug
+
+Time to practice. The fitness app below has a segmented control with **six bugs**. Explore it the way a real tester would:
+
+- Tap segments slowly, then quickly.
+- Open an activity and come back.
+- Change the device settings.
+- Watch the network log.
+
+<BugHunt
+  title="Activity screen"
+  bugs={[
+    {
+      title: 'No segment is selected on first load',
+      hint: 'Look carefully right after the app starts.',
+      detail: 'The chart shows <strong>week</strong> data, but no segment is highlighted. Expected: the segment that matches the content (Week) is selected by default.',
+    },
+    {
+      title: 'Content does not match the selected segment (race condition)',
+      hint: 'Tap Year and then Day very quickly.',
+      detail: 'The slow <code>range=year</code> response arrives after the <code>range=day</code> response and overwrites it: <strong>Day</strong> is selected but the app shows <strong>yearly</strong> steps. Expected: only the latest request updates the screen.',
+    },
+    {
+      title: 'Tapping the selected segment reloads the data',
+      hint: 'Tap the same segment twice and watch the network log.',
+      detail: 'Every tap on an already selected segment sends a new API request and shows a spinner. Expected: nothing happens, because the selection did not change.',
+    },
+    {
+      title: 'Selection resets after navigating back',
+      hint: 'Select Month, open an activity, then go back.',
+      detail: 'The control jumps back to <strong>Day</strong>. Expected: the user’s choice (Month) is kept. This is a <em>state persistence</em> bug.',
+    },
+    {
+      title: 'Labels are clipped with large text',
+      hint: 'Turn on Large text.',
+      detail: 'Labels are cut off mid-letter with no ellipsis, so "Month" becomes unreadable. Expected: labels fit, wrap, or the layout adapts for accessibility text sizes.',
+    },
+    {
+      title: 'Selected segment is invisible in dark mode',
+      hint: 'Turn on Dark mode.',
+      detail: 'The selection thumb has the same color as the track, so you can’t tell which option is active. Expected: clear contrast between selected and unselected segments in both themes.',
+    },
+  ]}
+>
+  <BuggyActivityApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #2?">
+
+**Title:** Activity: chart shows yearly data while "Day" is selected after quickly switching ranges
+
+**Steps:** 1. Open Activity. 2. Tap **Year**. 3. Within 1 second, tap **Day**.
+
+**Expected:** Chart shows today's steps ("Steps today").
+**Actual:** "Day" is selected, but after ~2 s the chart switches to "Steps this year".
+
+**Severity:** High (users see wrong data) · **Reproducible:** 10/10 with fast taps
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Segmented control test checklist"
+  storageKey="segmented-control"
+  items={[
+    'Exactly one segment is selected on first load, and it matches the content shown',
+    'Tapping each segment selects it and updates the content below',
+    'Tapping the already selected segment does nothing (no reload, no flicker)',
+    'Quick repeated taps never leave content and selection out of sync',
+    'Selection is kept after rotation, going back, and returning from background',
+    'Disabled segments look disabled and cannot be selected (touch or keyboard)',
+    'Labels fit in every supported language and at the largest text size',
+    'Selected state is clearly visible in light mode, dark mode and high contrast',
+    'Each segment is at least 44×44 pt (iOS) / 48×48 dp (Android)',
+    'Screen reader announces the label, position (e.g. 2 of 4) and selected state',
+    'Web: arrow keys move the selection and the focus ring is visible',
+    'Behavior is correct on slow and offline networks (loading and error states)',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-SEG-001',
+      title: 'Default segment is selected on first load',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['App is freshly installed', 'User is logged in'],
+      steps: ['Open the app', 'Navigate to the Activity screen'],
+      expected: 'The "Week" segment is selected and the chart title reads "Steps this week".',
+    },
+    {
+      id: 'TC-SEG-002',
+      title: 'Switching segments updates the content',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open the Activity screen', 'Tap "Day"', 'Tap "Month"', 'Tap "Year"'],
+      expected: 'After each tap only the tapped segment is selected, and the chart title and values match it ("Steps today", "Steps this month", "Steps this year").',
+    },
+    {
+      id: 'TC-SEG-003',
+      title: 'Rapid switching keeps content in sync with selection',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Network throttled to "Slow 3G"'],
+      steps: ['Open the Activity screen', 'Tap "Year"', 'Within 1 second tap "Day"', 'Wait 5 seconds'],
+      expected: '"Day" stays selected and the chart shows today\'s steps. The earlier "Year" response is ignored.',
+    },
+    {
+      id: 'TC-SEG-004',
+      title: 'Selection persists after navigating away and back',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Select "Month"', 'Tap any activity in the Recent list', 'Tap Back'],
+      expected: '"Month" is still selected and monthly data is shown without reloading.',
+    },
+    {
+      id: 'TC-SEG-005',
+      title: 'Selection persists after device rotation',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Select "Year"', 'Rotate the device to landscape', 'Rotate back to portrait'],
+      expected: '"Year" remains selected in both orientations and the control resizes correctly.',
+    },
+    {
+      id: 'TC-SEG-006',
+      title: 'Labels are readable at the largest accessibility text size',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['iOS Settings › Accessibility › Larger Text set to maximum'],
+      steps: ['Open the Activity screen'],
+      expected: 'All labels are fully readable (not clipped). The control may grow taller or switch layout.',
+    },
+    {
+      id: 'TC-SEG-007',
+      title: 'VoiceOver announces the selected state',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['VoiceOver is on'],
+      steps: ['Swipe right until focus reaches the segmented control', 'Swipe right across each segment'],
+      expected: 'VoiceOver reads e.g. "Week, selected, 2 of 4", then "Month, 3 of 4", for each segment.',
+    },
+    {
+      id: 'TC-SEG-008',
+      title: 'Re-tapping the selected segment does not reload data',
+      priority: 'low',
+      type: 'negative',
+      preconditions: ['Proxy tool (e.g. Charles) is recording traffic'],
+      steps: ['Select "Week" and wait for data', 'Tap "Week" again three times'],
+      expected: 'No new API requests are sent and no loading indicator appears.',
+    },
+  ]}
+/>
+
+## Accessibility
+
+A segmented control has to work for people who can't see the screen, use large text, or navigate with a keyboard. Check these:
+
+- **Screen readers** (<Term id="screen-reader">VoiceOver / TalkBack</Term>) must announce each segment's **label**, **position** ("2 of 4") and whether it's **selected**.
+  <DevNote>On the web, that means `role="radiogroup"` with `role="radio"` and `aria-checked` on each segment, or `aria-pressed` for toggle buttons.</DevNote>
+- **Icon-only segments** need a text label for assistive tech. Otherwise users just hear "button".
+  <DevNote>`accessibilityLabel` / `aria-label`.</DevNote>
+- **Don't rely on color alone.** The selected segment should differ in more than hue: a thumb, a checkmark or bolder text.
+- **Contrast:** text needs at least 4.5:1 contrast with its background, and the selection indicator at least 3:1.
+- **<Term id="touch-target">Touch targets</Term>:** at least 44×44 pt on iOS and 48×48 dp on Android. On the web, WCAG 2.5.8 (AA) asks for at least 24×24 CSS px; 44×44 px (2.5.5, AAA) is the comfortable target.
+- **Keyboard (web):** <kbd>Tab</kbd> moves focus into the group (onto the selected segment), and arrow keys move between segments. In the radiogroup pattern the arrow keys also select, just like [radio buttons](/components/radio-button); with toggle buttons, each segment is its own Tab stop and <kbd>Space</kbd> or <kbd>Enter</kbd> selects it.
+
+<Callout type="tip">
+Try the gallery above with your keyboard: press <kbd>Tab</kbd> to reach a control, then use the arrow keys.
+</Callout>
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+<DevNote>Native component: `UISegmentedControl` (UIKit) or `Picker` with `.segmented` style (SwiftUI).</DevNote>
+
+- Always single selection. The selected segment sits on a sliding thumb; its exact look differs between iOS versions and between light and dark mode.
+- Supports **Dynamic Type**, so test at the largest accessibility sizes.
+- Common in navigation bars and toolbars, and under large titles.
+
+</Tab>
+<Tab>
+
+- Material 3 calls it a **segmented button**: an outlined pill with a checkmark on selected items. In the 2025 Material 3 *Expressive* update it is being replaced by the **connected button group**, which works the same way with a new look.
+- Can be **single or multi-select**, so read the requirements carefully.
+- Material's guidelines suggest 2–5 segments.
+- Test with **font scale** and **display size** settings, plus TalkBack.
+
+</Tab>
+<Tab>
+
+- Usually custom-built (HTML buttons + CSS) or from a UI library, so quality varies a lot.
+- Check **keyboard navigation**, **focus styles** and ARIA roles in DevTools.
+- Test **responsive** widths: does it shrink, wrap, or overflow on mobile browsers?
+- Test across browsers (Chrome, Safari, Firefox), because CSS differences can break the layout.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'Which situation is the best fit for a segmented control?',
+      options: ['Choosing a country from 195 options', 'Switching a restaurant list between List and Map view', 'Buttons for Save, Share and Delete', 'Turning notifications on or off'],
+      answer: 1,
+      explain: 'Two short, mutually exclusive views of the same content that the user switches between often. That is a segmented control\'s sweet spot.',
+    },
+    {
+      q: 'You tap "Year" then "Day" quickly. "Day" stays selected but the chart shows yearly data. What is the most likely cause?',
+      options: ['A localization bug', 'A race condition between API responses', 'A missing touch target', 'A dark mode bug'],
+      answer: 1,
+      explain: 'The slower "Year" response arrived last and overwrote the "Day" data. The app should ignore outdated responses.',
+    },
+    {
+      q: 'What should a screen reader announce when focusing a segment?',
+      options: ['Only "button"', 'The label only', 'Label, selected state and position, e.g. "Week, selected, 2 of 4"', 'Nothing, segments are decorative'],
+      answer: 2,
+      explain: 'Without the selected state and position, a screen reader user can\'t tell which option is active or how many there are.',
+    },
+    {
+      q: 'Which test is MOST likely to reveal a truncation bug?',
+      options: ['Switching to a German translation with large text', 'Tapping each segment once', 'Testing on Wi-Fi', 'Checking the app icon'],
+      answer: 0,
+      explain: 'Longer words and bigger fonts quickly overflow narrow segments.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A segmented control offers **2–5 short, mutually exclusive options** that change content **immediately**.
+- Use something else for actions, long labels, on/off settings, many options or multi-select (except Material's multi-select variant).
+- The classic bugs: **no default selection, content out of sync, lost state, truncation, invisible selection, and double requests**.
+- Always test **fast tapping**, **navigation and rotation**, **languages and large text**, **dark mode**, and **screen readers**.
+
+</KeyTakeaways>

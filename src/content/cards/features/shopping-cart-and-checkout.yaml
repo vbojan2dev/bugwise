@@ -1,0 +1,45 @@
+teaser: "One impatient double tap on Pay can charge a customer twice. What stops it, and how do you test it?"
+cards:
+  - type: flip
+    front: "What is idempotency at checkout?"
+    back: "Each payment attempt carries a unique key. If the same request arrives twice, the server returns the first result instead of charging again."
+  - type: spotbug
+    screen: ["Phone case   qty: -1", "Phone case   -$12.99", "Subtotal: $41.98", "[ Pay $41.98 ]"]
+    bug: "Quantity went below 1 and lowered the total."
+    explain: "The minimum quantity is 1. Going lower should remove the item or be blocked, never create a negative price."
+  - type: quiz
+    q: "Subtotal $54.00, 10% coupon. Shipping $4.99, free from $50 after discounts. What's the total?"
+    options: ["$48.60", "$53.59", "$58.99"]
+    answer: 1
+    explain: "54.00 minus 5.40 is 48.60, which is under $50, so shipping is added: 48.60 + 4.99 = $53.59."
+  - type: thisorthat
+    prompt: "You need to test a declined payment on staging."
+    left: "Gateway's test card"
+    right: "Your own card"
+    answer: left
+    explain: "Never use real cards in a test environment. Gateways publish test cards that simulate declines, expired cards and 3-D Secure without moving money."
+  - type: spotbug
+    screen: ["Subtotal: $59.92", "SAVE10 applied", "SAVE10 applied", "Discount: -$11.98"]
+    bug: "The same coupon was applied twice."
+    explain: "Each coupon should apply once per order. A second attempt should say 'This code is already applied' and the discount stays at 10%."
+  - type: truefalse
+    statement: "Disabling the Pay button after the first tap is enough to prevent double charges."
+    answer: false
+    explain: "It helps, but retries after a network drop can still send a second request. The server-side idempotency key is what guarantees one charge."
+  - type: quiz
+    q: "The checkout total shows $59.900000001. What kind of bug is this?"
+    options: ["A security bug", "A localization bug", "A floating-point rounding bug"]
+    answer: 2
+    explain: "Computers store decimals in binary. Good apps calculate in whole cents and round at defined points, so every amount has 2 decimals."
+  - type: thisorthat
+    prompt: "You remove an item. The cart count drops, but the subtotal and Pay button still show the old amount."
+    left: "Cosmetic glitch"
+    right: "High-severity bug"
+    answer: right
+    explain: "Tapping Pay right away would charge for the removed item. Totals must update immediately after every change."
+  - type: flip
+    front: "What happens to a guest cart when the shopper logs in?"
+    back: "It must merge with the account's saved cart by the agreed rules, without losing or duplicating items."
+  - type: tip
+    title: "Do the math yourself"
+    text: "Before trusting the screen, calculate subtotal, discount, shipping threshold and tax on paper. The lines must add up to the total, to the cent."

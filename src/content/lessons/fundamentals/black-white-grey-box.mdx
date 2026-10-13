@@ -1,0 +1,341 @@
+---
+title: Black, White and Grey Box
+description: The three ways to look at software when you test it (from the outside, from the code, or with a peek inside) plus experience-based testing, and when a manual tester uses each.
+order: 6
+level: beginner
+minutes: { short: 12, long: 20 }
+platform: both
+tags: [fundamentals, test design, techniques]
+---
+
+import BoxViewer from '@/components/demos/fundamentals-design/BoxViewer';
+import ApproachSorter from '@/components/demos/fundamentals-design/ApproachSorter';
+
+Picture a coffee machine in an office. Anyone can test it: put in a cup, press **Cappuccino**, taste the result. The service technician tests it differently: they open the maintenance panel and read the water temperature and the error log. And the engineer who designed it can open the case and look at every pipe and circuit.
+
+Same machine, three levels of "seeing inside". Software testing has exactly the same three views, and they have names: **black box**, **grey box** and **white box**.
+
+## The three boxes in one picture
+
+<div class="not-prose my-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <div class="mb-2 grid size-10 place-items-center rounded-xl text-white" style="background:#1c1c1e">■</div>
+    <p class="font-semibold text-fg">Black box</p>
+    <p class="mt-1 text-sm text-muted">You see <strong class="text-fg">inputs and outputs only</strong>. Tests come from requirements and user expectations.</p>
+    <p class="mt-2 text-xs text-faint">Typical: manual testers, UAT</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <div class="mb-2 grid size-10 place-items-center rounded-xl text-white" style="background:#8e8e93">◧</div>
+    <p class="font-semibold text-fg">Grey box</p>
+    <p class="mt-1 text-sm text-muted">You test from the outside, but use <strong class="text-fg">some inside knowledge</strong>: API calls, the database, logs, the architecture.</p>
+    <p class="mt-2 text-xs text-faint">Typical: modern manual testers</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <div class="mb-2 grid size-10 place-items-center rounded-xl border-2 border-dashed border-line-strong text-fg">□</div>
+    <p class="font-semibold text-fg">White box</p>
+    <p class="mt-1 text-sm text-muted">You see <strong class="text-fg">the code itself</strong> and design tests so every line and branch runs.</p>
+    <p class="mt-2 text-xs text-faint">Typical: developers, unit tests</p>
+  </div>
+</div>
+
+<Callout type="info" title="Grey or gray?">
+
+Both spellings are correct (British "grey", American "gray"). You'll see "gray-box testing" in many job ads. Some books also call white box "glass box" or "clear box", because you can see through it.
+
+</Callout>
+
+<Short>
+
+## The quick version
+
+### Black box: test what the user sees
+
+<Term id="black-box-testing">Black-box testing</Term> treats the app as a sealed box. You put something in (tap, type, swipe) and check what comes out, compared with the <Term id="requirement">requirements</Term>. You don't need to know how it works inside. Most manual testing is black box.
+
+Black-box testers use structured techniques to choose good inputs: [equivalence partitioning](/fundamentals/equivalence-partitioning), [boundary value analysis](/fundamentals/boundary-value-analysis), [decision tables](/fundamentals/decision-tables) and [state transition testing](/fundamentals/state-transition-testing).
+
+### White box: test the code's structure
+
+<Term id="white-box-testing">White-box testing</Term> designs tests by reading the code. The goal is <Term id="test-coverage">coverage</Term>: making sure every line (**statement coverage**) and every "yes/no" path of each `if` (**branch coverage**) has been run by at least one test. Developers usually do this with <Term id="unit-testing">unit tests</Term>.
+
+### Grey box: outside testing with inside knowledge
+
+<Term id="grey-box-testing">Grey-box testing</Term> is the middle ground: you still test through the UI, but you also look at the API calls in <Term id="devtools">DevTools</Term>, check the database, read logs, or use what you know about the architecture. It lets you find bugs the screen hides and write much sharper bug reports. It's a big part of a modern manual tester's job.
+
+### Plus: experience-based testing
+
+The fourth family isn't about the box at all. **Experience-based techniques** use the tester's knowledge and intuition: guessing likely errors (names with apostrophes, double taps on **Pay**), <Term id="exploratory-testing" />, and working through <Term id="checklist">checklists</Term>.
+
+<Callout type="tip">
+
+Switch to **Detailed** at the top of the page for coverage explained step by step, real grey-box tools, and how all four approaches work together on one feature.
+
+</Callout>
+
+</Short>
+
+<Long>
+
+## Black-box testing: from the outside
+
+<Term id="black-box-testing">Black-box testing</Term> means testing the app **without looking at how it's built**. You know what goes in and what should come out; what happens in between is a closed box.
+
+<Callout type="example" title="Everyday analogy">
+
+Testing a vending machine as a customer: insert €2, press B4, and check you get the right snack and the right change. You don't open it up. If you get crisps instead of chocolate, you report it, even though you have no idea which part inside is to blame.
+
+</Callout>
+
+### Where black-box tests come from
+
+Your "source of truth" is everything that describes how the app **should** behave:
+
+- <Term id="requirement">Requirements</Term>, <Term id="user-story">user stories</Term> and <Term id="acceptance-criteria" />
+- Designs and prototypes (Figma screens, flows)
+- Platform conventions (what an iOS or Android user expects, like the back gesture)
+- Common sense and the user's point of view, especially when the spec is silent
+
+### Black-box techniques
+
+Because you can't test every input, black-box testing has a toolbox of techniques for picking the inputs most likely to find bugs. Each has its own lesson:
+
+| Technique | Core idea | Example |
+| --- | --- | --- |
+| [Equivalence partitioning](/fundamentals/equivalence-partitioning) | Group inputs that behave the same, test one from each group | Age 25 stands for every adult age |
+| [Boundary value analysis](/fundamentals/boundary-value-analysis) | Bugs gather at the edges | Test €49.99, €50.00 for a "€50 or more" rule |
+| [Decision tables](/fundamentals/decision-tables) | Test every combination of conditions | Member? × order ≥ €30? × rainy day? |
+| [State transition](/fundamentals/state-transition-testing) | Test moves between states | Order: placed → paid → shipped → delivered |
+| Use case testing | Follow a full user journey, plus its alternatives | Search → add to cart → pay → receipt |
+
+**Use case testing** means walking through a complete scenario the way a real user would (the "happy path"), then each alternative and error path: card declined, address missing, app sent to the background mid-payment. It's how most end-to-end <Term id="test-scenario">test scenarios</Term> in [feature lessons](/features/shopping-cart-and-checkout) are built.
+
+### Strengths and limits
+
+Black-box testing finds what users will actually run into: wrong totals, confusing messages, broken flows, missing features. It needs no programming skills, and it catches **missing** behavior: if the requirement says "send a receipt by email" and the code never does, only a test based on the requirement will notice.
+
+Its blind spot: code paths that no requirement mentions. If a developer left a secret "STAFF50" discount code in the app, no requirement-based test will ever try it. That's where the other boxes help.
+
+## White-box testing: from the code
+
+<Term id="white-box-testing">White-box testing</Term> designs tests from the **internal structure of the code**. The tester (usually the developer) reads the code and chooses inputs that make specific lines and paths run.
+
+<Callout type="example" title="Everyday analogy">
+
+The vending machine engineer has the wiring diagram. They know there's a separate circuit for "exact change" and another for "give change back", so they deliberately test both, even if no customer story mentions them.
+
+</Callout>
+
+### Statement and branch coverage, simply
+
+<Term id="test-coverage">Coverage</Term> measures how much of the code your tests actually executed. The two kinds every tester should understand:
+
+- **Statement coverage**: the percentage of code lines (statements) that ran at least once.
+- **Branch coverage**: every decision (`if`) has two exits, *true* and *false*. Branch coverage is the percentage of those exits your tests went through.
+
+Here is a tiny piece of pseudo-code for a gym app's late-cancellation fee:
+
+```text
+1  if hoursBeforeClass < 12:
+2      fee = 5
+3  show "Cancellation fee: €" + fee
+```
+
+<Steps>
+
+1. **One test: cancel 2 hours before.** The `if` on line 1 is true, so lines 1, 2 and 3 all run. That's **100% statement coverage**, because every line ran. But only the *true* exit of the `if` was taken: **50% branch coverage**.
+2. **Add a second test: cancel 24 hours before.** Now the `if` is false and line 2 is skipped. Together, the two tests took both exits: **100% branch coverage**.
+3. **Why it matters.** Look at what the second test shows: "Cancellation fee: €undefined", because `fee` is never set on the false path. Test 1 alone had 100% statement coverage and completely missed this bug. Only the branch-coverage test found it. Branch coverage is stronger than statement coverage; 100% branch coverage always gives 100% statement coverage, but not the other way around.
+
+</Steps>
+
+<Callout type="warning" title="100% coverage does not mean bug-free">
+
+Coverage tells you what code **ran**, not whether the result was **right**, and never what's **missing**. If the requirement says "no fee for premium members" and nobody wrote that `if`, there's no branch to cover, and coverage still shows a happy 100%. That's why white box never replaces black box.
+
+</Callout>
+
+### Who does white-box testing?
+
+Mostly developers, through <Term id="unit-testing">unit tests</Term> and code reviews, and coverage tools in the build pipeline report the percentages. As a manual tester you'll rarely write white-box tests, but white-box *thinking* still helps you:
+
+- Reading a pull request description or diff can show you a new `if` for "country == UK" that deserves a test.
+- Asking a developer "which paths aren't covered by unit tests?" points you at risky areas.
+- Knowing that a coverage report exists means you can ask for it when deciding where to focus.
+
+## Grey-box testing: outside, with a peek inside
+
+<Term id="grey-box-testing">Grey-box testing</Term> mixes the two. You still test **through the user interface**, like a user, but you use **partial knowledge of the inside** to choose better tests and to check results the screen doesn't show.
+
+<Callout type="example" title="Everyday analogy">
+
+The coffee machine technician: they press the same Cappuccino button as everyone else, but they also glance at the maintenance panel showing water temperature and the last error code. They don't redesign the machine, they just see more.
+
+</Callout>
+
+### What "inside knowledge" looks like in practice
+
+| What you look at | Tool | What it reveals |
+| --- | --- | --- |
+| API requests and responses | [DevTools](/web/devtools-for-testers), [Postman](/web/api-testing-with-postman) | The real data sent and received, <Term id="http-status-code">status codes</Term>, hidden errors |
+| Mobile app traffic | [Proxy tools](/mobile/proxy-tools) (Charles, Proxyman) | The same, for iOS and Android apps |
+| The database | SQL client, admin panel | Whether the order, refund or status was really saved |
+| Logs | DevTools Console, <Term id="logcat" />, Xcode console, server logs | Errors and warnings behind a vague UI message |
+| The architecture | Talking to developers, diagrams | Caches, background jobs, third-party services: where things can break |
+
+### A grey-box bug story
+
+A tester on a travel app books a hotel. The screen says **"Booking confirmed!"**, which looks perfect from a black-box view. But in the Network panel they see the confirmation call returned `202 Accepted` and a second call, `POST /api/payments`, failed with `500`. A quick look in the test database confirms it: booking saved, payment status `FAILED`. The customer would have arrived at a hotel with no payment.
+
+Without grey-box knowledge, that bug report would say "seems fine". With it, the report names the failing <Term id="endpoint" />, includes the response body, and the developer fixes it in an hour. See [writing bug reports](/tutorials/writing-bug-reports) for how to attach this evidence.
+
+<Callout type="tip" title="Why grey box is a modern tester's superpower">
+
+Today's apps are mostly screens on top of <Term id="api">APIs</Term>. Being able to open DevTools, read a <Term id="json" /> response or capture traffic with a <Term id="proxy-tool" /> is now asked for in many junior QA job ads. You don't need to code, just to look.
+
+</Callout>
+
+## Experience-based techniques: the fourth family
+
+Not every good test comes from a document or from code. **Experience-based techniques** use the tester's knowledge of where software usually breaks. ISTQB groups three of them:
+
+- **Error guessing.** Predicting mistakes developers commonly make and testing for them: a surname like O'Brien or Nguyễn, an empty search, a double tap on **Pay** (see <Term id="double-submit" />), a date like 29 February, a negative quantity in the cart.
+- **<Term id="exploratory-testing">Exploratory testing</Term>.** Learning, designing and running tests at the same time, guided by curiosity and a time-boxed goal ("30 minutes: try to break the new chat"). It's not random clicking: good explorers take notes and follow interesting clues.
+- **Checklist-based testing.** Working through a list of things to check, built from experience, like the checklists at the end of each [component page](/components/text-field). Lighter than full test cases, and great for regression.
+
+These work best **on top of** structured techniques: the structured ones make sure you cover the requirements, the experience-based ones catch what nobody wrote down.
+
+## Comparing the approaches
+
+| | Based on | Who usually | Finds best |
+| --- | --- | --- | --- |
+| Black box | Requirements, user view | Testers, users (UAT) | Wrong or missing behavior |
+| White box | Code structure | Developers | Untested code paths, logic slips |
+| Grey box | Partial inside knowledge | Testers, often with dev help | Hidden failures, data and API bugs |
+| Experience-based | Tester's knowledge | Experienced testers | Unexpected, "nobody thought of that" bugs |
+
+## How they work together on one feature
+
+Let's say a food delivery app adds a promo code field at checkout.
+
+<Steps>
+
+1. **Black box first.** From the requirement "SAVE10 gives 10% off orders of €50 or more", test €49.99 and €50.00, an invalid code, an expired code, lower-case "save10".
+2. **Grey box alongside.** With DevTools or a proxy open, check the request sends the code, the response returns the right discount, and the order row in the database stores the discounted total, not the original.
+3. **White box from the developers.** Unit tests cover each branch of the discount function; the coverage report shows one uncovered branch for "STAFF50", which leads to a conversation: should that code even be live?
+4. **Experience-based to finish.** Paste a code with a trailing space, apply two codes quickly, apply a code then empty the cart, switch apps mid-checkout.
+
+</Steps>
+
+## Common misconceptions
+
+- **"Black box is the beginner's version."** No. Designing strong black-box tests is a real skill, and it's the only approach that catches missing features.
+- **"White box means 100% coverage, so we're done."** Coverage shows what ran, not what's correct or missing.
+- **"Grey box needs programming."** Reading a network request or running a simple database query is a learnable skill that needs no coding.
+- **"Exploratory testing is random clicking."** Good exploratory testing has a goal, a time box and notes.
+
+</Long>
+
+## Try it: see inside the box
+
+Below is one small checkout feature from a pizza delivery app. Switch between the three views and run some tests. In **white box** mode, try to reach 100% branch coverage with as few tests as you can, and look carefully at what the code does that the requirements never mention.
+
+<BoxViewer client:visible />
+
+<Callout type="note" title="What the demo shows">
+
+- **Black box:** you can check every requirement, but the two error cases look identical and you'd never think of typing `STAFF50`.
+- **Grey box:** the API response tells the two errors apart, and the `promo_codes` table reveals a code nobody documented. That's a bug report or at least a question.
+- **White box:** coverage shows exactly which branches no test has touched, but even 100% says nothing about whether `STAFF50` *should* exist.
+
+</Callout>
+
+## Which approach is this?
+
+<ApproachSorter client:visible />
+
+## Practice: four views of a password reset
+
+Here is a small spec for a banking app:
+
+> "On the login screen, **Forgot password?** asks for an email. If the email belongs to an account, we send a reset link valid for 30 minutes. For security, the screen always shows: *If an account exists, we've sent you an email.*"
+
+Write down **one test idea for each approach**: black box, grey box, white box and experience-based. Then compare with the examples below.
+
+<details class="not-prose my-4 rounded-xl border border-line bg-surface p-4">
+<summary class="cursor-pointer font-semibold text-fg">Show example answers</summary>
+<div class="mt-3 space-y-2 text-sm text-muted">
+<p><strong class="text-fg">Black box:</strong> Request a reset for a registered email, wait 31 minutes, open the link: it must say the link has expired.</p>
+<p><strong class="text-fg">Grey box:</strong> Request a reset for an <em>unregistered</em> email and check in DevTools that the API response is identical to the registered case (same status code, same body). Otherwise attackers can find out who has an account.</p>
+<p><strong class="text-fg">White box:</strong> A developer's unit tests cover both branches of "account exists?" and both branches of "link older than 30 minutes?".</p>
+<p><strong class="text-fg">Experience-based:</strong> Request two resets in a row and try the <em>first</em> link (should old links still work?), or enter the email with capital letters and a trailing space.</p>
+</div>
+</details>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "A tester checks a sign-up form only against the acceptance criteria, without knowing anything about the code. Which approach is this?",
+      options: ["White box", "Grey box", "Black box", "Unit testing"],
+      answer: 2,
+      explain: "Testing against requirements with no knowledge of the internals is black-box testing.",
+    },
+    {
+      q: "One test runs every line of a function, but each `if` only ever went the 'true' way. What do you know?",
+      options: [
+        "Statement coverage is 100%, branch coverage is not",
+        "Branch coverage is 100%, statement coverage is not",
+        "Both are 100%",
+        "Neither can be measured",
+      ],
+      answer: 0,
+      explain: "Every line ran, so statement coverage is 100%. But the 'false' exits were never taken, so branch coverage is lower.",
+    },
+    {
+      q: "Your app shows 'Payment successful', and you open DevTools to confirm the payment API really returned 200 and the order saved. Which approach is that?",
+      options: ["Black box", "Grey box", "White box", "Error guessing"],
+      answer: 1,
+      explain: "You test from the outside but use inside knowledge (the API call and stored data). That's grey box.",
+    },
+    {
+      q: "Why can't 100% code coverage guarantee the app is correct?",
+      options: [
+        "Coverage tools are always inaccurate",
+        "Coverage only measures manual tests",
+        "Coverage shows what code ran, not whether results were right or whether required behavior is missing",
+        "100% coverage is impossible to reach",
+      ],
+      answer: 2,
+      explain: "If a rule was never coded, there's no branch to cover. And a line can run and still produce the wrong result.",
+    },
+    {
+      q: "You type a surname with an apostrophe because you know many apps break on it. Which technique is this?",
+      options: ["Boundary value analysis", "Error guessing", "Branch coverage", "Decision table"],
+      answer: 1,
+      explain: "Choosing inputs based on experience of common developer mistakes is error guessing, an experience-based technique.",
+    },
+    {
+      q: "Which bug is black-box testing best at finding?",
+      options: [
+        "A branch in the code that no test executes",
+        "A feature from the requirements that was never built",
+        "A slow database query",
+        "An unused variable",
+      ],
+      answer: 1,
+      explain: "Black-box tests come from the requirements, so they notice when required behavior is simply missing. Code-based testing can't cover code that doesn't exist.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- **Black box** tests behavior from the outside, based on requirements. It's what manual testers do most, using techniques like equivalence partitioning, boundaries, decision tables and state transitions.
+- **White box** designs tests from the code. Statement coverage counts lines run; branch coverage counts true/false exits taken and is the stronger measure.
+- 100% coverage shows what ran, not what's right or what's missing.
+- **Grey box** is outside testing with inside knowledge (API responses, the database, logs, architecture), and it's a core skill for modern manual testers.
+- **Experience-based** techniques (error guessing, exploratory testing, checklists) catch what no document mentions.
+- Strong testing combines all four on the same feature.
+
+</KeyTakeaways>

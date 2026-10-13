@@ -1,0 +1,472 @@
+---
+title: Text Field
+description: The box where users type names, emails, passwords and messages. Learn its parts, the keyboards it opens, when errors should appear, and the inputs that break it.
+category: input
+aka: [Text input, Input field, EditText]
+platforms: [ios, android, web]
+minutes: 40
+order: 2
+---
+
+import { TextField } from '@/components/demos/text-field/TextField';
+import Anatomy from '@/components/demos/text-field/Anatomy';
+import VariantsGallery from '@/components/demos/text-field/VariantsGallery';
+import KeyboardTypes from '@/components/demos/text-field/KeyboardTypes';
+import ValidationTiming from '@/components/demos/text-field/ValidationTiming';
+import InputTorture from '@/components/demos/text-field/InputTorture';
+import { SplitCardNumber, PlaceholderOnlyForm, LabelledForm } from '@/components/demos/text-field/Examples';
+import { BuggySignUp } from '@/components/demos/text-field/BuggySignUp';
+
+Signing up for a food delivery app, searching for a flight, typing a card number, leaving a note for the courier: almost every journey in an app goes through a <Term id="text-field">text field</Term>. It's the most common input on the planet, and because users can type **anything** into it, it's also one of the richest places to find bugs.
+
+In this lesson you'll learn what a good text field looks like on each platform, and how testers break the bad ones. For whole forms (validation timing, error summaries, server errors and real-world data), see [Forms and Validation](/features/forms-and-validation).
+
+## What is a text field?
+
+A text field is a **box that accepts free text from the keyboard**. It can be a single line (name, email, promo code) or several lines (a review, delivery instructions). Unlike a dropdown or a toggle, the user isn't choosing from options: they can enter any character, in any amount, in any language. That freedom is exactly what makes it risky.
+
+You'll usually see text fields used for:
+
+- **Personal data**: name, email, phone number, address.
+- **Secrets**: passwords, PINs, one-time codes.
+- **Search**: products, recipes, destinations.
+- **Free-form content**: reviews, chat messages, notes for the courier.
+- **Numbers that aren't really "numbers"**: postcode, card number, quantity, amount.
+
+### Anatomy
+
+<Anatomy />
+
+### How it differs from similar components
+
+| Component | What the user does | Typical use |
+| --- | --- | --- |
+| **Text field** | Types a short, single line | Name, email, promo code |
+| **Text area** (multiline field) | Types several lines | Reviews, messages, delivery notes |
+| **[Search field](/components/search-bar)** | Types to find something, usually with instant results | Product search, filtering a list |
+| **[Dropdown / select](/components/dropdown)** | Picks one value from a fixed list | Country, size, sort order |
+| **Combo box** | Types to filter a list, then picks | Choosing a city from thousands |
+| **[Date picker](/components/date-picker)** | Picks a date from a calendar or wheel | Birthday, booking dates |
+
+<Callout type="dev" title="Platform names">
+iOS calls it a **text field** (`UITextField`, or `TextField` in SwiftUI) and a **text view** for multiline. Android developers say **EditText**, while Material Design says **text field**. On the web it's an `<input>` element (or `<textarea>` for multiline). In bug reports, use the name your team uses.
+</Callout>
+
+## Designs & variants
+
+Each platform has its own look. The parts are the same, but the risks differ: a floating label can overlap autofilled text, a left-hand label can truncate, a field with no visible label can confuse everyone.
+
+<VariantsGallery client:visible />
+
+### Types and mobile keyboards
+
+On a phone, the field's **type** decides which keyboard appears. A missing or wrong type is a real, reportable bug: imagine typing an email on a keyboard with no `@` key, or a postcode on a full letter keyboard.
+
+<KeyboardTypes client:visible />
+
+<Callout type="warning" title="A keyboard is a hint, not validation">
+A number pad doesn't guarantee numbers. Users can **paste** text, use a hardware or Bluetooth keyboard, or use autofill. Always test that a "numeric" field rejects or cleans `12abc`, even if the keyboard has no letters.
+</Callout>
+
+### States
+
+A text field goes through several <Term id="ui-state">UI states</Term>. Each one needs to look different and behave correctly.
+
+| State | What it looks like | What to check |
+| --- | --- | --- |
+| **Empty** | Label and maybe a placeholder | The placeholder is an example, not the only label |
+| **Focused** | Highlighted border, cursor blinking, keyboard open | Focus is clearly visible (not only a color change) |
+| **Filled** | Shows the value | Long values scroll or wrap; nothing is cut off on save |
+| **Disabled** | Dimmed, can't be focused | Can't be edited by tapping, Tab key, or autofill. See <Term id="disabled-state" /> |
+| **Read-only** | Looks like text, can be selected and copied | Can't be changed, but CAN be copied and read by screen readers |
+| **Error** | Red border and a message | The message explains how to fix it, and disappears once fixed |
+| **Loading** | Small spinner, e.g. "Checking username…" | Typing fast doesn't show the result for an old value |
+
+### When should errors appear?
+
+<Term id="input-validation">Input validation</Term> checks the value. The tricky part is **timing**. Show the error too early and you nag the user mid-sentence; show it too late and they discover all problems at the end. Try the three common strategies:
+
+<ValidationTiming client:visible />
+
+<Callout type="tip" title="What testers check about validation">
+Whatever strategy the team chose, check that it's **consistent** across the form, that the error **disappears as soon as the value is fixed**, and that the <Term id="error-message">error message</Term> says what to do ("Enter an email address like `name@example.com`"), not just what's wrong ("Invalid input").
+</Callout>
+
+### Autofill and autocomplete
+
+Phones and browsers can fill in names, addresses, passwords and one-time codes for the user. It only works if each field tells the system what it contains.
+
+| Field | Web `autocomplete` | iOS `textContentType` | Android `autofillHints` |
+| --- | --- | --- | --- |
+| Full name | `name` | `.name` | `personName` |
+| Email | `email` | `.emailAddress` | `emailAddress` |
+| Phone | `tel` | `.telephoneNumber` | `phone` |
+| Street address | `street-address` | `.fullStreetAddress` | `postalAddress` |
+| Postcode | `postal-code` | `.postalCode` | `postalCode` |
+| New password | `new-password` | `.newPassword` | `newPassword` |
+| SMS code | `one-time-code` | `.oneTimeCode` | `smsOTPCode` |
+
+When testing autofill, check that values land in the **right fields** (no surname in the city field), that autofilled values pass **validation** (autofill sometimes adds a trailing space), and that floating labels don't **overlap** the filled text.
+
+## When to use it
+
+A text field is the right choice when:
+
+- The answer is **truly open**: names, addresses, messages, search terms.
+- There are **too many possible values** to list (every email address in the world).
+- Users **know the answer** and typing is faster than scrolling (a postcode, a promo code).
+
+## Good and bad uses
+
+<Compare>
+<Do title="A visible label above every field">
+
+<div class="not-prose demo-screen my-3"><LabelledForm /></div>
+
+The label stays while you type, so you always know what the field is for.
+
+</Do>
+<Dont title="Placeholder used as the label">
+
+<div class="not-prose demo-screen my-3"><PlaceholderOnlyForm /></div>
+
+Halfway through typing, which field is this? The hint vanished with the first letter. Placeholders also tend to have low contrast and are often skipped by screen readers.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Free text for free answers">
+
+<div class="not-prose demo-screen my-3"><TextField variant="web" label="Note for the courier" placeholder="e.g. Leave it at the door" helper="Optional" client:visible /></div>
+
+Every answer is different, so a text field fits.
+
+</Do>
+<Dont title="Free text for a fixed list">
+
+<div class="not-prose demo-screen my-3"><TextField variant="web" label="Country" defaultValue="Hrvatksa " client:visible /></div>
+
+A typo and a trailing space, and now shipping can't find the country. A known list belongs in a dropdown or a combo box.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="One field that accepts any format">
+
+<div class="not-prose demo-screen my-3"><TextField variant="web" label="Card number" defaultValue="4111 1111 1111 1111" inputMode="numeric" autoComplete="cc-number" client:visible /></div>
+
+Paste works, spaces are fine, and the app removes them before checking.
+
+</Do>
+<Dont title="Split into boxes">
+
+<div class="not-prose demo-screen my-3"><SplitCardNumber /></div>
+
+Pasting the number fills only the first box, autofill breaks, and deleting jumps between boxes in surprising ways.
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Tester mindset">
+"Placeholder as label" and "free text for a list" are design problems. Raise them as **usability** findings during design review. They are much cheaper to fix there than after the form is built.
+</Callout>
+
+## Common bugs
+
+These are the text field bugs testers report again and again.
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Spaces break validation** | A valid email with a trailing space (from autofill or copy-paste) is rejected | High |
+| 2 | **Error never clears** | You fix the value, but the red message stays until you submit again | Medium |
+| 3 | **Silent truncation** | A phone number or address is cut off at a hidden limit, with no message | High |
+| 4 | **Wrong character count** | The counter says "2/20" for one emoji, or a limit cuts an emoji in half | Low–Medium |
+| 5 | **"Numeric" field accepts letters** | A postcode, quantity or year accepts `19ab` and saves it | Medium |
+| 6 | **Wrong keyboard** | Email opens a keyboard with no `@`; a postcode opens letters | Medium |
+| 7 | **Valid input rejected** | `O'Brien`, `Đurđa`, `anna+shop@test.com` or a 2-letter surname is refused | High |
+| 8 | **Input rendered as HTML** | Typing `<b>Anna</b>` shows **Anna** in bold somewhere. A sign of an <Term id="xss">XSS</Term> hole | Critical |
+| 9 | **Broken characters** | `Kovač` is saved or shown as `KovaÄ` or `Kova?` (an encoding bug) | Medium–High |
+| 10 | **Paste blocked** | Paste does nothing in password or "confirm email" fields | Medium |
+| 11 | **Data lost** | Text disappears after rotating, switching apps, or a failed submit | High |
+| 12 | **Keyboard hides the field** | The field (or its error) is behind the on-screen keyboard and can't be seen | Medium |
+
+<Callout type="bug" title="Why #8 is so serious">
+If an app shows user input as HTML instead of plain text, an attacker can enter a tiny script instead of a name. Anyone who views that name (in a review, a chat, an admin panel) runs the attacker's script. Testers don't need to be hackers to spot the symptom: if **formatting tags take effect**, report it immediately.
+</Callout>
+
+## Stress-test it
+
+This is where testers earn their money. Real users paste, autofill, use emoji and have names developers never imagined. Each input below is a classic <Term id="negative-testing">negative test</Term> or <Term id="edge-case" />:
+
+<InputTorture client:visible />
+
+<Callout type="info" title="Build your own test-data list">
+Keep a personal list of nasty inputs and reuse it on every project: empty, spaces only, 1 character, the exact maximum, maximum + 1 (that's <Term id="boundary-value-analysis" />), emoji, accented and Cyrillic letters, apostrophes, `<b>tags</b>`, quotes and semicolons (a harmless way to spot <Term id="sql-injection">SQL injection</Term> risks), and text pasted with a line break.
+</Callout>
+
+## Find the bug
+
+The plant shop sign-up below has **six bugs**. Test it like a pro:
+
+- Type valid data first, then invalid data.
+- Leave fields half-done and come back to fix them.
+- Use emoji, spaces and international formats.
+- Watch the keyboard, the profile preview and the network log.
+
+<BugHunt
+  title="Bloom sign-up"
+  bugs={[
+    {
+      title: 'Email error does not clear after fixing the value',
+      hint: 'Leave the email field with a typo, then go back and fix it.',
+      detail: 'The error is checked when you leave the field, but only cleared when you press <strong>Create account</strong>. After fixing <code>anna@test</code> to <code>anna@test.com</code> the red message still says the email is invalid. Expected: the error disappears as soon as the value is valid.',
+    },
+    {
+      title: 'A trailing space makes a valid email invalid',
+      hint: 'Keyboards and autofill often add a space after the last word.',
+      detail: '<code>anna@test.com </code> (with a space at the end) is rejected, even on submit. The app validates the raw value without trimming it. Expected: leading and trailing spaces are removed before validating and saving.',
+    },
+    {
+      title: 'Character counter counts emoji wrongly',
+      hint: 'Put emoji in the display name and watch the counter.',
+      detail: 'The counter uses the string length in code units: one 🌸 counts as <strong>2</strong>, and 👩‍💻 counts as <strong>5</strong>, so users hit the 30-character limit long before 30 visible characters. Expected: the counter counts characters the way people see them.',
+    },
+    {
+      title: 'Phone number is cut off silently',
+      hint: 'Type the phone number in the format shown in the placeholder.',
+      detail: 'The field stops accepting input after 10 characters, so <code>+385 91 234 5678</code> becomes <code>+385 91 23</code> with no message, and the cut number is sent to the server (see the network log). Expected: international numbers fit, or a clear message explains the limit.',
+    },
+    {
+      title: 'Year of birth accepts letters and opens the wrong keyboard',
+      hint: 'Look at the keyboard for Year of birth, then try typing letters.',
+      detail: 'The field opens the full letter keyboard and accepts values like <code>19ab</code> or <code>3000</code>; the account is created with that value. Expected: a number pad (<code>inputmode="numeric"</code>) and validation that only allows realistic 4-digit years.',
+    },
+    {
+      title: 'Display name is rendered as HTML in the profile card (XSS)',
+      hint: 'Type a display name like <b>Anna</b> and watch the profile preview.',
+      detail: 'The preview shows <strong>Anna</strong> in bold instead of the literal text <code>&lt;b&gt;Anna&lt;/b&gt;</code>. With <code>&lt;img src=x onerror=alert(1)&gt;</code> a script runs (simulated here). Expected: user input is always shown as plain text. Severity: critical.',
+    },
+  ]}
+>
+  <BuggySignUp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #4?">
+
+**Title:** Sign-up: phone number silently truncated to 10 characters, international numbers can't be entered
+
+**Steps:** 1. Open Create account. 2. In **Phone**, type `+385 91 234 5678`. 3. Fill other fields with valid data. 4. Tap **Create account**.
+
+**Expected:** The full number is accepted and sent, or a message explains the allowed format.
+**Actual:** Input stops at `+385 91 23` without any message. The request body contains `"phone": "+385 91 23"`.
+
+**Severity:** High (users can't be contacted) · **Reproducible:** 10/10
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Text field test checklist"
+  storageKey="text-field"
+  items={[
+    'Every field has a visible label that stays visible while typing',
+    'The right keyboard opens for each type (email, number, phone, password, URL)',
+    'Required fields reject empty and spaces-only values with a clear message',
+    'Leading and trailing spaces are trimmed before validation and saving',
+    'Minimum, maximum and maximum + 1 characters behave as specified, with no silent truncation',
+    'Emoji, accented letters (č ć ž đ š), Cyrillic and apostrophes are accepted and shown correctly after saving',
+    'HTML tags and quotes are shown as plain text everywhere the value appears',
+    'Error messages appear at the agreed time, explain how to fix the problem, and clear once fixed',
+    'Copy, paste, undo and autofill work (including in password fields)',
+    'Password show/hide toggles both ways without losing the value',
+    'Entered text survives rotation, backgrounding the app and a failed submit',
+    'The focused field and its error are not hidden behind the keyboard',
+    'Screen readers announce the label, value, hint and error message',
+    'Fields work at the largest text size and in dark mode',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-TXT-001',
+      title: 'Valid email is accepted',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open the Sign-up screen', 'Enter "anna@test.com" in Email', 'Fill other fields with valid data', 'Tap "Create account"'],
+      expected: 'No error is shown and the account is created with email "anna@test.com".',
+    },
+    {
+      id: 'TC-TXT-002',
+      title: 'Email with surrounding spaces is trimmed',
+      priority: 'high',
+      type: 'edge',
+      steps: ['Enter "  anna@test.com  " in Email (two spaces before and after)', 'Move to the next field', 'Tap "Create account"'],
+      expected: 'No error is shown. The saved / sent value is "anna@test.com" without spaces.',
+    },
+    {
+      id: 'TC-TXT-003',
+      title: 'Error disappears once the value is fixed',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Enter "anna@test" in Email', 'Move to the next field', 'Go back and change the value to "anna@test.com"'],
+      expected: 'An error appears after step 2 and disappears as soon as the value becomes valid in step 3, without submitting.',
+    },
+    {
+      id: 'TC-TXT-004',
+      title: 'Name accepts apostrophes and local letters',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Enter "Seán O\'Brien" in Full name and save', 'Repeat with "Đurđica Šćepanović" and "Јована Петровић"', 'Reopen the profile'],
+      expected: 'All names are accepted and displayed exactly as entered on every screen and in emails.',
+    },
+    {
+      id: 'TC-TXT-005',
+      title: 'Maximum length boundary',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Display name limit is 30 characters'],
+      steps: ['Enter exactly 30 characters', 'Enter 31 characters (type and paste)', 'Enter 29 letters plus one emoji'],
+      data: '30 chars: "Anna-Marie Kovač-Horvat Zagreb"',
+      expected: '30 characters are accepted. 31 shows a clear limit message and nothing is cut silently. 29 letters + 1 emoji counts as 30.',
+    },
+    {
+      id: 'TC-TXT-006',
+      title: 'HTML is shown as plain text',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Enter "<b>Anna</b>" as Display name', 'Save the profile', 'View the name on the profile, in a review and in the order email'],
+      expected: 'The literal text "<b>Anna</b>" is shown everywhere. Nothing turns bold and no script runs.',
+    },
+    {
+      id: 'TC-TXT-007',
+      title: 'Numeric field rejects pasted letters',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Focus Year of birth and check the keyboard', 'Paste "19ab"', 'Tap "Create account"'],
+      expected: 'A number pad opens. The letters are rejected or removed, and an error explains the expected format (e.g. "Enter a year like 1994").',
+    },
+    {
+      id: 'TC-TXT-008',
+      title: 'Password show/hide keeps the value',
+      priority: 'low',
+      type: 'positive',
+      steps: ['Type "Secret123!" in Password', 'Tap the eye icon', 'Tap it again', 'Add "4" at the end'],
+      expected: 'The password is shown in plain text after step 2 and masked after step 3. The final value is "Secret123!4".',
+    },
+    {
+      id: 'TC-TXT-009',
+      title: 'Typed text survives a failed submit',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Device is offline'],
+      steps: ['Fill in all fields', 'Tap "Create account"', 'Dismiss the "No connection" error'],
+      expected: 'All entered values (except possibly the password, if the team decided so) are still in the fields.',
+    },
+  ]}
+/>
+
+## Accessibility
+
+Text fields are where many users with disabilities get stuck. Check these:
+
+- **A real label.** Every field needs a label connected to it in code. A placeholder doesn't count. Test it: tapping the label on the web should focus the field.
+  <DevNote>`<label for>` on the web, `accessibilityLabel` on iOS, `labelFor` or a Material label on Android.</DevNote>
+- **Screen readers** (<Term id="screen-reader">VoiceOver / TalkBack</Term>) should announce the label, the field type ("text field", "secure text field"), the current value, any hint and the error message.
+  <DevNote>On the web, errors are linked with `aria-describedby` and marked with `aria-invalid="true"`.</DevNote>
+- **Errors aren't color only.** A red border isn't enough: there must be text, ideally with an icon.
+- **Contrast:** text, label and placeholder need at least 4.5:1 against the background; the field's border at least 3:1 (<Term id="wcag" />).
+- **Big text:** at the largest <Term id="dynamic-type" /> sizes, labels and values must stay readable, not clipped.
+- **<Term id="touch-target">Touch targets</Term>:** the field and its icon buttons (clear, show password) should be at least 44×44 pt on iOS and 48×48 dp on Android. On the web, WCAG 2.5.8 (AA) asks for at least 24×24 CSS px; 44×44 px (2.5.5, AAA) is the comfortable target.
+- **Autocomplete attributes** help users with motor or memory difficulties fill forms without typing. On the web that's a WCAG requirement for fields about the user, too (1.3.5 Identify Input Purpose, Level AA).
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+<DevNote>Native components: `UITextField` / `UITextView` (UIKit), `TextField` / `TextEditor` (SwiftUI).</DevNote>
+
+- Keyboard type, auto-capitalization, autocorrect and the autofill content type are set per field. Check all four.
+  <DevNote>The autofill content type is `textContentType`.</DevNote>
+- Clear button ("x") and secure entry (dots) are built in.
+- The keyboard can cover the field: scroll the form and check the focused field is visible.
+- Test **Dynamic Type**, **dark mode** and the **Passwords** autofill bar.
+
+</Tab>
+<Tab>
+
+<DevNote>Native component: `EditText`; with Material Design, `TextInputLayout` (filled or outlined) or `TextField` in Jetpack Compose.</DevNote>
+
+- Test the keyboard with Gboard **and** Samsung Keyboard, because they behave differently.
+  <DevNote>The `inputType` controls the keyboard.</DevNote>
+- Floating labels: check they don't overlap autofilled text or the prefix/suffix.
+- Check what happens after **rotation** and after the app is killed in the background: the text should survive.
+- Test with **font scale**, **display size** and TalkBack.
+
+</Tab>
+<Tab>
+
+<DevNote>HTML `<input>` with a `type` (`email`, `tel`, `password`, `number`, `url`, `search`) or `<textarea>`.</DevNote>
+
+- `type="number"` has quirks (it accepts `e`, and in Chromium browsers the mouse wheel changes a focused value; see [Stepper](/components/stepper)), so many teams use `inputmode="numeric"` instead. Know which one your app uses.
+- Use **DevTools** to check the `label`, `autocomplete`, `aria-invalid` and `aria-describedby` attributes.
+- Test browser autofill in Chrome, Safari and Firefox, plus **password managers**.
+- Test on a phone browser too: the right keyboard depends on `type` and `inputmode`.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'Why is a placeholder NOT a replacement for a label?',
+      options: ['Placeholders are not supported on Android', 'It disappears as soon as the user types, and is often low-contrast and skipped by screen readers', 'Placeholders make the field slower', 'Labels are only needed for passwords'],
+      answer: 1,
+      explain: 'Once the user starts typing, a placeholder-only field has no visible description left. Use a real, visible label.',
+    },
+    {
+      q: 'A valid email with a trailing space is rejected. What is the most likely cause?',
+      options: ['The server is down', 'The value is validated without trimming whitespace', 'The keyboard type is wrong', 'The email is too long'],
+      answer: 1,
+      explain: 'Autofill and keyboards often add a space. The app should trim leading and trailing spaces before validating and saving.',
+    },
+    {
+      q: 'The quantity field shows a number pad. Do you still need to test letters?',
+      options: ['No, the keyboard makes letters impossible', 'Yes, because users can paste, autofill or use a hardware keyboard', 'Only on Android', 'Only if the requirements say so'],
+      answer: 1,
+      explain: 'The keyboard type is only a hint. Validation must still handle unexpected characters.',
+    },
+    {
+      q: 'You type <b>Anna</b> as your name and the confirmation screen shows "Anna" in bold. How serious is this?',
+      options: ['Cosmetic, low severity', 'Medium: the name looks odd', 'Critical: user input is rendered as HTML, which allows XSS attacks', 'Not a bug: bold names look nice'],
+      answer: 2,
+      explain: 'If formatting tags take effect, scripts probably can too. Report it as a security issue right away.',
+    },
+    {
+      q: 'Which validation timing is generally recommended for an email field?',
+      options: ['Show an error after the very first character', 'Validate when the user leaves the field, then re-check live as they fix it', 'Never show errors', 'Only validate on the server, days later'],
+      answer: 1,
+      explain: 'Waiting until the user leaves the field avoids nagging; re-checking live lets the error disappear as soon as the value is fixed.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A text field accepts **anything**, so test far beyond the happy path: empty, spaces, long, emoji, accented letters, apostrophes, HTML and pasted text.
+- Every field needs a **visible label**. A placeholder is an example, not a label.
+- The **input type** decides the mobile keyboard and autofill, but it's not validation.
+- Errors should appear at a sensible time, **explain how to fix** the value, and **disappear once it's fixed**.
+- The classic bugs: **untrimmed spaces, stale errors, silent truncation, wrong counts with emoji, wrong keyboards, valid names rejected, and input rendered as HTML**.
+
+</KeyTakeaways>

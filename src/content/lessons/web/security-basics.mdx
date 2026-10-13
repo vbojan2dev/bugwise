@@ -1,0 +1,455 @@
+---
+title: Security Basics for Testers
+description: The simple, authorized security checks every manual tester can do on a web app, from access control and login to input handling, data exposure and responsible reporting.
+order: 7
+level: intermediate
+minutes: { short: 35 }
+platform: web
+tags: [security, access control, authentication, OWASP, bug reports]
+---
+
+import AccessControlLab from '@/components/demos/web-security-api/AccessControlLab';
+import { BuggySecurityShop } from '@/components/demos/web-security-api/BuggySecurityShop';
+
+A tester at a sports shop is checking the new "Order details" page. The address bar says `shop.example.com/orders/1042`. Out of curiosity, she changes it to `/orders/1043` and presses Enter. The page loads, showing a **different customer's** name, home address and the running shoes he bought last week.
+
+Nobody hacked anything. She changed one number. That is one of the most common and most serious security bugs on the web, and a careful manual tester can find it in ten seconds.
+
+This lesson shows you the **basic security checks** you can and should do as a manual tester, and how to do them safely and ethically.
+
+<Callout type="warning" title="Rules of engagement: read this first">
+
+- **Only test systems you are authorized to test.** That means your own team's app, in a **test or staging environment**, with permission. Trying these checks on a website you don't work on can be illegal, even "just to see".
+- **Use test accounts and test data** that your team created for this. Never use real customers' accounts or data.
+- **Stop when you find something.** Don't dig further to "prove" it, don't download other people's data, and don't show it to anyone outside the team.
+- **Deep penetration testing is a specialist job.** Your role is to catch the obvious problems early and report them privately. Security engineers and hired penetration testers go deeper.
+
+</Callout>
+
+## Why it matters
+
+Security bugs are different from most bugs. A broken button annoys users. A security bug can **leak thousands of people's addresses, card details or health data**, lead to fines under privacy laws like GDPR, and destroy trust in a brand overnight.
+
+And many of the worst leaks were not clever hacks. They were things like:
+
+- an order page that showed **any** order if you changed the number,
+- an admin page that was **hidden from the menu** but not actually protected,
+- an API that sent the **whole customer record** to the browser, and the app just didn't display most of it.
+
+You don't need to be a hacker to find those. You need to be curious, methodical and to know where to look. That's <Term id="security-testing" /> at a tester's level.
+
+### What you do vs what specialists do
+
+| A manual tester (you) | A security specialist / penetration tester |
+| --- | --- |
+| Checks access rules with two test accounts | Attempts to chain several weaknesses into a real attack |
+| Tries special characters and harmless markup in fields | Uses dedicated tools and real attack payloads, under a signed agreement |
+| Looks at URLs, DevTools and API responses for leaked data | Reviews code, infrastructure and encryption settings |
+| Verifies login rules, logout and session expiry | Tests the whole system against attack scenarios |
+| Reports findings privately with clear steps | Writes a formal security assessment |
+
+## The OWASP Top 10, as a map
+
+**OWASP** (the Open Worldwide Application Security Project) is a non-profit that publishes the **OWASP Top 10**: a list of the most critical web application security risks, updated every few years (2017, 2021, 2025). Developers and security teams all over the world use it as a shared vocabulary.
+
+You don't need to memorize it. Use it as a **map** that tells you which areas deserve attention. Here are the categories where manual testers can contribute most (names from the 2025 list):
+
+| Risk area (OWASP name) | What it means in plain English | What a tester can check |
+| --- | --- | --- |
+| **Broken access control** | Users can see or do things they shouldn't. It is #1 in both the 2021 and 2025 lists. | Change IDs in URLs, open admin pages as a normal user |
+| **Authentication failures** | Weak login, password and session handling | Lockout, error messages, logout, session expiry |
+| **Injection** | Text you type is treated as code or a database command | Special characters, harmless HTML, visible SQL errors |
+| **Cryptographic failures** | Sensitive data not protected properly | HTTPS everywhere, no passwords in URLs or storage |
+| **Security misconfiguration** | Unsafe default settings, debug info switched on | Stack traces on error pages, directory listings |
+| **Mishandling of exceptional conditions** | The app fails in an unsafe way when something unexpected happens | Error pages that leak details, crashes on odd input |
+
+<Callout type="info" title="Same idea on mobile">
+OWASP also publishes a **Mobile Top 10** for iOS and Android apps. Most ideas in this lesson apply to mobile apps too, because mobile apps usually talk to the same kind of API.
+</Callout>
+
+## Authentication checks
+
+<Term id="authentication">Authentication</Term> answers the question "**who are you?**". Login is where most of these checks live, and the [Login and Sign Up lesson](/features/login-and-sign-up) covers it in depth. The security-focused checks are:
+
+| Check | How to test it | What good looks like |
+| --- | --- | --- |
+| **Lockout / throttling** | Enter a wrong password 5–10 times in a row on your test account | The account or device is temporarily blocked, or a CAPTCHA appears. This stops a <Term id="brute-force-attack" />. |
+| **Generic error messages** | Try a registered email with a wrong password, then an unregistered email | Both show the **same** message, e.g. "Email or password is incorrect". Different messages allow <Term id="account-enumeration" />. |
+| **Password rules** | Try passwords that are too short, common ("password123") or match the email | Weak passwords are rejected **by the server**, not only by the form |
+| **Logout** | Log out, then press the browser's Back button and reload | You see the login page, not the account. Old pages don't come back from cache. |
+| **Session expiry** | Stay idle longer than the agreed timeout (ask the team), then click something | You're asked to log in again. The old <Term id="session-token" /> no longer works. |
+| **Password reset** | Request a reset link, use it, then try the same link again | Links expire and work only once. The message doesn't reveal whether the email exists. |
+
+## Authorization: broken access control
+
+<Term id="authorization">Authorization</Term> answers "**what are you allowed to do?**". Bugs here are called **broken access control**, and they are the most common serious security bug on the web.
+
+The key idea: **the server must check permissions on every request**. Hiding a button or a menu item is only cosmetic. If the server doesn't check, anyone who types the right URL or sends the right request gets in.
+
+### Three checks you can do with two test accounts
+
+<Steps>
+
+1. **Change IDs in URLs (IDOR).** Log in as test user A and open one of A's items, e.g. `/orders/1041`. Note an ID that belongs to test user B (log in as B in another browser to find it). As A, change the URL to B's ID. You should get **403 Forbidden** or **404 Not Found**, never B's data. This bug is called an **IDOR** (Insecure Direct Object Reference).
+2. **Open admin pages as a normal user.** Ask the team for the admin URLs (or note them while testing as an admin). Then log in as a normal customer and paste the URL. You should get **403** or be redirected, even though the "Admin" link is hidden.
+3. **Hidden buttons vs server checks.** If a feature is only for some users (e.g. "Issue refund"), the API behind it must check the role too. Testers check this by repeating the request as a normal user with a <Term id="proxy-tool" /> or an API tool, or by asking a developer to confirm the server-side check.
+
+</Steps>
+
+<Callout type="tip" title="Use two browsers">
+Log in as user A in Chrome and as user B in Firefox (or a private window). Sessions don't mix, and you can copy URLs between them in seconds.
+</Callout>
+
+### Try it: the access-control lab
+
+Below is a **simulated** test environment with two test users, Anna and Ben. Switch between the **secure** and the **vulnerable** version of the same shop and try all three checks. Notice how the vulnerable app *looks* exactly the same until you test it.
+
+<AccessControlLab client:visible />
+
+## Input handling
+
+Every text field, search box, URL parameter and form is a door into the app. Good apps treat whatever comes through that door as **plain data**. Weak apps accidentally treat it as **code**, which leads to <Term id="sql-injection" /> and <Term id="xss" />.
+
+You don't need attack payloads to spot the warning signs. Simple, harmless input is enough:
+
+| Try typing | Why | Warning sign |
+| --- | --- | --- |
+| `O'Brien` (apostrophe) | Apostrophes and quotes `'` `"` have special meaning in databases and code | An error page, a "SQL syntax" message, or the search silently breaks |
+| `<b>test</b>` or `<i>hi</i>` | Harmless HTML formatting tags | The text appears **bold** or *italic* instead of showing the tags. User input is being rendered as HTML, which is an XSS risk. |
+| `< > & "` | Characters that HTML uses | The page layout breaks, text disappears or a field cuts off |
+| `Zoë`, `Łódź`, emoji | Non-English characters | Garbled text like `ZoÃ«` (an encoding bug, not security, but worth reporting) |
+| A very long text (5,000+ characters) | Limits | Server error, page freezes, or the text overflows the layout |
+
+<Compare>
+<Do title="Harmless markers">
+
+Type `<b>test</b>` in a review, then look at the published review. If you see the word **test** in bold, report "user input is rendered as HTML". The developers will understand the risk.
+
+</Do>
+<Dont title="Real attack payloads">
+
+Don't copy script snippets or "SQL injection cheat sheets" from the internet into the app. You might damage test data, trigger security alarms or affect other people. Proving the risk is enough; exploiting it is a specialist's job.
+
+</Dont>
+</Compare>
+
+<Callout type="bug" title="SQL errors shown to users">
+If an apostrophe in a search box produces an error page that mentions **SQL**, a table name or a database query, that's two problems at once: the input probably reaches the database unsafely, **and** the app reveals internal details. Report it as high severity.
+</Callout>
+
+## Sensitive data exposure
+
+Sensitive data (passwords, tokens, card numbers, addresses, health data) should only travel where it's needed and never be left lying around. Here's where testers find it:
+
+- **In URLs.** After logging in or submitting a form, look at the address bar. Passwords, tokens or personal data in the URL end up in browser history, server logs and analytics. A login form must use **POST**, not GET.
+- **In browser storage.** Open DevTools › **Application** › Local Storage, Session Storage and Cookies. Passwords and card numbers should never be stored there. Long-lived tokens in <Term id="local-storage" /> are worth asking the team about.
+- **In API responses.** Open DevTools › **Network**, click a request and look at the **Response**. The page may show only "Ben O.", while the API returns Ben's email, phone and address. If the browser receives it, anyone can read it.
+- **In error pages.** A stack trace (lines like `at OrderService.get (/srv/app/...)`), a database error or a framework debug page tells attackers what technology you use and where it breaks.
+- **In emails and notifications.** A "Welcome" email that contains your password in plain text means the password wasn't stored safely (see <Term id="password-hashing" />).
+
+## HTTPS and mixed content
+
+<Term id="https">HTTPS</Term> encrypts traffic between the browser and the server. On a modern site, **every page** should use it, not only login and checkout.
+
+- Type the address with `http://`. You should be **redirected** to `https://`.
+- Check the padlock in the address bar. A certificate warning in a test environment may be expected (ask), but never in production. See <Term id="ssl-certificate" />.
+- **Mixed content** means an HTTPS page loads images, scripts or forms over plain HTTP. Browsers block or warn about it. Look in DevTools › **Console** for "Mixed Content" warnings.
+- In DevTools › Application › **Cookies**, session cookies should have the **Secure** and **HttpOnly** flags ticked.
+
+## File uploads
+
+Profile photos, receipts, CVs: upload features are a favorite target. Basic checks:
+
+- **Type limits.** If only images are allowed, try a `.pdf` or `.txt` file. Then rename a text file to `photo.jpg` and try again. The server should check the real content, not just the name.
+- **Size limits.** Upload a file just under and just over the documented limit (<Term id="boundary-value-analysis" /> applies here too). Over the limit should give a clear error, not a crash or a timeout.
+- **Odd file names.** Very long names, spaces, emoji and characters like `'` or `<` in the name.
+- **Where it ends up.** Is an uploaded private document reachable by anyone who has the link? Try the link in a logged-out private window.
+
+## Rate limiting
+
+<Term id="rate-limiting" /> caps how often something can be done. Without it, attackers can guess passwords, coupon codes or one-time codes by trying thousands of times.
+
+Check the features where repetition is dangerous: login, "Send code again" for SMS or email, password reset, coupon or gift-card fields, sign-up. Repeat the action 10–20 times quickly. Good apps slow you down, show "Too many attempts, try again in 5 minutes" or return the HTTP status **429 Too Many Requests**.
+
+<Callout type="warning">
+Agree on rate-limit testing with your team first. Hammering a shared test server can affect other testers, and repeated SMS can cost real money.
+</Callout>
+
+## What to test
+
+**Access control:** change IDs in URLs and API calls between two test users · open admin and other users' pages as a customer · try actions on items that are not yours (edit, cancel, delete) · check that hidden or disabled buttons are also blocked by the server.
+
+**Authentication and sessions:** lockout after repeated failures · identical error messages for wrong email and wrong password · logout invalidates the session (Back button, second tab) · session expires after the agreed idle time · password reset links expire and are single use.
+
+**Input:** apostrophes and quotes in every field · harmless markup like `<b>test</b>` in anything that is shown to other users (reviews, names, comments, chat) · very long input · special characters in URL parameters.
+
+**Data exposure:** URL after login and form submissions · Local Storage, Session Storage and cookies · API responses in the Network tab · error pages and 404 pages · emails and notifications.
+
+**Transport, uploads and limits:** HTTPS redirect and mixed content · file type, size and name checks · rate limits on login, codes and coupons.
+
+## Common security bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **IDOR** | Changing `/orders/1041` to `/orders/1043` shows another customer's order | Critical |
+| 2 | **Unprotected admin page** | A normal user can open `/admin` by typing the URL | Critical |
+| 3 | **Privilege escalation** | Adding `"isAdmin": true` or `"role": "admin"` to a request upgrades the account | Critical |
+| 4 | **HTML injection / XSS risk** | `<b>test</b>` in a review appears as **bold** text for everyone | High |
+| 5 | **SQL error on special characters** | An apostrophe shows a database error or a stack trace | High |
+| 6 | **Password in URL** | `?password=...` appears in the address bar after login | High |
+| 7 | **API over-sharing** | The response contains other users' emails, phone numbers or internal fields | High |
+| 8 | **Account enumeration** | "No account with this email" vs "Wrong password" | Medium |
+| 9 | **No lockout or rate limit** | Unlimited password or code attempts | Medium–High |
+| 10 | **Session not invalidated** | After logout, Back or a second tab still shows the account | Medium–High |
+| 11 | **Mixed content / no HTTPS redirect** | `http://` stays on HTTP, Console shows Mixed Content warnings | Medium |
+| 12 | **Upload accepts anything** | A `.exe` renamed to `.jpg` or a 500 MB file is accepted | Medium |
+
+## Find the bug
+
+This is a **vulnerable test build** of a small sports shop. It runs entirely in your browser with fake test data, so explore freely. Log in with the test account shown on the page, then:
+
+- Watch the **address bar** and the **DevTools · Network** panel (click a request to see its response).
+- Open your orders, then try other order numbers.
+- Search for something with an apostrophe, like `runner's`.
+- Write a review with harmless markup.
+- Try URLs that a customer shouldn't reach.
+
+<BugHunt
+  title="FitShop test build"
+  bugs={[
+    {
+      title: "Any customer's order can be opened by changing the ID (IDOR)",
+      hint: 'Open one of your orders, then edit the number in the address bar.',
+      detail: "Anna's orders are 1041 and 1042, but <code>/orders/1043</code> shows Ben's order with his home address, and <code>/orders/1044</code> shows Carla's. Expected: <strong>403 or 404</strong> for orders that don't belong to the logged-in user.",
+    },
+    {
+      title: 'The admin page is open to a normal customer',
+      hint: 'Is there a page the menu does not link to?',
+      detail: 'Typing <code>/admin</code> as Anna (a customer) shows every customer and a Delete button. The link is hidden in the menu, but the server never checks the role. Expected: <strong>403 Forbidden</strong> or a redirect.',
+    },
+    {
+      title: 'Reviews render HTML instead of showing it as text',
+      hint: 'Post a review containing a harmless formatting tag.',
+      detail: 'A review like <code>&lt;b&gt;Great&lt;/b&gt; shoes</code> appears with <strong>Great</strong> in bold, and <code>&lt;h3&gt;</code> makes a big heading. User input is rendered as HTML, which is a sign of an <em>XSS</em> risk for every visitor. Expected: the tags are shown as plain text.',
+    },
+    {
+      title: 'An apostrophe in search shows a SQL error and stack trace',
+      hint: "Search for runner's.",
+      detail: 'The search returns a <strong>500</strong> page with the raw SQL query, the database error and file paths from the server. That suggests input reaches the database unsafely (SQL injection risk) and leaks internal details. Expected: normal results or "No products found", and a friendly error page if anything fails.',
+    },
+    {
+      title: "The reviews API returns other customers' email addresses",
+      hint: 'Open a product page and inspect the reviews request in the Network panel.',
+      detail: 'The page shows only "Ben O." and "Carla R.", but <code>GET /api/products/1/reviews</code> returns their full <strong>email addresses</strong>. Anything the browser receives is visible to anyone. Expected: the API returns only the fields the page needs.',
+    },
+    {
+      title: 'The password appears in the URL after login',
+      hint: 'Look at the address bar right after you log in.',
+      detail: 'Login is sent as a GET request, so the URL becomes <code>/account?email=…&amp;password=Fit-test-42</code>. It is saved in browser history, server logs and analytics. Expected: credentials are sent in a <strong>POST</strong> body, never in the URL.',
+    },
+  ]}
+>
+  <BuggySecurityShop client:visible />
+</BugHunt>
+
+## Reporting security bugs responsibly
+
+A security bug report is different from a normal <Term id="bug-report" />. The goal is to get it fixed **without** spreading the details.
+
+<Steps>
+
+1. **Stop and write down what you did.** Exact steps, test accounts used, time, environment and build number. Don't keep exploring "to see how far it goes".
+2. **Report privately.** Use your team's security process: a restricted ticket type, a private security project, or a direct message to the security contact or tech lead. **Never** post it in a public tracker, a big team channel or a public GitHub issue.
+3. **Set the severity honestly.** Ask: what data or action is exposed, to whom, and how easy is it? Anything that exposes other users' personal data or gives admin rights is usually **critical** or **high** <Term id="severity" />.
+4. **Show impact, don't over-prove it.** One screenshot of another test user's order is enough. Don't collect or download data.
+5. **Mask sensitive values** in screenshots and logs (tokens, passwords, real personal data if any slipped into test data).
+6. **Retest the fix** and also try the same trick on similar pages (other IDs, other object types like invoices or addresses).
+
+</Steps>
+
+<Callout type="example" title="Example security bug report">
+
+**Title:** [SECURITY] Order details page shows other customers' orders when the order ID in the URL is changed
+
+**Environment:** Staging, build 4.12.0, Chrome 141 · **Visibility:** Restricted (security)
+
+**Steps:** 1. Log in as test user `anna@test.com`. 2. Open My account › Order #1041. 3. In the address bar, change `/orders/1041` to `/orders/1043` (order of test user `ben@test.com`).
+
+**Expected:** 403 or 404, no data from another user.
+**Actual:** Ben's full order is shown, including name and shipping address. The API `GET /api/orders/1043` returns 200.
+
+**Severity:** Critical (any logged-in user can read any customer's address) · **Reproducible:** 10/10
+
+</Callout>
+
+<Callout type="info" title="Found something on a site you don't work on?">
+Don't test further. Many companies run a **responsible disclosure** or bug bounty program (look for a `security.txt` file or a "Report a vulnerability" page) that explains how to report safely and legally.
+</Callout>
+
+## Tools & how-to
+
+<Tabs labels={['Browser DevTools', 'Proxy & API tools', 'Mobile apps']}>
+<Tab>
+
+Open <Term id="devtools">DevTools</Term> with <kbd>F12</kbd> or <kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>I</kbd> (Mac) in Chrome, Edge or Firefox.
+
+- **Network tab:** click a request, then **Headers** (method, URL, status, cookies sent) and **Response** / **Preview** (the data the server returned). Tick **Preserve log** so requests survive page changes.
+- **Application tab** (Firefox: **Storage**): Local Storage, Session Storage and Cookies. Check the cookie flags **Secure**, **HttpOnly** and **SameSite**.
+- **Console tab:** Mixed Content warnings, JavaScript errors and sometimes leaked debug logs.
+- **Security / padlock:** click the icon left of the URL to see certificate details.
+
+</Tab>
+<Tab>
+
+- **Proxy tools** like Burp Suite Community Edition, ZAP, Charles or Proxyman sit between the browser (or phone) and the server. You can see every request, and **edit and resend** it, for example to change an order ID or add a field. Use them only on your own test environment.
+- **API tools** like Postman or Insomnia let you replay an API call with another user's token to check access rules. See [API Testing with Postman](/web/api-testing-with-postman).
+- **Automated scanners** (such as ZAP's scan modes) are usually run by security or DevOps teams. Don't run them on shared environments without permission.
+
+</Tab>
+<Tab>
+
+- Mobile apps call the same kind of API, so the same checks apply: route the phone through a <Term id="proxy-tool" /> (Charles or Proxyman) to see and edit requests. See [Proxy Tools](/mobile/proxy-tools).
+- Check that the app doesn't show sensitive data in the **app switcher** screenshot (banking apps often blur it).
+- Log out, then reopen the app from the background: the account must not be visible.
+- Look for sensitive data in **push notifications** and on the lock screen.
+
+</Tab>
+</Tabs>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-SEC-001',
+      title: "A customer cannot open another customer's order by changing the ID",
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Test users A and B exist in staging', 'User B has order #1043'],
+      steps: ['Log in as user A', 'Open one of your own orders', 'Change the order ID in the URL to 1043', 'Press Enter'],
+      expected: "403 or 404 is shown. None of user B's data appears on the page or in the API response.",
+    },
+    {
+      id: 'TC-SEC-002',
+      title: 'Admin page is blocked for a normal customer',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Logged in as a customer test account'],
+      steps: ['Type /admin in the address bar', 'Press Enter', 'Check the Network tab'],
+      expected: 'Access denied (403) or redirect to the home page. The admin API returns 403 and no admin data.',
+    },
+    {
+      id: 'TC-SEC-003',
+      title: 'User input is shown as text, not rendered as HTML',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Open a product page', 'Post the review: <b>test</b> <i>review</i>', 'Reload the page'],
+      data: 'Review text: <b>test</b> <i>review</i>',
+      expected: 'The review shows the tags literally as typed. Nothing is bold or italic.',
+    },
+    {
+      id: 'TC-SEC-004',
+      title: 'Special characters in search do not cause a server error',
+      priority: 'medium',
+      type: 'edge',
+      steps: ["Search for runner's", 'Search for "quoted"', 'Search for < > &'],
+      expected: 'Normal results or "No products found". No error page, SQL message or stack trace.',
+    },
+    {
+      id: 'TC-SEC-005',
+      title: 'Credentials never appear in the URL',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open DevTools › Network with Preserve log on', 'Log in with the test account', 'Check the address bar and the login request'],
+      expected: 'The login request is a POST. Email and password are only in the request body, never in the URL or query string.',
+    },
+    {
+      id: 'TC-SEC-006',
+      title: 'Logout ends the session',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Log in and open My account', 'Open My account in a second tab', 'Log out in the first tab', 'Press Back, then reload the second tab'],
+      expected: 'Both show the login page. Requests with the old session return 401.',
+    },
+    {
+      id: 'TC-SEC-007',
+      title: 'Account is temporarily locked after repeated failed logins',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Agreed with the team: lockout after 5 failures for 15 minutes'],
+      steps: ['Enter a wrong password 5 times for the test account', 'Enter the correct password'],
+      expected: 'After the 5th failure a lockout message appears and the correct password is refused until the lockout ends.',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="Basic security checklist (test environment only)"
+  storageKey="security-basics"
+  items={[
+    'I have permission, a test environment and dedicated test accounts',
+    "Changing IDs in URLs and API calls never shows another user's data",
+    'Admin and staff pages return 403 for a normal user, even when typed directly',
+    'Hidden or disabled actions are also blocked by the server',
+    'Login errors are identical for a wrong email and a wrong password',
+    'Repeated failed logins and code requests are limited',
+    'Logout and session expiry really end the session',
+    'Apostrophes, quotes and < > & in fields never cause errors',
+    'Harmless markup like <b>test</b> is shown as text, never rendered',
+    'No passwords or tokens in URLs, Local Storage or emails',
+    'API responses contain only the data the page needs',
+    'Error pages are friendly and show no stack traces or SQL',
+    'Every page uses HTTPS, http:// redirects, no mixed content warnings',
+    'File uploads check real type, size and odd file names',
+    'Security bugs are reported privately with honest severity',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'You find a security bug on a big online shop you use privately, not at work. What should you do?',
+      options: ['Keep testing to see how bad it is', 'Post it on social media so they fix it fast', 'Stop, and report it through their responsible disclosure page if they have one', 'Create a public GitHub issue'],
+      answer: 2,
+      explain: 'You are not authorized to test that site. Stop immediately and use the official, private reporting channel.',
+    },
+    {
+      q: "As test user A you change /orders/1041 to /orders/1043 and see test user B's order. What is this?",
+      options: ['A usability bug', 'Broken access control (IDOR)', 'A performance issue', 'Expected behavior'],
+      answer: 1,
+      explain: 'The server returned an object without checking that it belongs to the logged-in user. It is an Insecure Direct Object Reference.',
+    },
+    {
+      q: "The Admin link is hidden from customers' menus. Is the admin area secure?",
+      options: ['Yes, customers cannot click it', 'Only if the server also refuses admin pages and APIs for customers', 'Yes, if the URL is long and hard to guess', 'Only on mobile'],
+      answer: 1,
+      explain: 'Hiding a link is cosmetic. Security means the server checks the role on every request.',
+    },
+    {
+      q: 'Which input is the safest, most appropriate way for a manual tester to check for HTML injection?',
+      options: ['A script copied from a hacking forum', '<b>test</b> in a review', 'Deleting the database table', 'Running an automated scanner on production'],
+      answer: 1,
+      explain: 'Harmless markup proves the risk (input is rendered as HTML) without harming anyone.',
+    },
+    {
+      q: 'Where should you look to see if an API sends more personal data than the page shows?',
+      options: ['The page source only', 'DevTools › Network › Response', 'The browser history', 'The app store listing'],
+      answer: 1,
+      explain: 'The Network tab shows exactly what the server sent to the browser, including fields the UI never displays.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- **Only test what you're authorized to test**: your team's test environment, with test accounts. Deep penetration testing is a specialist job.
+- **Broken access control** is the top risk: change IDs, open admin URLs as a normal user, and remember that hidden buttons are not security.
+- Use **harmless input** (`'`, `"`, `<b>test</b>`) to spot injection risks; error pages with SQL or stack traces are bugs too.
+- Look for **leaked data** in URLs, browser storage, API responses and error pages.
+- Check **HTTPS, uploads and rate limits**, and report security bugs **privately** with clear steps and honest severity.
+
+</KeyTakeaways>

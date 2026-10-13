@@ -1,0 +1,45 @@
+teaser: "Is the ISTQB certificate a must for your first testing job? The honest answer depends on where you apply."
+cards:
+  - type: flip
+    front: "What is CTFL?"
+    back: "ISTQB Certified Tester Foundation Level: the entry-level testing certificate. The current syllabus is version 4.0, released in 2023."
+  - type: flip
+    front: "Where can you get the CTFL syllabus?"
+    back: "For free on istqb.org, together with the official glossary and sample exams."
+  - type: quiz
+    q: "What does the syllabus call checking that a specific bug fix works?"
+    options: ["Regression testing", "Smoke testing", "Confirmation testing"]
+    answer: 2
+    explain: "Confirmation testing is the syllabus term for what many teams call retesting. Regression testing checks nothing else broke."
+  - type: quiz
+    q: "Which CTFL v4.0 chapter covers reviews like walkthroughs and inspections?"
+    options: ["Chapter 3: Static Testing", "Chapter 4: Test Analysis and Design", "Chapter 6: Test Tools"]
+    answer: 0
+    explain: "Static testing covers reviews and checks done without running software. Bugwise covers it least, so study it from the syllabus."
+  - type: truefalse
+    statement: "Every company requires ISTQB for junior QA roles."
+    answer: false
+    explain: "It helps in some markets and company types, like consultancies or regulated projects. Many product companies don't require it."
+  - type: truefalse
+    statement: "A K3 learning objective expects you to apply a technique to an example."
+    answer: true
+    explain: "K1 is remember, K2 is understand, K3 is apply, for example deriving boundary values for a field."
+  - type: thisorthat
+    prompt: "Several junior QA ads in your city list ISTQB, and you already have a portfolio."
+    left: "Consider CTFL"
+    right: "Ignore it"
+    answer: left
+    explain: "When your target market asks for it and your practical evidence is ready, the certificate can help you pass filters."
+  - type: thisorthat
+    prompt: "You have no projects yet and limited time. What comes first?"
+    left: "Book the exam"
+    right: "Build a practice project"
+    answer: right
+    explain: "A certificate alone rarely wins interviews. Practical evidence matters most; the exam can come later."
+  - type: spotbug
+    screen: ["Course ad:", "Pass ISTQB with us and", "get a guaranteed QA job!"]
+    bug: "Promises a job after a certificate."
+    explain: "No certificate guarantees a job. Be wary of courses that promise it; the syllabus is free on istqb.org."
+  - type: tip
+    title: "Study the gaps from the syllabus"
+    text: "Bugwise covers most practical topics. Read static testing, tool types and the exact syllabus names for estimation and metrics from the syllabus itself."

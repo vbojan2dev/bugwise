@@ -1,0 +1,66 @@
+---
+import Icon from '@/components/ui/Icon.astro';
+import { href, stripBase } from '@/lib/url';
+import type { NavGroup } from '@/lib/content';
+
+interface Props {
+  nav: NavGroup[];
+}
+const { nav } = Astro.props;
+const current = stripBase(Astro.url.pathname);
+const inGroup = (g: NavGroup) => current === g.href || current.startsWith(g.href + '/');
+---
+
+<nav aria-label="Sections" class="space-y-1 text-sm">
+  {
+    nav.map((g) => {
+      const open = inGroup(g);
+      return (
+        <div>
+          <a
+            href={href(g.href)}
+            class:list={[
+              'flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium transition-colors',
+              open ? 'text-fg' : 'text-muted hover:bg-subtle hover:text-fg',
+            ]}
+          >
+            <Icon name={g.icon} size={16} class={open ? 'text-brand' : 'text-faint'} />
+            {g.title}
+            {g.items.length > 0 && <span class="ml-auto text-xs text-faint tabular-nums">{g.items.length}</span>}
+          </a>
+          {open && g.items.length > 0 && (
+            <ul class="mt-0.5 mb-2 ml-[1.15rem] space-y-0.5 border-l border-line pl-3">
+              {g.items.map((i, idx) => {
+                const active = current === i.href;
+                const showGroup = i.group && i.group !== g.items[idx - 1]?.group;
+                return (
+                  <li>
+                    {showGroup && (
+                      <p class="px-2.5 pt-2.5 pb-1 text-[11px] font-semibold tracking-wider text-faint uppercase">{i.group}</p>
+                    )}
+                    <a
+                      href={href(i.href)}
+                      aria-current={active ? 'page' : undefined}
+                      data-progress-key={i.href.slice(1)}
+                      class:list={[
+                        'group/item relative flex items-center gap-2 rounded-md px-2.5 py-1.5 transition-colors',
+                        active
+                          ? 'bg-brand-soft font-medium text-brand before:absolute before:top-1.5 before:bottom-1.5 before:-left-[13px] before:w-0.5 before:rounded-full before:bg-brand'
+                          : 'text-muted hover:text-fg',
+                      ]}
+                    >
+                      <span class="min-w-0 flex-1">{i.title}</span>
+                      <span class="hidden shrink-0 text-ok group-data-[done=true]/item:inline" title="Completed">
+                        <Icon name="circle-check-big" size={14} />
+                      </span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      );
+    })
+  }
+</nav>

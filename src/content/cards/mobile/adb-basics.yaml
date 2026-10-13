@@ -1,0 +1,45 @@
+teaser: "One tester's crash report came back as cannot reproduce. Another fixed the same bug in ten minutes, with one command. What did they know?"
+cards:
+  - type: flip
+    front: "What is adb?"
+    back: "Android Debug Bridge: a command-line tool that lets your computer talk to an Android phone, tablet or emulator over USB or Wi-Fi."
+  - type: quiz
+    q: "Which command resets an app to a fresh-install state without reinstalling it?"
+    options: ["adb shell am force-stop com.shopeasy.app", "adb shell pm clear com.shopeasy.app", "adb install -r shopeasy.apk"]
+    answer: 1
+    explain: "pm clear wipes the app's data: the user is signed out and onboarding shows again. force-stop only kills the process."
+  - type: quiz
+    q: "Which command updates the app and keeps its data, like a Play Store update?"
+    options: ["adb install -r shopeasy.apk", "adb uninstall com.shopeasy.app", "adb shell pm clear com.shopeasy.app"]
+    answer: 0
+    explain: "-r means replace the existing app. Installing over the old version with data intact is the heart of upgrade testing."
+  - type: quiz
+    q: "Which command opens a deep link on the phone, as if the user tapped it?"
+    options: ["adb shell input text \"shopeasy://product/42\"", "adb logcat -d shopeasy://product/42", "adb shell am start -a android.intent.action.VIEW -d \"shopeasy://product/42\""]
+    answer: 2
+    explain: "am start asks Android to open the link. It's the fastest way to try unknown IDs, missing parameters and letters where numbers belong."
+  - type: flip
+    front: "How do you find the cause in a crash stack trace?"
+    back: "Find FATAL EXCEPTION, jump to the last Caused by, then the first line below it from the app's own package. That file and line is where developers start."
+  - type: truefalse
+    statement: "You should run adb logcat -c before reproducing a bug."
+    answer: true
+    explain: "Clearing the log first means the dump afterwards only contains lines from your reproduction, so the crash block is easy to find."
+  - type: truefalse
+    statement: "adb logcat --pid with pidof works fine right after the app has crashed."
+    answer: false
+    explain: "The crash killed the process, so pidof prints nothing and the command fails. Use '*:E', -b crash or grep for FATAL EXCEPTION."
+  - type: thisorthat
+    prompt: "adb devices lists your phone as unauthorized."
+    left: "Allow on the phone"
+    right: "Reinstall Android Studio"
+    answer: left
+    explain: "The phone hasn't trusted this computer yet. Unlock it and tap Allow on the USB debugging prompt, ticking Always allow."
+  - type: spotbug
+    screen: ["$ dumpsys battery set level 5", "Phone connected by USB", "App: no low-battery banner"]
+    question: "Why isn't the low-battery test working?"
+    bug: "The phone still counts as charging over USB."
+    explain: "A USB-connected phone is charging, so it never acts low. Run dumpsys battery unplug before set level, and reset afterwards."
+  - type: tip
+    title: "Put the command in the report"
+    text: "Add the exact adb command to your steps and paste the stack trace excerpt unchanged. Anyone can then reproduce the bug with one line."

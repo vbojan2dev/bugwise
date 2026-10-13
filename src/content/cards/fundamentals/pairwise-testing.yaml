@@ -1,0 +1,41 @@
+teaser: "4 browsers, 4 systems, 3 languages, 3 payments: 144 combinations. What if 16 tests could cover every pair?"
+cards:
+  - type: flip
+    front: "What does pairwise testing guarantee?"
+    back: "Every pair of values from any two parameters appears together in at least one test."
+  - type: flip
+    front: "What is the combinatorial explosion?"
+    back: "Each new parameter multiplies the number of combinations, so testing every one quickly becomes impossible."
+  - type: quiz
+    q: "Browser (4), OS (4), Language (3), Payment (3). How many full combinations?"
+    options: ["14", "48", "144"]
+    answer: 2
+    explain: "Multiply the value counts: 4 × 4 × 3 × 3 = 144."
+  - type: quiz
+    q: "Same model. What is the minimum number of pairwise tests?"
+    options: ["16", "9", "73"]
+    answer: 0
+    explain: "Every Browser + OS pair needs its own row, so at least 4 × 4 = 16 rows."
+  - type: truefalse
+    statement: "Pairwise testing always catches bugs that need three specific values together."
+    answer: false
+    explain: "It only guarantees pairs. A three-way bug is caught only if that triple lands in one row, or if you use 3-way coverage."
+  - type: thisorthat
+    prompt: "Your generated set contains Safari on Windows."
+    left: "Delete the row"
+    right: "Add a constraint"
+    answer: right
+    explain: "Deleting the row loses the other pairs it covered. A constraint lets the tool cover every valid pair with valid rows."
+  - type: thisorthat
+    prompt: "A delivery fee follows a rule for each mix of membership, order size and rain."
+    left: "Decision table"
+    right: "Pairwise"
+    answer: left
+    explain: "When specific combinations lead to specific results, every rule must be tested. Pairwise is for many independent parameters."
+  - type: truefalse
+    statement: "PICT is a free command-line tool from Microsoft that generates pairwise test sets."
+    answer: true
+    explain: "You describe parameters, values and constraints in a text file and PICT prints the test rows. It can also do 3-way coverage."
+  - type: tip
+    title: "Add the real-world favorites"
+    text: "After generating a pairwise set, add the combinations most of your users actually have. Pairwise covers pairs, not popularity."

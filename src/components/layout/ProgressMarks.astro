@@ -1,0 +1,27 @@
+---
+// Applies saved progress to static markup anywhere on the page:
+//  - [data-progress-key="components/button"]  → gets data-done="true" when completed
+//  - [data-progress-keys="a,b,c"]             → fills [data-progress-count] and [data-progress-bar] inside
+---
+
+<script>
+  import { load } from '@/lib/progress';
+
+  const apply = () => {
+    const p = load();
+    document.querySelectorAll<HTMLElement>('[data-progress-key]').forEach((el) => {
+      el.dataset.done = String(!!p.completed[el.dataset.progressKey!]);
+    });
+    document.querySelectorAll<HTMLElement>('[data-progress-keys]').forEach((el) => {
+      const keys = el.dataset.progressKeys!.split(',').filter(Boolean);
+      const done = keys.filter((k) => p.completed[k]).length;
+      el.dataset.started = String(done > 0);
+      el.querySelectorAll<HTMLElement>('[data-progress-count]').forEach((c) => (c.textContent = `${done} of ${keys.length}`));
+      el.querySelectorAll<HTMLElement>('[data-progress-bar]').forEach((b) => (b.style.width = keys.length ? `${(done / keys.length) * 100}%` : '0'));
+    });
+  };
+  apply();
+  addEventListener('progress-change', apply);
+  // Another tab changed progress.
+  addEventListener('storage', apply);
+</script>

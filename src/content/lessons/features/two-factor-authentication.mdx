@@ -1,0 +1,407 @@
+---
+title: Two-Factor Authentication (OTP)
+description: How 2FA and one-time codes work (SMS, email, authenticator apps, push approval, backup codes), what usually breaks in OTP screens, and how to test codes, resends, lockouts and recovery on mobile and web.
+order: 7
+level: intermediate
+minutes: { short: 35 }
+platform: both
+tags: [authentication, 2fa, otp, sms, security, test scenarios]
+---
+
+import TotpClockDemo from '@/components/demos/two-factor/TotpClockDemo';
+import { BuggyOtpApp } from '@/components/demos/two-factor/BuggyOtpApp';
+
+You log in to your banking app, and before you see your balance it asks: "Enter the 6-digit code we sent to •••• 0187". You switch to Messages, read the code, switch back, type it, and you're in. That second step is <Term id="two-factor-authentication" /> (2FA), and the code is a **one-time password (OTP)**.
+
+2FA exists because passwords leak. People reuse them, phishing sites collect them, old databases get stolen. With 2FA, a stolen password alone isn't enough: the attacker also needs your phone. For testers that makes the OTP screen a small screen with a big job. It must stop attackers, and at the same time let a real person in, fast, while they juggle apps, slow SMS and a code that expires.
+
+<Callout type="info" title="Before you start">
+This lesson assumes you know how login, sessions and lockouts work. If not, read [Login and Sign Up](/features/login-and-sign-up) first. Losing access to the second factor usually ends in a recovery flow similar to [Password Reset](/features/password-reset).
+</Callout>
+
+## How it works
+
+### The three kinds of factors
+
+A "factor" is a type of proof. Real 2FA combines **two different types**. A password plus a security question is still one type (two things you know).
+
+| Factor | Meaning | Examples |
+| --- | --- | --- |
+| **Knowledge** | Something you know | Password, PIN |
+| **Possession** | Something you have | Phone (SMS, authenticator app, push), security key |
+| **Inherence** | Something you are | Face ID, fingerprint (see <Term id="biometric-authentication" />) |
+
+### The flow, step by step
+
+<Steps>
+
+1. **First factor.** The user enters email and password. The server checks them but does **not** start a full session yet. It remembers "password OK, waiting for step 2".
+2. **The server issues a challenge.** For SMS or email it generates a random code (usually 6 digits), stores it with an **expiry** (often 5 to 10 minutes) and sends it. For an authenticator app nothing is sent: the app already knows how to compute the code.
+3. **The user enters the code.** They type it, paste it, or accept the phone's **autofill** suggestion. Many apps submit automatically once all digits are in.
+4. **The server checks it.** Right code, not expired, not used before, and not too many wrong attempts? Then the code is marked as **used** and a <Term id="session" /> starts.
+5. **Optional: remember this device.** The server gives the device a long-lived token, so this phone or browser skips step 2 for, say, 30 days.
+
+</Steps>
+
+### Where the code comes from
+
+| Method | How it works | Watch out for |
+| --- | --- | --- |
+| **SMS** | Server texts a random code to the phone number | Slow or missing SMS, roaming, SIM swap attacks, cost per SMS |
+| **Email** | Server emails a code or a link | Spam folder, delays, weaker if the email account uses the same password |
+| **Authenticator app (TOTP)** | App and server share a secret at setup; both compute a new code every 30 seconds from the secret and the current time | Phone clock out of sync, lost phone, setup via QR code |
+| **Push approval** | The app on a trusted phone shows "Is this you logging in?" with Approve/Deny | Users approving pushes they didn't start ("push fatigue"), no internet on the phone |
+| **Backup / recovery codes** | A list of single-use codes shown once at setup, to use when the phone is lost | Each code works once, the list can be regenerated (old list must stop working) |
+
+SMS is the most familiar method, but not the strongest. The US NIST digital identity guidelines (SP 800-63B) classify codes sent by SMS or phone call as a **restricted** method, because of risks like SIM swaps and interception, and expect services to offer users an alternative. That's why many products also support authenticator apps or security keys.
+
+### Authenticator apps and clock skew
+
+**<Term id="totp">TOTP</Term>** (time-based one-time password, defined in RFC 6238) is what Google Authenticator, Microsoft Authenticator and similar apps use. Nothing is sent over the network: the server and the app both compute the code from the shared secret and **the current time**, in steps of (by default) 30 seconds. That means the phone's clock matters. Try it:
+
+<TotpClockDemo client:visible />
+
+Many servers also accept the code from **one step before and after** the current one, to cover small clock differences and the seconds it takes to type. If the phone clock is set manually and drifts further, every code is "wrong". That's **clock skew**, and it's worth a test: set the device time manually a minute or two off and see what the app tells the user.
+
+### OTP input: the small details that matter
+
+The code field looks simple, but it's where most user frustration happens. Everything from [Text Field](/components/text-field) applies, plus:
+
+- **One-time code autofill.** iOS suggests a code from Messages (or Mail) above the keyboard when the field is marked as a one-time-code field. Android can do the same with the SMS Retriever / User Consent APIs, and Chrome on Android supports the WebOTP API for websites. Test that the suggestion appears and fills the field correctly.
+- **Paste.** People copy codes from SMS, email or a password manager. Pasting `318452`, `318 452` or ` 318452 ` (with spaces) should all work.
+- **Numeric keyboard.** The field should open the number pad, but keep the value as **text**: codes like `042917` start with a zero, and a number would lose it.
+- **Auto-submit.** Submitting when the last digit is entered is convenient, but it must fire **exactly once**, and the user must still be able to fix a typo.
+- **One field or six boxes?** Both are common. A single field is simpler and usually works better with autofill, paste and screen readers. Separate boxes look nice but often break paste, backspace, and focus movement. If you test boxes, try paste, backspace across boxes, and tapping a box in the middle.
+
+## Example requirements
+
+<Callout type="example" title="User story: Confirm login with an SMS code">
+
+**As a** Northbank customer, **I want to** confirm my login with a code sent to my phone **so that** nobody can get into my account with just my password.
+
+**Acceptance criteria**
+
+1. After a correct password, a 6-digit code is sent by SMS to the registered number, shown masked on screen (`•••• 0187`).
+2. The code **expires after 5 minutes** and **works only once**.
+3. **"Resend code"** is available 30 seconds after the last SMS. Resending **cancels all older codes**. Max 3 resends per 15 minutes.
+4. After **5 wrong codes**, the user must log in with their password again.
+5. The field accepts **only digits**, keeps leading zeros, and ignores spaces in pasted codes.
+6. The field supports **one-time code autofill** on iOS and Android, opens a numeric keyboard, and submits automatically when 6 digits are entered (once).
+7. **"Trust this device for 30 days"** skips the code on this device for 30 days. It can be revoked in Settings.
+8. Users without access to their phone can use a **backup code** or start **account recovery**.
+9. Turning 2FA **off**, changing the phone number, or generating new backup codes requires the **password again** (re-authentication).
+
+</Callout>
+
+## What usually goes wrong
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Code never expires** | A code from this morning still works | High (security) |
+| 2 | **Code replay** | The same code logs in twice (two devices, or after logout) | High (security) |
+| 3 | **Old code works after resend** | Spec says resending cancels older codes, but they still work | Medium–High |
+| 4 | **No lockout** | Unlimited guesses: 6 digits are only 1,000,000 combinations | Critical (security) |
+| 5 | **No resend cooldown** | Tapping Resend sends an SMS every time (spam, cost, rate limit by the SMS provider) | Medium–High |
+| 6 | **Leading zero lost** | Codes like `042917` always fail because the app treats the code as a number | High |
+| 7 | **Paste broken** | Pasting `318 452` is cut off or rejected | Medium |
+| 8 | **Auto-submit twice** | Error "code already used" right after a successful login | Medium |
+| 9 | **Autofill doesn't work** | iOS/Android never suggest the code from the SMS | Medium |
+| 10 | **2FA can be bypassed** | Going straight to a deep link or a protected URL after step 1 skips the code | Critical (security) |
+| 11 | **2FA off without re-auth** | Anyone holding an unlocked phone can disable 2FA in Settings | High (security) |
+| 12 | **No way back in** | Lost phone and no backup codes or recovery path, so support is the only option | High |
+
+<Callout type="bug" title="Why bug #6 is sneaky">
+It only happens for about 1 in 10 codes (the ones starting with 0), so it looks random. Customers say "sometimes the code doesn't work". When a bug seems random, look for a pattern in the data. Here, every failing code starts with a zero.
+</Callout>
+
+## Find the bug
+
+Northbank's SMS code screen below has **six bugs**. Under the phone there's a **Messages** panel (the SMS that arrive on the phone), a **clock** you can move forward, the spec, and a **server log**. Explore like a tester:
+
+- Log in, read the SMS and enter the code. Use the **From Messages** suggestion too.
+- Tap **Resend code** a few times quickly. Then try the older codes.
+- Copy a code from Messages (it contains a space) and paste it.
+- Enter wrong codes many times.
+- Watch the server log for every request, and look closely at what's sent.
+
+<BugHunt
+  title="Northbank SMS code"
+  bugs={[
+    {
+      title: 'Old codes still work after a resend',
+      hint: 'Tap Resend twice, then enter the first code you received.',
+      detail: 'The spec says resending cancels all older codes, but any unused code that hasn\'t expired is accepted. If an earlier SMS was seen by someone else (a notification on a locked screen, a shared tablet), it stays useful to them. Expected: only the newest code works.',
+    },
+    {
+      title: 'Codes starting with 0 are always rejected',
+      hint: 'Resend until you get a code that starts with 0. Read the verify request in the server log.',
+      detail: 'The app sends <code>{"code":42917}</code> for <code>042917</code>: it converts the code to a number and the leading zero disappears, so the server never finds a match. Customers see "That code isn\'t right" although they typed it correctly. Expected: the code is sent and compared as a string.',
+    },
+    {
+      title: 'Pasting a code with a space fails',
+      hint: 'Copy a code from Messages (it is shown as "318 452") and paste it.',
+      detail: 'The field has a 6-character limit and doesn\'t remove spaces, so the pasted text becomes <code>318 45</code> and shows "Enter the 6 digits only". Expected: spaces and other separators are removed before the length limit is applied, so <code>318 452</code> becomes <code>318452</code>.',
+    },
+    {
+      title: 'No lockout after 5 wrong codes',
+      hint: 'Enter wrong codes six or more times and watch the "failed" count in the log.',
+      detail: 'The server counts failures (<code>failed: 6, 7, 8…</code>) but never acts on them, so an attacker who has the password can keep guessing. Expected: after 5 wrong codes the user is sent back to the password step, and the counter can\'t be reset by resending.',
+    },
+    {
+      title: 'Resend has no cooldown',
+      hint: 'Tap Resend code five times in a row.',
+      detail: 'Every tap sends another SMS immediately: the Messages panel and the log fill up. That annoys users, costs money per SMS, and can get the sender blocked by carriers. Expected: the button is disabled with a countdown ("Resend in 0:30") and the server enforces the limit too.',
+    },
+    {
+      title: 'Auto-submit sends the code twice',
+      hint: 'Enter a correct code (or tap the From Messages suggestion) and watch what happens after you are logged in.',
+      detail: 'The change handler <em>and</em> an effect both submit the code, so two verify requests go out. The first succeeds, the second gets <code>409 code_already_used</code>, and an alert "Verification failed" appears on the home screen although login worked. Expected: exactly one request per completed code.',
+    },
+  ]}
+>
+  <BuggyOtpApp client:visible />
+</BugHunt>
+
+<Callout type="tip" title="Notice what works">
+Codes **expire** after 5 minutes (try **+5 min** on the clock), a **used** code can't be used again (that's why the auto-submit bug shows "already used"), and the **Verify** button stays disabled until there are 6 digits. Good behavior in the same app is useful evidence in a bug report.
+</Callout>
+
+## Test scenarios
+
+### Functional
+
+- Correct code logs in; the session starts only **after** the code (not after the password).
+- Each method the product supports: SMS, email, authenticator app, push approval, backup codes.
+- **Resend** sends a new code; the newest code works.
+- **Autofill:** the iOS "From Messages" suggestion and the Android equivalent fill the code; auto-submit logs in once.
+- **Paste** of `318452`, `318 452` and the code with leading or trailing spaces.
+- **Trust this device:** the next login on this device skips the code; another device still asks; revoking in Settings makes it ask again.
+- **Enable 2FA:** scan the QR code in an authenticator app, confirm with a code, see and save backup codes.
+- **Disable 2FA**, change phone number, regenerate backup codes: each **asks for the password again** (or another strong check).
+
+### Negative
+
+- Wrong code, empty field, 5 digits, letters.
+- **Expired code** (wait past the limit, or ask for a test environment with a short expiry).
+- **Used code:** log in, log out, log in again with the same code. It must fail (no replay).
+- **Old code after resend:** compare with the spec.
+- **Too many wrong codes:** the lockout kicks in at exactly the agreed number, and resending or restarting the app doesn't reset the counter.
+- **Resend too fast:** the button is disabled during the cooldown, and the server rejects requests that bypass it.
+- **Old backup codes** after generating a new list.
+- **Skipping step 2:** after a correct password, try opening a protected screen directly (a <Term id="deep-link" /> on mobile, a URL like `/accounts` on the web). It must ask for the code first.
+
+### Edge cases
+
+- **Leading zeros:** make sure you see at least one code starting with `0` (resend a few times, or ask a developer for a fixed test code).
+- **Expiry boundaries:** just before and just after the limit (for example 4:50 and 5:10 for a 5-minute code).
+- **Lockout boundaries:** 4 wrong then 1 right (works and resets the counter); exactly 5 wrong (locked).
+- **Clock skew** for authenticator apps: set the phone time manually 30, 60 and 120 seconds off.
+- **Code arrives late:** the SMS for code A arrives after you've requested code B.
+- **Switching apps:** leave the app to read the SMS, return, and check the screen, the typed digits and the timer are still there. See [Interruptions](/mobile/interruptions).
+- **Phone number formats:** international numbers, numbers changed recently, roaming.
+- **Two devices:** start login on the web, receive a push on the phone, and **Deny** it; the web login must fail.
+- **Lost phone:** log in with a backup code, then use the same backup code again (must fail).
+
+### UI & usability
+
+- The screen says **where** the code was sent (masked number or email) and how long it's valid.
+- Numeric keyboard opens; the field accepts digits only and doesn't lose leading zeros.
+- Resend shows a visible **countdown**; after resending, the user sees that a new code was sent.
+- Errors are specific and helpful: "That code isn't right" vs "This code has expired, request a new one".
+- There's a clear link for **"I can't access my phone"** (backup code or recovery).
+- With separate boxes: paste fills all boxes, backspace moves to the previous box, and focus never gets stuck.
+
+### Security basics
+
+Defensive checks you can do without special tools:
+
+- Codes **expire**, work **once**, and old codes behave as the spec says after a resend.
+- **Lockout** after the agreed number of wrong codes, enforced on the server. That's what stops a <Term id="brute-force-attack" />.
+- **Rate limits** on sending codes (<Term id="rate-limiting" />), so nobody can flood a phone with SMS.
+- The code is **never in the URL**, logs or analytics, and the full phone number isn't shown on screen.
+- The protected area is unreachable until the code is verified.
+- Turning 2FA off and changing the phone number require **re-authentication** and trigger a notification email.
+
+### Accessibility
+
+- The code field has a label ("Verification code"), not only a <Term id="placeholder" />. With separate boxes, the screen reader must not announce six unlabeled fields.
+- Errors are announced by the <Term id="screen-reader" />, and the countdown doesn't spam announcements every second.
+- The time limit is long enough (WCAG asks for a way to extend most time limits): a user who reads slowly or switches apps must still make it, or can easily request a new code.
+- Pasting is never blocked; people using password managers and assistive tech rely on it.
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-2FA-001',
+      title: 'Log in with a valid SMS code',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['2FA by SMS is enabled for leo@test.com', 'User is logged out'],
+      steps: ['Log in with the correct email and password', 'Open the SMS and enter the 6-digit code'],
+      expected: 'The code is submitted once and the Home screen opens. One verify request in the log. No error appears.',
+    },
+    {
+      id: 'TC-2FA-002',
+      title: 'Code with a leading zero is accepted',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Test environment returns the fixed code 042917, or resend until a code starts with 0'],
+      steps: ['Log in with the correct password', 'Enter 042917', 'Inspect the verify request'],
+      expected: 'User is logged in. The request sends "042917" as a string.',
+    },
+    {
+      id: 'TC-2FA-003',
+      title: 'Pasted code with a space is accepted',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Copy "318 452" from the SMS', 'Paste it into the code field'],
+      expected: 'The field shows 318452 and the code is submitted. No error.',
+    },
+    {
+      id: 'TC-2FA-004',
+      title: 'Resend cancels the previous code',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Receive code A', 'Wait 30 seconds and tap "Resend code"', 'Receive code B', 'Enter code A'],
+      expected: 'Code A is rejected. Code B logs in.',
+    },
+    {
+      id: 'TC-2FA-005',
+      title: 'Lockout after 5 wrong codes',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Enter 5 different wrong codes', 'Enter the correct code', 'Tap Resend and try a new code'],
+      expected: 'After the 5th wrong code the user is sent back to the password step. The correct code no longer works, and resending does not reset the counter.',
+    },
+    {
+      id: 'TC-2FA-006',
+      title: 'Resend cooldown',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Request a code', 'Try to tap "Resend code" immediately', 'Wait 30 seconds and tap again'],
+      expected: 'Resend is disabled with a countdown for 30 seconds, then sends exactly one new SMS.',
+    },
+    {
+      id: 'TC-2FA-007',
+      title: 'Code cannot be reused',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Log in with a valid code', 'Log out', 'Log in with the password and enter the same code within 5 minutes'],
+      expected: 'The code is rejected ("This code has already been used").',
+    },
+    {
+      id: 'TC-2FA-008',
+      title: 'Disabling 2FA requires the password',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['User is logged in with 2FA enabled'],
+      steps: ['Open Settings > Security', 'Turn off two-factor authentication'],
+      expected: 'The app asks for the password (and/or a code) before turning 2FA off, then sends a notification email.',
+    },
+  ]}
+/>
+
+## Mobile vs web
+
+<Tabs labels={['Mobile app', 'Website']}>
+<Tab>
+
+- **SMS autofill:** on iOS, the code from Messages appears above the keyboard; on Android, test the autofill or consent prompt your app uses. Check it with the app in the foreground and when the SMS arrives while the keyboard is closed.
+- **Switching apps:** read the code in Messages or an authenticator app and come back. The app must not restart the flow, clear the field, or send a new code. Also test a phone call arriving while you're on the code screen ([Interruptions](/mobile/interruptions)).
+- **Push approval:** test Approve, Deny, ignoring it, and approving after it expired. Test with notifications **turned off** for the app: there must be a fallback.
+- **Authenticator on the same phone:** copy the code from the authenticator app and paste it. Set the phone time manually to test clock skew.
+- **New phone or reinstall:** is "trust this device" reset? Are users stuck if the authenticator app wasn't moved to the new phone? That's when backup codes and recovery matter.
+- **Biometrics:** some apps let Face ID or fingerprint replace the code on a trusted device. Test the fallback when biometrics fail.
+
+</Tab>
+<Tab>
+
+- **Autofill:** Safari can fill codes from Messages on a Mac or iPhone; Chrome on Android supports WebOTP for SMS codes; password managers can fill TOTP codes.
+  <DevNote>The field needs `autocomplete="one-time-code"` for most of this to work.</DevNote>
+- **Multiple tabs:** start login in two tabs, verify in one. The other tab shouldn't end up logged in as a different step, or crash.
+- **Skipping step 2:** after the password, type a protected URL directly or use the Back button. You must land on the code screen, not inside the account.
+- **Network tab:** in <Term id="devtools" />, check the verify request: the code is sent as a string, in the body of a `POST`, and the response doesn't leak the expected code.
+- **"Trust this browser":** check the <Term id="cookie" /> it sets, test private windows (should ask every time), and clearing cookies (should ask again).
+- **Keyboard only:** Tab to the field, type, submit with Enter, reach the Resend link; focus is visible throughout.
+
+</Tab>
+</Tabs>
+
+## Checklist
+
+<Checklist
+  title="2FA / OTP checklist"
+  storageKey="two-factor-authentication"
+  items={[
+    'Session starts only after the code is verified; protected screens are unreachable before',
+    'Correct code logs in once; auto-submit fires exactly once',
+    'Codes expire at the specified time (test just before and after)',
+    'A used code cannot be used again (no replay)',
+    'Older codes behave as the spec says after a resend',
+    'Lockout after the agreed number of wrong codes, enforced on the server',
+    'Resend has a visible cooldown and a server-side rate limit',
+    'Codes starting with 0 work (sent and compared as text)',
+    'Pasting codes with spaces works; numeric keyboard opens',
+    'One-time code autofill works on iOS, Android and supported browsers',
+    'Switching apps to read the code keeps the screen and typed digits',
+    'Trust this device works, expires, and can be revoked',
+    'Backup codes work once each; new list cancels the old one',
+    'Enabling, disabling 2FA and changing the phone number require re-authentication',
+    'Labels, error announcements and time limits are accessible',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'Which pair is real two-factor authentication?',
+      options: ['Password + security question', 'Password + code from an authenticator app', 'PIN + password'],
+      answer: 1,
+      explain: 'A password is something you know; the authenticator app is something you have. The other pairs are two things you know.',
+    },
+    {
+      q: 'Customers say "sometimes my SMS code doesn\'t work". You notice every failing code starts with 0. What is the likely cause?',
+      options: ['The SMS provider is slow', 'The app treats the code as a number and drops the leading zero', 'Users type too slowly'],
+      answer: 1,
+      explain: 'Codes are strings of digits, not numbers. Converting 042917 to a number gives 42917, which never matches.',
+    },
+    {
+      q: 'An authenticator code is always rejected on one phone, but works on others. What should you check first?',
+      options: ['The phone\'s clock and time settings', 'The phone\'s storage space', 'The screen brightness'],
+      answer: 0,
+      explain: 'TOTP codes depend on the current time. If the phone clock is more than about one 30-second step off, the server computes different codes.',
+    },
+    {
+      q: 'After a successful login, an alert says "This code has already been used". The log shows two verify requests. What is the bug?',
+      options: ['Code replay', 'Auto-submit fires twice', 'The code expired'],
+      answer: 1,
+      explain: 'The first request logged in and burned the code, the duplicate was correctly rejected. The fix is to submit exactly once.',
+    },
+    {
+      q: 'Which test best checks protection against guessing codes?',
+      options: ['Enter the correct code quickly', 'Enter 5 wrong codes, then check that the user must start again, even after a resend', 'Change the phone number'],
+      answer: 1,
+      explain: 'A 6-digit code has only a million combinations. Without a server-side lockout, an attacker with the password can keep guessing.',
+    },
+    {
+      q: 'In Settings, a logged-in user can turn off 2FA with a single tap. Why is that a problem?',
+      options: ['It isn\'t, the user is logged in', 'Anyone with the unlocked phone or a stolen session can remove the second factor', 'It makes the app slower'],
+      answer: 1,
+      explain: 'Security-relevant changes should ask for the password (re-authentication) and send a notification, so a stolen session can\'t quietly weaken the account.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- 2FA combines **two different types** of proof (know, have, are). The OTP is the "have" part, so it must be **short-lived, single-use and limited** in attempts.
+- Test the **code lifecycle**: expiry, reuse, old codes after resend, lockout, and resend cooldown, always against the spec and at the boundaries.
+- Treat codes as **text**: leading zeros, spaces in pasted codes, autofill and paste must all work.
+- Test the **real-life journey**: switching apps to read the SMS, late SMS, wrong phone clock, lost phone and backup codes.
+- Enabling, disabling and changing 2FA settings need **re-authentication**, and nobody should reach the account before the code is verified.
+
+</KeyTakeaways>

@@ -1,0 +1,332 @@
+---
+title: Use Case Testing
+description: How to read a use case (actors, preconditions, main success scenario, alternative and exception flows, postconditions) and turn every flow into test scenarios with measurable coverage.
+order: 10.1
+level: beginner
+minutes: { short: 12, long: 20 }
+platform: both
+tags: [fundamentals, test design, techniques, black-box, use cases]
+---
+
+import UseCaseDoc, { REORDER } from '@/components/demos/use-case-testing/UseCaseDoc';
+import UseCaseTrainer from '@/components/demos/use-case-testing/UseCaseTrainer';
+
+A banking app ships a new "Forgot password?" flow. The tester walks through it on a phone: enter email, open the link, choose a new password, done. Every step works. A week later, support is busy: customers who opened the reset email **on their laptop** see a blank page, and customers who tapped an **old** link get logged in with no password change at all.
+
+Nobody tested those routes because nobody wrote them down. A **use case** would have listed them on one page, and **use case testing** would have turned each one into a test.
+
+## What is a use case?
+
+A <Term id="use-case" /> describes, step by step, how someone uses the system to reach **one goal**, and what happens when things go differently along the way. <Term id="use-case-testing">Use case testing</Term> means deriving tests from it: one for the normal path, and at least one for every alternative and error path.
+
+<Callout type="example" title="An everyday analogy">
+
+Think of a good recipe. It gives the normal steps ("whisk the eggs, add the flour, bake 25 minutes"), but also the side notes: "no buttermilk? Use milk with lemon juice" and "if the top browns too fast, cover it with foil". The steps are the **main path**, the side notes are **alternative flows**, and "if it burns, start again" is an **exception**. A use case is a recipe for one user goal, and a tester cooks every variation.
+
+</Callout>
+
+Use case testing is a <Term id="black-box-testing">black-box</Term> technique: you work from a description of behavior, not from the code. It's great at finding bugs that live **between** screens: in the hand-offs, the branches and the "what happens next?" moments that single-field techniques like [equivalence partitioning](/fundamentals/equivalence-partitioning) never reach.
+
+<Short>
+
+## The quick version
+
+### The parts of a use case
+
+| Part | What it says | Example: "Reset a forgotten password" |
+| --- | --- | --- |
+| <Term id="actor">Actor</Term> | Who wants the goal (and who helps) | The customer; the email service |
+| <Term id="precondition">Preconditions</Term> | What must be true before it starts | Has an account, is logged out |
+| <Term id="main-success-scenario" /> | The happy path, as numbered steps | Enter email → open link → new password → done |
+| <Term id="alternative-flow">Alternative flows</Term> | Other routes that still reach the goal | Opens the link on a laptop instead |
+| <Term id="exception-flow">Exception flows</Term> | Errors that stop the normal path | The link has expired |
+| <Term id="postcondition">Postconditions</Term> | What must be true afterward | Only the new password works |
+
+### From flows to tests
+
+<Steps>
+
+1. **One test for the main success scenario**, end to end.
+2. **At least one test per alternative flow.** Follow the branch and check it rejoins the main path correctly.
+3. **At least one test per exception flow.** Check the message, that nothing half-finished is left behind, and whether the user can recover.
+4. **Check the postconditions**, not just the last screen. "Password changed" on screen means little if the old password still works.
+5. **Use other techniques inside the steps.** The "new password" step still needs [boundary values](/fundamentals/boundary-value-analysis) for its length rules.
+
+</Steps>
+
+### Coverage
+
+Use case coverage is simple: **flows tested ÷ flows in the use case**. Five flows and three tested means 60%. Aim for 100% of flows on important journeys, because most use case bugs hide in the alternatives and exceptions, which developers often build last and test least.
+
+### Use cases and user stories
+
+Agile teams usually write [user stories](/tutorials/user-stories-and-acceptance-criteria) instead of formal use cases. The thinking is the same: a story's acceptance criteria often describe the alternative and error paths. If a story only describes the happy path, ask "and what if…?" in refinement and you're doing use case thinking.
+
+<Callout type="tip">
+
+Switch to **Detailed** for a full worked example, how extensions are numbered, alternative vs exception flows, how to write the test cases, and common mistakes.
+
+</Callout>
+
+</Short>
+
+<Long>
+
+## The parts of a use case in depth
+
+Use cases come from software design (Ivar Jacobson introduced them in the late 1980s, and they became part of UML). The structured, readable style most teams use today was popularized by Alistair Cockburn's book *Writing Effective Use Cases*. Formats vary between companies, but these parts appear almost everywhere.
+
+### Actors
+
+An <Term id="actor" /> is anyone or anything that interacts with the system. The **primary actor** wants the goal: the customer resetting a password. **Secondary actors** help: the email service that sends the link, a payment provider, a restaurant's tablet. Every actor is a hint for testing: what if the email service is slow? What if the payment provider declines?
+
+### Preconditions and trigger
+
+<Term id="precondition">Preconditions</Term> are what must already be true before the use case starts ("the customer has a verified email address"). In a test, preconditions become your **setup**, not something you check. The **trigger** is the event that starts the use case ("the customer taps Forgot password?").
+
+### The main success scenario
+
+The <Term id="main-success-scenario" /> (also called the basic or main flow) is the story where everything goes right. It's written as numbered steps that alternate between the actor and the system: "the customer enters their email", "the system sends a link". Keep it to roughly 3 to 9 steps; longer ones usually mix in details that belong elsewhere.
+
+### Extensions: alternative and exception flows
+
+Everything that can go differently is listed as an **extension**, numbered after the step where it branches off. "3a" means "something different at step 3", "3b" is a second thing that can happen at step 3.
+
+- An <Term id="alternative-flow" /> is a different route that **still reaches the goal**: the customer opens the link on a computer instead of the phone, then continues normally.
+- An <Term id="exception-flow" /> handles an **error or condition that stops the normal path**: the link has expired, the card is declined. The use case may end, or the user may recover and rejoin.
+
+<Callout type="note" title="Terms vary between teams">
+
+Cockburn simply calls all of these "extensions". ISTQB material talks about basic, alternative and exception (error) behavior. Some teams say "alternate flow". Don't argue about the label; what matters is that every branch gets a test. A useful rule of thumb: **does the user still reach the goal?** Yes → alternative. No, or only after recovering from an error → exception.
+
+</Callout>
+
+### Postconditions
+
+<Term id="postcondition">Postconditions</Term> describe what must be true at the end. Good use cases list two kinds:
+
+- **On success:** "only the new password works, other devices are logged out, the link can't be used again".
+- **If it fails** (sometimes called the minimal guarantee): "the old password still works". Even a failed run must not leave the system in a broken state.
+
+Postconditions are gold for testers: they're the checks people forget because the confirmation screen *looks* right.
+
+## A worked example: reset a forgotten password
+
+Here's the use case behind the hook story, written the way many teams do it:
+
+<UseCaseDoc />
+
+The two bugs from the hook live right there: opening the link on a computer is **extension 3a**, and an old link is **3c**. A tester working from this page would have tested both before release.
+
+## Deriving test scenarios step by step
+
+<Steps>
+
+1. **Read the whole use case and list its flows.** Main success scenario, 1a, 3a, 3b, 3c, 5a: six flows.
+2. **Write one scenario for the main flow.** Use realistic data: a real-looking email, a password that meets the rules.
+3. **Write one scenario per extension.** Follow the main steps up to the branching point, take the branch, then either follow it back into the main flow or check that the use case ends cleanly.
+4. **Add the postconditions to the expected results.** After the main flow, try the old password (must fail), check another logged-in device (must be logged out) and tap the link again (must say it was used).
+5. **Look for missing extensions.** Read every system step and ask "what could go wrong here?" What if the email takes 10 minutes to arrive? What if the customer requests two links and uses the first one? Missing extensions are requirement gaps: raise them, just like gaps in a [decision table](/fundamentals/decision-tables).
+6. **Apply other techniques inside steps.** Step 5 has password rules, so use [equivalence partitioning](/fundamentals/equivalence-partitioning) and [boundary values](/fundamentals/boundary-value-analysis) there. The link's life (fresh → used or expired) is a small [state machine](/fundamentals/state-transition-testing).
+
+</Steps>
+
+The result, as <Term id="test-scenario">test scenarios</Term>:
+
+| Flow | Scenario | Key check |
+| --- | --- | --- |
+| Main | Reset on the phone with a valid new password | Old password fails afterward |
+| 1a | Type `anna@` and tap Send link | Clear "valid email" message |
+| 3a | Open the link on a laptop | New password screen appears |
+| 3b | Open a link after 31 minutes | "Expired", offer a new link |
+| 3c | Open the same link twice | Second time: "already used" |
+| 5a | Enter a too-short password | Rule explained, can retry |
+
+Each scenario then becomes one or more detailed <Term id="test-case">test cases</Term>; see [how to write test cases](/tutorials/writing-test-cases) and [scenarios, cases and checklists](/tutorials/scenarios-cases-checklists).
+
+## Measuring coverage
+
+Use case coverage counts **flows**, not steps:
+
+> coverage = flows exercised by at least one test ÷ all flows in the use case
+
+Six flows with four tested is 67%. Two notes from practice:
+
+- **More tests ≠ more coverage.** Ten variations of the main flow with different cards still cover only one flow. They may be worth running for other reasons (payment methods are risky), but count them honestly.
+- **100% flow coverage isn't "fully tested".** It means every documented route ran at least once. Data variations inside steps, undocumented routes and combinations of extensions (sold-out dish *and* declined card) are still open. Pick the risky combinations on purpose.
+
+## Use cases and user stories
+
+Modern agile teams rarely write formal use cases; they write [user stories with acceptance criteria](/tutorials/user-stories-and-acceptance-criteria). The two fit together well:
+
+| | User story | Use case |
+| --- | --- | --- |
+| Size | One small piece of value | A whole goal, end to end |
+| Format | "As a…, I want…, so that…" + criteria | Numbered steps + extensions |
+| Strength | Short, easy to plan in a sprint | Shows every branch in one place |
+
+A tester can bring use case thinking into story refinement: sketch the main flow, then ask about each step "what else could happen here?" Each answer becomes an acceptance criterion, often in [Given/When/Then](/glossary/gherkin) form. Several stories ("reorder", "handle sold-out dishes", "show price changes") often add up to one use case, and a use case is a great map for **end-to-end tests** across those stories.
+
+<Callout type="info" title="Where it sits in ISTQB">
+
+Use case testing was one of the black-box techniques in the ISTQB Foundation syllabus up to the 2018 version. The current 4.0 syllabus focuses on equivalence partitioning, boundaries, decision tables and state transitions, and treats user stories under collaboration-based approaches. The technique is still common in practice, especially for end-to-end journeys and in companies that write formal requirements.
+
+</Callout>
+
+## Mobile and web twists
+
+Real users don't follow a use case in one sitting. When you test each flow, also ask what happens if the journey is **split up**:
+
+- **Across devices:** the reset email opened on a laptop, a cart started on the web and finished in the app.
+- **Across time:** the link opened tomorrow, the app reopened after it was closed from the app switcher halfway through.
+- **With interruptions:** a phone call or a switch to the email app in the middle of a step. See [interruptions](/mobile/interruptions) and [background and foreground](/mobile/background-and-foreground).
+- **With the browser's own controls:** Back, refresh and opening the link in a second tab.
+
+These aren't always in the use case. When they're missing, they're excellent questions for the team, and good material for [error guessing](/fundamentals/error-guessing).
+
+## Common mistakes
+
+- **Testing only the main flow.** The happy path is usually the part developers already tried themselves.
+- **Checking the last screen instead of the postconditions.** "Order confirmed" doesn't prove the customer was charged once.
+- **Treating preconditions as test steps.** "Has a verified email" is setup; build it with test data, don't re-test it in every case.
+- **Inventing behavior for a missing extension.** If the use case doesn't say what happens when every dish is sold out, ask. Don't guess the expected result.
+- **Writing one giant test for all flows.** If it fails at step 2, you learn nothing about the other branches. One flow per test keeps failures readable.
+
+</Long>
+
+## Practice: the use case workshop
+
+Sort the product owner's notes into the parts of a use case, then pick test scenarios. The coverage check tells you which alternative and exception flows you missed, and which picks add no new coverage.
+
+<UseCaseTrainer client:visible />
+
+## Example test cases
+
+These come from the "Reorder a previous order" use case in the workshop. Notice how each one names the flow it covers.
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-UC-01',
+      title: 'Main flow: reorder a past order and pay by card',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Logged in as a customer with a completed order from Pizza Roma', 'Restaurant open, all dishes available, cart empty'],
+      steps: ['Open Orders', 'Tap Reorder on the Pizza Roma order', 'Check the cart and tap Place order'],
+      expected: 'Cart shows the same dishes at today’s prices; the confirmation appears; the card is charged once; the original order is unchanged in Orders.',
+    },
+    {
+      id: 'TC-UC-02',
+      title: 'Alternative 2a: one dish sold out',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Past order with 3 dishes; Tiramisu is marked sold out'],
+      steps: ['Tap Reorder on that order', 'Read the message', 'Place the order'],
+      expected: 'The 2 available dishes are added; a notice lists Tiramisu as unavailable; the total only includes the 2 dishes; the order can be placed.',
+    },
+    {
+      id: 'TC-UC-03',
+      title: 'Alternative 1a: cart holds another restaurant’s items, choose Cancel',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Cart contains a lemonade from Burger Barn'],
+      steps: ['Tap Reorder on a Pizza Roma order', 'Choose Cancel in the dialog'],
+      expected: 'The cart still contains only the lemonade; nothing from Pizza Roma was added.',
+    },
+    {
+      id: 'TC-UC-04',
+      title: 'Exception 2c: restaurant closed',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Pizza Roma is closed until 11:00'],
+      steps: ['Tap Reorder on a Pizza Roma order'],
+      expected: 'A message says the restaurant opens at 11:00; the cart is unchanged; no order is created.',
+    },
+    {
+      id: 'TC-UC-05',
+      title: 'Exception 5a: declined card, then recovery',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Test card that is always declined, plus a second working test card'],
+      steps: ['Reorder a past order', 'Pay with the declining card', 'Choose the working card and pay again'],
+      expected: 'A clear decline message; the cart is kept; after paying with the second card there is exactly one new order and one charge.',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="Use case testing checklist"
+  storageKey="use-case-testing"
+  items={[
+    'I listed the actors and thought about how each one could fail or be slow',
+    'Preconditions are covered by setup and test data, not by test steps',
+    'The main success scenario has at least one end-to-end test',
+    'Every alternative flow has at least one test that rejoins the main flow',
+    'Every exception flow has a test that checks the message, leftovers and recovery',
+    'Expected results include the postconditions, not just the final screen',
+    'I asked "what else could happen here?" for each system step and raised missing extensions',
+    'Inside the steps I used EP, boundaries or state transitions where they fit',
+    'I tried splitting the journey: other device, later in time, interruptions, Back and refresh',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "In a use case, what is the main success scenario?",
+      options: ["Every possible path through the feature", "The normal path where everything goes right and the actor reaches the goal", "The list of error messages", "The test case with the highest priority"],
+      answer: 1,
+      explain: "The main success scenario (basic flow) is the happy path. Alternative and exception flows branch off its steps.",
+    },
+    {
+      q: "While reordering food, two of three dishes are available. The app adds those two and the customer still orders. What kind of flow is that?",
+      options: ["Exception flow", "Precondition", "Alternative flow", "Postcondition"],
+      answer: 2,
+      explain: "The customer still reaches the goal by a slightly different route, so it's an alternative flow.",
+    },
+    {
+      q: "A use case has a main flow, 3 alternative flows and 2 exception flows. Your tests cover the main flow and all alternatives. What is the flow coverage?",
+      options: ["50%", "67%", "83%", "100%"],
+      answer: 1,
+      explain: "4 of 6 flows are covered: 4 ÷ 6 ≈ 67%. Both exception flows, where error handling bugs hide, are still untested.",
+    },
+    {
+      q: "After a successful reorder, the confirmation screen appears. What else should the test check?",
+      options: ["Nothing, the confirmation proves it worked", "The postconditions, such as one charge and an unchanged original order", "That the app icon looks right", "The preconditions again"],
+      answer: 1,
+      explain: "Postconditions describe what must be true afterward. A confirmation screen can look perfect while the card was charged twice.",
+    },
+    {
+      q: "The use case doesn't say what happens if every dish in the old order is sold out. What should you do?",
+      options: ["Decide the expected result yourself", "Skip that situation", "Raise it as a missing extension and ask the team", "Mark the use case as passed"],
+      answer: 2,
+      explain: "A missing extension is a requirement gap. Ask so the whole team agrees on the behavior instead of each person guessing.",
+    },
+    {
+      q: "How do use cases relate to user stories?",
+      options: [
+        "They are unrelated techniques",
+        "A use case describes a whole goal with all branches; stories usually slice it into smaller pieces with acceptance criteria",
+        "User stories always replace testing",
+        "Use cases are only for automated tests",
+      ],
+      answer: 1,
+      explain: "Several stories often add up to one use case. Testers can bring use case thinking ('what else could happen at this step?') into story refinement.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A use case describes how an **actor** reaches **one goal**: preconditions, the **main success scenario**, **alternative** and **exception** flows, and **postconditions**.
+- Derive **at least one test per flow**. Alternatives still reach the goal; exceptions handle errors that stop the normal path.
+- **Coverage = flows tested ÷ all flows.** More variations of the happy path don't add flow coverage.
+- Always check the **postconditions**, not just the final screen.
+- Missing extensions are requirement gaps: **ask**, don't invent the expected result.
+- In agile teams, bring the same thinking into **user story refinement** and end-to-end testing.
+
+</KeyTakeaways>

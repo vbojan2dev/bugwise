@@ -1,0 +1,372 @@
+---
+title: Severity vs Priority
+description: Severity is how badly a bug hurts; priority is how soon it gets fixed. Learn both scales, who sets which, the four combinations with real app examples, what pushes priority up or down, and how to argue for a rating with facts.
+order: 12
+level: beginner
+minutes: { short: 13, long: 20 }
+platform: both
+tags: [fundamentals, bugs, severity, priority, triage]
+---
+
+import Quadrants from '@/components/demos/fundamentals-bugs/Quadrants';
+import TriageBoard from '@/components/demos/fundamentals-bugs/TriageBoard';
+
+It's Thursday afternoon and the shopping app release goes out tomorrow morning. There is time to fix **one** more bug. Two are waiting:
+
+- **Bug A:** the app crashes when you export your order history as a PDF, but only on Android 9, and only 0.2% of users ever use that export.
+- **Bug B:** the store's name is misspelled on the very first screen every user sees: "ShopFats" instead of "ShopFast".
+
+Bug A is clearly *worse*: a crash! Yet most teams would fix Bug B first. That isn't a mistake. It's the difference between **severity** and **priority**, and once you understand it, a lot of team decisions start to make sense.
+
+## Two different questions
+
+Every bug gets two separate ratings:
+
+- <Term id="severity">Severity</Term> answers **"How bad is it?"** It describes the **impact** of the bug on the product or the user when it happens.
+- <Term id="priority">Priority</Term> answers **"How soon do we fix it?"** It describes the **urgency**: the order in which the team will work on bugs.
+
+<Callout type="example" title="An everyday analogy: a house before a party">
+
+You're hosting a party in two hours. You notice a **crack in the garage wall** and a **burnt-out light bulb at the front door**.
+
+The crack is far more serious (high severity), but it won't get worse tonight and nobody will see it, so you'll call a builder next week (low priority). The bulb is trivial (low severity), but guests arrive in the dark in two hours, so you change it right now (high priority).
+
+Same house, same afternoon, two different questions.
+
+</Callout>
+
+The two ratings are **independent**. A high-severity bug can have low priority, and a low-severity bug can have high priority. If you've read [How to Write a Bug Report](/tutorials/writing-bug-reports), you've seen the short version of this; this lesson is the full explanation.
+
+<Short>
+
+## The quick version
+
+### Severity: how bad is it?
+
+| Severity | Meaning | Example |
+| --- | --- | --- |
+| **Blocker / Critical** | Crash, data loss, security hole, money flow blocked, no workaround | "Pay" crashes the app for everyone |
+| **Major** | A main feature is broken, but there's a workaround | Apple Pay fails, card payment works |
+| **Minor** | Small problem, the user can carry on | Sort by price ignores sale items |
+| **Trivial** | Cosmetic: typo, alignment, color | An icon is 3 px too low |
+
+Scales vary: some teams have five levels with **Blocker** on top, others use S1 to S4 or just High, Medium and Low.
+
+### Priority: how soon?
+
+| Priority | Typical meaning |
+| --- | --- |
+| **P1 / Highest** | Fix now. Drop other work; maybe a hotfix |
+| **P2 / High** | Fix in this sprint, before the release |
+| **P3 / Medium** | Fix soon, in an upcoming sprint |
+| **P4 / Low** | Backlog: fix when convenient |
+
+### Who sets which
+
+The **tester usually proposes severity**, because it's based on what the bug does, and the tester saw it happen. The **product owner or lead decides priority**, because it depends on business things a tester may not know: deadlines, campaigns, customers, other work. Teams differ, so learn your team's rule.
+
+### The four combinations
+
+<Quadrants />
+
+### What pushes priority up
+
+How many users are affected, whether **money**, **security** or **legal** issues are involved, how close the release or a launch is, whether there's a <Term id="workaround" />, and how visible it is to customers and the brand.
+
+<Callout type="tip">
+
+Switch to **Detailed** at the top of the page for the full picture: how to rate severity step by step, what each priority level means in practice, why the same bug can get a different priority on mobile and web, and how to argue for a rating with evidence.
+
+</Callout>
+
+</Short>
+
+<Long>
+
+## Severity in depth
+
+Severity describes **what the bug does when it happens**. It's mostly a technical, factual judgment: does the app crash, lose data, take money incorrectly, or just look a bit off?
+
+### A typical severity scale
+
+| Severity | What it means | Mobile / web example |
+| --- | --- | --- |
+| **Blocker** | Stops a key flow or further testing completely; no workaround. Release can't go out | The app crashes on launch after the update; the website shows a blank page |
+| **Critical** | Crash, data loss, security or privacy problem, or money handled wrongly | Workout history disappears; customers see other people's orders; a discount is applied twice |
+| **Major** | A main feature is broken or gives wrong results, but there's a workaround | Apple Pay fails but card payment works; search ignores the city filter |
+| **Minor** | A small feature misbehaves or is awkward; the user can carry on | Sorting puts sale items last; the "Clear" button needs two taps |
+| **Trivial** | Cosmetic only: typos, spacing, colors, alignment | A label is 2 px off-center; a tooltip has a typo |
+
+<Callout type="info" title="Scales differ, and that's fine">
+
+Some teams use four levels (Critical, Major, Minor, Trivial) and treat a <Term id="blocker" /> as a type of critical bug. Others use S1 to S4, or simply High, Medium, Low. Jira's built-in field is actually **Priority** (Highest, High, Medium, Low, Lowest). Severity is often added as a custom field, and some teams don't track it separately at all. Learn the scale your team uses and what each level means there.
+
+</Callout>
+
+### How to rate severity: five questions
+
+<Steps>
+
+1. **What can't the user do?** Nothing at all (crash on launch), a key task (pay, log in, book), a side task (export, share), or nothing (cosmetic)?
+2. **Is anything lost or exposed?** Data loss, money taken wrongly, personal data visible to others, or a security hole push severity to the top, even if the bug is rare.
+3. **Is there a workaround?** If the user can reach their goal another way (pay by card instead of Apple Pay), severity usually drops a level.
+4. **Is it wrong, or just ugly?** A wrong total is far worse than a misaligned total.
+5. **Does it block testing?** A bug that stops testers from reaching other screens is often rated Blocker, because it hides other bugs.
+
+</Steps>
+
+<Callout type="note" title="Does 'how often' affect severity?">
+
+Strictly, severity is about **impact when the bug happens**, and frequency ("1 in 2,000 saves", "only 0.1% of users") belongs in priority. In practice some teams fold "how many users" into severity too. Either way, **write the frequency in the report** so the team can decide.
+
+</Callout>
+
+## Priority in depth
+
+Priority is about **order**. A team can only fix so many bugs per sprint, so someone has to decide what comes first. That decision weighs severity against everything else the business cares about.
+
+| Priority | In practice | Example |
+| --- | --- | --- |
+| **P1 / Highest** | Drop other work. In production, often a hotfix the same day | Checkout crashes for all Android users |
+| **P2 / High** | Must be fixed before the next release or within this <Term id="sprint" /> | Sorting by price shows sale items last, every day costing some sales |
+| **P3 / Medium** | Planned for an upcoming sprint | Reorder button broken on iPad landscape, workaround exists |
+| **P4 / Low** | Backlog; fixed when convenient, or eventually closed as Won't fix | A misaligned icon in Settings |
+
+Priority also **changes over time**. A P3 bug becomes P1 when the marketing team announces that feature tomorrow, and a P1 drops to P3 when the launch is postponed. Severity changes only when you learn new facts about the impact.
+
+## Who sets which
+
+| | Severity | Priority |
+| --- | --- | --- |
+| **Question** | How bad is it? | How soon do we fix it? |
+| **Based on** | Technical impact on the user and product | Business needs: users, money, dates, risk |
+| **Usually proposed by** | Tester (who saw it happen) | Product owner, lead or triage group |
+| **Changes when** | New facts about impact appear | The context changes (dates, customers, other work) |
+
+Why this split? The tester is the person who saw the bug, knows how to reproduce it and what it breaks, so they're best placed to judge impact. The product owner sees the whole picture: the roadmap, the campaign next week, the big customer who complained, the five other bugs competing for the same developer.
+
+<Callout type="tip" title="Propose, don't impose">
+
+Even if your tool lets you set priority, treat it as a suggestion unless your team says otherwise. Explain the business impact in the description ("blocks every Apple Pay order with a discount code during the spring campaign") and let the product owner make the call, usually in a [triage meeting](/fundamentals/bug-life-cycle).
+
+</Callout>
+
+## The four combinations in depth
+
+<Quadrants />
+
+- **High severity, high priority.** The easy one. The app crashes when tapping "Place order" for every Android user. Money is lost every minute and there's no workaround. Everyone drops what they're doing; if it's in production, a hotfix goes out.
+- **High severity, low priority.** The banking app crashes when exporting transactions as CSV, but only on Android 9 (2% of installs), the feature is used by 0.3% of users, and the website export works. The impact for that user is bad, but reach is tiny and there's a workaround. It gets fixed, just not tonight.
+- **Low severity, high priority.** The brand name "FitPulse" is misspelled "FitPluse" in the homepage banner the day before a launch campaign. Nothing is broken, but every new visitor sees it and it makes the company look careless. It's a five-minute fix with a big brand payoff.
+- **Low severity, low priority.** An icon in Settings sits 3 px lower than its neighbors. Log it so it's not forgotten, and fix it when someone is in that code anyway.
+
+## What pushes priority up or down
+
+| Factor | Pushes priority up | Pushes priority down |
+| --- | --- | --- |
+| **Users affected** | Everyone, or a key group (all iOS users, all new sign-ups) | One rare device, a beta OS, an internal tool |
+| **Money** | Payments fail, wrong prices, lost orders | No effect on revenue |
+| **Legal, security, privacy** | Personal data exposed, accessibility law, missing legal pages | None involved |
+| **Dates** | Release tomorrow, campaign launch, app store feature | Launch postponed, feature behind a flag |
+| **Workaround** | None, or users can't find it | Easy and obvious |
+| **Visibility and brand** | First screen, app store screenshots, press | Deep in a rarely used screen |
+| **Regression** | It worked in the last release (users notice what they lose) | Long-standing, nobody complained |
+
+<Callout type="example" title="Same bug, different priority">
+
+A <Term id="contrast-ratio" /> problem on the "Cancel booking" button in dark mode is a Major accessibility bug. In a company selling in the EU, where the European Accessibility Act has applied to many apps and online shops since June 2025, its priority will likely be higher than in a small internal tool. The bug didn't change; the context did. See [Accessibility Basics](/web/accessibility-basics).
+
+</Callout>
+
+## Mobile vs web: why fixing speed matters
+
+The same bug can get a different priority depending on how quickly a fix can reach users.
+
+<Tabs labels={["Mobile apps", "Websites"]}>
+<Tab>
+
+- A fix needs a new build, a store review (often quick, but never instant) and then **users have to update**. Many don't for weeks.
+- That means bugs found **before** a release are worth fixing early: once the build is out, it stays on phones.
+- Teams protect themselves with staged rollouts (releasing to a small percentage first), remote feature flags and, in emergencies, a <Term id="forced-update" />.
+- Bugs on old OS versions or rare devices matter more or less depending on your <Term id="fragmentation" /> data: check the analytics before you argue. See [Device Fragmentation](/mobile/device-fragmentation).
+
+</Tab>
+<Tab>
+
+- A fix can often be deployed in minutes, and every user gets it on their next page load (if caching is handled correctly).
+- That can make the team more relaxed about shipping a low-severity bug and fixing it the next day.
+- But web bugs can be **public and instant**: a broken checkout or a typo on the homepage is seen by every visitor right away, and search engines and screenshots keep it around.
+- Browser share matters: a Safari-only bug can affect most of your mobile web visitors. See [Cross-Browser Testing](/web/cross-browser-testing).
+
+</Tab>
+</Tabs>
+
+## Arguing for a severity, with evidence
+
+Sometimes you'll believe a bug is more serious than the team thinks. That's a good instinct, but volume doesn't convince anyone. **Facts do.**
+
+<Steps>
+
+1. **Describe the impact for the user.** "Users with a discount code can't pay with Apple Pay" beats "Apple Pay is broken".
+2. **Bring numbers.** How many users use this flow, device or OS? Your analytics, the <Term id="device-matrix" />, or the product owner can tell you.
+3. **Show the money, data or legal angle** if there is one: lost orders, wrong charges, personal data, accessibility requirements.
+4. **State the workaround honestly.** If there is one, say so. It builds trust, and the team will believe you more next time.
+5. **Mention if it's a regression.** "It worked in 5.2.0" is powerful: something users relied on was taken away.
+6. **Add real voices.** A support ticket, an app store review, or a customer complaint makes the impact real.
+7. **Then let it go.** If the product owner still decides on a lower priority, accept it. The facts are in the ticket, and you can raise it again if things change.
+
+</Steps>
+
+<Compare>
+<Do title="Calm and factual">
+
+I'd suggest Critical rather than Major: when the save is interrupted, the workout is **lost for good**, and it's a regression from 3.4. It's rare (about 1 in 2,000 saves in my tests), so I understand if the priority stays P2. Recording attached.
+
+</Do>
+<Dont title="Drama">
+
+THIS IS A HUGE BUG!!! Users will lose all their data and leave!! Why is this not P1???
+
+</Dont>
+</Compare>
+
+## Common mistakes
+
+- **Everything is Critical.** If every bug is critical, none is. Save the top level for crashes, data loss, security, money and blocked key flows.
+- **Rating with emotion.** A bug that annoyed you for an hour isn't automatically severe. Ask the five questions.
+- **Mixing up rare and minor.** A rare crash is still a crash. Keep severity about impact and put the frequency in the report.
+- **Setting priority alone.** Unless your team says so, priority is the product owner's call.
+- **Never revisiting.** When the context changes (a launch date moves, a big customer complains), priorities should change too. Speak up when you notice.
+
+There's also a classic interview question on this topic: see [What is the difference between severity and priority?](/interview/severity-vs-priority)
+
+</Long>
+
+## Practice: the triage board
+
+You're in triage. Rate ten realistic bugs from shopping, banking, fitness, travel and delivery apps. Pick a card, then click the cell for its severity (row) and priority (column). Afterwards, compare with a model answer, and see how the ranking changes when the context does.
+
+<TriageBoard client:visible />
+
+## Exercise: rate the bugs from a release
+
+A travel booking app is releasing version 6.0 next Tuesday. The headline feature is **"Split payment"**: friends can each pay their share of a hotel booking. Testers found these bugs on Thursday. For each one, propose a severity, suggest a priority, and write one sentence of reasoning.
+
+1. When three friends split a €300 booking, each is charged €100.01 (total €300.03).
+2. The "Split payment" onboarding screen says "Spilt payment".
+3. On iPad, the booking calendar shows Sunday as the first day of the week for German users (Germany normally starts the week on Monday).
+4. If the hotel cancels a split booking, only the person who created it gets a refund; the friends get nothing.
+5. The "Download invoice" PDF has the old company logo.
+
+<details>
+<summary><strong>Show a sample answer</strong></summary>
+
+1. **Critical / P1.** Money is charged incorrectly in the headline feature. Only 3 cents, but customers notice extra charges, and the rounding rule clearly isn't right. Must be fixed before Tuesday.
+2. **Trivial / P2.** Cosmetic, but it's the new feature's first screen, seen by every user who tries it. Cheap to fix, so do it before release. P1 is also defensible.
+3. **Minor / P3.** Not wrong data, just an unusual layout (a <Term id="localization" /> issue) on one platform. Fix in an upcoming sprint.
+4. **Critical / P1.** Customers lose money with no workaround; it may also break consumer law. It's part of the new feature, so it blocks the release. Some teams would even call this a Blocker.
+5. **Trivial / P3 or P4.** Cosmetic. Priority rises to P2 if the old logo belongs to a brand the company has legally stopped using.
+
+Your exact levels may differ. What matters is that your reasoning names the **impact** (for severity) and the **context** (for priority).
+
+</details>
+
+<Checklist
+  title="Severity and priority checklist"
+  storageKey="severity-vs-priority"
+  items={[
+    "I know my team's severity scale and what each level means",
+    "I rate severity by impact: crash, data loss, money, security, blocked flow, cosmetic",
+    "I note whether there is a workaround",
+    "I write down how often it happens and who is affected (devices, OS, users)",
+    "I propose severity and leave priority to the product owner or lead, unless my team says otherwise",
+    "I mention money, legal, security or release-date impact in the description",
+    "I argue for a rating with facts, not capital letters",
+    "I speak up when the context changes and a priority should move",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "What is the main difference between severity and priority?",
+      options: [
+        "They are two words for the same thing",
+        "Severity is how badly the bug hurts; priority is how soon it should be fixed",
+        "Severity is set by customers; priority is set by developers",
+        "Severity is for mobile apps; priority is for websites",
+      ],
+      answer: 1,
+      explain: "Severity measures impact, priority measures urgency. They are independent, so all four combinations are possible.",
+    },
+    {
+      q: "The company's name is misspelled on the homepage the day before a big launch. Which rating fits best?",
+      options: [
+        "High severity, high priority",
+        "High severity, low priority",
+        "Low severity, high priority",
+        "Low severity, low priority",
+      ],
+      answer: 2,
+      explain: "Nothing is technically broken, so severity is low. But every visitor sees it on launch day, so it should be fixed right away.",
+    },
+    {
+      q: "Who usually decides the priority of a bug?",
+      options: [
+        "The tester who found it",
+        "The developer who will fix it",
+        "The product owner or lead, based on business needs",
+        "The tool sets it automatically",
+      ],
+      answer: 2,
+      explain: "Priority depends on deadlines, customers, revenue and other work, so it's usually the product owner's or lead's decision. Testers propose severity and give the facts.",
+    },
+    {
+      q: "A fitness app loses a workout if the app is killed in the exact second after tapping Save. It happens about once in 2,000 saves. What's the most reasonable severity?",
+      options: [
+        "Trivial, because it's rare",
+        "Minor, because users can record another workout",
+        "Critical (or at least Major), because the outcome is data loss",
+        "It can't be rated until it happens more often",
+      ],
+      answer: 2,
+      explain: "Severity is about impact when it happens, and data loss is serious. The rarity matters for priority, so write it in the report.",
+    },
+    {
+      q: "Which change would most likely RAISE a bug's priority without changing its severity?",
+      options: [
+        "The team learns the bug also deletes user data",
+        "Marketing will advertise the affected feature tomorrow",
+        "The developer finds the cause",
+        "The bug is moved to another Jira project",
+      ],
+      answer: 1,
+      explain: "A launch date changes the urgency, not the impact. Learning that the bug deletes data would change the severity too.",
+    },
+    {
+      q: "You think a bug is more severe than the team rated it. What's the best approach?",
+      options: [
+        "Change the rating yourself and say nothing",
+        "Write URGENT in the title",
+        "Add facts to the ticket: affected users, money or data impact, regression, workaround, and let the product owner decide",
+        "Ask a friend on another team to complain",
+      ],
+      answer: 2,
+      explain: "Evidence convinces people, drama doesn't. State the facts calmly, accept the decision, and raise it again if new facts appear.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- **Severity = impact** ("how bad is it?"). **Priority = urgency** ("how soon do we fix it?"). They are independent.
+- Typical severity levels: **Blocker/Critical, Major, Minor, Trivial**. Typical priority levels: **P1 to P4** or Highest to Low. Scales vary per team.
+- The **tester usually proposes severity**; the **product owner or lead decides priority**.
+- All four combinations happen: a rare crash can be low priority, and a typo before launch can be top priority.
+- Priority goes up with **users affected, money, legal or security risk, close release dates, no workaround and high visibility**.
+- Priority changes with context; severity changes only when you learn new facts about impact.
+- Argue for a rating with **facts and numbers**, stay calm, and accept the product owner's decision.
+
+</KeyTakeaways>

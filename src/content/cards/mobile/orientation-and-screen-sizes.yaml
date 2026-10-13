@@ -1,0 +1,46 @@
+teaser: "Maria filled in a hotel booking, turned her phone sideways for a moment, then turned it back. Guess what was left."
+cards:
+  - type: flip
+    front: "Why can rotating an Android phone wipe a form?"
+    back: "Rotation is a configuration change: Android destroys and re-creates the screen. Anything the app didn't save, like typed text or a video position, is lost."
+  - type: flip
+    front: "What is the safe area?"
+    back: "The part of the screen not covered by the notch, Dynamic Island, rounded corners, home indicator or system bars. Text and buttons belong inside it."
+  - type: quiz
+    q: "A design says a button is 120 px tall on a @3x iPhone. How tall is it in points?"
+    options: ["120 pt", "360 pt", "40 pt"]
+    answer: 2
+    explain: "On a @3x screen, 1 pt = 3 px, so it's 40 pt, which is below the 44 pt minimum touch target."
+  - type: quiz
+    q: "What's the best way to find rotation bugs?"
+    options: ["Change something, then rotate", "Open each screen in both orientations", "Rotate with the app closed"]
+    answer: 0
+    explain: "Most rotation bugs are lost state. A screen can look fine in both orientations and still forget everything during the change."
+  - type: truefalse
+    statement: "iOS re-creates the screen on rotation, just like Android does."
+    answer: false
+    explain: "iOS keeps the same view controller and only recalculates the layout. Data loss is rare there, but layout bugs are common."
+  - type: truefalse
+    statement: "On Android, folding, split screen, dark mode and font size changes can re-create the screen too."
+    answer: true
+    explain: "They're all configuration changes, just like rotation. One lost-state bug often shows up through several triggers, so test them all."
+  - type: thisorthat
+    prompt: "You tested an iPhone layout in landscape left. Is landscape right still worth testing?"
+    left: "Yes, test it"
+    right: "No, it's identical"
+    answer: left
+    explain: "The Dynamic Island switches sides when you turn the phone the other way, so the other direction can hide different controls."
+  - type: thisorthat
+    prompt: "On a tablet, the app shows the phone layout stretched: one column, very long text lines, giant buttons."
+    left: "Fine, it works"
+    right: "Usability bug"
+    answer: right
+    explain: "Tablets have room for two panes, sidebars or grids. A stretched phone layout is hard to read and wastes the space."
+  - type: spotbug
+    screen: ["Hotel booking · portrait", "Full name: Anna Smith", "Email: anna@example.com", "Rotate to landscape...", "Full name: (empty)  Email: (empty)"]
+    bug: "The typed form data was lost on rotation."
+    explain: "The screen was re-created and the values were never saved. Users lose their input and may abandon the booking."
+  - type: spotbug
+    screen: ["iPhone 16 Pro Max · landscape", "Photo gallery fills the full width", "Left arrow under the Dynamic Island"]
+    bug: "A control sits outside the safe area."
+    explain: "In landscape iOS insets both sides by 62 pt. Ignoring that puts the arrow under the island, where users can't see or tap it."

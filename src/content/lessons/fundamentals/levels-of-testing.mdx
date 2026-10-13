@@ -1,0 +1,321 @@
+---
+title: Levels of Testing
+description: Unit, integration, system and acceptance testing explained from zero, followed through one real feature, plus the test pyramid and where manual testers fit.
+order: 3
+level: beginner
+minutes: { short: 12, long: 20 }
+platform: both
+tags: [fundamentals, test levels, test pyramid]
+---
+
+import TestPyramid from '@/components/demos/fundamentals-process/TestPyramid';
+import LevelsClassifier from '@/components/demos/fundamentals-process/LevelsClassifier';
+
+Think about how a car is made. Each part is checked on its own first: does this brake pad have the right thickness? Then parts are put together and checked as a group: does the brake pedal actually squeeze the pads? Then the finished car goes on a test track. Finally, a customer takes it for a test drive and decides whether to buy it.
+
+Four checks, four different questions, four different people. Software testing works exactly the same way, and these stages are called the **levels of testing**.
+
+## The four levels at a glance
+
+A **test level** is a group of tests aimed at one size of "thing": a tiny piece of code, a connection between pieces, the whole product, or the product in the hands of the people who asked for it.
+
+| Level | What is tested | Car analogy |
+| --- | --- | --- |
+| <Term id="unit-testing">Unit</Term> | One small piece of code on its own | One brake pad |
+| <Term id="integration-testing">Integration</Term> | Pieces working together | Pedal + brake line + pads |
+| <Term id="system-testing">System</Term> | The whole app, end to end | The finished car on the test track |
+| <Term id="acceptance-testing">Acceptance</Term> | Does it meet the real need? | The customer's test drive |
+
+Each level catches different bugs. A perfect brake pad is useless if the pedal isn't connected to it, and a car that passes every factory check can still be rejected by a customer who needed seven seats.
+
+<Short>
+
+## The quick version
+
+### Unit testing
+
+**Developers** test the smallest pieces of code, like the function that calculates a 10% discount, in isolation. These tests run in milliseconds and there are usually thousands of them. They find logic mistakes early.
+
+### Integration testing
+
+Checks that pieces **work together**: the app and its <Term id="api" />, the cart service and the coupon service, the website and the payment provider. Developers and testers both do this. It finds bugs in the "handover": wrong data, missing fields, timeouts, duplicated orders.
+
+### System testing
+
+The **whole app**, fully assembled, tested end to end on an environment like the real one (often <Term id="staging" />). This is where **most manual testers work**: running test cases on real devices and browsers, exploring, and checking non-functional things like speed and usability.
+
+### Acceptance testing
+
+The **business or real users** check that the product solves their problem. The best-known form is <Term id="uat" /> (UAT). Letting staff use the app before launch (alpha) or a group of outside users (<Term id="beta-testing">beta</Term>) are also forms of acceptance testing.
+
+### The test pyramid
+
+Healthy teams have **many** fast, cheap unit tests at the bottom, **fewer** integration tests in the middle and **only a few** slow, expensive end-to-end tests at the top. Manual testers mostly work near the top, but knowing what the lower levels already cover helps you choose what to test.
+
+<Callout type="tip">
+
+Switch to **Detailed** to follow one feature, a food delivery app's "apply coupon", through all four levels, and to learn about contract tests, alpha/beta and operational acceptance.
+
+</Callout>
+
+</Short>
+
+<Long>
+
+## Unit testing
+
+**What:** the smallest testable piece of code, a "unit": usually one function, method or class, tested **in isolation**. Anything it depends on (the database, the network, the clock) is replaced with a fake, so the test checks only that piece's logic.
+
+**Who:** developers, usually while writing the code. Unit tests are code themselves and run automatically on every change.
+
+**What it finds:** wrong math, wrong conditions (">" instead of ">="), unhandled empty or null values, <Term id="off-by-one-error">off-by-one errors</Term>.
+
+Here is what a unit test for a discount function might look like in JavaScript. You don't need to write these, but it helps to recognize one:
+
+```js
+test('SAVE10 takes 10% off the order', () => {
+  expect(calculateDiscount(40.0, 'SAVE10')).toBe(4.0);
+});
+
+test('an expired code gives no discount', () => {
+  expect(calculateDiscount(40.0, 'SUMMER23')).toBe(0);
+});
+```
+
+Each test runs in a few milliseconds. A large app can have thousands, and they all run every time a developer pushes a change.
+
+<Callout type="note" title="Unit vs component testing">
+
+The ISTQB calls this level **component testing**. In everyday team talk, "unit test" is far more common. Some teams also use "component test" for something bigger, like testing one whole screen with fake data. When people disagree, ask what *they* mean.
+
+</Callout>
+
+## Integration testing
+
+**What:** the **connections** between pieces. Two parts can each work perfectly on their own and still fail together: one sends a price as `"4.00"` (text), the other expects `4.0` (a number).
+
+**Who:** developers and testers. QA engineers often test APIs directly with tools like <Term id="postman" />; see [API Testing with Postman](/web/api-testing-with-postman).
+
+There are two flavors worth knowing:
+
+- **Component integration testing:** connections *inside* one system. The checkout screen and the cart module; the cart service and the coupon service, both built by your team.
+- **System integration testing:** connections between *your* system and *other* systems. Your app and the payment provider, a maps service, an airline's booking system, a bank.
+
+A related, modern technique is the **contract test**: the two sides of an API agree on a "contract" (field names, types, status codes), and automated tests check that neither side breaks it. Contract tests are popular when many teams own many small services.
+
+**What it finds:** wrong or missing data passed between parts, mismatched field names, wrong <Term id="http-status-code">status codes</Term>, timeouts, the same order created twice, errors that one side doesn't handle.
+
+## System testing
+
+**What:** the **complete, integrated product**, tested end to end on an environment as close to the real one as possible. You test it the way users use it: through the screens, on real devices and browsers, with realistic data.
+
+**Who:** mainly the test team: manual testers and automation engineers.
+
+**What it covers:**
+
+- **Functional** behavior: complete user journeys, business rules, error handling. Example: browse, add to cart, apply coupon, pay, get a receipt.
+- **Non-functional** qualities: speed, security, usability, accessibility, compatibility across devices and browsers. See [Types of Testing](/fundamentals/types-of-testing) for these.
+
+**What it finds:** broken end-to-end flows, problems that only appear when everything is connected, device- and browser-specific bugs, confusing UI, slow screens.
+
+This is the level where you will spend most of your time as a manual tester, using techniques from [How to Write Test Cases](/tutorials/writing-test-cases) and doing <Term id="exploratory-testing" />.
+
+## Acceptance testing
+
+**What:** the final question: **is this what we actually need, and can we go live with it?** System testing asks "does it work as specified?"; acceptance testing asks "is it fit for purpose?". This is <Term id="validation" /> in action.
+
+**Who:** the people the software is built for, often supported by testers. There are several kinds:
+
+| Kind | Who does it | Example |
+| --- | --- | --- |
+| <Term id="uat">User acceptance (UAT)</Term> | Business users, product owner, client | The restaurant's marketing team checks the coupon campaign works the way they run promotions |
+| Alpha testing | Real users inside the company | Staff use the new grocery app for their weekly shopping before launch |
+| <Term id="beta-testing">Beta testing</Term> | Real users outside the company | 2,000 customers get the new app version via TestFlight or a Google Play testing track (see [Beta distribution](/mobile/beta-distribution)) |
+| Operational acceptance | Operations / IT team | Backups restore, monitoring alerts fire, support can look up customers |
+
+Some projects also have **contractual** acceptance (does it meet the contract?) and **regulatory** acceptance (does it meet laws, for example for banking or health apps).
+
+**What it finds:** misunderstood business rules, workflows that are technically correct but awkward in real life, missing features, "this isn't what we meant".
+
+<Callout type="info" title="Acceptance testing is not 'find more bugs'">
+
+Ideally acceptance testing finds very few defects; those should have been caught earlier. Its job is to build **confidence** and get a **go / no-go decision**. If UAT finds lots of basic bugs, something went wrong at the lower levels.
+
+</Callout>
+
+## One feature through all four levels
+
+Let's follow a single feature, **"Apply a coupon at checkout"** in a food delivery app, through every level. The rule: *SAVE10 gives 10% off orders of €20 or more; one coupon per order.*
+
+<Tabs labels={["1. Unit", "2. Integration", "3. System", "4. Acceptance"]}>
+<Tab>
+
+**The unit:** the `calculateDiscount` function.
+
+**Who:** the developer who wrote it.
+
+**Example checks:** €40 order with SAVE10 gives €4.00 off. €19.99 gives €0 (below minimum). €20.00 exactly gives €2.00 off (the [boundary](/fundamentals/boundary-value-analysis)). An unknown code gives €0.
+
+**Typical bug caught:** the developer wrote "more than €20" instead of "€20 or more", so a €20.00 order gets no discount.
+
+</Tab>
+<Tab>
+
+**The connections:** the app sends the code to the cart API; the cart service asks the coupon service whether the code is valid; the coupon service marks it as used.
+
+**Who:** developers and QA engineers, often with Postman or automated API tests.
+
+**Example checks:** a POST to the apply-coupon <Term id="endpoint" /> returns the new total. An expired code returns a clear error, not a 500. Applying a second coupon is rejected. The coupon service and the cart agree on the currency format.
+
+**Typical bug caught:** the coupon service returns the discount as `"4.00"` (text) and the cart treats it as zero.
+
+</Tab>
+<Tab>
+
+**The whole app:** the real iOS app, Android app and website, on the staging environment.
+
+**Who:** manual testers (and automated end-to-end tests).
+
+**Example checks:** add items, apply SAVE10, see the discount line and new total, pay with a <Term id="test-card" />, check the receipt and order history. Then: remove an item so the total drops below €20 (does the discount disappear?), go back from payment, rotate the phone, lose network while applying the code.
+
+**Typical bug caught:** the discount is shown in the cart but missing on the payment screen, or it survives after the cart drops below €20. See [Shopping Cart and Checkout](/features/shopping-cart-and-checkout) for more.
+
+</Tab>
+<Tab>
+
+**The real need:** does the coupon feature support the business's actual promotions?
+
+**Who:** the marketing team and product owner (UAT), supported by testers.
+
+**Example checks:** run the real "Friday SAVE10" campaign on a pre-release build. Does the discount show in the way customers will understand? Can marketing see how many codes were used?
+
+**Typical finding:** "We always exclude alcohol from discounts, and this applies 10% to wine too." Every earlier level passed, because nobody wrote that rule down.
+
+</Tab>
+</Tabs>
+
+Notice how **each level found a bug the others would have missed** (or found much later and more expensively).
+
+## The test pyramid
+
+The **test pyramid** is a picture of how many tests a healthy team has at each level. The idea comes from automation: the lower the level, the faster, cheaper and more stable the test, so you want **lots** of them. The higher the level, the slower and more fragile the test, so you keep **fewer**, carefully chosen ones.
+
+- **Bottom (unit):** thousands of tests, seconds to run them all.
+- **Middle (integration / API):** hundreds of tests, minutes.
+- **Top (end-to-end system tests through the UI):** dozens, can take an hour, and some become <Term id="flaky-test">flaky</Term>.
+- **Above it:** manual exploratory testing and acceptance testing, which no automated layer replaces.
+
+<Callout type="warning" title="The ice-cream cone">
+
+The opposite shape, a few unit tests and a huge pile of slow manual and UI tests on top, is jokingly called the **ice-cream cone**. Teams like this find bugs late, regression takes days, and every release is stressful. A tester who notices "we find lots of simple calculation bugs in system testing" is spotting a missing bottom layer.
+
+</Callout>
+
+### Why this matters to a manual tester
+
+Most manual testers work at the **system** and **acceptance** levels. So why learn the others?
+
+- **You avoid duplicate work.** If developers already have unit tests for every discount rule, you can spend less time on calculation combinations and more on the full journey.
+- **You write better bug reports.** Saying "the API returns the right total but the app shows the old one" points the developer straight to the right place.
+- **You can test earlier.** API endpoints often exist before the screens do; testing them in Postman is integration testing you can start days earlier.
+- **You speak the team's language** in planning, reviews and interviews.
+
+## Levels are not types
+
+A **level** says *how big* the thing under test is. A **type** says *what quality* you are checking: functional, performance, security, usability, and so on. They combine: you can do performance testing at unit level (how fast is this function?) or at system level (how fast is the whole checkout?). <Term id="regression-testing" /> and <Term id="smoke-testing" /> also happen at several levels. See [Types of Testing](/fundamentals/types-of-testing) for the full map, and [SDLC and STLC](/fundamentals/sdlc-and-stlc) for how each level pairs with a design phase in the V-model.
+
+</Long>
+
+## Explore the test pyramid
+
+Click each level to see who does it, an example from the coupon feature, typical tools, and how speed and cost change as you go up.
+
+<TestPyramid client:visible />
+
+## Which level is this test?
+
+Ten realistic tests from shopping, banking, fitness and travel apps. Pick the level for each one.
+
+<LevelsClassifier client:visible />
+
+## Practice: one feature, four levels
+
+A fitness app is adding a **workout streak**:
+
+> The app shows how many days in a row you have logged a workout. The streak increases by 1 when you log at least one workout on a calendar day, and resets to 0 if you miss a whole day. Streaks are synced to your account so they show on every device. The fitness coaching team wants to use streaks to send motivational messages.
+
+For each level, write **one test idea** and **who** would do it.
+
+<details class="my-6 rounded-2xl border border-line bg-subtle px-4 py-3 [&>p]:mt-3 [&>ul]:mt-3">
+<summary class="cursor-pointer font-semibold">Show a sample answer</summary>
+
+- **Unit (developer):** the streak function returns 3 for workouts on Monday, Tuesday and Wednesday; returns 0 if Thursday is missed; counts two workouts on the same day only once.
+- **Integration (developer or QA engineer):** after logging a workout, the app sends it to the sync API and the API returns the updated streak; a second device fetching the profile gets the same number.
+- **System (manual tester):** on a real phone, log workouts on three days (change the device date or use test data), check the streak shows 3, skip a day and check it resets; test across time zones and right around midnight; log on Android and check the streak on iPhone.
+- **Acceptance (coaching team, UAT):** the coaching team tries the feature with real-looking accounts and confirms the streak numbers make sense for their motivational messages, for example that "rest days" in a training plan should not break a streak (a rule nobody wrote down yet).
+
+</details>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "A developer checks that the function formatPrice(4.5) returns '€4.50'. Which level is this?",
+      options: ["Unit testing", "Integration testing", "System testing", "Acceptance testing"],
+      answer: 0,
+      explain: "One small function, tested on its own, by a developer: that is a unit test.",
+    },
+    {
+      q: "The app shows an order as 'Paid', but the order service never received it from the payment service. Which level is best at catching this?",
+      options: ["Unit testing", "Integration testing", "Acceptance testing", "None, it can only be found in production"],
+      answer: 1,
+      explain: "The bug lives in the handover between two services. Integration testing focuses exactly on those connections.",
+    },
+    {
+      q: "Where do most manual testers spend most of their time?",
+      options: ["Unit testing", "Writing contract tests", "System testing", "Operational acceptance testing"],
+      answer: 2,
+      explain: "Manual testers mostly test the complete app end to end on real devices and browsers: system testing. They also support acceptance testing.",
+    },
+    {
+      q: "Who usually performs user acceptance testing (UAT)?",
+      options: [
+        "The developer who wrote the code",
+        "Business users, the product owner or the client",
+        "An automated pipeline",
+        "The database administrator",
+      ],
+      answer: 1,
+      explain: "UAT is done by the people the software is for. They decide whether it meets their real needs; testers usually support them.",
+    },
+    {
+      q: "What does the test pyramid recommend?",
+      options: [
+        "Mostly slow end-to-end UI tests, with a few unit tests",
+        "The same number of tests at every level",
+        "Many fast unit tests, fewer integration tests, and only a few end-to-end tests",
+        "Only manual testing",
+      ],
+      answer: 2,
+      explain: "Lower-level tests are faster, cheaper and more stable, so you want many of them. The upside-down shape is the 'ice-cream cone' anti-pattern.",
+    },
+    {
+      q: "Before launch, 300 company employees use the new banking app in daily life and report problems. What is this?",
+      options: ["Unit testing", "Integration testing", "Alpha testing (a form of acceptance testing)", "Regression testing"],
+      answer: 2,
+      explain: "Real users inside the company trying the product before release is alpha testing. Outside users doing the same would be beta testing.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- There are four test levels: **unit** (one piece of code), **integration** (pieces working together), **system** (the whole app end to end) and **acceptance** (does it meet the real need?).
+- Developers own unit tests; developers and QA test integrations and APIs; the test team owns system testing; business users and real users own acceptance.
+- Integration covers connections inside your system (component integration) and with outside systems (system integration); contract tests protect API agreements.
+- Acceptance includes UAT, alpha and beta testing, and operational acceptance. Its goal is confidence and a go/no-go decision.
+- The test pyramid: many fast unit tests, fewer integration tests, few end-to-end tests. Avoid the ice-cream cone.
+- Manual testers mostly work at system and acceptance level, but understanding the lower levels helps you test smarter and report bugs precisely.
+
+</KeyTakeaways>

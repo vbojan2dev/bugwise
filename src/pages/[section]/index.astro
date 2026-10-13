@@ -1,0 +1,65 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import SectionHero from '@/components/ui/SectionHero.astro';
+import ComingSoon from '@/components/ui/ComingSoon.astro';
+import SectionProgress from '@/components/ui/SectionProgress.astro';
+import Icon from '@/components/ui/Icon.astro';
+import { getSection, lessonSections } from '@/data/site';
+import { getLessons, lessonSlug } from '@/lib/content';
+import { href } from '@/lib/url';
+
+export function getStaticPaths() {
+  return lessonSections.map((section) => ({ params: { section } }));
+}
+
+const { section: id } = Astro.params;
+const section = getSection(id);
+const lessons = await getLessons(id as (typeof lessonSections)[number]);
+const written = new Set(lessons.map((l) => l.data.title.toLowerCase()));
+const planned = (section.planned ?? []).filter((p) => !written.has(p.toLowerCase()));
+---
+
+<BaseLayout title={section.title} description={section.description}>
+  <SectionHero section={section} stats={[`${lessons.length} ${lessons.length === 1 ? 'lesson' : 'lessons'}`, ...(planned.length ? [`${planned.length} planned`] : [])]}>
+    <SectionProgress class="mt-6" keys={lessons.map((l) => `${id}/${lessonSlug(l)}`)} />
+  </SectionHero>
+  <div class="container-page py-12" style={`--accent: ${section.accent}`}>
+    {
+      lessons.length > 0 ? (
+        <ol class="grid gap-4 md:grid-cols-2">
+          {lessons.map((l, i) => (
+            <li>
+              <a
+                href={href(`/${id}/${lessonSlug(l)}`)}
+                data-progress-key={`${id}/${lessonSlug(l)}`}
+                class="group card relative flex h-full gap-4 p-5 transition-all hover:-translate-y-0.5 hover:border-line-strong hover:shadow-soft"
+              >
+                <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-subtle font-mono text-sm font-semibold group-data-[done=true]:hidden" style="color: var(--accent)">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <span class="hidden size-10 shrink-0 place-items-center rounded-xl bg-ok text-white group-data-[done=true]:grid" title="Completed">
+                  <Icon name="check" size={18} strokeWidth={3} />
+                </span>
+                <div class="min-w-0">
+                  <h2 class="font-semibold group-hover:text-[var(--accent)]">{l.data.title}</h2>
+                  <p class="mt-1 text-sm leading-relaxed text-muted">{l.data.description}</p>
+                  <p class="mt-3 flex flex-wrap items-center gap-3 text-xs text-faint">
+                    <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {l.data.minutes.short}{l.data.minutes.long && `–${l.data.minutes.long}`} min</span>
+                    <span class="flex items-center gap-1 capitalize"><Icon name="signal" size={13} /> {l.data.level}</span>
+                    {l.data.minutes.long && <span class="flex items-center gap-1"><Icon name="layers" size={13} /> Quick & detailed</span>}
+                  </p>
+                </div>
+              </a>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <div class="card p-10 text-center">
+          <p class="font-semibold">Lessons for this section are on the way.</p>
+          <p class="mt-1 text-sm text-muted">Check out the topics planned below.</p>
+        </div>
+      )
+    }
+    <ComingSoon items={planned} />
+  </div>
+</BaseLayout>

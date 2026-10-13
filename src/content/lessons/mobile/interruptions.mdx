@@ -1,0 +1,380 @@
+---
+title: Interruptions (Calls, SMS, Alarms)
+description: Phones get interrupted all the time. Learn which interruptions matter, what a well-behaved app does when one hits, how to trigger them on real devices and emulators, and hunt bugs in a broken app.
+order: 5
+level: beginner
+minutes: { short: 30 }
+platform: mobile
+tags: [mobile, interruptions, calls, notifications, audio, app lifecycle]
+---
+
+import InterruptionSimulator from '@/components/demos/mobile-lifecycle/InterruptionSimulator';
+
+Maya is paying for concert tickets in her banking app. She types €25.00, adds a note, taps **Send**, and her phone rings. It's her mom. She declines, goes back to the app, sees the spinner still turning and the form looking oddly empty. A minute later she gets two "Payment sent" notifications. **She paid twice.**
+
+Nobody on the team had ever tested "phone call during a payment". On a desk with a test phone, nobody calls you. In real life, people get calls, messages and alarms in the middle of everything.
+
+## Why it matters
+
+An <Term id="interruption" /> is anything that pulls the user, the screen or the audio away from your app for a moment. Your app doesn't choose when that happens, and it can't stop it. It can only **react well**.
+
+Interruption bugs are nasty because:
+
+- **They lose real things:** a typed form, workout progress, a video position, sometimes money.
+- **They don't show up in normal testing.** You have to cause them on purpose.
+- **Users blame the app, not the phone call.** "The app deleted my message" ends up in a one-star review.
+
+The good news: once you know the list of interruptions and the four things that should happen, testing them is quick and very rewarding.
+
+## Types of interruptions
+
+Not all interruptions are equal. Some only cover part of the screen, some take over the audio, some send the app to the background completely.
+
+| Interruption | What the phone does | What a well-behaved app does |
+| --- | --- | --- |
+| **Incoming call (ringing)** | Full-screen call UI or a banner. Ringtone plays. | Pause video and audio. Keep the screen state. |
+| **Call accepted** | Call audio takes over. The app goes to the background. | Stay paused. Save drafts. Don't time out the session too early. |
+| **Call declined / missed** | You're back in the app within seconds. | Everything exactly as it was. No double actions. |
+| **SMS / notification banner** | A banner slides over the top for a few seconds. | **Nothing.** The app keeps running. Content stays usable. |
+| **Alarm or timer** | Full-screen alarm and loud sound. | Pause media. Resume cleanly when the alarm is stopped. |
+| **Low battery alert / Low Power Mode** | A system alert. Low Power Mode limits background work. | Keep working. Reduce heavy work if needed. Never reset the screen. |
+| **Headphones connect / disconnect** | Audio switches between headphones and speaker. | **Pause** playback when headphones are removed. Don't auto-play when they connect. |
+| **Siri / Google Assistant** | Assistant UI and audio take over. | Pause audio like for a call. |
+| **Screen lock (power button or auto-lock)** | Screen turns off. The app goes to the background. | Pause video. Keep timers correct. Restore the screen after unlock. |
+| **OS update or permission prompts** | A system dialog appears on top. | Keep state. Continue after the dialog closes. |
+| **Another app's audio** | Music or a podcast is already playing. | Decide on purpose: pause the other audio, lower it ("ducking"), or mix with it. |
+
+<Callout type="info" title="Small interruptions vs big ones">
+A **banner** or the **notification center** covers part of the screen, but the app stays in the foreground (pulling down the notification center makes it briefly "inactive" on iOS). A **call you accept**, the **lock screen** or switching apps sends it to the **background**, which is where most bugs live. The full story is in [Background and Foreground](/mobile/background-and-foreground).
+</Callout>
+
+## What should happen
+
+Whatever the interruption is, a well-behaved app does the same four things. Use them as your test oracle: if one fails, you've found a bug.
+
+<Steps>
+
+1. **Pause what should pause.** Video, music, games and voice guidance stop when a call, alarm or assistant takes over. They must never play *under* a phone call.
+2. **Save what the user typed.** Form drafts, messages, unsaved edits and the current screen survive the interruption, even if the OS later kills the app in the background.
+3. **Keep time correct.** Timers that measure real time (a workout, a parking meter, an OTP countdown) show the right value afterwards: no freezing, no jumping, no secretly restarting a timer the user paused.
+4. **Resume cleanly.** After the interruption you're back exactly where you left off, with nothing done twice. A payment, an order or a message is sent **once**, not again "because the app resumed".
+
+</Steps>
+
+## Try it: the interruption simulator
+
+This phone runs three sample apps: a **video player**, a **workout timer** and a **payment** screen. Start something (play the video, let the workout run, tap Send) and then fire interruptions. The timeline shows what the system did and how a well-behaved app reacted. Check **What you'd hear** to spot audio clashes.
+
+<InterruptionSimulator client:visible />
+
+<Callout type="tip" title="Things to try">
+
+- Play the video, then **Unplug headphones**. Then plug them back in. Does it start playing by itself? (It shouldn't.)
+- Pause the workout, then fire an **Alarm** and stop it. Is it still paused?
+- Tap **Send** on the payment, then quickly take an **Incoming call**. How many requests appear in the network log?
+- Fire a **Notification** while the video plays. Nothing should change.
+
+</Callout>
+
+## What to test
+
+Group your interruption testing by **what the user is doing** when it hits. The most valuable moments are the ones where losing state hurts.
+
+### During media
+
+- Video or music playing → incoming call, alarm, Siri, headphones removed.
+- After the interruption: is it paused at the same position? Does it resume only when the user asks (or automatically, if that's the spec)?
+- With Spotify already playing → start your app's video. What happens to Spotify?
+
+### During input
+
+- Half-filled form (sign-up, address, chat message, review) → call, then decline; call, then accept and talk for a minute; lock screen.
+- Is every field still filled? Is the keyboard or focus in a sensible place?
+
+### During something that counts time
+
+- Workout, cooking timer, parking session, OTP code countdown, quiz with a time limit.
+- Lock the phone for 2 minutes, then unlock: does the timer show the **real** elapsed time? Is a paused timer still paused?
+
+### During a transaction
+
+- Payment, order placement, booking, file upload, sending a message.
+- Interrupt **while the spinner is showing**. Afterwards: one charge, one order, one message. The screen shows the final result, not an endless spinner. See <Term id="double-submit" /> and <Term id="idempotency" />.
+
+### During audio or video calls inside your app
+
+- If your app makes calls itself (WhatsApp-style VoIP, video consultation, ride-hailing driver calls), test a normal phone call arriving during them. Which call wins? Can the user switch?
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Media plays under a call** | Video audio continues while you're talking on the phone | Medium |
+| 2 | **Form draft lost** | Back from a call, the fields you typed are empty | Medium–High |
+| 3 | **Double transaction** | Payment or order sent again after returning from a call or unlock | Critical |
+| 4 | **Timer wrong after interruption** | Workout froze while locked, jumped after unlock, or a paused timer is running again | Medium–High |
+| 5 | **Audio blasts from the speaker** | Headphones disconnect and the video keeps playing out loud | Medium |
+| 6 | **Auto-play on connect** | Headphones connect and the app starts playing without being asked | Low–Medium |
+| 7 | **Blank screen or crash after unlock** | White screen, frozen UI or a <Term id="crash" /> when you return | High–Critical |
+| 8 | **Endless spinner** | A request finished while you were away, but the app never shows the result | High |
+| 9 | **Session expired during a short call** | A 2-minute call logs you out and loses your progress | Medium |
+| 10 | **Banner breaks the layout** | A notification banner shifts content or blocks a button permanently | Low |
+
+<Callout type="bug" title="Why bug #3 happens">
+Many apps run some code every time they come back to the screen (for example "if a payment is pending, send it"). If that code doesn't check whether the request **already went out**, every return from an interruption sends another one. The fix on the server side is an **idempotency key**: the same payment ID sent twice is processed only once.
+</Callout>
+
+## Find the bug
+
+The same simulator again, but this time the app is broken. There are **six bugs**. Explore it like a tester:
+
+- Try each sample app with each interruption.
+- Start something first, then interrupt it.
+- Watch **What you'd hear** and the **network log**.
+- Some bugs need you to wait a little before coming back.
+
+<BugHunt
+  title="Interruptions in a buggy app"
+  bugs={[
+    {
+      title: 'Video keeps playing under the call',
+      hint: 'Play the video, then fire an incoming call or an alarm. What would you hear?',
+      detail: 'The app ignores the audio interruption: <strong>video audio keeps playing</strong> on top of the ringtone and the call, and the video position keeps moving. Expected: the video pauses as soon as the call or alarm starts, at the same position.',
+    },
+    {
+      title: 'A paused workout starts counting again after an interruption',
+      hint: 'Open Workout, tap Pause, then take a call (or alarm) and come back.',
+      detail: 'When the interruption ends, the app calls "resume" no matter what. A workout the user <strong>paused on purpose</strong> is running again and adds time the user never trained. Expected: a paused workout stays paused; only a running one keeps running.',
+    },
+    {
+      title: 'Payment draft is wiped after a call',
+      hint: 'Open Payment with the amount and note filled in, then receive a call and decline it.',
+      detail: 'Back in the app, the <strong>amount and note are empty</strong>. Expected: the draft is kept exactly as typed. This is a <em>state persistence</em> bug.',
+    },
+    {
+      title: 'Payment is sent twice',
+      hint: 'Tap Send and, while "Sending payment…" is showing, fire an incoming call. Watch the network log and the balance.',
+      detail: 'On return the app re-submits the pending payment: the network log shows <strong>two <code>POST /payments</code> requests with different keys</strong>, the balance drops twice and Recent shows two payments. Expected: one request; on return the app shows the result of that same request. Severity: <strong>Critical</strong> (users lose money).',
+    },
+    {
+      title: 'Audio continues through the speaker when headphones are unplugged',
+      hint: 'Play the video, then tap Unplug headphones.',
+      detail: '"What you\'d hear" switches to <strong>Video audio · phone speaker</strong> and playback continues. Expected: playback pauses when headphones are disconnected, so audio never blasts out loud in public. This is the platform convention on iOS and Android.',
+    },
+    {
+      title: 'Blank screen after unlocking',
+      hint: 'Lock the screen, wait about 10 seconds, then unlock.',
+      detail: 'After the screen was locked for a while, unlocking shows a <strong>blank white screen</strong> and the app is unusable until it is restarted. Quick lock/unlock works, which is why this slips through. Expected: the app comes back exactly as it was, however long it was locked.',
+    },
+  ]}
+>
+  <InterruptionSimulator buggy client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #4?">
+
+**Title:** Payment: payment is charged twice if a phone call arrives while "Sending payment…" is shown
+
+**Steps:** 1. Open Payment, amount €25.00. 2. Tap **Send**. 3. While the spinner shows, receive a phone call. 4. Decline the call.
+
+**Expected:** One `POST /payments`. The app shows "Payment sent" once. Balance €1,215.00.
+**Actual:** A second `POST /payments` is sent after the call. Balance €1,190.00, two payments in Recent.
+
+**Severity:** Critical · **Reproducible:** 5/5 · **Device:** iPhone 15, iOS 18.5 (also Pixel 8, Android 15)
+
+</Callout>
+
+More tips on writing this kind of report: [Writing bug reports](/tutorials/writing-bug-reports).
+
+## Tools & how-to: triggering interruptions
+
+You don't need special hardware. A second phone and the built-in emulator tools cover almost everything.
+
+<Tabs labels={['Real device', 'Android Emulator', 'iOS Simulator']}>
+<Tab>
+
+The most realistic option, and the only one for some interruptions.
+
+- **Calls:** call your test phone from a second phone (or ask a colleague). Test **ringing → decline**, **ringing → accept, talk 30 s, hang up**, and **missed** (let it ring out). Also try a WhatsApp or FaceTime call, since VoIP apps use the same system call screen.
+- **SMS and notifications:** text yourself, or send a push from your team's test tool or Firebase console.
+- **Alarms and timers:** open the Clock app, set a **timer for 10 seconds**, switch to your app and start the action you want to interrupt. For alarms, set one for the next minute.
+- **Low battery:** test on a phone below 20%, or turn on **Low Power Mode** (iOS: Settings › Battery) / **Battery Saver** (Android: Settings › Battery).
+- **Headphones:** pair Bluetooth earbuds, start playback, then take them out of your ears or put them back in the case. Also try turning Bluetooth off.
+- **Siri / Assistant:** hold the side button (iOS) or say "Hey Google" during playback.
+- **Lock:** press the power button, wait, unlock. Also let **auto-lock** kick in by not touching the phone.
+
+</Tab>
+<Tab>
+
+Open the **Extended controls** with the **⋯** button on the emulator's side toolbar.
+
+- **Phone:** enter any number and click **Call device** to simulate an incoming call (you can answer, decline and hang up from the emulator). **Send message** delivers a fake SMS.
+- **Battery:** set the charge level (for example 15%), unplug the charger and change the battery status.
+- **Power button** on the side toolbar locks and unlocks the screen.
+
+The same with <Term id="adb" /> commands, handy for repeating a test:
+
+```bash
+adb emu gsm call 5551234          # incoming call
+adb emu gsm cancel 5551234        # caller hangs up
+adb emu sms send 5551234 "Hi!"    # incoming SMS
+adb shell dumpsys battery unplug
+adb shell dumpsys battery set level 15
+adb shell dumpsys battery reset   # back to normal
+```
+
+</Tab>
+<Tab>
+
+The iOS <Term id="simulator" /> **cannot** receive real phone calls or SMS, and it has no real battery, Bluetooth or alarm sound. Use it for what it can do, and test the rest on a <Term id="real-device" />.
+
+- **Lock:** Device › Lock (⌘L). **Home:** Device › Home (⇧⌘H).
+- **Siri:** Device › Siri.
+- **Push notifications:** drag an `.apns` file onto the Simulator, or run `xcrun simctl push booted com.example.app payload.apns`.
+- **Battery icon:** `xcrun simctl status_bar booted override --batteryLevel 15` only **changes the icon** (handy for screenshots). It does not trigger low-battery behavior.
+
+</Tab>
+</Tabs>
+
+<Callout type="warning" title="Emulators are not enough">
+An <Term id="emulator" /> call doesn't route audio like a real call, and the iOS Simulator can't do calls at all. Plan at least one round of interruption testing on real phones (one iPhone, one Android) before every release that touches media, forms or payments.
+</Callout>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-INT-001',
+      title: 'Video pauses on incoming call and stays paused after it',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['A video is playing at 1:20', 'Second phone available to call the test device'],
+      steps: ['Call the test device from the second phone', 'Decline the call', 'Return to the app'],
+      expected: 'Video paused when the phone started ringing, at about 1:20. No video audio played during the ringtone. It resumes only when the user taps Play.',
+    },
+    {
+      id: 'TC-INT-002',
+      title: 'Form draft survives an accepted call',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Checkout address form is half filled'],
+      steps: ['Receive a call and accept it', 'Talk for 60 seconds', 'Hang up and return to the app'],
+      expected: 'The same screen is shown and every field contains exactly what was typed.',
+    },
+    {
+      id: 'TC-INT-003',
+      title: 'Payment is not duplicated when interrupted mid-request',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Proxy tool records traffic', 'Balance €1,240.00'],
+      steps: ['Enter €25.00 and tap Send', 'While the spinner shows, receive a call', 'Decline and return to the app'],
+      data: 'Amount: 25.00 EUR, recipient: Anna Lee',
+      expected: 'Exactly one POST /payments. The app shows "Payment sent" once. Balance €1,215.00.',
+    },
+    {
+      id: 'TC-INT-004',
+      title: 'Paused workout stays paused after an alarm',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Workout started and paused at 05:00', 'Timer in the Clock app set to 10 seconds'],
+      steps: ['Wait for the timer to go off', 'Stop it', 'Return to the workout'],
+      expected: 'The workout still shows 05:00 and Paused.',
+    },
+    {
+      id: 'TC-INT-005',
+      title: 'Playback pauses when Bluetooth headphones disconnect',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Bluetooth earbuds connected', 'Video playing'],
+      steps: ['Put the earbuds back in their case'],
+      expected: 'Playback pauses immediately. No audio comes from the phone speaker.',
+    },
+    {
+      id: 'TC-INT-006',
+      title: 'App restores correctly after a long screen lock',
+      priority: 'high',
+      type: 'edge',
+      steps: ['Open the order details screen', 'Lock the phone', 'Wait 10 minutes', 'Unlock'],
+      expected: 'The order details screen is shown and usable (no blank screen, no crash). Data is refreshed if it may have changed.',
+    },
+    {
+      id: 'TC-INT-007',
+      title: 'Notification banner does not interrupt the app',
+      priority: 'low',
+      type: 'negative',
+      preconditions: ['Video playing'],
+      steps: ['Send an SMS to the test device', 'Let the banner disappear on its own'],
+      expected: 'Video keeps playing. No layout change, no lost input.',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="Interruption test checklist"
+  storageKey="interruptions"
+  items={[
+    'Incoming call (decline, accept, missed) during media, input, timers and transactions',
+    'Video and audio pause on calls, alarms and Siri / Google Assistant, and never play under them',
+    'Media resumes only when expected, at the same position',
+    'Form drafts and the current screen survive calls and screen locks',
+    'Timers show real elapsed time after an interruption; paused timers stay paused',
+    'Payments, orders and messages are sent exactly once when interrupted mid-request',
+    'A request that finished in the background shows its result, not an endless spinner',
+    'Notification banners and SMS do not change anything in the app',
+    'Low battery alert and Low Power Mode do not reset the screen',
+    'Headphones disconnect pauses playback; connecting does not auto-play',
+    'Lock and unlock (short and long) restore the app without blank screens or crashes',
+    'Behavior with other apps\' audio playing (music, podcast) matches the spec',
+    'Tested on at least one real iPhone and one real Android phone',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A video is playing and a call comes in. What should the app do?',
+      options: ['Keep playing at lower volume', 'Pause the video and keep its position', 'Close the video and go back to the home screen', 'Restart the video from the beginning after the call'],
+      answer: 1,
+      explain: 'Media should never play under a phone call. Pausing at the same position lets the user continue later.',
+    },
+    {
+      q: 'Which interruption normally should NOT change anything in the app?',
+      options: ['An accepted phone call', 'An alarm going off', 'An SMS notification banner', 'Locking the screen'],
+      answer: 2,
+      explain: 'A banner covers part of the screen for a few seconds. The app stays in the foreground and should keep working.',
+    },
+    {
+      q: 'After returning from a call, you see two identical payments. Which concept protects against this on the server?',
+      options: ['Caching', 'Idempotency', 'Localization', 'Debouncing the keyboard'],
+      answer: 1,
+      explain: 'An idempotency key makes the server process the same payment only once, even if the app sends it twice.',
+    },
+    {
+      q: 'Your Bluetooth headphones disconnect while music plays. What is the expected behavior?',
+      options: ['Music continues through the phone speaker', 'Playback pauses', 'The app closes', 'The volume goes to maximum'],
+      answer: 1,
+      explain: 'Both iOS and Android apps are expected to pause playback when the audio route is lost, so nothing plays out loud by surprise.',
+    },
+    {
+      q: 'You need to test an incoming call. What is true about the iOS Simulator?',
+      options: ['It can simulate calls from the Phone menu', 'It cannot receive phone calls or SMS, so you need a real iPhone', 'It only supports FaceTime calls', 'It can, but only with adb'],
+      answer: 1,
+      explain: 'The Android Emulator can fake calls and SMS (Extended controls or adb). The iOS Simulator cannot, so calls are tested on a real device.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Interruptions (calls, notifications, alarms, low battery, headphones, assistants, screen lock) happen to every user, every day. Test them **on purpose**.
+- A well-behaved app does four things: **pause** what should pause, **save** what the user typed, keep **time correct**, and **resume cleanly** without doing anything twice.
+- The most valuable moments to interrupt: **during media, input, timers and transactions**.
+- Use a **second phone** and the **Clock app** on real devices, **Extended controls** or `adb emu` on the Android Emulator. The iOS Simulator can't do calls.
+- Interruptions often push the app to the background. Continue with [Background and Foreground](/mobile/background-and-foreground).
+
+</KeyTakeaways>

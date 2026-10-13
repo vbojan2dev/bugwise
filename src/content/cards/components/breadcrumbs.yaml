@@ -1,0 +1,43 @@
+teaser: "A lantern filed under Tents and a link that leads to a 404, all in one line of tiny text. How hard can breadcrumbs be?"
+cards:
+  - type: flip
+    front: "What is a location-based breadcrumb?"
+    back: "A trail showing where a page lives in the site's hierarchy, like Home › Camping › Tents. It's the same however the user got there."
+  - type: flip
+    front: "Why do native apps rarely show breadcrumbs?"
+    back: "Breadcrumbs are a web pattern. Apps show hierarchy with the back button in the navigation bar and the system Back gesture."
+  - type: spotbug
+    screen: ["Search: lantern", "Home › Camping › Tents › Storm Lantern", "Storm Lantern · $39"]
+    bug: "The lantern is shown under Tents, a category it isn't in."
+    explain: "The trail was built from the last category browsed, not the product's real one. Location-based trails must not depend on history."
+  - type: quiz
+    q: "How should the last item of a breadcrumb be built?"
+    options: ["A link to the current URL", "Plain text with aria-current=\"page\"", "A button that reloads"]
+    answer: 1
+    explain: "A link to the page you're on is useless and can reload the page. Plain text with aria-current is announced as current page."
+  - type: quiz
+    q: "A screen reader reads 'Home, link, slash, Camping, link, slash'. What's the fix?"
+    options: ["Hide the separators from screen readers", "Use > instead of /", "Remove the Home level"]
+    answer: 0
+    explain: "Any separator character in the markup gets read aloud. Draw separators with CSS or mark them aria-hidden."
+  - type: truefalse
+    statement: "Collapsing the middle levels into '…' on phones is fine if '…' opens the hidden levels."
+    answer: true
+    explain: "Collapsing saves space. The bug is a '…' that is just text, cutting users off from the middle levels."
+  - type: truefalse
+    statement: "Path-based (history) breadcrumbs are the recommended default for web shops."
+    answer: false
+    explain: "They repeat the browser's Back button and change on every visit. Location-based trails are the usual expectation."
+  - type: thisorthat
+    prompt: "A checkout shows Cart › Shipping › Payment › Review. Which component is it really?"
+    left: "Breadcrumbs"
+    right: "Wizard steps"
+    answer: right
+    explain: "Those are steps in a process, not places in a hierarchy. It needs a step indicator, with all the wizard tests."
+  - type: spotbug
+    screen: ["Home › Camping › Tents", "Click: Camping", "Page not found (404)"]
+    bug: "A breadcrumb level links to a page that doesn't exist."
+    explain: "Every level must open a working page. Click each level and check the status code in DevTools › Network."
+  - type: tip
+    title: "Arrive from everywhere"
+    text: "Open the same product from its category, from search and from a fresh private window. The breadcrumb must be identical all three times."

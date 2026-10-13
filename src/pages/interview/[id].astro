@@ -1,0 +1,143 @@
+---
+import { getCollection, render, type CollectionEntry } from 'astro:content';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/ui/Icon.astro';
+import { interviewCategories, levelLabel, levelTone } from '@/data/labels';
+import { href } from '@/lib/url';
+import { abs, breadcrumbs, publisher } from '@/lib/seo';
+
+/** One page per interview question, so each question can be found and shared on its own. */
+export async function getStaticPaths() {
+  const cats = Object.keys(interviewCategories);
+  const all = (await getCollection('interview')).sort(
+    (a, b) => cats.indexOf(a.data.category) - cats.indexOf(b.data.category) || a.data.order - b.data.order,
+  );
+  return all.map((q, i) => ({
+    params: { id: q.id },
+    props: {
+      q,
+      prev: all[i - 1],
+      next: all[i + 1],
+      related: all.filter((x) => x.id !== q.id && x.data.category === q.data.category).slice(0, 4),
+    },
+  }));
+}
+
+interface Props {
+  q: CollectionEntry<'interview'>;
+  prev?: CollectionEntry<'interview'>;
+  next?: CollectionEntry<'interview'>;
+  related: CollectionEntry<'interview'>[];
+}
+const { q, prev, next, related } = Astro.props;
+const { question, short, category, level, lookingFor, pitfalls } = q.data;
+const { Content } = await render(q);
+const path = `/interview/${q.id}`;
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'LearningResource',
+    name: question,
+    description: short,
+    url: abs(path, Astro.site),
+    inLanguage: 'en',
+    learningResourceType: 'Interview question with model answer',
+    educationalLevel: levelLabel[level],
+    isAccessibleForFree: true,
+    publisher: publisher(Astro.site),
+  },
+  breadcrumbs([['Interview Prep', '/interview'], [question, path]], Astro.site),
+];
+---
+
+<BaseLayout title={question} description={`QA interview question (${levelLabel[level].toLowerCase()}): ${short}`} jsonLd={jsonLd}>
+  <article class="container-page max-w-3xl py-10 sm:py-14">
+    <nav aria-label="Breadcrumb" class="flex flex-wrap items-center gap-1.5 text-sm text-faint">
+      <a href={href('/interview')} class="hover:text-fg">Interview Prep</a>
+      <Icon name="chevron-right" size={14} />
+      <span class="text-muted">{interviewCategories[category]}</span>
+    </nav>
+
+    <h1 class="mt-4 text-3xl font-bold tracking-tight text-balance sm:text-4xl">{question}</h1>
+    <p class="mt-4 flex flex-wrap gap-1.5 text-xs font-medium">
+      <span class="rounded-full bg-subtle px-2.5 py-1 text-muted">{interviewCategories[category]}</span>
+      <span class:list={['rounded-full px-2.5 py-1', levelTone[level]]}>{levelLabel[level]}</span>
+    </p>
+
+    <p class="mt-8 rounded-xl bg-brand-soft/60 px-5 py-4 text-[1.05rem] font-medium">
+      <span class="mr-1.5 text-xs font-bold tracking-wider text-brand uppercase">In short</span>
+      {short}
+    </p>
+
+    <section class="mt-8">
+      <h2 class="text-lg font-semibold">Model answer</h2>
+      <div class="prose mt-3 max-w-none">
+        <Content />
+      </div>
+    </section>
+
+    <div class="mt-8 grid gap-4 md:grid-cols-2">
+      <div class="rounded-xl border border-ok/25 bg-ok-soft/40 p-4">
+        <h2 class="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-ok">
+          <Icon name="target" size={15} /> What they're looking for
+        </h2>
+        <p class="text-sm leading-relaxed text-muted">{lookingFor}</p>
+      </div>
+      {
+        pitfalls.length > 0 && (
+          <div class="rounded-xl border border-danger/25 bg-danger-soft/40 p-4">
+            <h2 class="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-danger">
+              <Icon name="triangle-alert" size={15} /> Common mistakes
+            </h2>
+            <ul class="list-disc space-y-1 pl-4 text-sm leading-relaxed text-muted">
+              {pitfalls.map((p) => (
+                <li>{p}</li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+    </div>
+
+    {
+      related.length > 0 && (
+        <section class="mt-12">
+          <h2 class="text-lg font-semibold">More {interviewCategories[category].toLowerCase()} questions</h2>
+          <ul class="mt-4 grid gap-3 sm:grid-cols-2">
+            {related.map((r) => (
+              <li>
+                <a href={href(`/interview/${r.id}`)} class="card flex h-full flex-col p-4 transition-shadow hover:shadow-soft">
+                  <span class="font-semibold leading-snug">{r.data.question}</span>
+                  <span class:list={['mt-2 self-start rounded-full px-2 py-0.5 text-[11px] font-medium', levelTone[r.data.level]]}>{levelLabel[r.data.level]}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    <nav aria-label="More questions" class="mt-12 grid gap-3 border-t border-line pt-6 sm:grid-cols-3 sm:items-start">
+      <div class="min-w-0">
+        {
+          prev && (
+            <a href={href(`/interview/${prev.id}`)} class="text-sm text-muted hover:text-fg">
+              ← Previous question
+            </a>
+          )
+        }
+      </div>
+      <a href={href(`/interview#${q.id}`)} class="text-sm font-medium text-brand hover:underline sm:text-center">All questions and flashcards</a>
+      <div class="min-w-0 sm:text-right">
+        {
+          next && (
+            <a href={href(`/interview/${next.id}`)} class="text-sm text-muted hover:text-fg">
+              Next question →
+            </a>
+          )
+        }
+      </div>
+    </nav>
+  </article>
+</BaseLayout>

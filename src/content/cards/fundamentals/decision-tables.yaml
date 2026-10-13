@@ -1,0 +1,47 @@
+teaser: "Free delivery for members, plus a €1 surcharge when it rains. Both features passed testing. So why was support flooded on the first rainy Saturday?"
+cards:
+  - type: flip
+    front: "What is a decision table?"
+    back: "A grid listing every combination of conditions in a rule and the action for each. Each column is one rule, and one test."
+  - type: flip
+    front: "What does '–' (don't care) mean in a collapsed table?"
+    back: "That condition doesn't change the result in this rule, so any value gives the same action. For risky rules, test the riskier value."
+  - type: quiz
+    q: "A discount depends on 3 yes/no conditions: member, first order, weekend. How many columns does the full table have?"
+    options: ["6", "8", "9"]
+    answer: 1
+    explain: "Each yes/no condition doubles the combinations: 2 × 2 × 2 = 8."
+  - type: quiz
+    q: "Which of these is a condition, not an action, in a delivery fee rule?"
+    options: ["Add a €1 surcharge", "Show the fee at checkout", "Order is €30 or more"]
+    answer: 2
+    explain: "A condition is true or false and affects the outcome. Adding a surcharge and showing the fee are things the system does."
+  - type: thisorthat
+    prompt: "Two columns both end in 'Show error', but they differ in two conditions. Can you merge them?"
+    left: "Yes, merge"
+    right: "No, keep both"
+    answer: right
+    explain: "Merge only when the actions are identical and exactly one condition differs. That one condition then becomes '–'."
+  - type: thisorthat
+    prompt: "While filling in your table, you find a column that no rule in the requirement covers."
+    left: "Pick the logical action"
+    right: "Ask the product owner"
+    answer: right
+    explain: "An empty column is a gap in the requirement. If testers and developers guess, they'll each guess differently."
+  - type: truefalse
+    statement: "With 10 yes/no conditions, a full decision table has 1,024 columns."
+    answer: true
+    explain: "2 to the power of 10 is 1,024. That's why teams collapse, split tables, prioritize by risk, or use pairwise testing."
+  - type: truefalse
+    statement: "For the condition 'Order ≥ €30?', testing €50 and €10 is the best choice."
+    answer: false
+    explain: "Use €30.00 and €29.99. That's boundary value analysis inside the table, and it catches the classic 'more than' instead of 'or more' bug."
+  - type: spotbug
+    screen: ["Rule 1: member + €30 → free delivery", "Rule 2: rainy day → +€1 on every order", "Test: member, €42 order, raining", "Expected fee: ?"]
+    question: "What's the problem with this requirement?"
+    bug: "Both rules apply here, and nobody decided what happens."
+    explain: "Filling in every column exposes this combination. Raise it with the product owner before release instead of guessing the expected fee."
+  - type: spotbug
+    screen: ["Login: anna@test.com", "Password: wrong", "2FA is on for this account", "Screen: Enter your 6-digit code"]
+    bug: "It asks for the 2FA code after a wrong password."
+    explain: "A wrong password must show 'Incorrect email or password'. Picking the riskier value (2FA on) for the '–' condition is how you catch this security bug."

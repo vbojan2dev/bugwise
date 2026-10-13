@@ -1,0 +1,43 @@
+teaser: "Free shipping from €50. The tester tried a €35 cart and an €80 cart, both passed, and customers still paid for shipping. Where was the bug hiding?"
+cards:
+  - type: flip
+    front: "What is an off-by-one error?"
+    back: "A limit that's one step wrong in the code, like age > 18 instead of age >= 18. It works for almost every value except the edge."
+  - type: flip
+    front: "What's the step size for euros, whole years and dates?"
+    back: "€0.01 for euros, 1 for whole years, one day for dates. Boundary neighbors are always exactly one step away."
+  - type: quiz
+    q: "Age must be 18 to 60. Which values are the 2-value boundary tests?"
+    options: ["18 and 60", "17, 18, 60 and 61", "17, 18, 19, 59, 60, 61"]
+    answer: 1
+    explain: "2-value BVA tests each boundary plus its closest neighbor on the other side: 17 and 18 at the bottom, 60 and 61 at the top."
+  - type: quiz
+    q: "Passwords must be 8 to 64 characters. Which lengths does 3-value BVA add to 7, 8, 64 and 65?"
+    options: ["0 and 100", "6 and 66", "9 and 63"]
+    answer: 2
+    explain: "3-value BVA adds the neighbor inside each boundary: 9 next to 8, and 63 next to 64."
+  - type: thisorthat
+    prompt: "Free shipping on orders of €50 or more. You only have time for two test carts."
+    left: "€35 and €80"
+    right: "€49.99 and €50.00"
+    answer: right
+    explain: "The step is €0.01, so €49.99 and €50.00 sit on either side of the edge. A 'more than 50' bug passes €35 and €80 without a trace."
+  - type: truefalse
+    statement: "BVA works for a list of payment methods: just test the first and last option."
+    answer: false
+    explain: "Payment methods have no natural order, so there are no edges. Equivalence partitioning alone covers them."
+  - type: truefalse
+    statement: "A check for 'exactly 18' instead of '18 or more' passes the 2-value tests 17 and 18."
+    answer: true
+    explain: "17 is rejected and 18 accepted either way. Only 19, the inside neighbor that 3-value BVA adds, gets wrongly rejected."
+  - type: spotbug
+    screen: ["Cart total: €50.00", "Shipping: €4.99", "Banner: Free shipping from €50!"]
+    bug: "A €50.00 cart is charged for shipping."
+    explain: "'From €50' includes €50.00 exactly. The code probably says 'more than 50' instead of '50 or more', a classic off-by-one at the edge."
+  - type: spotbug
+    screen: ["Review · Add photos (max 5)", "Photos attached: 4", "[ + Add photo ] disabled", "'Photo limit reached'"]
+    bug: "The limit kicks in at 4 photos instead of 5."
+    explain: "The 5th photo must upload. A limit one too low is an off-by-one bug that only a test at the exact maximum reveals."
+  - type: tip
+    title: "Ask about hidden limits"
+    text: "'61 or more' has no upper limit on paper, but the field, database or API does. Ask what the largest value really is, and test it."

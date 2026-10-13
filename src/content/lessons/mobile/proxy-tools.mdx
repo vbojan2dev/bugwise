@@ -1,0 +1,393 @@
+---
+title: "Proxy Tools: Charles and Proxyman"
+description: See every request your app sends, change server responses on the fly, and simulate errors and slow networks. A practical introduction to Charles and Proxyman for mobile testers.
+order: 11
+level: intermediate
+minutes: { short: 30 }
+platform: mobile
+tags: [proxy, charles, proxyman, network, api, security, mobile testing]
+---
+
+import ProxyFlow from '@/components/demos/mobile-network/ProxyFlow';
+import ProxyLab from '@/components/demos/mobile-network/ProxyLab';
+import { BuggyProxyHunt } from '@/components/demos/mobile-network/BuggyProxyHunt';
+
+A banking app shows the wrong balance for some users. The developers say "the app just displays what the server sends". The backend team says "the server sends the right number". Who's right?
+
+A tester with a proxy tool settles it in two minutes: she opens the request, looks at the response, and sees the server sends `"balance": 1250.5` while the app shows **$125.05**. It's an app bug, and she has the evidence. No guessing, no meetings.
+
+That's the superpower of a <Term id="proxy-tool">proxy tool</Term>: it lets you **see and change the conversation between the app and its server**.
+
+## What a proxy does
+
+Normally the app on your phone talks straight to the server. With a proxy, you tell the phone to send its traffic through a program on your computer first. The proxy sits in the middle: it records every request and response, and can pause, edit, slow down or replace them.
+
+<ProxyFlow />
+
+This is a **man-in-the-middle** setup, the same thing an attacker would try to do, except you do it on purpose, on your own test device, with your team's permission. For <Term id="https" /> traffic, the phone must trust the proxy's own <Term id="ssl-certificate">certificate</Term>, otherwise the encryption prevents the proxy from reading anything.
+
+## Why testers use proxies
+
+| What you can do | Why it's useful | Example |
+| --- | --- | --- |
+| **See requests and responses** | Find out whether a bug is in the app or the server | The server sends the right price, the app shows the wrong one |
+| **Verify analytics events** | Check events fire once, at the right moment, with the right data | `purchase` event sent twice, or with the wrong currency |
+| **Check what data is sent** | Spot privacy and security problems | Password in the URL, full card number in a response, tokens over plain HTTP |
+| **Simulate errors** | Test how the app handles a `500`, `401` or `404` you can't trigger otherwise | The app shows a blank screen on a server error |
+| **Breakpoints** | Pause a request or response and edit it before it continues | Change a price to `0.01`, a name to 300 characters, or a status to `500` |
+| **Map Local / Map Remote** | Answer with a local file, or send the request to another server | Return an empty list; point the app at the staging server |
+| **Throttle** | Slow down all traffic from the phone | Check loading states on 3G (see [Network Conditions](/mobile/network-conditions)) |
+| **Repeat requests** | Send the same request again, many times | Does sending "place order" twice create two orders? |
+
+<Callout type="info" title="Words you'll see">
+
+Each line in the proxy is one **request** (method like `GET`/`POST`, a host, a path) and its **response** (a <Term id="http-status-code">status code</Term>, headers and usually a <Term id="json" /> body). If these terms are new, read about the <Term id="api" />, <Term id="http-method">HTTP methods</Term> and <Term id="endpoint">endpoints</Term> first.
+
+</Callout>
+
+## Try it: the proxy playground
+
+Play with a proxy before setting up a real one. This grocery app is well built: it handles errors, empty lists and slow responses correctly. Use the tools and watch how it reacts.
+
+<ProxyLab client:visible />
+
+<Callout type="tip" title="Things to try">
+
+1. Turn on **Breakpoint**, tap refresh in the app, and when the request pauses use **First price → 0.01**, then **Execute**. The app shows the edited price, because the app trusts the server. That's fine for displaying, but would it be charged that price? Only the server should decide that.
+2. Pause again and choose **Status 500**. A good app shows a friendly error with "Try again".
+3. Turn on **Map Local** and refresh: the app gets an empty list and shows an empty state.
+4. Choose **Break the JSON** in a breakpoint. The app should not crash.
+5. Turn on **Throttle** and refresh: the skeleton stays visible longer.
+6. Select a request and press **Repeat**: the proxy sends it again, without the app knowing.
+
+</Callout>
+
+## Setting up a real proxy
+
+The steps are similar for every tool. Here's the big picture, then the details for Charles and Proxyman.
+
+<Steps>
+
+1. **Install the proxy on your computer** and start it. Note its IP address and port (Charles uses **8888** by default, Proxyman **9090**).
+2. **Put the phone and computer on the same Wi-Fi network.** Office "guest" networks often block devices from seeing each other; use a network that allows it.
+3. **Set the phone's Wi-Fi proxy** to **Manual**, with the computer's IP and the proxy port. Open any page and accept the "allow this device?" prompt on the computer.
+4. **Install and trust the proxy's root certificate on the phone**, so HTTPS traffic can be decrypted.
+5. **Enable SSL proxying** for the hosts you want to inspect (for example `api.shop.example`).
+6. **Use the app and watch the traffic.** When you're done, **remove the proxy setting** from the phone.
+
+</Steps>
+
+### Charles and Proxyman specifics
+
+<Tabs labels={['Charles', 'Proxyman']}>
+<Tab>
+
+**Charles Proxy** runs on macOS, Windows and Linux (paid, with a free trial).
+
+- See your IP and port: **Help → Local IP Address** and **Proxy → Proxy Settings** (default port 8888).
+- Certificate instructions for phones: **Help → SSL Proxying → Install Charles Root Certificate on a Mobile Device or Remote Browser**. With the phone's proxy set, open **chls.pro/ssl** in the phone's browser to download it.
+- Decrypt HTTPS: **Proxy → SSL Proxying Settings…** → add the host (and port 443), or right-click a host → **Enable SSL Proxying**.
+- Tools: **Breakpoints** (right-click a request), **Tools → Map Local / Map Remote / Rewrite**, **Proxy → Throttle Settings**, and **Repeat** / **Repeat Advanced** on any request.
+
+</Tab>
+<Tab>
+
+**Proxyman** is a native macOS app (with Windows and Linux versions, and a free tier).
+
+- See your IP and port in the app's status bar or **Certificate → Install Certificate on iOS → Physical Devices…**, which shows step-by-step instructions (default port 9090).
+- With the phone's proxy set, open **proxy.man/ssl** in the phone's browser to download the certificate. There are similar guides under **Certificate** for Android devices, the iOS Simulator and the Android emulator.
+- Decrypt HTTPS: right-click a domain → **Enable SSL Proxying** (Proxyman shows `<encrypted>` until you do).
+- Tools: **Tools → Breakpoint**, **Map Local**, **Map Remote**, **Scripting**, **Network Conditions** (throttling), and **Repeat** on any request.
+
+</Tab>
+</Tabs>
+
+### Trusting the certificate on the phone
+
+<Tabs labels={['iOS', 'Android']}>
+<Tab>
+
+<Steps>
+
+1. **Settings → Wi-Fi →** tap the ⓘ next to your network **→ Configure Proxy → Manual**. Enter the computer's IP and port, and save.
+2. In **Safari**, open the certificate URL (e.g. `chls.pro/ssl` or `proxy.man/ssl`) and allow the profile download.
+3. **Settings → General → VPN & Device Management** → tap the downloaded profile → **Install**.
+4. **Settings → General → About → Certificate Trust Settings** → turn on **full trust** for the proxy's root certificate. Skipping this step is the most common reason HTTPS traffic still fails.
+
+</Steps>
+
+The iOS Simulator is easier: Proxyman and Charles can install the certificate into the simulator for you, and the simulator uses the Mac's proxy settings.
+
+</Tab>
+<Tab>
+
+<Steps>
+
+1. **Settings → Network & internet → Internet / Wi-Fi →** your network → edit (pencil or gear) → **Advanced options → Proxy → Manual**. Enter the computer's IP and port.
+2. Download the certificate from the proxy's URL in the phone's browser.
+3. Install it as a **CA certificate**: usually **Settings → Security & privacy → More security settings → Encryption & credentials → Install a certificate → CA certificate** (the exact path differs between manufacturers and Android versions).
+4. **Important:** since Android 7, apps ignore user-installed certificates by default. Ask developers for a **debug build** whose *network security config* trusts user certificates, for example:
+
+</Steps>
+
+```xml
+<!-- res/xml/network_security_config.xml (debug builds only) -->
+<network-security-config>
+  <debug-overrides>
+    <trust-anchors>
+      <certificates src="user" />
+    </trust-anchors>
+  </debug-overrides>
+</network-security-config>
+```
+
+In the Android Emulator you can set the proxy in **Extended controls → Settings → Proxy**.
+
+</Tab>
+</Tabs>
+
+<Callout type="warning" title="SSL pinning blocks proxies (on purpose)">
+
+Some apps use **certificate pinning**: they only accept the server's real certificate and reject anything else, including your proxy's. You'll see requests fail with SSL/handshake errors in the proxy, and the app may say it has no connection. That's a security feature, not a bug. Don't try to bypass it on production apps. Ask the developers for a **debug or QA build with pinning disabled**, and keep at least one test that confirms pinning still works in the release build.
+
+</Callout>
+
+### Other tools
+
+- **Fiddler** (Fiddler Everywhere for macOS, Windows and Linux; Fiddler Classic for Windows) does the same job and is popular in Windows teams.
+- **mitmproxy** is free and open source: a command-line tool with a web interface (`mitmweb`) and Python scripting, great for automation.
+- **Browser DevTools** show web traffic without any proxy setup, and a <Term id="har-file" /> lets you share a recording with developers.
+
+## Safety and ethics
+
+<Callout type="bug" title="Treat a proxy like a powerful key">
+
+- **Turn it off afterwards.** Remove the phone's Wi-Fi proxy setting when you finish. If the computer goes to sleep, a phone still pointed at it loses its internet connection, and you'll waste an hour "debugging" it.
+- **Only capture test traffic.** Use test accounts and test devices. Never record real customers' data, and don't share captures that contain tokens, passwords or personal data (a captured <Term id="session-token" /> works like a password).
+- **Be careful with certificates on personal phones.** A trusted root certificate lets whoever has its private key read your HTTPS traffic. Remove it from personal devices when you're done (Settings → General → VPN & Device Management on iOS; Encryption & credentials → Trusted credentials → User on Android; the exact path varies by maker).
+- **Stay within your app.** Inspect and modify only systems you're allowed to test.
+
+</Callout>
+
+## What to look for
+
+### Data and privacy
+
+- Passwords, tokens or personal data in URLs (<Term id="query-parameter">query parameters</Term> end up in server logs and analytics).
+- Responses that contain more data than the screen shows (full card numbers, other users' data, internal IDs, password hashes).
+- Any traffic over plain `http://` instead of `https://`.
+- Tokens that don't change after logout, or that keep working after logout.
+
+### Analytics
+
+- Each event fires **exactly once**, at the right moment, with the right properties (product ID, price, currency).
+- No events fire before the user gives consent, if the app asks for it.
+
+### Error handling
+
+- Use breakpoints or rules to return `500`, `503`, `401`, `404`, an empty list, `null` values, huge values and broken JSON. The app should show a helpful message, an <Term id="empty-state" /> or a login prompt, never a crash or blank screen.
+- Slow responses (throttling or a paused breakpoint) show a loading state.
+
+### Server-side checks
+
+- Edit a request before it reaches the server: change the price, quantity, coupon, user ID or role. The server must validate everything and never trust values that only the app controls. This is classic <Term id="security-testing" />.
+- Repeat a request (place order, apply coupon, transfer money). It shouldn't apply twice. See <Term id="idempotency" />.
+
+## Common bugs found with a proxy
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Sensitive data in the URL** | `?password=…` or `?token=…` in the request list | High |
+| 2 | **Over-sharing API** | Response includes full card number, other users' emails, internal flags | High–Critical |
+| 3 | **Duplicate analytics events** | Same event appears twice per action | Medium |
+| 4 | **Crash on server error** | Blank screen or crash after a `500` | High |
+| 5 | **Crash on empty or missing data** | App crashes when a list is empty or a field is `null` | High |
+| 6 | **Server trusts the client** | Editing price/total in the request changes what is charged | Critical |
+| 7 | **Duplicate actions on repeat** | Repeating "place order" creates a second order | High |
+| 8 | **Too many requests** | The same data is downloaded 5 times per screen | Low–Medium |
+
+## Find the bug
+
+Time for a real investigation. This grocery app has **six bugs** that you can only find by looking at (or changing) its traffic. Log in, add items, pay, and use **Breakpoint** (with *Requests* and/or *Responses*), **Map Local** and the request details. Don't forget to read the response bodies.
+
+<BugHunt
+  title="Grocery app traffic"
+  bugs={[
+    {
+      title: 'Password sent in the URL query string',
+      hint: 'Log in and read the path of the first request.',
+      detail: 'The login request is <code>GET /v1/login?email=anna%40example.com&amp;password=Summer2024!</code>. URLs end up in server logs, proxy logs, crash reports and analytics. Expected: a <code>POST</code> with the credentials in the request body, over HTTPS.',
+    },
+    {
+      title: 'add_to_cart analytics event fires twice',
+      hint: 'Tap + once on one product and count the requests to collect.metrics.example.',
+      detail: 'Each tap sends two identical <code>POST /v1/events</code> with <code>"event": "add_to_cart"</code>. The marketing dashboard will report double the real number of add-to-cart actions. Expected: exactly one event per tap.',
+    },
+    {
+      title: 'Blank screen when the products request returns 500',
+      hint: 'Turn on Breakpoint (Responses), refresh the shop and change the products response to status 500.',
+      detail: 'The app shows a completely white screen with nothing to tap; only restarting the app helps. Expected: an error message ("We couldn’t load the products") with a Try again button.',
+    },
+    {
+      title: 'App crashes on an empty product list',
+      hint: 'Turn on Map Local and refresh the shop.',
+      detail: 'With <code>{"products": []}</code> the app closes back to the home screen. It reads the first product for the "Deal of the day" banner without checking that the list has items. Expected: an empty state like "Nothing on the shelves right now".',
+    },
+    {
+      title: 'Server trusts the total sent by the app',
+      hint: 'Add items, turn on Breakpoint for Requests, tap Pay and edit the total in the order request.',
+      detail: 'Changing <code>"total": 7.99</code> to <code>0.01</code> in <code>POST /v1/orders</code> results in <strong>Charged to your card: $0.01</strong>. The server must calculate the total from its own prices and ignore client-sent prices. Severity: critical (anyone with a proxy can shop for free).',
+    },
+    {
+      title: 'Profile response leaks the full card number and CVV',
+      hint: 'Open the GET /v1/me response body.',
+      detail: 'The app only shows "Visa •••• 4242", but the response contains <code>"number": "4242 4242 4242 4242"</code> and <code>"cvv": "737"</code>. Anyone intercepting traffic (or a malicious SDK in the app) can read them, and storing CVVs breaks card industry rules (PCI DSS). Expected: the API returns only brand and last 4 digits.',
+    },
+  ]}
+>
+  <BuggyProxyHunt client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #5?">
+
+**Title:** Checkout: server charges the client-sent `total`; editing the request lets users pay any amount
+
+**Environment:** iPhone 15, iOS 18.0, FreshCart 5.3 (QA build 204), staging API, Proxyman 5
+
+**Steps:** 1. Log in as anna@example.com. 2. Add Organic apples and Sourdough loaf ($7.99). 3. In Proxyman, set a request breakpoint on `POST /v1/orders`. 4. Tap **Pay**. 5. Change `"total": 7.99` to `"total": 0.01` and execute.
+
+**Expected:** The server ignores the client total (or rejects the request) and charges $7.99.
+**Actual:** Response `{"charged": 0.01, "status": "paid"}`. The app shows "Charged to your card: $0.01".
+
+**Severity:** Critical (security / revenue loss) · **Attachments:** exported request and response from the proxy (with tokens removed)
+
+</Callout>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-PRX-001',
+      title: 'Login does not expose credentials in the URL',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Proxy recording with SSL proxying enabled for the API host'],
+      steps: ['Log out', 'Log in with a test account', 'Inspect the login request in the proxy'],
+      expected: 'Credentials are sent in the body of a POST request over HTTPS. The URL contains no password, email or token.',
+    },
+    {
+      id: 'TC-PRX-002',
+      title: 'Purchase analytics event fires once with correct data',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Proxy recording', 'Basket contains 1 item for $12.50'],
+      steps: ['Complete checkout', 'Filter the proxy by the analytics host'],
+      expected: 'Exactly one "purchase" event is sent after the order succeeds, with value 12.50 and currency USD.',
+    },
+    {
+      id: 'TC-PRX-003',
+      title: 'Product list handles a 500 error',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Response breakpoint (or rewrite rule) on GET /v1/products'],
+      steps: ['Pull to refresh the product list', 'Change the response status to 500 and execute'],
+      expected: 'A friendly error with a "Try again" button is shown. No crash, no blank screen. Try again loads the list once the breakpoint is removed.',
+    },
+    {
+      id: 'TC-PRX-004',
+      title: 'Product list handles an empty response',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Map Local rule returns {"products": []} for GET /v1/products'],
+      steps: ['Open the shop'],
+      expected: 'An empty state is shown ("Nothing on the shelves right now"). The app does not crash.',
+    },
+    {
+      id: 'TC-PRX-005',
+      title: 'Server ignores a manipulated order total',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Request breakpoint on POST /v1/orders', 'Basket total is $7.99'],
+      steps: ['Tap Pay', 'Change "total" to 0.01 in the request body and execute'],
+      expected: 'The server rejects the order or charges the correct $7.99 calculated from its own prices.',
+    },
+    {
+      id: 'TC-PRX-006',
+      title: 'Repeating the place-order request does not create a second order',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['One order just placed while recording'],
+      steps: ['Select the POST /v1/orders request in the proxy', 'Use Repeat', 'Open order history in the app'],
+      expected: 'Only one order exists. The repeated request is rejected or returns the original order (idempotency key).',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="Proxy testing checklist"
+  storageKey="proxy-tools"
+  items={[
+    'Phone and computer on the same network; phone Wi-Fi proxy set to the computer',
+    'Root certificate installed and fully trusted (iOS: Certificate Trust Settings)',
+    'Android: debug build trusts user certificates; pinning disabled in QA build',
+    'SSL proxying enabled only for the hosts under test',
+    'No passwords, tokens or personal data in URLs; all traffic uses HTTPS',
+    'Responses contain only the data the app needs',
+    'Analytics events fire once, at the right time, with correct properties',
+    'App handles 500, 401, 404, empty lists, null fields and broken JSON',
+    'Server validates prices, quantities and IDs edited in requests',
+    'Repeated requests do not duplicate orders or payments',
+    'Captures with real tokens or personal data are not shared',
+    'Proxy setting (and certificate on personal phones) removed after testing',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'You installed the proxy certificate on an iPhone, but HTTPS requests still fail. What did you most likely forget?',
+      options: ['Restarting the computer', 'Enabling full trust in Settings → General → About → Certificate Trust Settings', 'Turning on Bluetooth', 'Switching to mobile data'],
+      answer: 1,
+      explain: 'Installing the profile is not enough on iOS. The root certificate must also be fully trusted in Certificate Trust Settings.',
+    },
+    {
+      q: 'An Android app shows no decrypted traffic, although the certificate is installed on the phone. What is a likely reason?',
+      options: ['Android apps ignore user-installed certificates by default since Android 7', 'Android does not support proxies', 'The app is too big', 'The phone is in dark mode'],
+      answer: 0,
+      explain: 'Apps must opt in to trusting user certificates via a network security config, usually only in debug builds.',
+    },
+    {
+      q: 'Which proxy feature lets you change a server response before the app receives it?',
+      options: ['Throttle', 'Breakpoint', 'Clear', 'Export'],
+      answer: 1,
+      explain: 'A breakpoint pauses the request or response so you can edit it, then lets it continue.',
+    },
+    {
+      q: 'You change the price in the order request to 0.01 and the server charges 0.01. Whose bug is it, and how severe?',
+      options: ['App bug, low severity', 'Server bug, critical: the server must never trust prices sent by the client', 'Not a bug, because users cannot use proxies', 'Proxy bug'],
+      answer: 1,
+      explain: 'Anyone can modify their own traffic. The server must calculate prices itself. This is a critical security issue.',
+    },
+    {
+      q: 'Requests from one app always fail with SSL errors in the proxy, while other apps work. What should you do?',
+      options: ['Report it as a critical bug', 'Ask developers for a QA build with certificate pinning disabled', 'Uninstall the app', 'Turn off HTTPS on the server'],
+      answer: 1,
+      explain: 'This is most likely certificate pinning, a security feature. Test with a build that disables it, and keep a check that pinning works in release.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A proxy sits between the app and the server, so you can see and change every request and response.
+- Use it to tell app bugs from server bugs, verify analytics, check what data is sent, simulate errors, throttle and repeat requests.
+- Setup: same network, Wi-Fi proxy on the phone, install **and trust** the root certificate, enable SSL proxying. Android debug builds must trust user certificates, and pinning needs a QA build.
+- The most valuable proxy findings are security bugs: secrets in URLs, over-sharing APIs and servers that trust client values.
+- Stay safe: test accounts only, don't share captures with secrets, and remove the proxy and certificate when you're done.
+
+</KeyTakeaways>

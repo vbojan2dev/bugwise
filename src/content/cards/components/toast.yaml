@@ -1,0 +1,46 @@
+teaser: "Your payment failed, but the message vanished after two seconds. Who's to blame: you, or the toast?"
+cards:
+  - type: flip
+    front: "What is a toast or snackbar?"
+    back: "A brief, non-blocking message that confirms what just happened and disappears on its own. Users can ignore it and carry on."
+  - type: thisorthat
+    prompt: "A payment fails because the card was declined. How should the app tell the user?"
+    left: "Toast"
+    right: "Dialog or inline message"
+    answer: right
+    explain: "If they miss a toast, they think they ordered. Errors the user must act on need a message that stays until fixed."
+  - type: thisorthat
+    prompt: "The user taps Copy link and the app wants to confirm it."
+    left: "Toast"
+    right: "Modal dialog"
+    answer: left
+    explain: "A short confirmation the user can safely miss is exactly what a toast is for. A modal would block them for nothing."
+  - type: spotbug
+    screen: ["Network log:", "POST /archive  500", "Snackbar: Conversation archived"]
+    bug: "Success is shown although the request failed."
+    explain: "Optimistic UI is fine only if it rolls back and shows an error. Refresh, and the email is back in the inbox."
+  - type: spotbug
+    screen: ["Archived: Team lunch", "Tap Undo...", "Restored: Your order has shipped"]
+    bug: "Undo restored the wrong email."
+    explain: "Undo must restore exactly the item that snackbar was about, in the same place and state, also after several actions in a row."
+  - type: quiz
+    q: "A snackbar with an Undo action vanishes after 2 seconds. What's the problem?"
+    options: ["It's too short to reach Undo", "Nothing, short is better", "It should never disappear"]
+    answer: 0
+    explain: "Aim for 4 s or more, and longer, or until dismissed, when there's an action. Screen reader users need extra time."
+  - type: quiz
+    q: "How should a web toast be announced to screen readers?"
+    options: ["Move keyboard focus to it", "Through a role=status live region", "With a title attribute"]
+    answer: 1
+    explain: "A polite live region already in the page announces it without stealing focus from what the user was doing."
+  - type: truefalse
+    statement: "iOS has a native toast component, just like Android."
+    answer: false
+    explain: "iOS has no native toast. Apps build their own banners or HUDs, so quality varies and announcements are often forgotten."
+  - type: truefalse
+    statement: "Material snackbars appear one at a time; a new one replaces the old one."
+    answer: true
+    explain: "Stacking many snackbars covers the content and makes it unclear what each Undo would restore."
+  - type: tip
+    title: "Hover the toast on the web"
+    text: "Rest your mouse on a web toast or Tab to its button. The timer should pause, so it doesn't vanish under your cursor."

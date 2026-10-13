@@ -1,0 +1,20 @@
+---
+import CapstoneShell from '@/components/capstone/CapstoneShell.astro';
+import CasesForm from '@/components/capstone/CasesForm';
+import { href } from '@/lib/url';
+---
+
+<CapstoneShell
+  path="/capstone/cases"
+  phase="cases"
+  title="Write test cases for cart and checkout"
+  description="Capstone phase 3: write five structured test cases for the FoodDash 2.0 cart and checkout, then review them against a rubric and eight model cases."
+  lead="Your plan says the cart and checkout carry the most risk. Sara asks for five test cases the team can rerun before every release."
+>
+  <div class="mb-8 grid max-w-4xl grid-cols-1 gap-4 text-sm leading-relaxed text-muted sm:grid-cols-3">
+    <p><strong class="text-fg">Use the brief as your oracle.</strong> Look at <a class="text-brand underline" href={href('/capstone/brief#stories')}>US-04 to US-08</a>; every expected result should come from an AC.</p>
+    <p><strong class="text-fg">Mix it up.</strong> Not five happy paths: include invalid input, boundaries and something mobile-specific.</p>
+    <p><strong class="text-fg">One check per case.</strong> When it fails, everyone should know exactly what broke.</p>
+  </div>
+  <CasesForm client:load />
+</CapstoneShell>

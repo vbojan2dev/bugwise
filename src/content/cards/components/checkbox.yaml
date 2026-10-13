@@ -1,0 +1,45 @@
+teaser: "A tiny square, ticked a hundred times a week. So why do testers find legal problems in it?"
+cards:
+  - type: flip
+    front: "What makes a checkbox different from a toggle switch?"
+    back: "A checkbox usually applies on Submit or Save. A switch applies immediately. Checkboxes are also independent: you can tick zero, one or many."
+  - type: flip
+    front: "When does a checkbox show the mixed (dash) state?"
+    back: "On a parent like Select all, when some but not all of the items below it are ticked."
+  - type: quiz
+    q: "Pizza toppings form with an Add to cart button. Which control fits best?"
+    options: ["Radio buttons", "Toggle switches", "Checkboxes"]
+    answer: 2
+    explain: "Users can pick any number of toppings, and the choice applies when they press Add to cart."
+  - type: quiz
+    q: "You tick Select all, then untick one of 5 emails. What should the parent show?"
+    options: ["Checked", "Mixed (a dash)", "Unchecked"]
+    answer: 1
+    explain: "Some, but not all, children are ticked. The parent and the count must always be calculated from the children."
+  - type: spotbug
+    screen: ["[x] Select all · 5 selected", "[x] Flight deals", "[x] Hotel offers", "[ ] Car rental", "[x] City breaks"]
+    bug: "Parent still says all 5 are selected, but only some are."
+    explain: "It should show mixed and a lower count. If this parent drives a bulk delete, users may delete items they meant to keep."
+  - type: truefalse
+    statement: "Under GDPR, a pre-ticked marketing checkbox counts as valid consent if users can untick it."
+    answer: false
+    explain: "Consent must be an active choice. Pre-ticked boxes, silence or inactivity don't count. Report it and let product and legal decide."
+  - type: thisorthat
+    prompt: "A user taps the words 'Remember me' next to a checkbox and nothing happens."
+    left: "Expected behavior"
+    right: "Bug"
+    answer: right
+    explain: "The label is part of the touch target. Tapping the text must toggle the box, on every platform."
+  - type: spotbug
+    screen: ["Email: ana@test.com", "[ ] I agree to the Terms", "(box has a thin red outline)", "[Continue] does nothing"]
+    bug: "Required box error has no message."
+    explain: "Users don't know why they are stuck, and screen readers announce nothing. Show error text next to the box and announce it."
+  - type: thisorthat
+    prompt: "Continue stays disabled until 'I agree to the Terms' is ticked. Is that enough?"
+    left: "Server must check too"
+    right: "Yes, UI is enough"
+    answer: left
+    explain: "Anyone can send the request directly with DevTools or a proxy. Without a server check, accounts can exist that never accepted the Terms."
+  - type: tip
+    title: "Press Space, not just click"
+    text: "Tab to every custom checkbox and press Space. If it doesn't toggle, keyboard and switch-control users can't use it."

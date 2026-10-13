@@ -1,0 +1,400 @@
+---
+title: Responsive Design Testing
+description: One website, every screen from a 320px phone to a 2560px monitor. Learn how viewports and breakpoints work, what to test at each size, and how to find layout bugs with DevTools and real devices.
+order: 2
+level: beginner
+minutes: { short: 30 }
+platform: web
+tags: [responsive, breakpoints, viewport, mobile web, layout]
+---
+
+import ViewportResizer from '@/components/demos/web-browsers/ViewportResizer';
+import { BuggyResponsiveShop } from '@/components/demos/web-browsers/BuggyResponsiveShop';
+
+A hotel booking site launches its redesign. It looks great on laptops and on phones. Then the support tickets start: *"How do I log in on my iPad?"* Testers had checked a phone (393px wide) and a laptop (1280px wide). Nobody checked an older iPad held upright, which is **exactly 768px** wide. At that one width, the desktop menu disappears and the mobile hamburger button doesn't appear yet. No menu, no **Sign in**, no bookings.
+
+Layouts don't break at the sizes everyone tests. They break **in between**. That's why <Term id="responsive-design" /> needs its own kind of testing.
+
+## Why it matters
+
+- **Most traffic is mobile.** For many shops, banks and delivery services, more than half of all visits come from phones.
+- **One page, endless sizes.** The same URL must work on a 320px phone, a tablet in both orientations, a laptop and a 4K monitor.
+- **Bugs hide between devices.** A layout can be perfect at 375px and 1280px and broken at 900px, the width of a small laptop window or a tablet in landscape.
+- **It's an accessibility topic too.** People who zoom to 200% or enlarge the text get the *mobile* layout on a desktop. If it breaks, they're locked out.
+
+## The core concepts
+
+### The viewport
+
+The <Term id="viewport" /> is the area of the browser where the page is shown. Its width is measured in **CSS pixels**, not physical screen pixels. An iPhone 15 has a screen 1179 physical pixels wide, but its viewport is **393 CSS pixels** wide: each CSS pixel is drawn with 3×3 physical pixels to keep text sharp.
+
+For a phone browser to use that real width, the page needs one line in its HTML `<head>`:
+
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1">
+```
+
+<Compare>
+<Do title="With the meta viewport tag">
+
+The browser uses the device width (for example 393px), so the mobile layout kicks in and text is readable.
+
+</Do>
+<Dont title="Without it">
+
+Mobile browsers pretend the screen is about **980px** wide and shrink the whole desktop page to fit. Text is tiny, and users have to pinch and zoom.
+
+</Dont>
+</Compare>
+
+<Callout type="bug" title="Watch out for zoom blocking">
+If you see `maximum-scale=1` or `user-scalable=no` in the viewport tag, flag it. It stops pinch-zoom in many browsers, which is an accessibility bug for people with low vision.
+</Callout>
+
+### Breakpoints
+
+A <Term id="breakpoint" /> is a width where the layout changes, for example from one column to two. Developers write them as **media queries** in CSS:
+
+```css
+/* From 768px and wider: show the navigation links */
+@media (min-width: 768px) {
+  .nav-links { display: flex; }
+  .hamburger { display: none; }
+}
+```
+
+Every team chooses its own breakpoints. These common values (they're Tailwind CSS defaults) are used in this lesson's demos:
+
+| Name | Applies from | Typical screens |
+| --- | --- | --- |
+| base | 0px | Phones in portrait (320–430px) |
+| sm | 640px | Large phones in landscape, small tablets |
+| md | 768px | Tablets in portrait (768–834px) |
+| lg | 1024px | Tablets in landscape, small laptops |
+| xl | 1280px | Laptops and desktops |
+
+<Callout type="tip" title="Ask for the breakpoints">
+Breakpoints are the most valuable test data in responsive testing. Ask the developers or designers for the exact values, or find them yourself in DevTools (more on that below).
+</Callout>
+
+### Mobile-first
+
+Most modern sites are built **mobile-first**: the base styles are for the smallest screen, and `min-width` media queries *add* layout for bigger screens. The older **desktop-first** approach starts with the desktop and uses `max-width` queries to *remove* things for smaller screens.
+
+Why should a tester care? Because mixing the two is a classic source of <Term id="off-by-one-error">off-by-one errors</Term>. Look at this:
+
+```css
+.nav-links { display: none; }
+.hamburger { display: none; }
+
+@media (min-width: 769px) { .nav-links { display: flex; } }   /* 769 and wider */
+@media (max-width: 767px) { .hamburger { display: block; } }  /* 767 and narrower */
+```
+
+At **exactly 768px**, neither rule applies, and the page has no navigation at all. This is the bug from the hotel story, and it's why you use <Term id="boundary-value-analysis" />: test **at**, **just below** and **just above** every breakpoint.
+
+### Fluid vs fixed layouts
+
+| Layout | How it works | What to watch for |
+| --- | --- | --- |
+| **Fixed** | Elements have set widths in pixels (`width: 960px`) | Horizontal scrolling on small screens, empty space on big ones |
+| **Fluid** | Widths are percentages of the screen (`width: 50%`) | Elements get absurdly wide or squashed at the extremes |
+| **Responsive** | Fluid layout plus breakpoints where the design changes | Bugs at and between the breakpoints |
+
+Most real sites are responsive, with a few fixed-width parts mixed in. Those fixed parts (a table, an image, a hero text box) are where layouts usually break.
+
+## Try it: resize a page
+
+Below is a sample outdoor shop inside a pretend browser. Drag the slider or the handle next to the page, try the device presets and watch the layout change. The ruler marks the breakpoints, and the panel at the bottom tells you which layout rules are active.
+
+<ViewportResizer client:visible />
+
+<Callout type="info">
+Notice that the layout changes in **jumps** at 640, 768 and 1024px, and stays fluid in between. A responsive page should look intentional at **every** width, not only at the device presets.
+</Callout>
+
+## What to test
+
+### Layout and navigation
+
+- **Navigation** collapses into a hamburger (or tab bar) on small screens, and the menu opens, closes and scrolls.
+- **No horizontal scrolling** at any width from 320px up. Nothing sticks out to the right.
+- **Grids** change columns sensibly. No orphaned single cards, no squashed columns.
+- **Sticky headers and banners** don't eat the screen. On a small phone, a sticky header plus a cookie banner plus a promo bar can cover half the viewport.
+
+### Content
+
+- **Tables** turn into cards or scroll *inside their own box* instead of widening the whole page.
+- **Images** keep their aspect ratio (no stretching or squashing) and aren't blurry on large screens.
+- **Text** wraps nicely. Long words, emails and URLs don't overflow (try a German product name).
+- **Nothing overlaps**: text on top of images, buttons on top of each other.
+
+### Interaction
+
+- **<Term id="touch-target">Touch targets</Term>** are big enough on mobile: at least 44×44 pt on iOS and 48×48 dp on Android, with space between them. (For websites, WCAG 2.2 sets a lower minimum of 24×24 CSS px, criterion 2.5.8.)
+- **No hover-only features.** Menus, tooltips and "quick view" buttons that need a mouse hover are unusable on touch screens.
+- **Forms** work with the on-screen keyboard: the focused field isn't hidden behind it, and the right keyboard type shows.
+
+### The edges
+
+- **Smallest supported width:** 320px (older and small phones, split-screen on tablets).
+- **Landscape phones:** about 650–930px wide but only 320–430px tall. Sticky headers and modals often don't fit. (See also <Term id="orientation" /> and [Orientation and Screen Sizes](/mobile/orientation-and-screen-sizes).)
+- **Zoom and text size:** zoom the browser to **200%** and **400%**, and increase the text size. <Term id="wcag">WCAG</Term> requires content to **reflow** at a width of **320 CSS px** (that's a 1280px screen at 400% zoom) without scrolling in two directions, and text must work at **200%** size without losing content. More in [Accessibility Basics](/web/accessibility-basics).
+- **Very large screens:** 1920px and 2560px. Is the content centered with a sensible max width? Are lines of text too long to read? Are images stretched?
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Gap at a breakpoint** | At exactly one width (often 768 or 1024px) the menu or a section disappears | High |
+| 2 | **Horizontal scroll** | The page wiggles sideways on phones; content is cut off on the right | Medium–High |
+| 3 | **Wide table** | A table forces the whole page to be wider than the screen | Medium |
+| 4 | **Hover-only menu** | A dropdown can't be opened on a phone or tablet | High |
+| 5 | **Overlapping content** | Text runs over an image or another element between two breakpoints | Medium |
+| 6 | **Content below the fold** | Sticky banners and headers push the main button out of view on small phones | Medium |
+| 7 | **Stretched or blurry images** | Product photos lose their proportions or look pixelated on wide screens | Low–Medium |
+| 8 | **Tiny touch targets** | Links and icons too small or too close together to tap reliably | Medium |
+| 9 | **Broken at 200% zoom** | Text overlaps or gets cut off; buttons disappear | High (for affected users) |
+| 10 | **Missing meta viewport** | The phone shows a tiny desktop page | High |
+
+## Find the bug
+
+The Trailhead shop below has **six responsive bugs**. Use the resizer like a real tester:
+
+- Try every **preset**, then type exact widths like **767, 768 and 769**.
+- **Drag slowly** from wide to narrow and watch for jumps and overlaps.
+- Switch the input to **Touch** and try every menu.
+- Check **what's visible when the page loads** on a small phone, then scroll.
+
+<BugHunt
+  title="Responsive outdoor shop"
+  bugs={[
+    {
+      title: 'At exactly 768px there is no navigation at all',
+      hint: 'Test exactly at the md breakpoint, not just around it.',
+      detail: 'At 767px you get the hamburger and at 769px the desktop links, but at <strong>768px</strong> you get neither. The developer used <code>&gt; 768</code> for the links and <code>&lt; 768</code> for the hamburger. Expected: exactly one navigation at every width. A classic off-by-one error at a boundary, and 768px is a real iPad width.',
+    },
+    {
+      title: 'Tent table makes the whole page scroll sideways on phones',
+      hint: 'Pick a phone width and scroll down to "Compare tents".',
+      detail: 'The table has a fixed minimum width of 600px, so below 640px it pushes the page wider than the viewport. The Price column is cut off, and the whole page, header included, scrolls horizontally. Expected: no horizontal page scroll; the table turns into cards or scrolls inside its own container.',
+    },
+    {
+      title: '"Categories" menu can\'t be opened on touch devices',
+      hint: 'Choose the iPad Air preset, switch the input to Touch and try to open Categories.',
+      detail: 'The menu only opens on mouse <em>hover</em>. Tablets wide enough for the desktop nav have no hover, and tapping does nothing (it\'s not even a button, so keyboard users can\'t open it either). Expected: the menu opens on tap/click and with the keyboard.',
+    },
+    {
+      title: 'Hero text overlaps the image between 900 and 999px',
+      hint: 'Drag the slider slowly between 850 and 1050px and watch the big headline.',
+      detail: 'In this range the hero text box has a fixed width of 600px while the image takes the right half of the screen, so the headline and button run over the image. At 899px and at 1000px it looks fine, so testing only device presets misses it. Expected: text and image never overlap at any width.',
+    },
+    {
+      title: 'On small phones the main button is pushed below the fold',
+      hint: 'At 360 or 393px, look for the "Shop the sale" button without scrolling. Then scroll down.',
+      detail: 'A tall <strong>sticky</strong> promo banner plus the sticky header take more than a third of the screen, so the main call to action starts below the visible area. While scrolling, the banner keeps covering content and can\'t be closed. Expected: the main button is visible on load; banners are short, closable and not sticky on small screens.',
+    },
+    {
+      title: 'Product images are stretched on wide screens',
+      hint: 'Compare the product pictures at iPad Air width and at Laptop or Desktop width.',
+      detail: 'From 1280px the image boxes get a fixed height of 120px while their width keeps growing, and the images don\'t keep their aspect ratio, so the tent and backpack look squashed and wide. Expected: images keep their proportions (for example with <code>aspect-ratio</code> or <code>object-fit: cover</code>).',
+    },
+  ]}
+>
+  <BuggyResponsiveShop client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Header: no navigation shown at exactly 768px viewport width (neither links nor hamburger)
+
+**Environment:** Chrome (latest), DevTools device mode, Responsive 768×1024 · also on a real iPad (6th gen, 768px wide) in portrait, Safari
+
+**Steps:** 1. Open the home page. 2. Set the viewport width to 767px: hamburger shown. 3. Set it to 768px.
+
+**Expected:** Either the hamburger or the navigation links are visible at every width.
+**Actual:** At 768px the header shows only the logo and the cart. At 769px the links appear.
+
+**Severity:** High (users on 768px tablets can't navigate) · **Reproducible:** 10/10 · Screenshots at 767, 768 and 769px attached
+
+</Callout>
+
+Notice the screenshots at **three widths**. For layout bugs, the exact viewport size is part of the steps to reproduce. "On tablet" isn't enough.
+
+## Tools & how-to
+
+### Chrome DevTools device mode
+
+<Steps>
+
+1. **Open DevTools** with <kbd>F12</kbd> (Windows) or <kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>I</kbd> (Mac).
+2. **Turn on the device toolbar** with the phone-and-tablet icon, or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> / <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd>.
+3. **Pick a size.** Choose a device from the **Dimensions** list, or choose **Responsive** and type any width and height. Drag the handles on the side to resize.
+4. **Show the breakpoints.** Open the **⋮** menu in the device toolbar and choose **Show media queries**. Colored bars appear above the page; click one to jump right to that breakpoint. **Show rulers** adds rulers too.
+5. **Add your own devices.** Dimensions › **Edit…** › **Add custom device**, for example the exact phones in your analytics.
+6. **Rotate** with the rotate icon to test landscape.
+7. **Take evidence.** **⋮ › Capture screenshot** saves what you see; **Capture full size screenshot** saves the whole page.
+
+</Steps>
+
+Firefox has **Responsive Design Mode** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> / <kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>M</kbd>), and Safari has **Develop › Enter Responsive Design Mode**.
+
+### Test around every breakpoint
+
+Treat each breakpoint like a boundary in a form field ([boundary value analysis](/fundamentals/boundary-value-analysis)). For a breakpoint at 768px, test **767, 768 and 769px**. Do the same for every breakpoint the site has, plus the smallest width you support (320px).
+
+### Resize slowly
+
+Device presets only show you a handful of widths. Also drag the page width **slowly** from your widest to your narrowest size and watch for jumps, overlaps, text that suddenly wraps badly, and a horizontal scrollbar appearing.
+
+<Callout type="tip" title="Find horizontal overflow in one line">
+Paste this into the DevTools console. If it says `true`, something is wider than the screen:
+
+`document.documentElement.scrollWidth > document.documentElement.clientWidth`
+
+To find the culprit, look in the Elements panel for the element that sticks out to the right.
+</Callout>
+
+### Zoom and text size
+
+- **Browser zoom:** <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>+</kbd> up to 200%, then 400%. At 400% on a 1280px window you're effectively at 320px, so the mobile layout must work.
+- **Text-only size:** Chrome **Settings › Appearance › Font size**, Safari on iPhone **aA › bigger A** in the address bar, Firefox **View › Zoom › Zoom Text Only**.
+- **Phone settings:** larger text in iOS and Android settings affects many mobile websites too.
+
+### Real phones and tablets
+
+DevTools is fast for checking layouts, but always confirm on at least one real iPhone and one real Android phone, plus a tablet if your users have them. Real devices show the browser toolbars, the notch and <Term id="safe-area" />, the on-screen keyboard and real touch.
+
+### What device mode can't show you
+
+- **It's still your desktop browser.** Choosing "iPhone" in Chrome renders with Chrome's engine, not Safari's. (See [Cross-browser Testing](/web/cross-browser-testing).)
+- **No real browser UI:** no collapsing toolbar, no notch, no on-screen keyboard pushing the page up.
+- **Touch is simulated with a mouse.** Hover states can still trigger, so hover-only bugs can slip through.
+- **Not real performance or screens:** your laptop is much faster, and colors, brightness and pixel density differ from a real phone.
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-RWD-001',
+      title: 'Exactly one navigation is visible at and around each breakpoint',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Breakpoints known: 640, 768, 1024, 1280px'],
+      steps: ['Open the home page in DevTools device mode (Responsive)', 'Set widths 767, 768, 769px', 'Repeat for 1023, 1024, 1025px'],
+      expected: 'At every width either the hamburger or the navigation links are visible, never both and never neither.',
+    },
+    {
+      id: 'TC-RWD-002',
+      title: 'No horizontal scrolling from 320px up',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Set the viewport to 320px wide', 'Scroll through the whole page, including tables and footers', 'Repeat at 360, 393 and 430px'],
+      expected: 'The page never scrolls sideways; wide tables scroll inside their own container or change to cards.',
+    },
+    {
+      id: 'TC-RWD-003',
+      title: 'Menus work on touch devices',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Real tablet (e.g. iPad in landscape) or phone'],
+      steps: ['Open the site', 'Tap "Categories"', 'Tap a category', 'Open the menu again and tap outside it'],
+      expected: 'The menu opens on tap, the link navigates, and tapping outside closes the menu.',
+    },
+    {
+      id: 'TC-RWD-004',
+      title: 'Main call to action is visible on load on a small phone',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Viewport 360×640, cookie and promo banners shown'],
+      steps: ['Open the home page as a new visitor', 'Do not scroll'],
+      expected: 'The main button ("Shop the sale") is visible without scrolling, and banners can be closed.',
+    },
+    {
+      id: 'TC-RWD-005',
+      title: 'Content reflows at 400% zoom',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Desktop browser window 1280px wide'],
+      steps: ['Zoom the browser to 200%, then 400%', 'Read the page and use the navigation', 'Fill in and submit the newsletter form'],
+      expected: 'All content and functions remain available without scrolling in two directions; no overlapping or cut-off text (WCAG 1.4.10 Reflow).',
+    },
+    {
+      id: 'TC-RWD-006',
+      title: 'Images keep their proportions on large screens',
+      priority: 'low',
+      type: 'positive',
+      steps: ['Set the viewport to 1280, 1440, 1920 and 2560px', 'Look at the product images and the hero banner'],
+      expected: 'Images are never stretched or squashed, and the content has a sensible maximum width.',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="Responsive design testing checklist"
+  storageKey="responsive-design-testing"
+  items={[
+    'I know the breakpoints and tested at, just below and just above each one',
+    'The page has a correct meta viewport tag and doesn’t block zoom',
+    'No horizontal scrolling at any width from 320px up',
+    'Navigation works at every width (hamburger on small screens, links on large ones)',
+    'Tables, images and long text adapt without overflowing or overlapping',
+    'Images keep their aspect ratio from phones to 2560px screens',
+    'Touch targets are at least 44×44 pt (iOS) / 48×48 dp (Android)',
+    'Nothing depends on hover: menus and tooltips work with tap and keyboard',
+    'Sticky headers and banners leave enough room on small phones and in landscape',
+    'The main call to action is visible without scrolling on small phones',
+    'Content reflows at 200% and 400% zoom and with larger text',
+    'Results were confirmed on at least one real iPhone and one real Android phone',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'The site has a breakpoint at 1024px. Which widths are the best test values?',
+      options: ['1000 and 1100px', '1023, 1024 and 1025px', 'Only 1024px', '320 and 1440px'],
+      answer: 1,
+      explain: 'Boundary value analysis: test just below, at and just above the boundary. Off-by-one bugs live exactly there.',
+    },
+    {
+      q: 'On a phone, a website shows a tiny, zoomed-out desktop layout. What is the most likely cause?',
+      options: ['A missing meta viewport tag', 'A slow network', 'Dark mode', 'A JavaScript error'],
+      answer: 0,
+      explain: 'Without width=device-width, mobile browsers render the page at about 980px wide and shrink it to fit the screen.',
+    },
+    {
+      q: 'A dropdown menu opens on hover in DevTools device mode, but not on a real iPad. Why might device mode miss this?',
+      options: ['Device mode cannot show menus', 'Device mode simulates touch with a mouse, so hover can still happen', 'iPads do not support menus', 'The iPad is too slow'],
+      answer: 1,
+      explain: 'Device mode is still a desktop browser controlled by a mouse. Hover-only bugs show up reliably only on real touch devices.',
+    },
+    {
+      q: 'What does WCAG reflow require?',
+      options: ['The site must have a mobile app', 'Content works at 320 CSS px wide without scrolling in two directions', 'Every page loads in under 2 seconds', 'Images must be at least 320px wide'],
+      answer: 1,
+      explain: 'Success criterion 1.4.10: at 320 CSS pixels (a 1280px window at 400% zoom), content must reflow into one column without horizontal scrolling.',
+    },
+    {
+      q: 'Which approach finds the most responsive bugs?',
+      options: ['Checking two device presets', 'Testing at the breakpoints, dragging the width slowly, and confirming on real devices', 'Only testing on your own phone', 'Only testing at 1920px'],
+      answer: 1,
+      explain: 'Presets miss the widths in between. Combine breakpoint checks, slow resizing and real devices.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- The **viewport** is measured in CSS pixels, and mobile pages need the **meta viewport tag** (without blocking zoom).
+- **Breakpoints** are where layouts change. Test **at, just below and just above** each one: that's where off-by-one bugs hide.
+- Most sites are **mobile-first**; fixed-width parts inside fluid layouts are where things break.
+- Test **navigation, tables, images, text, touch targets, hover, sticky elements, horizontal scroll, landscape, zoom to 200–400%** and **very large screens**.
+- Use **DevTools device mode** with custom widths and slow resizing, then **confirm on real phones and tablets**: device mode isn't a real mobile browser.
+
+</KeyTakeaways>

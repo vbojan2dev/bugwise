@@ -1,0 +1,44 @@
+teaser: "The most useful line in a test plan says what you will NOT test. Curious why?"
+cards:
+  - type: flip
+    front: "What does a test plan answer?"
+    back: "For one release or feature: what we test and don't, how, where, with what, by whom, by when, and when we're done."
+  - type: flip
+    front: "Test strategy vs test plan?"
+    back: "Strategy = general testing rules for the whole product, stable for years. Plan = those rules applied to one release, feature or sprint."
+  - type: quiz
+    q: "Risk A is likelihood 2, impact 3. Risk B is likelihood 3, impact 1. Which do you test first?"
+    options: ["Risk B", "Risk A", "They are equal"]
+    answer: 1
+    explain: "Risk score = likelihood x impact. A scores 6, B scores 3, so A gets tested first and deepest."
+  - type: quiz
+    q: "Which is the best exit criterion?"
+    options: ["Testing stops on the release date", "Zero open bugs of any severity", "No open Critical or Major checkout bugs"]
+    answer: 2
+    explain: "It is measurable and realistic. A date is a deadline, not a quality signal, and zero bugs is almost never achievable."
+  - type: truefalse
+    statement: "Out of scope means the feature is unimportant."
+    answer: false
+    explain: "It means it is not part of this piece of work, or someone else covers it. Writing it down stops people assuming it was tested."
+  - type: truefalse
+    statement: "ISO/IEC/IEEE 29119-3 is the modern standard that replaced IEEE 829 for test documentation."
+    answer: true
+    explain: "Formal projects may follow it. Agile teams use the same ideas in a one-page plan."
+  - type: thisorthat
+    prompt: "Your team ships a two-week feature: Apple Pay and Google Pay at checkout."
+    left: "One-page plan"
+    right: "30-page formal plan"
+    answer: left
+    explain: "A short plan gets read, reviewed and updated. A long one for a small feature gets ignored."
+  - type: spotbug
+    screen: ["Test plan: wallets at checkout", "Scope in: Checkout", "Scope out: none", "Exit: when testing is finished"]
+    bug: "Vague scope, no out list and an unmeasurable exit."
+    explain: "Nobody can tell what was covered or when testing is done. Name the features, list what's out, and use checkable exit criteria."
+  - type: spotbug
+    screen: ["Devices: every Android phone", "in the office (14 devices)", "iPhone: none"]
+    question: "What's wrong with this device matrix?"
+    bug: "It's a pile, not a risk-based matrix, and skips iOS."
+    explain: "Pick a few devices that cover real users and risks, such as a current iPhone for Apple Pay and one with an empty wallet."
+  - type: tip
+    title: "Review it in 15 minutes"
+    text: "Walk the developer and product owner through your plan. Ask what worries them most and whether anything out of scope should be in."

@@ -1,0 +1,46 @@
+teaser: "Three words and a line under one of them. So why do tabs keep losing your place in the list?"
+cards:
+  - type: flip
+    front: "What are tabs?"
+    back: "A row of labels that switches between sibling sections of one screen, like Overview · Specs · Reviews. Exactly one is selected."
+  - type: thisorthat
+    prompt: "A checkout with Address, Delivery and Payment that must be done in order."
+    left: "Tabs"
+    right: "Stepper"
+    answer: right
+    explain: "Tabs let users jump anywhere, even to Payment before entering an address. Ordered steps need a stepper with checks between them."
+  - type: spotbug
+    screen: ["Active · Delivered · Returns", "Indicator under: Active", "List shows: delivered orders"]
+    question: "You just swiped the list sideways. What's wrong?"
+    bug: "The indicator doesn't match the content."
+    explain: "Every way of changing tabs (tap, swipe, link, Back) must also move the indicator and the selected state."
+  - type: quiz
+    q: "On iPhone, what usually replaces Android's top tabs inside a screen?"
+    options: ["A segmented control", "A bottom tab bar", "A side drawer"]
+    answer: 0
+    explain: "iOS uses a segmented control to switch views within a screen. The bottom tab bar is for the app's main areas."
+  - type: truefalse
+    statement: "Switching tabs and coming back should keep the list's scroll position."
+    answer: true
+    explain: "Each tab keeps its own state: scroll position, filters and typed text. Rebuilding the tab on every switch is a common bug."
+  - type: spotbug
+    screen: ["Orders tab badge: 2", "Active orders: none", "Delivered: 2 new orders"]
+    bug: "The badge count didn't update."
+    explain: "A badge must change as soon as the count changes and disappear at zero. A stale badge sends users looking for nothing."
+  - type: quiz
+    q: "Focus is on a web tab. What should the Right arrow key do?"
+    options: ["Scroll the page", "Move focus into the panel", "Move to the next tab"]
+    answer: 2
+    explain: "Arrow keys move between tabs. Tab leaves the row and goes into the panel."
+  - type: thisorthat
+    prompt: "A link shop://orders/returns opens My orders with Active selected."
+    left: "Bug"
+    right: "Fine, close enough"
+    answer: left
+    explain: "A deep link must open exactly the tab it names, whether the app was closed or already open on another tab."
+  - type: flip
+    front: "Automatic vs manual tab activation?"
+    back: "Automatic: arrows move focus and show the panel. Manual: arrows only move focus, Enter or Space opens it. Manual suits panels that load slowly."
+  - type: tip
+    title: "Switch to German"
+    text: "German labels are often 30–50% longer. Fixed tabs then clip or truncate them. Check every language and the largest text size."

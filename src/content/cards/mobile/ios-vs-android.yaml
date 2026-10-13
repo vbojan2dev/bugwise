@@ -1,0 +1,45 @@
+teaser: "Your app works perfectly on iPhone. Then Android users press a button the iPhone doesn't even have."
+cards:
+  - type: flip
+    front: "How do users go back on iOS vs Android?"
+    back: "iOS: the back chevron or a swipe from the left edge. Android: system Back (edge swipe or button) on every screen, plus the app bar arrow."
+  - type: flip
+    front: "How often can an iOS app show a permission prompt?"
+    back: "Once. After Don't Allow, only the user can turn it back on in the Settings app, so the app should explain and link there."
+  - type: thisorthat
+    prompt: "Android app. A 'Cancel this order?' dialog is open and the user taps outside it."
+    left: "Order gets canceled"
+    right: "Dialog closes, order kept"
+    answer: right
+    explain: "Dismissing a dialog with Back or a tap outside means Cancel. It must never trigger the destructive action."
+  - type: quiz
+    q: "Notifications never arrive on new Android phones but work fine on Android 12. Most likely cause?"
+    options: ["The app never requests notification permission", "Channels are muted by default", "Android 13 dropped push notifications"]
+    answer: 0
+    explain: "Since Android 13, notifications need the POST_NOTIFICATIONS runtime permission. On Android 12 and older they're allowed by default, so the bug hides there."
+  - type: truefalse
+    statement: "If the on-screen back arrow works on Android, system Back works too."
+    answer: false
+    explain: "They're handled separately. Apps copied from iOS designs often wire up only the arrow, so system Back closes the app or does nothing."
+  - type: spotbug
+    screen: ["iPhone · Order updates", "System prompt: Don't Allow tapped", "Order updates switch: On"]
+    bug: "The switch says On, but iOS will never deliver notifications."
+    explain: "iOS shows the prompt only once. The app's toggle must match the real permission, and the app should explain how to enable it in Settings."
+  - type: truefalse
+    statement: "Android stops showing a permission dialog after the user denies it twice."
+    answer: true
+    explain: "Since Android 11, two denials count as 'Don't ask again'. The app must then send the user to Settings instead of failing silently."
+  - type: thisorthat
+    prompt: "Your Android app needs a menu of actions for an order. Which component fits the platform?"
+    left: "Material bottom sheet"
+    right: "iOS action sheet"
+    answer: left
+    explain: "Android uses a bottom sheet with a drag handle that closes on swipe, tap outside or Back. An iOS action sheet there is a valid finding."
+  - type: quiz
+    q: "Which is true about releasing to the App Store and Google Play?"
+    options: ["App Store releases can be rolled back instantly", "Android apps are never reviewed", "Neither store has an instant undo"]
+    answer: 2
+    explain: "Play can halt a staged rollout and Apple has phased release, but a bad version always means a new build and a new review. Test the beta build first."
+  - type: tip
+    title: "Never write 'works on mobile'"
+    text: "Name the platform, device and OS version you tested, like 'Passed on iPhone 15, iOS 26'. 'Passed on mobile' tells nobody anything."

@@ -1,0 +1,458 @@
+---
+title: Navigation Bar
+description: The bars at the top and bottom of almost every app screen. Learn iOS navigation and tab bars, Material top app bars and bottom navigation, web headers, safe areas and scroll behavior, and the back button, title and badge bugs testers find in them.
+category: navigation
+aka: [App bar, Top app bar, Toolbar, Header, Bottom navigation bar]
+platforms: [ios, android, web]
+minutes: 40
+order: 3
+---
+
+import Anatomy from '@/components/demos/navigation-bar/Anatomy';
+import VariantsGallery from '@/components/demos/navigation-bar/VariantsGallery';
+import Playground from '@/components/demos/navigation-bar/Playground';
+import WebHeaderLab from '@/components/demos/navigation-bar/WebHeaderLab';
+import { BuggyFoodApp } from '@/components/demos/navigation-bar/BuggyFoodApp';
+import { GoodBottomNav, CrowdedBottomNav, TitleBar } from '@/components/demos/navigation-bar/Static';
+
+You open a pizza in a food delivery app. The button in the top-left corner says **‹ Restaurants**, so you tap it, expecting the list of restaurants... and land on the pizzeria's menu instead. Nothing crashed. But you no longer trust that button, and you start using the app more carefully. That small lie in the corner is a bug, and a very common one.
+
+Navigation bars are on almost every screen, so users touch them hundreds of times a day. They tell people **where they are**, **how to go back** and **where else they can go**. When they're wrong, users get lost. Let's learn how they should behave.
+
+## What is a navigation bar?
+
+"Navigation bar" is used for two different things, and you need to know both:
+
+- **Top bars** sit at the top of a screen. They show the screen's **title**, a **back button** (on deeper screens) and a few **actions** like Search or Share. iOS calls this the *navigation bar*; Android (Material Design) calls it the *top app bar*; on the web it's the *header*.
+- **Bottom bars** sit at the bottom and switch between the app's **main areas**: Home, Search, Orders, Account. iOS calls this the *tab bar*; Material calls it the *navigation bar* (older name: *bottom navigation*).
+
+Yes, "navigation bar" means a top bar on iOS and a bottom bar on Android. When a ticket says "the nav bar is broken", ask which one.
+
+### Anatomy
+
+<Anatomy />
+
+### How it differs from similar components
+
+| Component | Where | What it does | Example |
+| --- | --- | --- | --- |
+| **Top bar** | Top of the screen | Title, back, actions for *this* screen | ‹ Pizza Roma · Margherita · ♡ |
+| **Bottom bar** | Bottom of the screen | Jumps between the app's *main areas* | Home / Search / Orders / Account |
+| **[Tabs](/components/tabs)** | Under the top bar | Switch *sections of one screen* | Overview / Specs / Reviews |
+| **[Drawer](/components/drawer)** | Slides in from the side | Many or secondary destinations | Settings, Help, Gift cards… |
+
+<Callout type="info" title="Already covered on the Tabs page">
+A bottom bar is a close cousin of tabs. Each destination keeps **its own history and scroll position**, badges must stay current and deep links must open the right destination. Those rules are explained on the [Tabs page](/components/tabs#how-good-tabs-behave); here we focus on what's special about the bars themselves.
+</Callout>
+
+## Designs & variants
+
+Scroll the lists, tap the destinations, and use the controls. Each variant has its own scroll behavior.
+
+<VariantsGallery client:visible />
+
+### Top bars
+
+- **iOS navigation bar** is 44 pt tall. The **large title** (big, bold, left-aligned) sits under the bar on main screens and **collapses into a small centered title** as you scroll. The **back button** shows a chevron plus the **previous screen's title**. If that title doesn't fit, iOS shortens it to "Back" or just the chevron.
+- **Material top app bar** classically comes in four types: **small** (64 dp), **center-aligned** (for a main screen or a brand name), **medium** (112 dp) and **large** (152 dp). Medium and large start tall and **shrink to small** as you scroll. The 2025 Material 3 *Expressive* update renames it *app bar*, makes center alignment an option of the small bar, replaces medium and large with **medium flexible** and **large flexible** versions, and adds a **search app bar**, so newer apps may use those names. When content scrolls under it, the bar gets a tinted background. Actions that don't fit go into the **⋮ overflow menu**.
+
+### Bottom bars
+
+- **iOS tab bar**: icon plus label, the selected tab tinted in the app color, red badges. On iPhone, up to **five** tabs; more go into a "More" tab. Since iOS 26, the Liquid Glass tab bar floats over the content and can **shrink while you scroll**.
+- **Material navigation bar**: **3 to 5 destinations**, icons with labels, and a **pill-shaped indicator** behind the selected icon. Fewer than three should be tabs or buttons; more than five should be a [drawer](/components/drawer) or a navigation rail.
+
+## When to use it
+
+- **Top bar:** on nearly every screen. It answers "where am I?" (title) and "how do I get out?" (back or close).
+- **Bottom bar:** when the app has **3–5 top-level areas** of similar importance that people switch between **often**, like Home, Search, Orders and Account in a shopping app. It must be visible on those top-level screens.
+
+## Good and bad uses
+
+<Compare>
+<Do title="3–5 labeled destinations">
+
+<div class="not-prose demo-screen my-3"><GoodBottomNav /></div>
+
+Every destination has an icon *and* a word. Users don't have to guess.
+
+</Do>
+<Dont title="Eight unlabelled icons">
+
+<div class="not-prose demo-screen my-3"><CrowdedBottomNav /></div>
+
+Tiny targets and mystery icons. Move secondary destinations into a menu or drawer.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Long title truncated">
+
+<div class="not-prose demo-screen my-3"><TitleBar /></div>
+
+The name ends with "…" and the buttons stay usable. The full name is shown on the screen itself.
+
+</Do>
+<Dont title="Long title runs under the buttons">
+
+<div class="not-prose demo-screen my-3"><TitleBar broken /></div>
+
+The title and the icons overlap. Neither is readable, and a tap may hit the wrong one.
+
+</Dont>
+</Compare>
+
+Also not a job for bars:
+
+- **Bottom bar for actions.** "Add to cart" or "Delete" belong in buttons, not next to destinations.
+- **Bottom bar inside flows.** Hide it during checkout, sign-up or a full-screen photo editor, where jumping away would lose the user's work.
+- **Two stacked bottom bars**, or a bottom bar on top of a cookie banner. The content gets squeezed into a strip.
+
+## How good bars behave
+
+### The back button tells the truth
+
+On iOS the back button **names the screen you'll go back to**. That's a promise, and it breaks easily when screens are reused or pushed from different places (a dish opened from *Search* vs from *Home*). Check the label on **every level** of a flow, not just the first. On every platform, check that **all the ways back** lead to the same place:
+
+- iOS: the back button and the **edge swipe** from the left.
+- Android: the app's ← arrow and the **system Back** (button or gesture from either edge).
+- Web: the site's back link and the **browser Back** button.
+
+The differences between iOS and Android back behavior are explained in [iOS vs Android](/mobile/ios-vs-android#navigation-the-biggest-source-of-bugs). The short version: **always test system Back** on Android, never only the arrow on screen.
+
+### Titles fit, or truncate politely
+
+Restaurant names, product names, people's names and translations can be long. A title must **<Term id="truncation">truncate</Term> with "…"** (or wrap, for large titles), and must never run under the back button or the actions. Test with a really long real name, in **German**, and at the **largest text size** (<Term id="dynamic-type" /> on iOS, Font size on Android).
+
+### Re-tapping the selected destination
+
+Tapping the destination you're already on is a **shortcut**, not a dead button:
+
+<Steps>
+
+1. **On a deeper screen?** Go back to that destination's **first screen** (pop to root).
+2. **Already on the first screen?** **Scroll to the top**.
+3. **Already at the top?** Some apps focus the search field (Search tab) or refresh. Either way, nothing should break or reload twice.
+
+</Steps>
+
+This is a long-standing iOS convention, and Material apps do the same. If it does nothing, users with a long list have to scroll all the way back by hand.
+
+### Badges are counts, not decorations
+
+A badge on *Orders* or *Chats* must equal the number of **unread** things, update when the user reads them (in any way: open the item, mark all as read, read it on another device) and disappear at zero. Re-opening something you've already read must not change the count. See [Tabs › Badges stay current](/components/tabs#badges-stay-current).
+
+### Safe areas and the home indicator
+
+Modern phones have a notch or Dynamic Island at the top and a **home indicator** (iPhone) or **gesture bar** (Android) at the bottom. The space around them is the <Term id="safe-area" />. Bars must extend their **background** into it, but keep their **buttons and labels out of it**:
+
+- Labels under the home indicator are hard to read, and a tap there may start the system's "go home" gesture instead.
+- In **landscape**, the notch moves to the side: check the left and right edges too.
+- On Android 15+, apps targeting the new SDK are drawn **edge-to-edge** by default. Apps that weren't ready suddenly have bars under the status bar or the gesture bar. Test every new OS version.
+
+### The content is inset for the bars
+
+A bar that floats over the content (blurred iOS bars, Liquid Glass, transparent Android bars) needs the content to have **extra space** at the end. Otherwise the **last row of the list is hidden behind the bar** forever. Scroll to the very end of every long list.
+
+### Behavior on scroll
+
+Some apps **hide the bars when you scroll down** and **bring them back when you scroll up**, to give the content more room. That's a design choice, and it has rules: the bars must come back on a small upward scroll, at the end of the list, and when the user taps the status bar or rotates. They must never stay hidden on a screen with no scrolling, and must not hide while a screen reader user is navigating.
+
+### The keyboard
+
+When the keyboard opens (in Search, for example), the bottom bar is usually **covered by the keyboard**, which is fine. A bug is when the bar is **pushed up above the keyboard**, stealing space, or stays stuck halfway after the keyboard closes. Open and close the keyboard several times, in portrait and landscape.
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Back label lies** | "‹ Restaurants" goes back to the restaurant menu | Medium |
+| 2 | **Title overlaps actions** | A long name runs under the ♡ and Share icons | Medium |
+| 3 | **Re-tap does nothing** | Tapping the selected tab doesn't pop to root or scroll to top | Low–Medium |
+| 4 | **Under the home indicator** | Tab labels sit under the home bar; taps trigger "go home" | Medium–High |
+| 5 | **Last row hidden** | The final list item is stuck behind the bottom bar | Medium–High |
+| 6 | **Wrong badge count** | *Orders* **0** while an update is still unread, or a badge that never clears | Medium |
+| 7 | **System Back ≠ arrow** | The ← arrow goes back one screen, system Back closes the app | High |
+| 8 | **Bars stay hidden** | After scrolling, the bottom bar never comes back | High |
+| 9 | **Pushed up by the keyboard** | The bottom bar floats above the keyboard, covering the field | Medium |
+| 10 | **Unnamed icon buttons** | The screen reader says "button" for Search, Share and ⋮ | High (for affected users) |
+
+<Callout type="bug" title="Why #1 happens">
+The back label should come from the **previous** screen in the stack. When developers take the title from somewhere else (the tab's first screen, a cached value, the screen that was open *last time*), it's right on the first level and wrong one level deeper. That's why you should always go **at least three screens deep** and read the back label on each one.
+</Callout>
+
+## Try it: the bars lab
+
+Switch between iOS and Android, make the title long, add actions and increase the text size. Then switch the good behaviors off one at a time and scroll to the end of the list.
+
+<Playground client:visible />
+
+## Web headers
+
+On websites, the top bar is the **header**, usually with a logo, a search icon, a cart and a [hamburger menu](/components/drawer). Many sites make it **sticky**, so it stays visible while you scroll. On a desktop that costs nothing. On a **small phone in landscape**, with a promo strip and a cookie bar, it can leave a tiny slit for the content.
+
+<DevNote>`position: sticky` or `fixed`.</DevNote>
+
+<WebHeaderLab client:visible />
+
+What to check on web headers:
+
+- **Space for content.** Try the smallest phone, **landscape**, and **200% text zoom**. If sticky bars take more than about a third of the screen, report it. Hiding the header on scroll down (and showing it on scroll up) is a common fix. WCAG's *Reflow* criterion (1.4.10) expects content to work at 320 CSS px wide without scrolling in two directions.
+- **Focus not hidden.** Press <kbd>Tab</kbd> through the page. When a focused link scrolls behind the sticky header or the cookie bar, keyboard users can't see where they are. This fails <Term id="wcag" /> 2.2's *Focus Not Obscured* (2.4.11).
+  <DevNote>Developers fix it with `scroll-padding-top` / `scroll-padding-bottom`.</DevNote>
+- **Skip link.** The first <kbd>Tab</kbd> on the page should reveal a **"Skip to main content"** link, so keyboard users don't tab through the whole header on every page (WCAG 2.4.1, *Bypass Blocks*).
+- **Anchors.** Links to `#reviews` should not land with the heading hidden under the sticky header.
+- **Bottom bars on mobile web** must stay above the iPhone home indicator, and must not jump around when the browser's own toolbar shows and hides.
+  <DevNote>They need `env(safe-area-inset-bottom)`.</DevNote>
+
+## Find the bug
+
+This iOS food delivery app has **five bugs** in its bars. Explore it like a tester:
+
+- Go **three screens deep**: a restaurant, then a dish. Read the back button on each level, then tap it.
+- Open the **Golden Dragon** restaurant and **scroll** its menu.
+- Scroll a long list, then **tap the selected tab again**. Try it on a deeper screen too.
+- Look closely at the **bottom edge** of the screen.
+- Open the updates in **Orders**, go back, and open the **same** one again. Watch the badge.
+
+<BugHunt
+  title="Snackr food delivery"
+  bugs={[
+    {
+      title: 'Back button shows the wrong previous screen',
+      hint: 'Open Pizza Roma, then the Margherita. Read the back button, then tap it.',
+      detail: 'On the dish screen the button says <strong>‹ Restaurants</strong>, but it goes back to <strong>Pizza Roma</strong>. The label is taken from the tab’s first screen instead of the previous one. It’s correct one level up, which is why it slips through. The same happens in the Search tab.',
+    },
+    {
+      title: 'Long restaurant name overlaps the back button and actions',
+      hint: 'Open Golden Dragon Noodle House & Dumplings and scroll its menu.',
+      detail: 'When the large title collapses, the small title is centered with no width limit and runs under <strong>‹ Restaurants</strong>, ♡ and Share. Expected: it truncates with “…” between the back button and the actions (<em>truncation</em>).',
+    },
+    {
+      title: 'Re-tapping the selected tab does nothing',
+      hint: 'Scroll the restaurant list down (or open a restaurant), then tap Home in the tab bar.',
+      detail: 'Nothing happens. Expected: on a deeper screen it pops back to the tab’s first screen; on the first screen it scrolls to the top. Users of long lists have to scroll back by hand.',
+    },
+    {
+      title: 'Tab bar labels sit under the home indicator',
+      hint: 'Look at the very bottom of the phone screen.',
+      detail: 'The tab bar ignores the bottom <em>safe area</em>, so the home indicator is drawn across the labels. They’re hard to read and taps near the bottom edge compete with the system’s “go home” swipe. Expected: about 34 pt of padding under the tab items on iPhones with Face ID.',
+    },
+    {
+      title: 'Orders badge counts the same update twice',
+      hint: 'Open the first update in Orders, go back, and open it again.',
+      detail: 'The badge drops from <strong>2</strong> to <strong>1</strong>, then to <strong>0</strong>, while “Rate your Sushi Kai order” is still unread (bold, blue dot). The app subtracts 1 on every open instead of counting unread updates. Expected: the badge always equals the number of unread updates.',
+    },
+  ]}
+>
+  <BuggyFoodApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Dish screen back button says "Restaurants" but returns to the restaurant menu
+
+**Steps:** 1. Home tab › tap **Pizza Roma**. 2. Tap **Margherita**. 3. Read the back button, then tap it.
+
+**Expected:** The back button says **‹ Pizza Roma** and returns to Pizza Roma.
+**Actual:** It says **‹ Restaurants**, but returns to Pizza Roma. Same in the Search tab (says "‹ Search").
+
+**Severity:** Medium (misleading navigation, no data loss) · **Reproducible:** 10/10 · **Device:** iPhone 16, iOS 26
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Navigation bar test checklist"
+  storageKey="navigation-bar"
+  items={[
+    'The title matches the screen, on every screen of every flow',
+    'The back button label names the previous screen, at least three levels deep',
+    'Back button, edge swipe (iOS), system Back (Android) and browser Back all lead to the same place',
+    'Long titles, German and the largest text size truncate or wrap without overlapping buttons',
+    'Every action icon works, has a 44 pt / 48 dp target and an accessible name; overflow ⋮ items work too',
+    'Bottom bar has 3–5 destinations with labels and shows which one is selected',
+    'Tapping the selected destination pops to its root, then scrolls to the top',
+    'Badges equal the number of unread items, update when read, and disappear at zero',
+    'Labels and buttons stay out of the safe areas (notch, home indicator, gesture bar), also in landscape',
+    'The last item of every long list can be scrolled above the bottom bar',
+    'Bars that hide on scroll come back on scroll up and at the end of the list',
+    'Opening and closing the keyboard leaves the bottom bar in the right place',
+    'Web: the sticky header leaves enough room on a small phone, in landscape and at 200% zoom',
+    'Web: a skip link appears on the first Tab, and focused elements are never hidden behind sticky bars',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-NAV-001',
+      title: 'Back button label on every level',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Home tab › open "Pizza Roma"', 'Read the back button', 'Open "Margherita"', 'Read the back button and tap it'],
+      expected: 'On Pizza Roma the button says "‹ Restaurants", on Margherita it says "‹ Pizza Roma" (or "Back" if it doesn\'t fit). Tapping it returns to Pizza Roma.',
+    },
+    {
+      id: 'TC-NAV-002',
+      title: 'System Back matches the on-screen arrow (Android)',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open a restaurant, then a dish', 'Press system Back (button and gesture)', 'Repeat with the app bar ← arrow'],
+      expected: 'Both return to the restaurant screen at the same scroll position. Neither closes the app.',
+    },
+    {
+      id: 'TC-NAV-003',
+      title: 'Long title in the top bar',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Restaurant "Golden Dragon Noodle House & Dumplings" exists'],
+      steps: ['Open the restaurant', 'Scroll until the small title appears', 'Repeat at the largest text size and in German'],
+      expected: 'The title truncates with "…" between the back button and the actions. Nothing overlaps; all buttons stay tappable.',
+    },
+    {
+      id: 'TC-NAV-004',
+      title: 'Re-tap the selected tab',
+      priority: 'low',
+      type: 'positive',
+      steps: ['Home tab › scroll the list down', 'Tap "Home" in the tab bar', 'Open a restaurant and a dish', 'Tap "Home" again'],
+      expected: 'First tap scrolls the list to the top. On the dish screen, the tap returns to the restaurant list.',
+    },
+    {
+      id: 'TC-NAV-005',
+      title: 'Badge after reading updates',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['2 unread order updates, Orders badge shows 2'],
+      steps: ['Open update 1, go back', 'Open update 1 again, go back', 'Open update 2, go back'],
+      expected: 'Badge: 1 after the first open, still 1 after the repeat, then disappears.',
+    },
+    {
+      id: 'TC-NAV-006',
+      title: 'Bottom bar and the home indicator',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['iPhone with Face ID, and an iPhone SE (home button)'],
+      steps: ['Open each tab in portrait', 'Rotate to landscape', 'Tap each tab label near its bottom edge'],
+      expected: 'Labels sit fully above the home indicator on both devices and in both orientations. Taps select the tab and never trigger "go home".',
+    },
+    {
+      id: 'TC-NAV-007',
+      title: 'Last list item is reachable',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Open the longest list in the app (order history)', 'Scroll to the very end'],
+      expected: 'The last row is fully visible above the bottom bar and can be tapped.',
+    },
+    {
+      id: 'TC-NAV-008',
+      title: 'Sticky header on a small phone (web)',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Cookie banner not yet accepted'],
+      steps: ['Open shop.example.com at 320×568 in landscape', 'Set text zoom to 200%', 'Press Tab through the product links'],
+      expected: 'Sticky bars take no more than about a third of the screen, so most of it shows content. Each focused link is fully visible, never behind the header or the cookie bar.',
+    },
+  ]}
+/>
+
+### Tools
+
+- **iOS Simulator:** test an iPhone with Face ID **and** an iPhone SE, rotate with <kbd>Cmd</kbd>+<kbd>←</kbd>/<kbd>→</kbd>, and raise the text size with the **Accessibility Inspector** (*Xcode › Open Developer Tool*) or *Settings › Accessibility › Display & Text Size › Larger Text*.
+- **Android Emulator:** switch between **gesture** and **3-button navigation** (*Settings › System › Gestures › System navigation*) and test Back in both. Raise *Font size* and *Display size*.
+- **Layout bounds (Android):** *Developer options › Show layout bounds* draws every view's edges, so overlaps and missing insets become obvious.
+- **Web:** use the device toolbar in [DevTools](/web/devtools-for-testers) for small viewports and landscape, zoom the page to 200%, and press <kbd>Tab</kbd> from the address bar. On a real iPhone, check the bottom bar against the home indicator and Safari's toolbar.
+
+## Accessibility
+
+- **Name every icon button.** Search, Share, ♡ and ⋮ need accessible names ("Search", "Share", "Add to favorites", "More options"). A <Term id="screen-reader" /> that only says "button" is a bug.
+- **Announce where you are.** The screen title should be read when a new screen opens. Bottom bar destinations should be announced with their **selected** state (iOS: "Home, selected, tab, 1 of 4").
+  <DevNote>On the web, use `<nav aria-label="Main">` with `aria-current="page"` on the current link.</DevNote>
+- **Badges need words.** "Orders, 2 new", not "Orders, 2" or just a red dot.
+- **<Term id="touch-target">Touch targets</Term>:** at least 44×44 pt (iOS) / 48×48 dp (Android) for the back button, actions and each destination, even when the icon itself is smaller.
+- **Large text.** At the largest text size, iOS shows a big **label popup** when you long-press a tab bar item. Titles must still fit or truncate; labels must not overlap.
+- **Keyboard (web).** A skip link, a logical focus order (header, then main content), visible focus, and focus never hidden behind sticky bars.
+- **Don't hide bars from assistive tech users.** Bars that hide on scroll must come back when focus moves into them.
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- **Navigation bar**: back button with the previous title, large titles that collapse, edge swipe to go back.
+- **Tab bar**: up to 5 tabs on iPhone, own stack per tab, re-tap to pop to root or scroll to top. On iOS 26 it floats and can minimize on scroll.
+  <DevNote>Navigation bar: `UINavigationBar` / SwiftUI `NavigationStack` with `.navigationTitle`. Tab bar: `UITabBarController` / `TabView`.</DevNote>
+- Test iPhones **with and without** a home button, landscape, and **iPad**, where a tab bar may appear at the top or turn into a sidebar.
+
+</Tab>
+<Tab>
+
+- **Top app bar** (small, center-aligned, medium, large; in Material 3 Expressive: search, small, medium flexible, large flexible) with ← arrow, title and actions, plus the ⋮ overflow menu.
+- **Navigation bar** (bottom) with 3–5 destinations and a pill indicator. On tablets and large screens, apps often switch to a **navigation rail** on the side: test both <Term id="breakpoint">breakpoints</Term>.
+- **System Back** in gesture and 3-button navigation: from a non-start destination it usually returns to the start destination, then leaves the app.
+- **Edge-to-edge:** status bar and gesture bar insets, especially after an Android update.
+
+</Tab>
+<Tab>
+
+- The **header** is usually sticky; on phones it often has a hamburger menu. Check room for content, focus not obscured, skip link and anchor links.
+- **Mobile web bottom bars** must stay above the home indicator and cope with the browser toolbar appearing and disappearing.
+  <DevNote>They need `viewport-fit=cover` and `env(safe-area-inset-bottom)`.</DevNote>
+- **Browser Back** must work like the site's own back links.
+  <DevNote>Navigation is a `<nav>` landmark with real links, `aria-current="page"` on the current one.</DevNote>
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'You open Pizza Roma, then a pizza. The back button says "‹ Restaurants" and takes you back to Pizza Roma. What is wrong?',
+      options: ['Nothing, it went back one screen', 'The back label names the wrong previous screen', 'The title is truncated', 'The tab bar is hidden'],
+      answer: 1,
+      explain: 'On iOS the back button shows the previous screen\'s title. Here it shows the tab\'s first screen, which is wrong one level deep.',
+    },
+    {
+      q: 'In an iOS app, you are on a long list in the Home tab, scrolled far down. You tap "Home" in the tab bar. What should happen?',
+      options: ['Nothing, you are already there', 'The list scrolls to the top', 'The app reloads', 'The tab bar hides'],
+      answer: 1,
+      explain: 'Tapping the selected tab pops to its first screen, or if you are already there, scrolls to the top.',
+    },
+    {
+      q: 'How many destinations should a Material navigation bar (bottom) have?',
+      options: ['1 to 2', '3 to 5', '6 to 8', 'As many as needed'],
+      answer: 1,
+      explain: 'Three to five. Fewer fit tabs or buttons; more belong in a drawer or a navigation rail.',
+    },
+    {
+      q: 'On an iPhone with Face ID, the tab bar labels touch the home indicator. Why is this a bug?',
+      options: ['It looks a bit old-fashioned', 'Labels are hard to read and taps compete with the system "go home" gesture', 'It uses too much battery', 'It is not a bug'],
+      answer: 1,
+      explain: 'Bars must keep their content out of the safe area. The home indicator area belongs to the system gesture.',
+    },
+    {
+      q: 'On a website, you tab through product links and a focused link disappears behind the sticky header. What is this?',
+      options: ['A performance problem', 'An accessibility bug: focus is obscured', 'Expected browser behavior', 'A cookie problem'],
+      answer: 1,
+      explain: 'WCAG 2.2 (2.4.11 Focus Not Obscured) requires the focused element to stay at least partly visible. scroll-padding fixes it.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- "Navigation bar" means a **top bar** on iOS and a **bottom bar** on Android. Top bars: title, back, actions. Bottom bars: 3–5 main destinations.
+- The **back button must tell the truth**: right label, and every way back (arrow, edge swipe, system Back, browser Back) lands on the same screen.
+- Long titles, translations and large text must **truncate or wrap**, never overlap the buttons.
+- Respect **safe areas** and **inset the content**: labels above the home indicator, last row above the bar.
+- **Re-tapping** the selected destination pops to root, then scrolls to top. **Badges** count unread items exactly.
+- On the web, sticky headers must leave **room for content** on small phones, never **hide focus**, and come with a **skip link**.
+
+</KeyTakeaways>

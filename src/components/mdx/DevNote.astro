@@ -1,0 +1,32 @@
+---
+/**
+ * A small, collapsed note with developer background (API names, attributes, platform classes).
+ * Testers can skip it; it's there for reading tickets and talking to developers.
+ * Usage in MDX: <DevNote>On Android it's `imeOptions="actionSearch"`.</DevNote>
+ */
+import Icon from '@/components/ui/Icon.astro';
+
+interface Props {
+  /** Optional topic shown after "Dev note", e.g. "Platform names". */
+  title?: string;
+}
+const { title } = Astro.props;
+---
+
+<details class="devnote group my-3 w-fit max-w-full rounded-lg border border-line bg-subtle/60 open:w-full" data-pagefind-ignore>
+  <summary
+    class="flex cursor-pointer list-none items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-muted select-none hover:text-fg [&::-webkit-details-marker]:hidden"
+    title="Developer background. Optional for testers."
+  >
+    <Icon name="code" size={13} />
+    <span>Dev note{title && <span class="font-normal">: {title}</span>}</span>
+    <Icon name="chevron-down" size={13} class="transition-transform group-open:rotate-180" />
+  </summary>
+  <div class="devnote-body px-3 pt-0.5 pb-2.5 text-[0.9rem] leading-relaxed text-muted"><slot /></div>
+</details>
+
+<style>
+  .devnote-body > :global(* + *) {
+    margin-top: 0.6em;
+  }
+</style>

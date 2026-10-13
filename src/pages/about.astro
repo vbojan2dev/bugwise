@@ -1,0 +1,135 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/ui/Icon.astro';
+import { getCollection } from 'astro:content';
+import { getComponents, getLessons } from '@/lib/content';
+import { newsletter, site } from '@/data/site';
+import { href } from '@/lib/url';
+import InstallApp from '@/components/islands/InstallApp';
+
+const [lessons, components, glossary, interview, cards] = await Promise.all([
+  getLessons(),
+  getComponents(),
+  getCollection('glossary'),
+  getCollection('interview'),
+  getCollection('cards'),
+]);
+const cardCount = cards.reduce((n, f) => n + f.data.cards.length, 0) + glossary.length + interview.length;
+
+const stats = [
+  [lessons.length, 'lessons'],
+  [components.length, 'UI component guides'],
+  [glossary.length, 'glossary terms'],
+  [interview.length, 'interview questions'],
+  [cardCount, 'review cards in Bites'],
+];
+
+const principles = [
+  ['play', 'Learn by doing', 'Every page has something to click, break or practice: live component demos, bug hunts with hidden defects, trainers and quizzes.'],
+  ['smartphone', 'Mobile and web first', 'Examples come from the apps people actually use: shopping, banking, food delivery, fitness and travel.'],
+  ['sparkles', 'Plain English', 'Written for complete beginners. Every term is explained the first time it appears, and the glossary is one hover away.'],
+  ['lightbulb', 'Honest about the messy parts', 'Where teams use words differently or platforms disagree, the lessons say so instead of pretending there is one right answer.'],
+];
+---
+
+<BaseLayout title="About" description={`What ${site.name} is, how it works and how to use it.`}>
+  <section class="relative overflow-hidden border-b border-line">
+    <div class="bg-grid absolute inset-0 -z-10 opacity-60"></div>
+    <div class="container-page py-16">
+      <span class="grid size-12 place-items-center rounded-2xl text-white shadow-soft" style="background: linear-gradient(135deg, var(--brand), var(--brand-2))">
+        <Icon name="bug" size={24} />
+      </span>
+      <h1 class="mt-5 text-4xl font-bold tracking-tight sm:text-5xl">About {site.name}</h1>
+      <p class="mt-4 max-w-2xl text-lg leading-relaxed text-muted">
+        {site.name} is a free, hands-on course for people who want to become manual QA testers, with a focus on mobile apps and websites. No account,
+        no paywall, no ads.
+      </p>
+    </div>
+  </section>
+
+  <div class="container-page max-w-4xl space-y-16 py-14">
+    <section class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      {
+        stats.map(([n, label]) => (
+          <div class="card p-4 text-center">
+            <p class="text-2xl font-bold tabular-nums">{n}</p>
+            <p class="mt-0.5 text-xs text-muted">{label}</p>
+          </div>
+        ))
+      }
+    </section>
+
+    <section>
+      <h2 class="text-2xl font-bold tracking-tight">How it's built</h2>
+      <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {
+          principles.map(([icon, title, text]) => (
+            <div class="card p-5">
+              <span class="grid size-10 place-items-center rounded-xl bg-brand-soft text-brand">
+                <Icon name={icon} size={19} />
+              </span>
+              <h3 class="mt-4 font-semibold">{title}</h3>
+              <p class="mt-1 text-sm leading-relaxed text-muted">{text}</p>
+            </div>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="prose">
+      <h2>How to use it</h2>
+      <ol>
+        <li>
+          <strong>Follow the roadmap</strong> on the <a href={href("/")}>home page</a>: Fundamentals, then UI components, features, mobile and web testing,
+          tutorials and interview prep.
+        </li>
+        <li>
+          <strong>Pick Quick or Detailed.</strong> Many lessons have a 5-minute version and an in-depth one. Switch at the top of the lesson.
+        </li>
+        <li>
+          <strong>Do the exercises.</strong> Bug hunts hide real-looking defects in working demos. Try to find them before revealing the answers.
+        </li>
+        <li>
+          <strong>Mark pages as complete</strong> and review them in <a href={href("/bites")}>Bites</a>, a feed of 10-second cards that brings topics back
+          just before you'd forget them.
+        </li>
+        <li>
+          <strong>Prepare for interviews</strong> with <a href={href("/interview")}>{interview.length} common questions</a>, model answers and flashcards.
+        </li>
+        <li>
+          <strong>Finish with the <a href={href("/capstone")}>capstone project</a>:</strong> test a whole app release, from reading the brief to a go / no-go
+          recommendation, and get a printable certificate.
+        </li>
+      </ol>
+
+      <h2>Your data</h2>
+      <p>
+        There are no accounts. Your progress, quiz scores, bug hunt results, Bites history and capstone work are stored only in your browser (local storage). Nothing
+        is sent to a server. To move to another device, use <a href={href("/progress")}>Export and Import</a> on the progress page.
+        {newsletter.kitFormId && <> The only exception is the optional newsletter: if you sign up, your email address is stored by Kit, our newsletter service, and you can unsubscribe from any email.</>}
+      </p>
+
+      <h2>Install it as an app</h2>
+      <p>
+        Bugwise works as an app on your phone or computer: it opens full screen from your home screen, and pages you've visited keep working
+        without internet. On iPhone and iPad, open the site in Safari, tap Share and choose Add to Home Screen. On Android and in Chrome or Edge on a
+        computer, use the button below or the install icon in the address bar.
+      </p>
+      <div class="not-prose my-4"><InstallApp client:visible variant="button" /></div>
+
+      <h2>Accuracy</h2>
+      <p>
+        Testing tools, platform rules and store policies change often. The lessons explain concepts that last, and they say when something depends on
+        the platform version or your team's process. Always check current platform documentation before relying on an exact number or menu path.
+      </p>
+    </section>
+
+    <section class="rounded-3xl border border-line p-8 text-center" style="background: linear-gradient(135deg, var(--brand-soft), var(--surface) 60%)">
+      <h2 class="text-2xl font-bold tracking-tight">Ready to start?</h2>
+      <p class="mt-2 text-muted">The quick version of the first lesson takes about 6 minutes.</p>
+      <a href={href('/fundamentals/what-is-software-testing')} class="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-fg px-5 font-medium text-bg">
+        What is software testing? <Icon name="arrow-right" size={16} />
+      </a>
+    </section>
+  </div>
+</BaseLayout>

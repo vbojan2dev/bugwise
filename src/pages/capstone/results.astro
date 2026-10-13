@@ -1,0 +1,41 @@
+---
+import CapstoneShell from '@/components/capstone/CapstoneShell.astro';
+import Results from '@/components/capstone/Results';
+---
+
+<CapstoneShell
+  path="/capstone/results"
+  phase="results"
+  title="Results and certificate"
+  description="Your FoodDash 2.0 capstone scorecard: bugs found by category, severity and priority accuracy, hints for missed bugs, and a printable certificate."
+  lead="How did your testing go? Here's what you found, how your ratings compare with the team's, and hints for what's still hiding in the build."
+>
+  <Results client:load />
+</CapstoneShell>
+
+<style is:global>
+  @media print {
+    html.print-cert body *:not(:has(#certificate)):not(#certificate):not(#certificate *) {
+      display: none !important;
+    }
+    html.print-cert,
+    html.print-cert body {
+      background: #fff !important;
+    }
+    html.print-cert *:has(#certificate) {
+      padding: 0 !important;
+      margin: 0 !important;
+      border: 0 !important;
+    }
+    html.print-cert #certificate {
+      margin: 0 !important;
+      break-inside: avoid;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    @page {
+      size: A4 landscape;
+      margin: 12mm;
+    }
+  }
+</style>

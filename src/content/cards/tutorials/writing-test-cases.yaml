@@ -1,0 +1,45 @@
+teaser: "Two testers run the same test case and get different results. Whose fault is it? Usually the person who wrote it."
+cards:
+  - type: flip
+    front: "What is a test case?"
+    back: "A written set of instructions for checking one specific thing: what must be true first, exact steps and data, and what should happen."
+  - type: spotbug
+    screen: ["TC-014: Sign in works", "1. Open PocketBank", "2. Enter anna@test.com / Secret123!", "3. Tap Sign in", "Expected: It works"]
+    question: "What's missing from this test case?"
+    bug: "The expected result isn't specific enough to judge."
+    explain: "'It works' could pass almost anything. Say exactly what should happen, like 'Home screen opens and shows Hi, Anna', so any tester reaches the same verdict."
+  - type: thisorthat
+    prompt: "Which is a test scenario rather than a test case?"
+    left: "Check invalid sign-ins"
+    right: "Type Abc1234, expect error"
+    answer: left
+    explain: "A scenario is a high-level idea of what to check. A test case gives the exact steps, data and expected result for one check."
+  - type: quiz
+    q: "Passwords must be at least 8 characters. Which pair of inputs best tests the boundary?"
+    options: ["7 and 8 characters", "1 and 50 characters", "8 and 20 characters"]
+    answer: 0
+    explain: "Test right at the edge: just below the limit (7, should fail) and exactly at it (8, should pass)."
+  - type: spotbug
+    screen: ["TC-021: Short password is rejected", "1. Open the app", "2. Log in with a short password", "3. Check it"]
+    question: "What's wrong with these steps?"
+    bug: "The steps are vague and give no test data."
+    explain: "'A short password' could mean 1 or 7 characters, and 'check it' says nothing. Two testers would run it two different ways."
+  - type: quiz
+    q: "Which field describes what must be true before you start the test?"
+    options: ["Test data", "Actual result", "Preconditions"]
+    answer: 2
+    explain: "Preconditions set the starting state, like 'user is signed out' or 'an account exists for anna@test.com'. Without them the case may fail for the wrong reason."
+  - type: truefalse
+    statement: "One test case can check the eye icon, forgot password and account lock together."
+    answer: false
+    explain: "If that case fails, which part failed? One case should check one thing. If the title needs 'and' to join checks, split it."
+  - type: truefalse
+    statement: "The actual result and status are filled in when you run the test, not when you write it."
+    answer: true
+    explain: "You write the expected result up front. During execution you record what really happened and mark it Pass, Fail or Blocked."
+  - type: flip
+    front: "Name three mobile situations to add test cases for."
+    back: "Rotation, the keyboard covering buttons, interruptions like calls or backgrounding, and network changes such as airplane mode or slow connections."
+  - type: tip
+    title: "Write for a stranger"
+    text: "Re-read each case as if you'd never seen the app. Name the exact buttons, give real values, and say where to start."

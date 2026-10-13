@@ -1,0 +1,44 @@
+teaser: "The app says your order cost 33.50, but the dishes add up to 30. One short query tells you which one is lying."
+cards:
+  - type: flip
+    front: "Name four ways testers use SQL."
+    back: "Check what the app really saved, find test data, confirm preconditions, and investigate bugs to see which layer is broken."
+  - type: thisorthat
+    prompt: "A ticket says order 1013 has the wrong status. You can reach the shared staging database. What do you run first?"
+    left: "UPDATE the status"
+    right: "SELECT the order"
+    answer: right
+    explain: "Testers read first. Changing shared data hides the bug, can break other people's tests and destroys the evidence for your report."
+  - type: quiz
+    q: "Which condition finds users with no city saved?"
+    options: ["city = NULL", "city IS NULL", "city = ''"]
+    answer: 1
+    explain: "Nothing is equal to NULL, not even NULL, so = NULL returns zero rows without an error. Always use IS NULL."
+  - type: spotbug
+    screen: ["SELECT o.id FROM orders o", "JOIN order_items oi", "  ON oi.order_id = o.id", "WHERE oi.id IS NULL;", "0 rows"]
+    question: "This should find orders without items. Why does it return nothing?"
+    bug: "It uses an INNER JOIN instead of a LEFT JOIN."
+    explain: "An INNER JOIN drops orders that have no items before WHERE runs. A LEFT JOIN keeps them, with NULL in the item columns."
+  - type: quiz
+    q: "You want users with more than one account per email. Where does COUNT(*) > 1 go?"
+    options: ["In WHERE", "In ORDER BY", "In HAVING"]
+    answer: 2
+    explain: "WHERE filters rows before grouping, when nothing is counted yet. HAVING filters the groups after GROUP BY."
+  - type: truefalse
+    statement: "WHERE city <> 'Berlin' also returns users whose city is NULL."
+    answer: false
+    explain: "Comparing NULL with anything gives unknown, so those rows are skipped. Add OR city IS NULL if you want them."
+  - type: flip
+    front: "What is an orphan row?"
+    back: "A row whose foreign key points to nothing, like an order item for an order that was deleted. Find it with LEFT JOIN and IS NULL."
+  - type: spotbug
+    screen: ["users", "id 1: mia.novak@mail.test", "id 7: Mia.Novak@mail.test"]
+    bug: "The same email is registered twice with different capitals."
+    explain: "Sign-up checked uniqueness case-sensitively. Find these with GROUP BY LOWER(email) HAVING COUNT(*) > 1."
+  - type: truefalse
+    statement: "Without ORDER BY, a database may return rows in a different order each time."
+    answer: true
+    explain: "Row order is only guaranteed with ORDER BY. If a task or a screen says newest first, your query must say so too."
+  - type: tip
+    title: "SELECT before you UPDATE"
+    text: "On your own test database, run the SELECT with the exact WHERE first. Only when it returns the right rows, turn it into the UPDATE or DELETE."

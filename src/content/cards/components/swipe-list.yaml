@@ -1,0 +1,45 @@
+teaser: "You tap Archive on one chat and a different chat disappears. How can a simple swipe row get that wrong?"
+cards:
+  - type: flip
+    front: "Where do trailing swipe actions appear in English?"
+    back: "On the right, after swiping left. They hold destructive actions like Delete or Archive. In RTL languages the sides mirror."
+  - type: flip
+    front: "What is a full swipe?"
+    back: "Swiping past a point of no return runs the outermost action on release, usually with a stretching button and a haptic tick."
+  - type: quiz
+    q: "You delete the second row and the row that moves up shows its buttons already open. Likely cause?"
+    options: ["Open state stored by position", "Swipe threshold too low", "Slow network"]
+    answer: 0
+    explain: "When rows move, position 2 becomes a different item. Per-row state must belong to the item, not its position in the list."
+  - type: quiz
+    q: "What should tapping an open row do?"
+    options: ["Open the item", "Close the row only", "Delete the item"]
+    answer: 1
+    explain: "An open row is a temporary state. Tapping it should only close it, not also open the detail screen."
+  - type: truefalse
+    statement: "With VoiceOver on, users can still swipe a row to reveal its actions."
+    answer: false
+    explain: "VoiceOver uses swipes to move focus. Swipe actions must be exposed as accessibility custom actions, offered by swiping up or down."
+  - type: truefalse
+    statement: "Only one row should show its swipe actions at a time."
+    answer: true
+    explain: "Starting to swipe another row should close the first. Two open rows look broken and can make actions hit the wrong item."
+  - type: thisorthat
+    prompt: "A user swipes to remove a saved bank card. It can't be restored afterwards."
+    left: "Undo toast"
+    right: "Confirmation"
+    answer: right
+    explain: "Permanent, hard-to-reverse actions deserve a short confirmation. Undo fits frequent, reversible actions like archiving a chat."
+  - type: thisorthat
+    prompt: "Archiving chats is frequent and archived chats can be restored."
+    left: "Undo toast"
+    right: "Confirmation"
+    answer: left
+    explain: "A dialog on every archive slows people down and teaches them to tap without reading. Undo keeps it fast and safe."
+  - type: spotbug
+    screen: ["Swipe Archive on 'Mom'", "Snackbar: Chat archived", "Archived folder: 0 chats"]
+    bug: "Archive actually deleted the chat."
+    explain: "The label must match the result. Always check where the item went, not just that the row disappeared."
+  - type: tip
+    title: "Ask how else to do it"
+    text: "Every swipe action needs a visible alternative: edit mode, a long-press menu or a button in the detail view."

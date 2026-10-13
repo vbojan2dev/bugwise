@@ -1,0 +1,45 @@
+teaser: "The screen says 'Booking confirmed!' and every check looks green. One peek behind the screen shows the payment never went through."
+cards:
+  - type: flip
+    front: "Black, white and grey box in a nutshell?"
+    back: "Black box: inputs and outputs only, tests from requirements. White box: tests designed from the code. Grey box: outside testing with some inside knowledge."
+  - type: flip
+    front: "Statement coverage vs branch coverage?"
+    back: "Statement coverage: share of code lines that ran. Branch coverage: share of true and false exits of each if that tests took. Branch is stronger."
+  - type: quiz
+    q: "The app shows 'Payment successful' and you open DevTools to check the payment API really returned 200. Which approach?"
+    options: ["Black box", "Grey box", "White box"]
+    answer: 1
+    explain: "You still test through the UI, but use inside knowledge like API calls and stored data. That's grey box, a core skill for modern manual testers."
+  - type: quiz
+    q: "Which bug is black-box testing best at finding?"
+    options: ["A branch no test executes", "An unused variable", "A required feature never built"]
+    answer: 2
+    explain: "Black-box tests come from the requirements, so they notice missing behavior. Code-based testing can't cover code that doesn't exist."
+  - type: truefalse
+    statement: "100% code coverage means the app is correct."
+    answer: false
+    explain: "Coverage shows what code ran, not whether results were right. If a rule was never coded, there's no branch to cover and coverage still says 100%."
+  - type: truefalse
+    statement: "One test can reach 100% statement coverage but only 50% branch coverage."
+    answer: true
+    explain: "If an if is always true, every line can still run. The false exit is never taken, so half the branches stay untested."
+  - type: thisorthat
+    prompt: "You type the surname O'Brien into sign-up because you know many apps break on apostrophes."
+    left: "Error guessing"
+    right: "Boundary value analysis"
+    answer: left
+    explain: "Choosing inputs from experience of common developer mistakes is error guessing, an experience-based technique. No requirement told you to try it."
+  - type: thisorthat
+    prompt: "A developer writes unit tests so both exits of every if in the discount function run at least once."
+    left: "Black box"
+    right: "White box"
+    answer: right
+    explain: "Tests designed from the code's structure, aiming for branch coverage, are white box. Developers usually do this through unit tests."
+  - type: spotbug
+    screen: ["Gym app: cancel class", "Class starts in: 24 hours", "Cancellation fee: €undefined"]
+    bug: "The fee shows 'undefined' instead of a number."
+    explain: "The fee is only set when canceling under 12 hours. A test on the false branch exposes it, which 100% statement coverage alone missed."
+  - type: tip
+    title: "Black box is not beginner level"
+    text: "Designing strong black-box tests is a real skill, and it's the only approach that catches missing features. Combine all four on the same feature."

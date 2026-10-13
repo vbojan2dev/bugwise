@@ -1,0 +1,45 @@
+teaser: "You click Log out, then press Reload, and you're logged back in. What did the browser quietly remember?"
+cards:
+  - type: flip
+    front: "Cookies vs localStorage in one sentence each?"
+    back: "Cookies travel to the server with every request. localStorage stays in the browser and is only read by the page."
+  - type: quiz
+    q: "Which cookie flag stops page JavaScript, including injected scripts, from reading it?"
+    options: ["Secure", "HttpOnly", "SameSite=Strict"]
+    answer: 1
+    explain: "HttpOnly cookies are sent to the server but are invisible to document.cookie. Secure only limits a cookie to HTTPS."
+  - type: truefalse
+    statement: "Clicking Log out automatically clears everything the site stored in the browser."
+    answer: false
+    explain: "Logout clears nothing by itself. The app must end the server session and delete every token and personal item in storage."
+  - type: spotbug
+    screen: ["You are logged out", "Local storage:", "  auth_token = eyJhbGciOi...", "(Reload: Hi, Anna!)"]
+    bug: "Logout left the auth token behind."
+    explain: "The app reuses the leftover token on reload. On a shared computer, the next person lands in Anna's account. Critical."
+  - type: quiz
+    q: "A dismissed banner is saved in sessionStorage. When does it come back?"
+    options: ["On the next reload", "Never", "When the tab is closed and reopened"]
+    answer: 2
+    explain: "sessionStorage survives reloads but is tied to one tab. A new tab starts with empty sessionStorage."
+  - type: thisorthat
+    prompt: "\"Remember me\" is unchecked. In DevTools, session_id expires in 30 days."
+    left: "Correct"
+    right: "Bug"
+    answer: right
+    explain: "Unchecked should give a session cookie that dies when the browser closes. A 30-day expiry keeps the user logged in."
+  - type: spotbug
+    screen: ["Banner: [ Reject all ] clicked", "Cookies:", "  cookie_consent  analytics:0", "  _ga             GA1.1.4821..."]
+    bug: "Analytics cookie set after Reject all."
+    explain: "_ga is optional analytics. After rejecting, only necessary cookies may exist. It's a bug and a likely breach of EU/UK consent rules."
+  - type: thisorthat
+    prompt: "Anna logs out on a shared laptop. Ben logs in and sees Anna's cart."
+    left: "Minor glitch"
+    right: "Serious data leak"
+    answer: right
+    explain: "Personal data carried over between users is High to Critical. Logout must clear the cart, and each user should get their own."
+  - type: flip
+    front: "What is a session cookie?"
+    back: "A cookie with no Expires or Max-Age. DevTools shows its expiry as Session, and the browser deletes it when it closes."
+  - type: tip
+    title: "Test in a private window"
+    text: "Embedded logins, chat widgets and payment iframes that rely on third-party cookies can break. Test them in Safari, Firefox and Incognito."

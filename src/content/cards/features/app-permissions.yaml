@@ -1,0 +1,47 @@
+teaser: "You tapped Don't Allow once, weeks ago. Why can't the app simply ask you again?"
+cards:
+  - type: quiz
+    q: "On iOS, how many times can an app show the system dialog for the camera?"
+    options: ["Once", "Twice", "Every launch"]
+    answer: 0
+    explain: "iOS shows each permission dialog once. After Don't Allow, only the Settings app can change it."
+  - type: truefalse
+    statement: "On Android 11+, the dialog stops appearing after the second denial."
+    answer: true
+    explain: "The app may ask again once. After the second Don't allow, the request fails instantly and only Settings can help."
+  - type: spotbug
+    screen: ["Location is off", "[Turn on location]", "User taps it: nothing happens"]
+    bug: "The button asks again instead of opening Settings."
+    explain: "Once a denial is final, the OS ignores new requests. The only working path is an Open Settings button."
+  - type: thisorthat
+    prompt: "A new user opens a delivery app and sees three permission dialogs before the menu appears."
+    left: "Report a bug"
+    right: "Good practice"
+    answer: left
+    explain: "Without context most people tap Don't Allow, which on iOS is final. Ask when the user starts the feature."
+  - type: flip
+    front: "What does 'Allow once' mean for the app?"
+    back: "Access only for now. It expires when the app is no longer in use, so the app must check and ask again next time."
+  - type: quiz
+    q: "With approximate location on, the app says 'Couldn't find your address'. What should it do instead?"
+    options: ["Crash politely", "Show the area and let the user confirm", "Ask to reinstall"]
+    answer: 1
+    explain: "Approximate location is a valid answer. The app can suggest the area and let the user confirm or type the street."
+  - type: spotbug
+    screen: ["Camera: Don't allow", "Tap Add photo", "Black screen, shutter does nothing"]
+    bug: "No explanation or Open Settings after denial."
+    explain: "A denied feature must say what's missing, why it helps and how to turn it on, while the rest of the app keeps working."
+  - type: quiz
+    q: "On Android, you revoke the camera in Settings while the camera screen is open. What does the OS do?"
+    options: ["Nothing", "Ends the app's process", "Uninstalls the app"]
+    answer: 1
+    explain: "When the user returns, Android recreates the last screen. If it uses the camera without checking first, the app crashes."
+  - type: thisorthat
+    prompt: "A profile screen needs one photo. The app asks for full photo library access."
+    left: "Fine as is"
+    right: "Suggest the picker"
+    answer: right
+    explain: "The system photo picker needs no permission and gives the app only the chosen photo. Asking for less is better."
+  - type: tip
+    title: "Reset permissions often"
+    text: "Reinstall, use Settings, adb shell pm revoke or reset-permissions, or xcrun simctl privacy reset, so you see what new users see."
