@@ -1,0 +1,45 @@
+teaser: "Your portrait photo uploads sideways, and it might also tell strangers where you live. What's hiding inside that JPEG?"
+cards:
+  - type: flip
+    front: "Why do portrait photos sometimes upload sideways?"
+    back: "Phones store the pixels as the sensor saw them plus an EXIF Orientation tag. Apps that ignore the tag show the raw, rotated pixels."
+  - type: quiz
+    q: "Uploads fail only for iPhone users. Which format should you test first?"
+    options: ["WebP", "HEIC", "GIF"]
+    answer: 1
+    explain: "HEIC is the iPhone camera default. Servers that only accept JPEG and PNG reject it, often with a generic error."
+  - type: spotbug
+    screen: ["Photo: DSC_0912.JPG (12.4 MB)", "Progress: 100%", "Error: Upload failed. Try again."]
+    bug: "The error doesn't mention the 10 MB size limit."
+    explain: "The user waited for the whole upload, and retrying can never work. Check the size before uploading and name the limit."
+  - type: truefalse
+    statement: "A file named photo.jpg is always a real image."
+    answer: false
+    explain: "Names and reported types are easy to fake. The server must check the real file content and reject anything that isn't an image."
+  - type: quiz
+    q: "The size limit is 10 MB. Which files make the best boundary test?"
+    options: ["1 MB and 50 MB", "Only a 10 MB file", "9.9, 10 and 10.1 MB"]
+    answer: 2
+    explain: "Test just under, exactly at and just over the limit. Off-by-one and unit mistakes hide right at the boundary."
+  - type: thisorthat
+    prompt: "A marketplace stores sellers' photos with their EXIF GPS coordinates. Buyers can download them."
+    left: "Privacy bug"
+    right: "Useful extra info"
+    answer: left
+    explain: "A photo taken at home reveals the home address. Apps that publish user photos should strip location metadata."
+  - type: spotbug
+    screen: ["Network: Slow 3G -> Offline", "Uploading sofa.jpg 45%", "Photo grid: (sofa.jpg gone)", "No message shown"]
+    bug: "The photo is silently lost when the connection drops."
+    explain: "Users never notice until the listing is missing photos. Keep the photo, show 'Waiting for connection' and resume or offer Retry."
+  - type: flip
+    front: "What's the safe order when removing photo metadata?"
+    back: "Rotate the pixels first, then strip EXIF. Stripping first deletes the Orientation tag too, and portrait photos end up sideways."
+  - type: thisorthat
+    prompt: "You only test uploads with landscape photos downloaded from the web. Rotation looks perfect."
+    left: "Rotation is fine"
+    right: "Not tested yet"
+    answer: right
+    explain: "Landscape photos usually have Orientation 1, so they look right even when the tag is ignored. Use real portrait photos from a phone."
+  - type: tip
+    title: "Build an upload test kit"
+    text: "Keep HEIC, portrait, huge, just-under-limit, transparent PNG, GIF, a photo with GPS, a 0-byte file and a renamed non-image ready."

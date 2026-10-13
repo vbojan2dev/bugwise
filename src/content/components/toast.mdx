@@ -1,0 +1,416 @@
+---
+title: Toast / Snackbar
+description: A short message that pops up, says what just happened, and disappears on its own. Learn the Android, iOS and web versions, how long they should stay, the Undo pattern, and the timing and stacking bugs testers find.
+category: feedback
+aka: [Snackbar, Notification, Flash message]
+platforms: [ios, android, web]
+minutes: 30
+order: 2
+---
+
+import Anatomy from '@/components/demos/toast/Anatomy';
+import VariantsGallery from '@/components/demos/toast/VariantsGallery';
+import Playground from '@/components/demos/toast/Playground';
+import { BuggyInboxApp } from '@/components/demos/toast/BuggyInboxApp';
+import { StaticScreen, Snackbar, WebToast, InlineFieldError } from '@/components/demos/toast/Toasts';
+
+You archive an email and a dark bar slides up from the bottom: **"Conversation archived · Undo"**. A few seconds later it's gone. You didn't have to tap anything, and you could keep working while it was there. That little bar is a <Term id="toast" />, called a **snackbar** in Material Design.
+
+Toasts are small, but testers love them. They disappear on a timer, they appear on top of other things, they promise that something worked, and the **Undo** button has to really undo. Each of those is a place for bugs.
+
+## What is a toast?
+
+A toast is a **brief, non-blocking message** that appears on top of the screen, confirms what just happened, and **disappears automatically**. Unlike a <Term id="modal" />, it doesn't stop the user. They can ignore it and carry on.
+
+You'll usually see one used to:
+
+- **Confirm an action**: *Link copied*, *Added to bag*, *Settings saved*.
+- **Offer a quick way back**: *Conversation archived · Undo*, *Item removed · Undo*.
+- **Report a small, temporary problem with a fix**: *Couldn't send. Retry*.
+
+### Anatomy
+
+<Anatomy />
+
+### How it differs from similar components
+
+| Component | Blocks the user? | Disappears by itself? | Typical use |
+| --- | --- | --- | --- |
+| **Toast / snackbar** | No | Yes, after a few seconds | Feedback on an action, optional Undo |
+| **Banner (in-page)** | No | No, until fixed or dismissed | Ongoing status: "You're offline", "Card expires soon" |
+| **Inline message** | No | No | Form errors, next to the field that has the problem |
+| **Dialog / alert** | Yes | No | Decisions and errors the user must deal with |
+| **<Term id="push-notification">Push notification</Term>** | No | Goes to the notification center | Messages from outside the app, even when it's closed |
+
+<Callout type="dev" title="Platform names">
+On **Android**, a *Toast* is a specific system component (plain text, no buttons) and a *Snackbar* is the Material component with an optional action. **iOS** has no native toast at all: apps use custom banners or HUDs. On the **web**, people say *toast*, *notification*, *flash message* or *alert*. In a bug report, describe what you saw ("the snackbar at the bottom").
+</Callout>
+
+## Designs & variants
+
+<VariantsGallery client:visible />
+
+### How long should it stay?
+
+There's no single number, but these are good rules to test against:
+
+| Situation | Typical duration |
+| --- | --- |
+| Android system Toast | 2 s (`LENGTH_SHORT`) or 3.5 s (`LENGTH_LONG`), fixed by the system |
+| Short confirmation, no action | About 4–6 s |
+| With an action (Undo, Retry) | Longer, around 6–10 s, or until dismissed. Jetpack Compose's Material 3 snackbar stays until dismissed by default when it has an action |
+| Material snackbar presets | Material's guidance is roughly 4–10 s. In Compose, `SnackbarDuration.Short` is 4 s and `Long` 10 s; the older View-based `Snackbar` uses much shorter presets (about 1.5 s and 2.75 s), so check which one the app uses |
+| Error that needs the user | Don't auto-hide at all, or don't use a toast |
+
+The longer and more important the message, the longer it should stay. On the web, the timer should also **pause while the pointer or keyboard focus is on the toast**, so it doesn't vanish under the cursor.
+
+### The Undo pattern
+
+Undo is what makes toasts powerful: instead of asking *"Are you sure?"* in a dialog, the app **does the action immediately and offers to reverse it**. That's faster for everyone, but it's only safe if Undo really works. Testers check:
+
+<Steps>
+
+1. **Undo restores exactly the right item**, in the same place, with the same state (read/unread, starred, labels).
+2. **Undo works after several actions in a row**: archive two emails, then undo the last one.
+3. **The server agrees.** After Undo, a refresh or another device still shows the item.
+4. **Undo is reachable in time** with large text, a screen reader or a slow hand.
+5. **Nothing happens twice.** Tapping Undo twice doesn't restore two copies.
+
+</Steps>
+
+## When to use it
+
+A toast is a good choice when:
+
+- The message is **short** (one line, two at most) and **confirms something the user just did**.
+- The user **doesn't need to do anything**. If they miss it, nothing bad happens.
+- There is **at most one** simple action, like Undo or Retry.
+- The action was **reversible** or already succeeded.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Confirm a reversible action">
+
+<div class="not-prose demo-screen my-3"><StaticScreen label="Snackbar: Conversation archived, Undo"><Snackbar text="Conversation archived" action="Undo" /></StaticScreen></div>
+
+Short, about something the user just did, with a way back.
+
+</Do>
+<Dont title="Errors the user must act on">
+
+<div class="not-prose demo-screen my-3"><StaticScreen label="Snackbar: Payment failed, your card was declined"><Snackbar text="Payment failed. Your card was declined." /></StaticScreen></div>
+
+If they miss it, they think they ordered. A failed payment needs a dialog or an inline message that **stays** until the user fixes it.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Form errors next to the field">
+
+<div class="not-prose demo-screen my-3"><StaticScreen label="An email field with a red border and the error: Enter a valid email address" placement="inline"><InlineFieldError label="Email" value="anna@gmail" error="Enter a valid email, like name@example.com" /></StaticScreen></div>
+
+The error stays visible while the user fixes it, right where the problem is.
+
+</Do>
+<Dont title="Validation errors in a toast">
+
+<div class="not-prose demo-screen my-3"><StaticScreen label="A web toast saying Invalid input, far away from the form field" placement="top"><WebToast kind="error" title="Invalid input" text="Please check the form." /></StaticScreen></div>
+
+Which field? By the time the user scrolls to look, the toast is gone.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="One message for a batch">
+
+<div class="not-prose demo-screen my-3"><StaticScreen label="One snackbar: 3 conversations archived, Undo"><Snackbar text="3 conversations archived" action="Undo" /></StaticScreen></div>
+
+One summary, one Undo.
+
+</Do>
+<Dont title="A pile of toasts">
+
+<div class="not-prose demo-screen my-3"><StaticScreen label="Three snackbars stacked on top of each other" height={240}><div class="space-y-2"><Snackbar text="Conversation archived" action="Undo" /><Snackbar text="Conversation archived" action="Undo" /><Snackbar text="Conversation archived" action="Undo" /></div></StaticScreen></div>
+
+Three identical bars cover the content, and it's unclear what each Undo would restore.
+
+</Dont>
+</Compare>
+
+<Callout type="warning" title="Critical information never goes in a toast">
+Anything the user **must** see or act on (failed payments, lost data, security warnings, a booking that didn't go through) doesn't belong in something that disappears on a timer. If you see it in a toast, report it as a usability or accessibility bug.
+</Callout>
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Undo doesn't undo** | Item doesn't come back, the wrong item comes back, or it reappears after refresh | High |
+| 2 | **Too fast** | Disappears before you can read it or reach Undo | Medium |
+| 3 | **Success after failure** | "Saved" even though the request failed (500 or offline in the network log) | High |
+| 4 | **Endless stacking** | Many toasts pile up and cover the screen | Medium |
+| 5 | **Covers important UI** | On top of the bottom navigation, the FAB, "Checkout" or the keyboard | Medium |
+| 6 | **Truncated text** | Message or action cut off in other languages or with large text | Medium |
+| 7 | **Timer never pauses (web)** | The toast disappears while your mouse is on its button | Low–Medium |
+| 8 | **Screen reader silence** | VoiceOver / TalkBack doesn't announce it | High (for affected users) |
+| 9 | **Shows on the wrong screen** | You navigate away and the toast follows, or appears after you return | Low |
+| 10 | **Can't be dismissed** | No close button on a long or persistent toast; it blocks content | Low–Medium |
+
+<Callout type="bug" title="Why #3 happens: optimistic UI">
+Many apps update the screen **before** the server answers, to feel fast. That's fine, as long as they **roll back and show an error** if the request fails. When they don't, the user sees "Archived" while the server still has the email. To catch it, turn on a slow or failing network and watch the network log, then refresh.
+</Callout>
+
+## Try it: toast timing lab
+
+Set the duration to 2 seconds and try to press Undo. Turn off pause-on-hover and hover a toast. Pick *Unlimited* stacking and press **Add 5 quickly**. Turn off the live region and see what a screen reader user would get.
+
+<Playground client:visible />
+
+## Find the bug
+
+This mail app archives emails with a snackbar and Undo. It has **six bugs**. Explore it like a tester:
+
+- Archive one email, then two in a row, and use **Undo**.
+- Watch how long the snackbar stays and where it appears.
+- Turn on **Poor connection**, archive, then **refresh** (the button next to the search bar).
+- Turn on **Large text**.
+
+<BugHunt
+  title="Mail inbox"
+  bugs={[
+    {
+      title: 'Undo restores the wrong email',
+      hint: 'Archive one email, wait, archive another, then press Undo.',
+      detail: 'Undo brings back the <strong>first</strong> email you archived in the session, not the one the snackbar was about. The email you just archived stays archived. Expected: Undo restores exactly the item from that snackbar.',
+    },
+    {
+      title: 'Snackbar disappears after 2 seconds',
+      hint: 'Count how long the snackbar stays.',
+      detail: 'It vanishes after about <strong>2 s</strong>. That\'s barely enough to read it, and not enough to reach Undo, especially with a screen reader. Expected: at least 4 s, and longer (or until dismissed) when there is an action.',
+    },
+    {
+      title: 'Snackbars stack on top of each other',
+      hint: 'Archive three emails quickly.',
+      detail: 'Every archive adds another snackbar above the last one, covering the inbox and the Compose button. Material snackbars appear <strong>one at a time</strong>: a new one replaces the previous one.',
+    },
+    {
+      title: 'Snackbar covers the bottom navigation',
+      hint: 'Look at what is under the snackbar.',
+      detail: 'The snackbar is drawn over the navigation bar, so Mail, Chat, Meet and Starred are hidden and can\'t be tapped. The Compose button doesn\'t move up either. Expected: the snackbar sits above the navigation bar and the FAB moves out of its way.',
+    },
+    {
+      title: 'Success message although the request failed',
+      hint: 'Turn on Poor connection, archive an email, check the network log, then refresh.',
+      detail: 'The API returns <code>500</code>, but the app still says “Conversation archived” and removes the email. After a refresh it is back in the inbox. Expected: roll back and show an error such as “Couldn’t archive. Retry”.',
+    },
+    {
+      title: 'Message is clipped with large text',
+      hint: 'Turn on Large text and archive an email.',
+      detail: 'The message is cut off mid-word (“Conversation arch…” without even an ellipsis). Expected: the text wraps to a second line (the action can move below it), so the whole message is readable.',
+    },
+  ]}
+>
+  <BuggyInboxApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #5?">
+
+**Title:** Inbox: "Conversation archived" shown and email removed although POST /archive returns 500
+
+**Precondition:** Network is failing (here: "Poor connection" on).
+
+**Steps:** 1. Tap the archive icon on "Your Lisbon trip itinerary". 2. Check the network log. 3. Tap Refresh.
+
+**Expected:** An error such as "Couldn't archive. Retry", and the email stays in the inbox.
+**Actual:** The snackbar says "Conversation archived" and the email disappears. The request failed with 500. After refresh the email is back.
+
+**Severity:** High (the app reports success for a failed action) · **Reproducible:** 10/10 with a failing network
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Toast / snackbar test checklist"
+  storageKey="toast"
+  items={[
+    'The message is short, specific and matches what actually happened',
+    'Success is only shown after the server confirmed it; failures show an error instead',
+    'It stays long enough to read (4 s or more) and longer when it has an action',
+    'Undo restores exactly the right item, also after several actions in a row and after a refresh',
+    'Only one snackbar at a time (or a small, limited stack on web)',
+    'It does not cover the bottom navigation, FAB, keyboard or primary buttons',
+    'Text is not truncated in long languages or at the largest text size',
+    'Web: the timer pauses on hover and keyboard focus, and there is a close button',
+    'Screen readers announce it (role="status" / aria-live="polite"); errors use role="alert"',
+    'The action button can be reached with a keyboard and a screen reader before it disappears',
+    'It does not follow the user to another screen or reappear later',
+    'Critical errors are not shown only in a toast',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-TST-001',
+      title: 'Archive shows a snackbar with Undo',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open the inbox', 'Tap the archive icon on "Team lunch on Friday?"'],
+      expected: 'The email disappears and a snackbar "Conversation archived" with "Undo" appears above the bottom navigation for at least 4 s.',
+    },
+    {
+      id: 'TC-TST-002',
+      title: 'Undo restores the correct email',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Archive "Your order has shipped"', 'Wait 5 s', 'Archive "Team lunch on Friday?"', 'Tap Undo'],
+      expected: '"Team lunch on Friday?" is back in its original position. "Your order has shipped" stays archived. After refresh, the result is the same.',
+    },
+    {
+      id: 'TC-TST-003',
+      title: 'Failed request shows an error, not success',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Server returns 500 for archive, or device is offline'],
+      steps: ['Archive any email', 'Wait for the request to finish'],
+      expected: 'An error such as "Couldn\'t archive. Retry" is shown and the email stays in (or returns to) the inbox.',
+    },
+    {
+      id: 'TC-TST-004',
+      title: 'Snackbars replace each other',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Archive three emails within 2 seconds'],
+      expected: 'Only one snackbar is visible at any time. Undo on it restores the last archived email.',
+    },
+    {
+      id: 'TC-TST-005',
+      title: 'Snackbar does not cover navigation or the FAB',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Archive an email', 'While the snackbar is visible, tap each bottom navigation item'],
+      expected: 'The snackbar sits above the navigation bar, the Compose button moves up, and all navigation items work.',
+    },
+    {
+      id: 'TC-TST-006',
+      title: 'Message is readable at the largest text size',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['System font size set to maximum', 'App language set to German'],
+      steps: ['Archive an email'],
+      expected: 'The full message is readable (wraps to two lines if needed) and the Undo action is fully visible.',
+    },
+    {
+      id: 'TC-TST-007',
+      title: 'Web toast pauses on hover and focus',
+      priority: 'low',
+      type: 'positive',
+      steps: ['Trigger a toast', 'Move the mouse over it and wait 15 s', 'Move the mouse away', 'Trigger another and Tab to its Undo button, wait 15 s'],
+      expected: 'The toast stays while hovered or focused and starts its timer again afterwards.',
+    },
+    {
+      id: 'TC-TST-008',
+      title: 'Screen reader announces the toast',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['TalkBack / VoiceOver / NVDA is on'],
+      steps: ['Archive an email (or trigger the toast on web)'],
+      expected: 'The screen reader reads "Conversation archived" (and the action) without moving focus away from where the user was.',
+    },
+  ]}
+/>
+
+## Accessibility
+
+- **Announce it.** Screen readers don't notice text that just appears (<Term id="wcag" /> 4.1.3 Status Messages, Level AA). Native Android Snackbars and Toasts are announced by TalkBack; custom iOS banners need an announcement.
+  <DevNote>On the web, put toasts inside a container with `role="status"` (or `aria-live="polite"`) that **already exists in the page** before the message is added. Use `role="alert"` only for urgent errors. On iOS: `UIAccessibility.post(notification: .announcement, ...)`.</DevNote>
+- **Don't steal focus.** A toast should be announced, not focused: moving focus would interrupt what the user was doing.
+- **Give enough time.** WCAG 2.2.1 (Timing Adjustable) asks that users can turn off, adjust or extend time limits. For toasts that means a long enough duration, pausing on hover and focus, and never putting the only copy of important information in one. Android also has a system setting ("Time to take action") that apps should respect.
+- **Make the action reachable.** Keyboard users must be able to reach Undo before it disappears. Some apps offer an alternative, like a keyboard shortcut or an Undo item in a menu.
+- **Contrast.** Message text needs 4.5:1 against the toast background, and the action button color too. Check in light and <Term id="dark-mode" />.
+- **Don't rely on color alone** for success vs error: add an icon and clear words.
+- **Large text.** At the biggest <Term id="dynamic-type" /> or font scale, text must wrap, not clip, and the action must stay visible.
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- **No native toast.** Apps build their own: top banners that look like notifications, centered HUDs, or Material-style bars from a library. Quality varies a lot.
+- Check placement against the **notch / Dynamic Island**, the home indicator and the tab bar.
+- Custom components often forget **VoiceOver announcements** and **Dynamic Type**.
+- Swipe-to-dismiss (usually up for top banners) should work and must not trigger the system notification center.
+
+</Tab>
+<Tab>
+
+- **Toast**: system pill, text only, 2 s or 3.5 s, no actions. Since Android 11, apps in the background can't show custom-view toasts, and Android 12+ limits toast text to two lines and shows the app icon.
+- **Snackbar**: Material component with one optional action. One at a time, above the bottom navigation, pushes the FAB up.
+- Test with **TalkBack**, maximum **font size**, gesture navigation vs 3-button navigation, and with the **keyboard open**.
+- Rotate while a snackbar is visible: it should not duplicate or reappear.
+
+</Tab>
+<Tab>
+
+- Usually from a library (or hand-made). Common positions: top right, top center, bottom center. Check the position on **small screens** too.
+- Check the live region in <Term id="devtools" /> (Elements panel: `role="status"` / `aria-live`), and test with a screen reader.
+- Check **pause on hover/focus**, the **close button**, and **stacking limits**.
+- Check that a toast doesn't survive a page navigation it shouldn't, and that "Saved" matches the real <Term id="api" /> response in the Network tab.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'Which message fits a toast best?',
+      options: ['"Your card was declined"', '"Link copied"', '"Your session will expire, save your work"', '"Enter a valid email address"'],
+      answer: 1,
+      explain: 'A short confirmation the user can safely miss. The others need action or belong next to a field.',
+    },
+    {
+      q: 'You archive two emails and press Undo on the latest snackbar. The first email comes back instead. What kind of bug is this?',
+      options: ['A truncation bug', 'A functional bug in Undo', 'A performance bug', 'Not a bug'],
+      answer: 1,
+      explain: 'Undo must restore exactly the item the snackbar refers to.',
+    },
+    {
+      q: 'The app shows "Saved" but the network log shows a 500 error. What should happen instead?',
+      options: ['Show "Saved" anyway, it will retry later', 'Show nothing', 'Roll back and show an error with a way to retry', 'Close the app'],
+      answer: 2,
+      explain: 'Optimistic UI is fine only if it rolls back and tells the user when the request fails.',
+    },
+    {
+      q: 'How should a web toast be announced to screen readers?',
+      options: ['By moving focus to it', 'With role="status" / aria-live="polite" on a container that is already in the page', 'With a title attribute', 'Screen readers can\'t read toasts'],
+      answer: 1,
+      explain: 'A polite live region announces the message without stealing focus.',
+    },
+    {
+      q: 'Which iOS statement is true?',
+      options: ['iOS has a native Toast like Android', 'iOS has no native toast; apps build banners or HUDs themselves', 'iOS only shows push notifications', 'iOS snackbars always have an Undo action'],
+      answer: 1,
+      explain: 'iOS has no built-in toast component, so each app designs its own banner or HUD. That is why their timing, position and accessibility need extra testing.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A toast is a **short, non-blocking message that disappears on its own**. Use it for confirmations and easy Undo, never for errors the user must act on or critical information.
+- Android has a **Toast** (text only) and the Material **Snackbar** (one action). **iOS has no native toast**. On the web, toasts usually stack in a corner.
+- Timing matters: **4 s or more**, **longer with an action**, and on the web **pause on hover and focus**.
+- Test **Undo** hard: the right item, several in a row, and after a refresh.
+- Classic bugs: **success shown after a failure**, **endless stacking**, **covering navigation**, **truncated text** and **screen reader silence** (`role="status"`).
+
+</KeyTakeaways>

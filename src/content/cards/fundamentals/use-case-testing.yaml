@@ -1,0 +1,40 @@
+teaser: "Every screen works, yet customers who open the reset link on a laptop see a blank page. Which part of the use case did nobody test?"
+cards:
+  - type: flip
+    front: "What is a use case?"
+    back: "A step-by-step description of how an actor reaches one goal, including the routes where things go differently."
+  - type: flip
+    front: "Alternative flow vs exception flow?"
+    back: "An alternative flow still reaches the goal by another route. An exception flow handles an error that stops the normal path."
+  - type: quiz
+    q: "Two of three dishes are available, so the app adds those two and the customer still orders. What is this?"
+    options: ["An exception flow", "An alternative flow", "A precondition"]
+    answer: 1
+    explain: "The customer still reaches the goal by a slightly different route, so it's an alternative flow."
+  - type: quiz
+    q: "A use case has 6 flows. Your tests cover 3. What is the flow coverage?"
+    options: ["30%", "50%", "60%"]
+    answer: 1
+    explain: "Use case coverage counts flows: 3 of 6 flows tested is 50%."
+  - type: truefalse
+    statement: "Ten variations of the happy path give you better flow coverage than one."
+    answer: false
+    explain: "They all exercise the same flow. Data variations can matter, but flow coverage only grows when you test new branches."
+  - type: truefalse
+    statement: "Preconditions are usually set up with test data, not checked in every test."
+    answer: true
+    explain: "A precondition like 'has a completed order' must already be true before the test starts, so you prepare it."
+  - type: thisorthat
+    prompt: "The use case doesn't say what happens if every dish is sold out."
+    left: "Guess the result"
+    right: "Ask the team"
+    answer: right
+    explain: "A missing extension is a requirement gap. Asking makes the whole team agree instead of everyone guessing differently."
+  - type: spotbug
+    screen: ["TC: Reorder past order", "Expected: confirmation screen shown", "(no other checks)"]
+    question: "What's missing from this test?"
+    bug: "The postconditions are never checked."
+    explain: "A confirmation can look right while the card is charged twice. Check one new order, one charge and the original order unchanged."
+  - type: tip
+    title: "Ask “what else could happen?”"
+    text: "For every system step in a story or use case, ask what could go differently there. Each answer is a flow worth a test."

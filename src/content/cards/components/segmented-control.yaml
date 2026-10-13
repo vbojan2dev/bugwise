@@ -1,0 +1,27 @@
+teaser: "That little Day · Week · Month bar hides at least ten classic bugs. Can you name three?"
+cards:
+  - type: flip
+    front: "What is a segmented control?"
+    back: "A row of 2–5 connected options where exactly one is selected, like Day · Week · Month in a calendar."
+  - type: thisorthat
+    prompt: "Seven options: Mon, Tue, Wed, Thu, Fri, Sat, Sun."
+    left: "Segmented control"
+    right: "Dropdown or date picker"
+    answer: right
+    explain: "More than 5 short options gets cramped and hard to tap. A dropdown, date picker or scrollable tabs work better."
+  - type: spotbug
+    screen: ["[ Day | Week | Month | Year ]", "Selected: Day", "Chart title: Steps this year"]
+    bug: "The content doesn't match the selected segment."
+    explain: "Classic race condition: a slow 'Year' response arrived after the 'Day' response and overwrote it."
+  - type: quiz
+    q: "What should a screen reader announce on a segment?"
+    options: ["Just 'button'", "The label only", "Label, selected state and position, e.g. 'Week, selected, 2 of 4'"]
+    answer: 2
+    explain: "Without the selected state and position, blind users can't tell which option is active."
+  - type: truefalse
+    statement: "Tapping the already-selected segment should reload the data."
+    answer: false
+    explain: "Nothing changed, so nothing should happen. Extra reloads waste data and can cause flicker or double requests."
+  - type: tip
+    title: "Always try German"
+    text: "German and Finnish labels are often 30–50% longer than English. Switch the language and watch segment labels get truncated."

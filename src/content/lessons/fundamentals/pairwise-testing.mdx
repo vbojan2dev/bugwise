@@ -1,0 +1,265 @@
+---
+title: Pairwise Testing
+description: Why combinations explode, how all-pairs testing covers every pair of values with a fraction of the tests, what it can't catch, how constraints and tools like PICT work, and when to use it.
+order: 10.2
+level: intermediate
+minutes: { short: 10, long: 13 }
+platform: both
+tags: [fundamentals, test design, techniques, black-box, combinatorial testing]
+---
+
+import PairwiseLab from '@/components/demos/pairwise-testing/PairwiseLab';
+
+An online shop is about to launch in three countries. The test lead lists what checkout must work with: 4 browsers, 4 operating systems, 3 languages and 3 payment methods. A new tester multiplies: **4 × 4 × 3 × 3 = 144 combinations**. At 10 minutes each, that's 24 hours of clicking through checkout, for one feature, before every release.
+
+Nobody does that. But testing a random handful isn't great either: the one bug that matters ("PayPal button missing in German on Firefox") could hide in a combination nobody picked. **Pairwise testing** gives you a small, smart set instead, typically 16 to 20 tests here, with a guarantee you can check.
+
+## What is pairwise testing?
+
+<Term id="pairwise-testing">Pairwise testing</Term> (also called **all-pairs testing**) picks a set of tests in which **every pair of values** from any two parameters appears together **at least once**. Not every full combination, just every pair.
+
+<Callout type="example" title="An everyday analogy">
+
+Imagine a wedding with 40 guests at round tables. You can't seat everyone next to everyone at the same time, but over three dinner courses you could rotate seats so that **every two guests sit together at least once**. Pairwise testing does the same with test values: over a few test runs, every value "meets" every value of every other parameter.
+
+</Callout>
+
+Why pairs? Because studies of real failures (notably by the US National Institute of Standards and Technology, NIST) found that most bugs are triggered by **a single value** or by **two values interacting**, and only a small share need three or more specific values at once. Covering every pair catches the large group cheaply.
+
+<Short>
+
+## The quick version
+
+### The combinatorial explosion
+
+Every parameter multiplies the number of combinations. This is the <Term id="combinatorial-explosion" />: 4 × 4 × 3 × 3 = 144. Add a fifth parameter with 4 values and it's 576. Pairwise testing grows much more slowly: the minimum is roughly the product of the **two largest** parameters (here 4 × 4 = 16).
+
+### A tiny example
+
+Three parameters with two values each give 2 × 2 × 2 = 8 combinations. These **4 rows** already contain every pair:
+
+| OS | Language | Payment |
+| --- | --- | --- |
+| iOS | English | Card |
+| iOS | German | PayPal |
+| Android | English | PayPal |
+| Android | German | Card |
+
+Check any two columns: iOS + English, iOS + German, Android + English, Android + German all appear. The same holds for OS + Payment and Language + Payment.
+
+### What it doesn't catch
+
+- **Three-way bugs** that need three specific values together (German + PayPal + Firefox).
+- **Impossible combinations** unless you add **constraints** (Safari doesn't run on Windows).
+- **Choosing good values** is still your job: use [equivalence partitioning](/fundamentals/equivalence-partitioning) first.
+
+### Tools
+
+You don't build pairwise sets by hand. **PICT**, Microsoft's free command-line tool, takes a simple text file of parameters, values and constraints and prints the test rows.
+
+### When to use it
+
+Many **independent** parameters with several values each: browsers × OS × language, settings screens, configuration and device matrices, forms with many optional fields. If the outcome follows **rules** about specific combinations, use a [decision table](/fundamentals/decision-tables) instead.
+
+<Callout type="tip">
+
+Switch to **Detailed** for how to count pairs, a full browser × OS × language × payment example, constraints, PICT step by step, higher-order (3-way) coverage and the limits.
+
+</Callout>
+
+</Short>
+
+<Long>
+
+## The combinatorial explosion, in numbers
+
+When parameters are independent, the number of full combinations is the **product** of their value counts. That's the <Term id="combinatorial-explosion" />:
+
+| Parameters | Values | All combinations |
+| --- | --- | --- |
+| Browser, OS | 4 × 4 | 16 |
+| + Language | × 3 | 48 |
+| + Payment | × 3 | 144 |
+| + Account (guest / signed in) | × 2 | 288 |
+| + Currency (3) | × 3 | 864 |
+
+Meanwhile, the number of **pairs** grows gently, because you only add the pairs of the new parameter with each existing one. And a pairwise set can't be smaller than the two largest parameters multiplied (every Browser + OS pair needs its own row), so with 4 browsers and 4 systems you need at least 16 rows however many 2- or 3-value parameters you add.
+
+## How to count the pairs
+
+To know what "all pairs" means, count them: for every two parameters, multiply their value counts, then add everything up. For Browser (4), OS (4), Language (3), Payment (3):
+
+| Parameter pair | Pairs |
+| --- | --- |
+| Browser + OS | 4 × 4 = 16 |
+| Browser + Language | 4 × 3 = 12 |
+| Browser + Payment | 4 × 3 = 12 |
+| OS + Language | 4 × 3 = 12 |
+| OS + Payment | 4 × 3 = 12 |
+| Language + Payment | 3 × 3 = 9 |
+| **Total** | **73 pairs** |
+
+Each test row covers 6 pairs at once (one per parameter pair). So 73 pairs need at least 73 ÷ 6 ≈ 13 rows in theory, and the Browser + OS minimum pushes that to 16. Good tools land at or close to 16; the simple greedy generator in the lab below finds 18.
+
+## A worked example: checkout across browsers, OS, languages and payments
+
+<Steps>
+
+1. **List the parameters and choose values with EP.** Browser: Chrome, Safari, Firefox, Edge. OS: Windows, macOS, Android, iOS. Language: English, German, Spanish. Payment: Card, PayPal, Apple Pay. Each value should represent a class that might behave differently.
+2. **Add constraints** for combinations that can't exist: Safari runs only on macOS and iOS; in this shop, Apple Pay is offered only on Apple devices.
+3. **Generate the set** with a tool. Without constraints you get about 16 to 18 rows; with them, a few pairs disappear (Safari + Windows is no longer required) and the set gets slightly smaller.
+4. **Check coverage.** Good tools guarantee it; if you build or edit a set by hand, verify that every allowed pair appears at least once.
+5. **Add risk-based rows on top.** Your analytics say 40% of customers use Chrome on Android in English with Card? Make sure that exact row exists, even if pairwise didn't produce it.
+6. **Give every row an expected result.** Pairwise picks the inputs; you still define what "correct" looks like, ideally with the same checkout test case run on each row.
+
+</Steps>
+
+Try exactly this in the lab below: turn the constraints on and off and watch the numbers change.
+
+## Constraints: impossible and unwanted combinations
+
+Without constraints, a generator happily produces "Safari on Windows" rows. You can't run them, and the pairs they were supposed to cover (say, Safari + German) end up untested if you just delete the row. Constraints tell the tool what's impossible up front, so it covers every **valid** pair with valid rows.
+
+Be careful in the other direction too: every constraint removes pairs. Constraining "Apple Pay only with Safari" would hide a real bug where Apple Pay fails in Chrome on a Mac. Only exclude what truly can't happen.
+
+## What pairwise doesn't catch
+
+- **Higher-order interactions.** A bug that needs German **and** PayPal **and** Firefox together appears only if that triple happens to land in one row. Pairwise doesn't promise it. For risky features, tools can generate **3-way** (or higher, often called t-way) coverage at the cost of more rows.
+- **Bad value choices.** If you list "Chrome, Firefox" but forget mobile Safari, no algorithm will test mobile Safari.
+- **Rule-based behavior.** When the result depends on specific combinations (members on rainy days pay €1), you need every rule tested: use a [decision table](/fundamentals/decision-tables).
+- **Order and timing.** Pairwise picks *values*, not *sequences*. For flows over time, see [state transition testing](/fundamentals/state-transition-testing).
+- **The expected results.** It tells you what to run, not what's right.
+
+## Tools: PICT and friends
+
+<Term id="pict">PICT</Term> (Pairwise Independent Combinatorial Testing) is a free, open-source command-line tool from Microsoft, available on GitHub. You write a plain text **model file**:
+
+```text
+Browser:  Chrome, Safari, Firefox, Edge
+OS:       Windows, macOS, Android, iOS
+Language: English, German, Spanish
+Payment:  Card, PayPal, Apple Pay
+
+IF [Browser] = "Safari"    THEN [OS] IN {"macOS", "iOS"};
+IF [Payment] = "Apple Pay" THEN [OS] IN {"macOS", "iOS"};
+```
+
+Then run `pict checkout.txt` and it prints one test per line, tab-separated, ready to paste into a spreadsheet or [test management tool](/tutorials/test-runs-and-test-management). A few useful options:
+
+- `/o:3` generates 3-way coverage instead of pairs (the default order is 2).
+- `/r` randomizes the generation, so different runs give different sets with the same pair coverage.
+- Values marked with `~` are treated as invalid (negative) values, and PICT puts at most one of them in each row, so a failing value doesn't hide another.
+
+Other options include NIST's ACTS tool and many online pairwise generators. Whatever you use, the input is the same thinking: parameters, values, constraints.
+
+## When to use pairwise testing
+
+Good fits:
+
+- **Configuration and device matrices:** browser × OS × screen size, or device × OS version × language. See [cross-browser testing](/web/cross-browser-testing) and [device fragmentation](/mobile/device-fragmentation).
+- **Settings screens** with many independent toggles and choices.
+- **Forms with many optional fields** or filter panels: see [search, filters and sorting](/features/search-filters-and-sorting).
+- **Feature flags** that can be on or off in any mix.
+
+Poor fits:
+
+- **Two parameters:** pairwise = all combinations, there's nothing to save.
+- **Business rules** about specific combinations: decision tables.
+- **Safety- or money-critical combinations** you can list: test them explicitly, and consider 3-way coverage.
+
+</Long>
+
+## Try it: the pairwise lab
+
+Pick parameters and values, compare every combination with the pairwise set, and switch on **Show which pairs each row covers**. Then remove a row with **×** and watch the coverage check list the pairs you just lost.
+
+<PairwiseLab client:visible />
+
+## Practice: a fitness app's settings
+
+A fitness app wants its workout summary tested across these settings:
+
+- **Units:** metric, imperial
+- **Theme:** light, dark, system
+- **Language:** English, Spanish, Polish
+- **Watch connected:** yes, no
+
+<Steps>
+
+1. **Count all combinations.** 2 × 3 × 3 × 2 = 36.
+2. **Find the pairwise minimum.** The two largest parameters are Theme and Language: 3 × 3 = 9 rows at least.
+3. **Count the pairs.** Units+Theme 6, Units+Language 6, Units+Watch 4, Theme+Language 9, Theme+Watch 6, Language+Watch 6 = **37 pairs**.
+4. **Add a risk-based row.** Most users are on metric, system theme, English, watch connected: make sure that exact row is in the set.
+
+</Steps>
+
+You can't recreate this exact model in the lab, but you can see the same effect: switch off **Account**, keep three parameters with a few values each and compare the row count with the product of the two largest parameters.
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "What does a pairwise (all-pairs) test set guarantee?",
+      options: [
+        "Every full combination is tested",
+        "Every pair of values from any two parameters appears in at least one test",
+        "Every value is tested twice",
+        "No bugs are left",
+      ],
+      answer: 1,
+      explain: "Pairwise covers every pair of values at least once. Full combinations, and specific triples, are not guaranteed.",
+    },
+    {
+      q: "Browser (4 values), OS (4), Language (3) and Payment (3). How many full combinations are there?",
+      options: ["14", "48", "144", "256"],
+      answer: 2,
+      explain: "Multiply the value counts: 4 × 4 × 3 × 3 = 144.",
+    },
+    {
+      q: "For the same model, what is the smallest possible number of pairwise tests?",
+      options: ["9", "12", "16", "73"],
+      answer: 2,
+      explain: "Every Browser + OS pair needs its own row, so you need at least 4 × 4 = 16 rows.",
+    },
+    {
+      q: "A bug only appears with German, PayPal and Firefox together. Will pairwise testing catch it?",
+      options: ["Always", "Only if that triple happens to land in one row", "Never, pairwise ignores languages", "Only on mobile"],
+      answer: 1,
+      explain: "Pairwise guarantees pairs, not triples. Use 3-way coverage (for example PICT's /o:3) or explicit tests for risky triples.",
+    },
+    {
+      q: "Why do you add constraints such as 'Safari only on macOS and iOS'?",
+      options: [
+        "To make the set bigger",
+        "So the tool covers every valid pair with rows that can actually be run",
+        "Because PICT requires at least one constraint",
+        "To skip testing Safari",
+      ],
+      answer: 1,
+      explain: "Without constraints the tool may cover pairs like Safari + German only in an impossible Safari-on-Windows row. Deleting that row would leave the pair untested.",
+    },
+    {
+      q: "Which situation fits a decision table better than pairwise testing?",
+      options: [
+        "Testing checkout on 5 browsers and 4 operating systems",
+        "A settings screen with 8 independent toggles",
+        "A delivery fee that depends on membership, order size and rain, with a rule for each combination",
+        "A device matrix for a new app",
+      ],
+      answer: 2,
+      explain: "When specific combinations lead to specific results, every rule must be tested. Pairwise is for many independent parameters.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Combinations **multiply**; testing all of them quickly becomes impossible (the combinatorial explosion).
+- **Pairwise (all-pairs)** testing covers every pair of values at least once, with a minimum of roughly the **two largest parameters multiplied**.
+- Most real failures involve one or two interacting values, so pairs catch a lot cheaply, but **not three-way bugs**.
+- Add **constraints** for impossible combinations, and **risk-based rows** for combinations that matter most.
+- Choose values with **equivalence partitioning**, and still define an **expected result** for every row.
+- Use a tool like **PICT** to generate sets; use **decision tables** when rules depend on specific combinations.
+
+</KeyTakeaways>

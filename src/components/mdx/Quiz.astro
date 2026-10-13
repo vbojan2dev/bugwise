@@ -1,0 +1,9 @@
+---
+import QuizIsland, { type QuizQuestion } from '@/components/islands/QuizIsland';
+interface Props {
+  title?: string;
+  questions: QuizQuestion[];
+}
+---
+
+<QuizIsland client:visible {...Astro.props} />

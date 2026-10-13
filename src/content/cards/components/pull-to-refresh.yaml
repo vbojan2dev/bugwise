@@ -1,0 +1,43 @@
+teaser: "A spinner that never stops is worse than an error message. Do you know what else hides behind one little pull?"
+cards:
+  - type: flip
+    front: "What are the four states of pull to refresh?"
+    back: "Pulling, armed (past the threshold), refreshing, and done, or an error instead of done."
+  - type: flip
+    front: "What does resistance mean in pull to refresh?"
+    back: "The list moves less than your finger, often about half, so the pull feels like stretching a rubber band."
+  - type: quiz
+    q: "You pull twice quickly and every new post appears twice. Most likely cause?"
+    options: ["Threshold too high", "Two requests ran at once", "Dark mode is on"]
+    answer: 1
+    explain: "Without an already-refreshing guard, both requests fetch the same new items. Adding both responses without merging by ID creates duplicates."
+  - type: quiz
+    q: "Where does pull to refresh fit best?"
+    options: ["A checkout form", "A chat with newest at the bottom", "An inbox sorted newest first"]
+    answer: 2
+    explain: "It loads newer items at the top of a time-sorted list. Forms lose input, and chats load older messages when pulled at the top."
+  - type: truefalse
+    statement: "Scrolling back up to the top in one movement should trigger a refresh."
+    answer: false
+    explain: "A pull only counts if the gesture started at the top and passes a deliberate threshold. Otherwise normal scrolling fires requests."
+  - type: truefalse
+    statement: "'Last updated' should change after a failed refresh."
+    answer: false
+    explain: "The time must only change after a successful refresh. Otherwise users trust data that is actually stale."
+  - type: thisorthat
+    prompt: "The device is in airplane mode and the user pulls to refresh."
+    left: "Spin until online"
+    right: "Say offline now"
+    answer: right
+    explain: "Good apps answer immediately, keep the cached list and say they're offline. An endless spinner leaves users guessing."
+  - type: spotbug
+    screen: ["Network log: GET /feed  500", "Spinner: still turning", "Message: (none)"]
+    bug: "The spinner never stops on an error."
+    explain: "On failure the spinner must stop, old content should stay, and an error with Retry should appear."
+  - type: spotbug
+    screen: ["Header: Activity", "Feed: pull down to refresh", "Buttons: (none)"]
+    bug: "No way to refresh without the gesture."
+    explain: "Keyboard, Switch Control and Voice Control users can't pull. WCAG (2.5.1 Pointer Gestures, 2.5.7 Dragging Movements) asks for a simple tap alternative like a Refresh button."
+  - type: tip
+    title: "Slow it down to find bugs"
+    text: "Throttle the network or hold the response with a proxy breakpoint, then pull again while the spinner turns. Count the requests."

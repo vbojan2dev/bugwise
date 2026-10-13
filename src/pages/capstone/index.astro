@@ -1,0 +1,112 @@
+---
+import CapstoneShell from '@/components/capstone/CapstoneShell.astro';
+import CapstoneHome from '@/components/capstone/CapstoneHome';
+import Icon from '@/components/ui/Icon.astro';
+import { BUGS, CATEGORY_LABEL, SPEC } from '@/lib/capstone';
+import { href } from '@/lib/url';
+
+const categories = Object.keys(CATEGORY_LABEL) as (keyof typeof CATEGORY_LABEL)[];
+const skills = [
+  { icon: 'file-text', title: 'Read a spec like a tester', text: 'Find the rules you can test against (your oracles), and the gaps nobody wrote down.' },
+  { icon: 'target', title: 'Plan by risk', text: 'Decide what matters most when time is short, and what you will deliberately not test.' },
+  { icon: 'list-checks', title: 'Write test cases', text: 'Specific steps, one check per case, measurable expected results, negative and edge cases.' },
+  { icon: 'compass', title: 'Explore with a charter', text: 'A time-boxed session with a mission, heuristics and notes, in a realistic mobile app.' },
+  { icon: 'bug', title: 'Report bugs', text: 'Clear titles, steps to reproduce, expected vs actual, and an honest severity and priority.' },
+  { icon: 'rocket', title: 'Recommend go / no-go', text: 'Summarize what you tested and what is still risky, so the team can decide about Friday.' },
+];
+---
+
+<CapstoneShell
+  path="/capstone"
+  title="Capstone: test the FoodDash 2.0 release"
+  description={`A hands-on final project: plan, design, explore and report on a realistic food delivery app with ${BUGS.length} hidden bugs, then get your scorecard and certificate.`}
+  lead="Put everything together on a realistic project: read the brief, plan, write test cases, explore a buggy app, report what you find and make the release call."
+>
+  <div class="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    <div class="min-w-0 space-y-10">
+      <section class="card relative overflow-hidden p-6 sm:p-8">
+        <p class="text-xs font-semibold tracking-wider text-brand uppercase">The scenario</p>
+        <h2 class="mt-2 text-2xl font-bold tracking-tight">Your first week as a tester at FoodDash. Release 2.0 ships Friday.</h2>
+        <div class="mt-4 space-y-3 leading-relaxed text-muted">
+          <p>
+            FoodDash is a food delivery app: find a restaurant, fill a cart, pick a delivery time and track the courier to your door. Version {SPEC.version} is the biggest
+            update in a year: a redesigned checkout, address autocomplete, German and Serbian, dark mode and new notification settings.
+          </p>
+          <p>
+            Your lead, Sara, drops a link in your chat on Monday morning: <em class="text-fg">"Here's the brief and the test build ({SPEC.version}, build {SPEC.build}). Can you plan it,
+            test it and tell us by Thursday whether we can ship? Product decides on Friday morning based on your report."</em>
+          </p>
+          <p>The build has <strong class="text-fg">{BUGS.length} hidden bugs</strong>, just like a real release candidate: some obvious, some only visible on a small screen, in another language, offline or with a screen reader. Nobody will tell you where they are.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold tracking-tight">Your five phases</h2>
+        <p class="mt-2 text-muted">Your work is saved in this browser as you go, so you can stop and come back any time. The whole project takes about <strong class="text-fg">2 to 2½ hours</strong>.</p>
+        <div class="mt-5">
+          <CapstoneHome client:load />
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold tracking-tight">What you will practice</h2>
+        <ul class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {
+            skills.map((s) => (
+              <li class="card flex min-w-0 gap-3 p-4">
+                <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand">
+                  <Icon name={s.icon} size={18} />
+                </span>
+                <span class="min-w-0">
+                  <span class="block font-semibold">{s.title}</span>
+                  <span class="mt-0.5 block text-sm leading-relaxed text-muted">{s.text}</span>
+                </span>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+    </div>
+
+    <aside class="min-w-0 space-y-5">
+      <section class="card p-5">
+        <h2 class="flex items-center gap-2 font-semibold"><Icon name="scroll-text" size={18} /> House rules</h2>
+        <ul class="mt-3 space-y-2.5 text-sm leading-relaxed text-muted">
+          <li><strong class="text-fg">No peeking.</strong> The results page shows hints for what you missed. Full answers stay hidden until you choose to reveal them, ideally only after you've finished.</li>
+          <li><strong class="text-fg">The brief is your oracle.</strong> If the app disagrees with an acceptance criterion, that's a bug. If the brief says nothing, raise a question instead of guessing.</li>
+          <li><strong class="text-fg">Report it to count it.</strong> A bug only counts when you file a report for it in the app, on the screen where it happened.</li>
+          <li><strong class="text-fg">Rate honestly.</strong> Your severity and priority are compared with the team's, with partial credit for one step off.</li>
+          <li><strong class="text-fg">Not everything odd is a bug.</strong> The brief lists known issues. Reporting those costs you nothing, but a good tester notices.</li>
+        </ul>
+      </section>
+
+      <section class="card p-5">
+        <h2 class="flex items-center gap-2 font-semibold"><Icon name="bug" size={18} /> Where bugs hide</h2>
+        <p class="mt-2 text-sm text-muted">The {BUGS.length} bugs are spread across these areas:</p>
+        <ul class="mt-3 space-y-1.5 text-sm">
+          {
+            categories.map((c) => (
+              <li class="flex items-center justify-between gap-3">
+                <span>{CATEGORY_LABEL[c]}</span>
+                <span class="rounded-full bg-subtle px-2 py-0.5 text-xs font-medium text-muted tabular-nums">{BUGS.filter((b) => b.category === c).length}</span>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+
+      <section class="card p-5">
+        <h2 class="flex items-center gap-2 font-semibold"><Icon name="graduation-cap" size={18} /> Warm up first</h2>
+        <p class="mt-2 text-sm text-muted">New to some of this? These tutorials cover each phase:</p>
+        <ul class="mt-3 space-y-1.5 text-sm">
+          <li><a class="text-brand hover:underline" href={href('/tutorials/user-stories-and-acceptance-criteria')}>User stories and acceptance criteria</a></li>
+          <li><a class="text-brand hover:underline" href={href('/tutorials/writing-a-test-plan')}>Writing a test plan</a></li>
+          <li><a class="text-brand hover:underline" href={href('/tutorials/writing-test-cases')}>Writing test cases</a></li>
+          <li><a class="text-brand hover:underline" href={href('/tutorials/exploratory-testing')}>Exploratory testing</a></li>
+          <li><a class="text-brand hover:underline" href={href('/tutorials/writing-bug-reports')}>Writing bug reports</a></li>
+          <li><a class="text-brand hover:underline" href={href('/fundamentals/severity-vs-priority')}>Severity vs priority</a></li>
+        </ul>
+      </section>
+    </aside>
+  </div>
+</CapstoneShell>

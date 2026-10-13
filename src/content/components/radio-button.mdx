@@ -1,0 +1,407 @@
+---
+title: Radio Button
+description: A group of round options where exactly one can be chosen, like Standard or Express delivery. Learn when to use it instead of a dropdown, checkbox or segmented control, when to preselect, how the keyboard should work, and the grouping bugs testers find.
+category: input
+aka: [Radio, Option button, Radio group]
+platforms: [ios, android, web]
+minutes: 30
+order: 7
+---
+
+import Anatomy from '@/components/demos/radio-button/Anatomy';
+import VariantsGallery from '@/components/demos/radio-button/VariantsGallery';
+import KeyboardPlayground from '@/components/demos/radio-button/KeyboardPlayground';
+import { DefaultChoice, OptionCount, SingleChoice } from '@/components/demos/radio-button/Examples';
+import { BuggyCheckout } from '@/components/demos/radio-button/BuggyCheckout';
+
+Standard or Express delivery? Card or PayPal? Window or aisle? Whenever an app asks you to pick **exactly one** answer from a short list, you're probably looking at radio buttons. The name comes from old car radios, where pushing in one station button popped the others out.
+
+That "only one" promise is the whole point, and it's exactly what breaks: two payment methods selected at once, a total that ignores your choice, an order placed with nothing selected. Let's learn how to catch it.
+
+## What is a radio button?
+
+A radio button is a **round option inside a group**, where **exactly one option can be selected**. Selecting one automatically unselects the others: the options are <Term id="mutually-exclusive" />. A single radio button on its own makes no sense. It always lives in a **group** with a question ("Delivery", "Payment method").
+
+You'll see radio groups used for:
+
+- **Delivery and shipping options**: Standard / Express / Next day, each with a date and a price.
+- **Payment methods**: Card / PayPal / Pay on delivery.
+- **Plans and sizes**: Monthly / Yearly, Small / Medium / Large.
+- **Survey and preference questions**: Seat preference, "How did you hear about us?".
+
+### Anatomy
+
+<Anatomy />
+
+### Two rules that define a radio group
+
+1. **Exactly one can be selected.** Selecting a second option unselects the first.
+2. **Once something is selected, you can't go back to "nothing".** Tapping a selected radio again does nothing. If "no answer" is valid, the group needs an option for it, like *None* or *Prefer not to say*.
+
+Both rules are worth a test case of their own.
+
+### Radio vs dropdown vs segmented control vs checkbox
+
+| Component | Choices | Visible? | Best for |
+| --- | --- | --- | --- |
+| **Radio buttons** | Exactly one of ~2–6 | All at once | Forms, options that need a description or price |
+| **[Dropdown](/components/dropdown)** | One of many | Hidden until opened | Long lists: country, size chart, time slot |
+| **[Segmented control](/components/segmented-control)** | One of 2–5 short labels | All at once | Switching views or filters **immediately** |
+| **[Checkbox](/components/checkbox)** | Zero, one or many | All at once | Picking several items, or one yes/no |
+
+<Callout type="dev" title="Platform names">
+The web calls it a **radio button** (`<input type="radio">`). Material Design calls it a **radio button** too. Apple's iOS guidelines don't have one at all: iPhone apps use **checkmark lists**, pickers or menus for single choice. Some teams say **option button**. In bug reports, use the name your team uses.
+</Callout>
+
+## Designs & variants
+
+<VariantsGallery client:visible />
+
+<Callout type="tip" title="Long options need the whole card as a target">
+When options carry details (delivery dates, prices, plan features), the label gets long. That's fine, and much better than hiding details in a dropdown, but then **the whole card must be tappable**, not just the 20 px circle. Testers should always tap the description and the price too.
+</Callout>
+
+### Keyboard: one tab stop, arrows inside
+
+Radio groups work differently from every other form control on the keyboard. Try it: click into "Passenger name", then use <kbd>Tab</kbd>, the arrow keys and <kbd>Space</kbd>, and watch the log.
+
+<KeyboardPlayground client:visible />
+
+This is what native radio buttons do for free. Custom-built radio groups (made of `div`s or styled buttons) often get it wrong: every option becomes its own tab stop, or the arrow keys do nothing. Both are bugs. See <Term id="keyboard-navigation" />.
+
+## When to use it
+
+Radio buttons are the right choice when:
+
+- The user must pick **exactly one** option.
+- There are **few options** (roughly 2–6), so they can all be shown at once.
+- Seeing the options **side by side** helps the decision: prices, delivery dates, plan details.
+- The choice is part of a **form** and applies when the user presses Continue, Pay or Save.
+
+### Should one option be preselected?
+
+Many design guidelines recommend selecting a sensible default, because it saves a tap and the user can't accidentally skip the question. But a default is a decision made *for* the user, so it has to be a safe one.
+
+| Preselect when… | Don't preselect when… |
+| --- | --- |
+| There's a **safe, common** choice: Standard (free) delivery | The default **costs money**: insurance, a paid upgrade |
+| The setting already **has a value**: the user's saved card | The question is **personal or sensitive**: title, gender, date of birth |
+| A wrong default is easy to notice and **cheap to change** | You need to know the user **really chose** (consent, legal answers) |
+
+If there's no default, the form **must** block submission until the user chooses, with a clear error. Whatever the rule, it should be written in the spec, so you can test against it.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Safe default preselected">
+
+<div class="not-prose demo-screen my-3"><DefaultChoice /></div>
+
+Free Standard delivery is what most people want. Express is one tap away.
+
+</Do>
+<Dont title="Paid extra preselected">
+
+<div class="not-prose demo-screen my-3"><DefaultChoice bad /></div>
+
+Users who don't read carefully pay €24 they never chose. Leave it unselected and make the user decide.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="A few options, all visible">
+
+<div class="not-prose demo-screen my-3"><OptionCount /></div>
+
+Three options with short details. Users compare them at a glance.
+
+</Do>
+<Dont title="A long list as radios">
+
+<div class="not-prose demo-screen my-3"><OptionCount bad /></div>
+
+27 countries as radio buttons fill the screen. Use a dropdown or a searchable list.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Single yes/no as a checkbox">
+
+<div class="not-prose demo-screen my-3"><SingleChoice /></div>
+
+A checkbox can be ticked and unticked.
+
+</Do>
+<Dont title="A lone radio button">
+
+<div class="not-prose demo-screen my-3"><SingleChoice radio /></div>
+
+Once it's selected, it can never be unselected. A lone radio is always a bug.
+
+</Dont>
+</Compare>
+
+Also skip radio buttons when the choice should switch content **immediately** on the same screen, like *List / Map*. That's a segmented control.
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Broken grouping** | Two options in the same group can be selected at once (often a mismatched `name` on the web) | High |
+| 2 | **Wrong keyboard behavior** | Arrow keys don't move the selection, or every option is a separate tab stop | High (for affected users) |
+| 3 | **Dependent values not updated** | Switching Express → Standard doesn't change the total, delivery date or fee | High |
+| 4 | **Nothing selected, still submits** | No default, and the form goes through with no choice (or sends `null`) | High |
+| 5 | **Tiny target** | Only the circle reacts; tapping the label, description or price does nothing | Medium |
+| 6 | **Selection lost** | After a validation error, Back, rotation or reload the choice jumps back to the default | Medium |
+| 7 | **Bad default** | A paid or sensitive option is preselected, or the default doesn't match the spec | Medium–High |
+| 8 | **Disabled option without reason** | An option is greyed out, but nothing says why ("Not available for your address") | Low–Medium |
+| 9 | **Disabled option still selectable** | A greyed-out option can be picked by keyboard or by tapping its label | Medium |
+| 10 | **Screen reader silence** | No group name, no "radio button", no "selected", no "2 of 3" | High (for affected users) |
+
+<Callout type="bug" title="Why bug #3 is so common">
+The radio button shows one value, but other parts of the screen are **calculated** from it: shipping fee, total, delivery date, the label on the Pay button. Developers often update the selection and forget one of the calculated parts, or calculate it from the **previous** value. After every switch, re-read every number on the screen, and check the final amount on the confirmation screen and in the order email.
+</Callout>
+
+## Find the bug
+
+This web checkout has **six bugs** in its two radio groups. Explore it like a tester:
+
+- Switch between all three shipping options and read the **total** every time.
+- Tap the shipping **names, descriptions and prices**, not just the circles.
+- Use only the keyboard: <kbd>Tab</kbd> into each group and try the arrow keys.
+- Try to pick two payment methods.
+- Press **Place order** with the email empty, and again without choosing a payment method.
+
+<BugHunt
+  title="Checkout"
+  bugs={[
+    {
+      title: 'Two payment methods can be selected at once',
+      hint: 'Select Card, then Pay on delivery.',
+      detail: 'Both stay selected, and once Pay on delivery is selected it can never be unselected. In the HTML, <code>Pay on delivery</code> has a different <code>name</code> (<code>payment_method</code> instead of <code>payment</code>), so the browser treats it as a separate group. The confirmation then says "Card + Pay on delivery". Expected: all payment options share one group and only one can be selected.',
+    },
+    {
+      title: 'Arrow keys don’t move the shipping selection',
+      hint: 'Tab to a shipping option and press the Down arrow.',
+      detail: 'Nothing happens. Each shipping circle is a custom <code>&lt;span role="radio"&gt;</code> with only a click handler, so every option is its own tab stop and neither the arrow keys nor <kbd>Space</kbd> work. Compare with the Payment group, where the arrows move between Card and PayPal. Expected: one tab stop for the group, arrow keys move the selection.',
+    },
+    {
+      title: 'Total lags one step behind the shipping choice',
+      hint: 'Select Express and compare the Shipping line with the Total. Then select Next day.',
+      detail: 'With Express selected the total is still <strong>€54.00</strong>; after switching to Next day it shows €60.99 (the Express price). The total is calculated from the <em>previous</em> selection. The confirmation charges the wrong amount too. Expected: the total always equals subtotal + the selected shipping price.',
+    },
+    {
+      title: 'Order is placed without a payment method',
+      hint: 'Enter an email, don’t choose any payment method, and press Place order.',
+      detail: 'The order goes through and the confirmation says <strong>Payment: (none)</strong>. Having no default payment method is fine, but then the form must require a choice. Expected: an error like "Choose a payment method", and no order is created (checked on the server too).',
+    },
+    {
+      title: 'Tapping the shipping name, description or price does nothing',
+      hint: 'Click the words "Next day" or the price "€12.99".',
+      detail: 'Only the 18 px circle selects an option, although the whole card looks like one option. This is a tiny touch target on phones and frustrating with a mouse. Expected: the whole card is the label, so clicking anywhere on it selects the option.',
+    },
+    {
+      title: 'Shipping choice is lost after a validation error',
+      hint: 'Select Next day, leave the email empty and press Place order.',
+      detail: 'The email error appears (good), but shipping silently jumps back to <strong>Standard</strong>. A user who fixes the email and places the order gets slower delivery than they chose. Expected: all choices are kept when the form shows an error.',
+    },
+  ]}
+>
+  <BuggyCheckout client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #3?">
+
+**Title:** Checkout: Total does not include the selected shipping price (shows the previous option's price)
+
+**Steps:** 1. Add "Trail running shoes" (€54.00) to the cart and open Checkout. 2. Select **Express** (€6.99). 3. Select **Next day** (€12.99).
+
+**Expected:** After step 2 the total is €60.99; after step 3 it is €66.99.
+**Actual:** After step 2 the total stays €54.00; after step 3 it shows €60.99. The confirmation charges the wrong amount.
+
+**Severity:** High (customers are charged a different amount than shown for their choice) · **Reproducible:** 10/10
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Radio button test checklist"
+  storageKey="radio-button"
+  items={[
+    'The group has a visible question (label / legend)',
+    'Only one option can be selected at a time, across ALL options in the group',
+    'The default matches the spec, and no paid or sensitive option is preselected',
+    'Without a default, submitting with nothing selected shows a clear error (and the server rejects it)',
+    'Tapping the label, description and price selects the option, not only the circle',
+    'Every value calculated from the choice updates (price, total, date, button text), also when switching back',
+    'The confirmation screen, receipt and order email show the option that was selected',
+    'The selection survives validation errors, Back, rotation and reload (as the spec says)',
+    'Disabled options look disabled, explain why, and cannot be selected by touch or keyboard',
+    'Long labels and descriptions wrap cleanly at the largest text size and in other languages',
+    'Web: Tab reaches the group once, arrow keys move the selection, and the focus ring is visible',
+    'Screen reader announces the group name, label, "radio button", selected state and position',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-RB-001',
+      title: 'Only one shipping option can be selected',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open Checkout', 'Select Express', 'Select Next day', 'Select Standard'],
+      expected: 'After each step exactly one option is selected: the last one tapped.',
+    },
+    {
+      id: 'TC-RB-002',
+      title: 'Total updates for every shipping option',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Cart subtotal is €54.00'],
+      steps: ['Select Express', 'Select Next day', 'Select Standard'],
+      expected: 'Total reads €60.99, then €66.99, then €54.00. The shipping line and the total always agree.',
+    },
+    {
+      id: 'TC-RB-003',
+      title: 'Order cannot be placed without a payment method',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['No payment method is preselected'],
+      steps: ['Fill in a valid email', 'Leave Payment empty', 'Press Place order'],
+      expected: 'An error "Choose a payment method" is shown next to the Payment group and announced. No order is created.',
+    },
+    {
+      id: 'TC-RB-004',
+      title: 'Payment options form one group',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Select Card', 'Select Pay on delivery', 'Select PayPal'],
+      expected: 'Each new selection unselects the previous one. Only PayPal is selected at the end.',
+    },
+    {
+      id: 'TC-RB-005',
+      title: 'Choice is kept after a validation error',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Select Next day', 'Leave the email empty', 'Press Place order'],
+      expected: 'The email error is shown. Next day is still selected and the total still includes €12.99.',
+    },
+    {
+      id: 'TC-RB-006',
+      title: 'Keyboard navigation inside the group',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Web, desktop browser', 'Standard is selected'],
+      steps: ['Press Tab until the Shipping group is focused', 'Press the Down arrow twice', 'Press Tab'],
+      expected: 'Focus enters on Standard. Down selects Express, then Next day. Tab leaves the group and moves to Payment.',
+    },
+    {
+      id: 'TC-RB-007',
+      title: 'Whole option card is clickable',
+      priority: 'low',
+      type: 'positive',
+      steps: ['Click the description text of Express', 'Click the price of Next day'],
+      expected: 'Express is selected after the first click, Next day after the second.',
+    },
+  ]}
+/>
+
+## Accessibility
+
+- **Name the group.** Otherwise a <Term id="screen-reader" /> user hears "Express, radio button" without knowing the question.
+  <DevNote>On the web, put radios in a `<fieldset>` with a `<legend>`, or use `role="radiogroup"` with `aria-labelledby`.</DevNote>
+- **Group by name.** Native radios belong together only if they share the same `name`. A typo or a "new" option with a different name breaks the group.
+- **Connect labels.** The label makes the text clickable and gives the radio its spoken name. On mobile the whole row should be the <Term id="touch-target" />: at least 44×44 pt on iOS and 48×48 dp on Android. On the web, WCAG 2.5.8 (AA) asks for at least 24×24 CSS px; 44×44 px (2.5.5, AAA) is the comfortable target.
+  <DevNote>`<label for>` or a wrapping `<label>`.</DevNote>
+- **Keyboard (web):** <kbd>Tab</kbd> enters the group once, arrow keys move focus and selection, <kbd>Space</kbd> selects the focused option. See <Term id="aria" /> and <Term id="focus-order" />.
+  <DevNote>Custom radios need `role="radio"`, `aria-checked` and a roving `tabindex` to behave the same.</DevNote>
+- **Announce state and position.** A good screen reader output sounds like "Express, radio button, not selected, 2 of 3".
+- **Errors.** If a required group is left empty, show the error text next to the group, and move focus or announce it.
+  <DevNote>Link the error with `aria-describedby`.</DevNote>
+- **Not color alone.** The inner dot shows the selection. The ring needs at least **3:1** contrast against the background (<Term id="wcag" />).
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- **No native radio button.** Single choice is shown as a **list with a checkmark** on the selected row (Settings › Display & Brightness › Auto-Lock), a picker (inline, menu or wheel style), or a menu.
+  <DevNote>The picker is a SwiftUI `Picker`.</DevNote>
+- VoiceOver should announce the selected row as "Selected". Silence is a bug.
+- Some apps draw custom radio circles. Check the whole row is tappable and that VoiceOver reads the state.
+- Test with the largest **Dynamic Type** sizes: option descriptions with prices must wrap, not truncate.
+
+</Tab>
+<Tab>
+
+- Material 3 radio button: a **20 dp** circle inside a **48 dp** touch target. The whole row should be tappable, and TalkBack should understand the group.
+  <DevNote>`RadioButton`. In Compose, rows should use `Modifier.selectable(role = Role.RadioButton)` and the group `Modifier.selectableGroup()`.</DevNote>
+- TalkBack should announce the label, "radio button" and whether it's selected. Test with **font scale**, **display size** and dark theme.
+- Check the selection after **rotation** and after the app was killed in the background.
+- Android dialogs often use radio lists ("Choose ringtone") with OK / Cancel. Cancel must discard the change.
+
+</Tab>
+<Tab>
+
+- Native `<input type="radio">` gives grouping, keyboard and screen reader support. Inspect the `name` attributes with <Term id="devtools" />: all options of one question must share it.
+- Custom radio cards are very common. Check they behave like native radios with the keyboard.
+- The browser doesn't stop a form from submitting with nothing selected unless `required` is set, and the server must validate too.
+- Test **browser Back** and **reload**: some browsers restore form state, others don't. Check what the spec expects.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A checkout lets you choose Standard, Express or Next day delivery, each with a date and price. Which control fits best?',
+      options: ['Checkboxes', 'Radio buttons', 'A toggle switch', 'A dropdown with 3 options and no details'],
+      answer: 1,
+      explain: 'Exactly one option, few of them, and users need to compare dates and prices side by side. That is a radio group.',
+    },
+    {
+      q: 'On a web form you can select both "Card" and "Pay on delivery". What is the most likely cause?',
+      options: ['The radios have different name attributes', 'The CSS is wrong', 'The server is slow', 'The labels are too long'],
+      answer: 0,
+      explain: 'Native radios only unselect each other when they share the same name. A different name creates a separate group.',
+    },
+    {
+      q: 'What should the arrow keys do inside a radio group on the web?',
+      options: ['Scroll the page', 'Move focus and selection to the next or previous option', 'Nothing, only Tab works', 'Submit the form'],
+      answer: 1,
+      explain: 'Tab enters the group once; the arrow keys move between options and select them.',
+    },
+    {
+      q: 'Which option should NOT be preselected?',
+      options: ['Free standard delivery', 'The user\'s saved card', 'Travel insurance for €24', 'Medium size, the most popular'],
+      answer: 2,
+      explain: 'A default that costs money is a decision made for the user. They should choose it actively.',
+    },
+    {
+      q: 'You switch from Express to Standard, the shipping line says "Free", but the total still includes €6.99. What kind of bug is this?',
+      options: ['A cosmetic bug', 'A dependent value not updated after the selection changed', 'A keyboard bug', 'Not a bug, totals update at payment'],
+      answer: 1,
+      explain: 'Everything calculated from the choice must follow it. A wrong total that gets charged is a high-severity bug.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Radio buttons are for **exactly one** choice from a **small, visible** set. Many options → dropdown. Several choices → checkboxes. Instant view switch → segmented control.
+- Once selected, a group can't go back to "nothing". A **lone radio** is always wrong.
+- Preselect only a **safe, free, common** default. No default → the form must **require** a choice, on the server too.
+- Test **grouping** (only one selected), **everything calculated from the choice** (totals, dates), **the whole row as a target**, and **state after errors and Back**.
+- On the web: one **tab stop** per group, **arrow keys** inside, a **legend** for the question, and a shared **name** for all options.
+
+</KeyTakeaways>

@@ -1,0 +1,554 @@
+---
+title: Testing Without Documentation
+description: No spec, no user stories, no acceptance criteria? Learn where to find the truth anyway, how to decide what counts as a bug using oracles and consistency heuristics, how to map an unknown app, confirm assumptions and prioritize by risk, with a worked example on an undocumented loyalty points feature.
+order: 9
+level: intermediate
+minutes: { short: 14, long: 25 }
+platform: both
+tags: [exploratory testing, oracles, heuristics, risk, documentation]
+---
+
+import OracleDetective from '@/components/demos/tutorial-nodocs/OracleDetective';
+import FeatureMapBuilder from '@/components/demos/tutorial-nodocs/FeatureMapBuilder';
+
+It's Tuesday morning at a coffee chain's app team. Your lead drops by:
+
+> "We're releasing the new **Loyalty points** in the Brewly app on Friday. Can you test it? There's no spec. The product manager who designed it left last month, and the developers built it from a few Slack threads and a Figma file."
+
+You open the ticket. It says: **"Loyalty points v1."** That's it. No <Term id="user-story" />, no <Term id="acceptance-criteria" />, no <Term id="test-case">test cases</Term>.
+
+Welcome to real life. Many testers spend a big part of their career testing things nobody wrote down. The good news: **"no documentation" almost never means "no information"**. The information is just scattered across the app, the company and people's heads. This tutorial shows you how to collect it, how to decide what's a bug without a spec to point at, and how to leave a little documentation behind so the next person has it easier.
+
+## Why there's so often no spec
+
+- **Startups** move fast with tiny teams. The founder knows how it should work; nobody has time to write it down.
+- **Legacy apps** were built years ago. The documents (if they existed) are outdated, lost in an old wiki, or describe a version that no longer exists. The people who wrote them have left.
+- **Fast-moving teams** ship small changes every day. The "spec" is a two-line ticket, a Slack thread and a quick chat at someone's desk.
+- **Hidden behavior.** Even with a spec, a lot of behavior is never described: what happens on a refund, on a slow network, after an app update. You'll meet undocumented behavior in every project.
+
+<Callout type="info" title="This is still real testing">
+
+Testing without documentation isn't "just clicking around". It's a skill with methods: you gather evidence, use <Term id="exploratory-testing" /> to learn the product, judge behavior with **oracles**, and make your assumptions visible. Done well, it often finds more important bugs than testing from a spec, because you're not limited to what someone remembered to write.
+
+</Callout>
+
+<Short>
+
+## The essentials
+
+### Where to find the "truth"
+
+When there's no <Term id="requirement" />, look for anything that tells you how the product *should* behave:
+
+| Source | What it tells you |
+| --- | --- |
+| **The app itself** | How it behaves now, and whether it's consistent with itself |
+| **Competitors and platform conventions** | What users already expect from similar apps, on iOS, Android and the web |
+| **App store listing, marketing pages** | Promises the company has made publicly |
+| **Support tickets and reviews** | What confuses or angers real users today |
+| **Analytics** | Which features and flows people actually use |
+| **Designs (Figma)** | What the designer intended, including states |
+| **API docs (Swagger/<Term id="openapi" />)** | Fields, rules and limits the backend enforces |
+| **Code, commits, PR descriptions** | What the developer meant to build, and when it changed |
+| **People** | Developers, product owner, support, sales: ask them |
+| **Previous bug reports** | Known weak spots and past decisions |
+
+### Oracles: how to decide what's a bug
+
+An **oracle** is any way of telling whether a result is right or wrong. Without a spec, you compare the product with other things. Testers Michael Bolton and James Bach summed these up in a well-known heuristic called **HICCUPPS**. The simple version: a behavior is suspicious when it's **inconsistent** with:
+
+- **the product itself** (Home says 112 points, Rewards says 120)
+- **comparable products** (every other coffee app takes points back on a refund)
+- **user expectations** (a refund should never *add* points)
+- **claims** the company made (the store listing says "free drink of any size")
+- **standards and guidelines** (touch targets of at least 44×44 pt on iOS)
+- **history** (the previous version did it differently, and nobody asked for a change)
+
+### The method in six steps
+
+<Steps>
+
+1. **Collect sources.** Spend 30 minutes finding the listing, designs, API docs, tickets and the right people.
+2. **Explore and map.** Use the app with a goal and draw a feature map as you go.
+3. **Write down assumptions.** "I assume a refund removes the points." Get each one confirmed by someone who can decide.
+4. **Prioritize by risk.** Test money, data and core flows first.
+5. **Judge with oracles.** For every odd behavior, name the oracle that says it's wrong.
+6. **Leave documentation behind.** A checklist, the feature map and a small glossary of the app.
+
+</Steps>
+
+### Reporting a bug without a spec
+
+The "Expected" line of a <Term id="bug-report" /> still needs a reason. Say which oracle you used:
+
+<Compare>
+<Do title="Names the oracle">
+
+**Expected (App Store listing claim):** 100 points buy a free drink of any size, as the listing says. **Actual:** the reward only allows a small drink.
+
+</Do>
+<Dont title="Just an opinion">
+
+**Expected:** it should work properly. **Actual:** only small drinks, which is wrong.
+
+</Dont>
+</Compare>
+
+When no oracle settles it, don't file a bug: **ask a question** and log it as an assumption to confirm.
+
+Switch to **Detailed** at the top of the page for the full method: every source and how to use it, the HICCUPPS heuristics with examples, feature maps, assumption logs, lightweight documentation templates, risk-based prioritization and a full worked example.
+
+</Short>
+
+<Long>
+
+## Where to find the "truth"
+
+Think of yourself as a detective arriving at a scene with no witness statement. There are still clues everywhere; you just have to know where to look. Spend your first 30 to 60 minutes collecting them before you test in depth. It pays back all week.
+
+### The product itself
+
+The app is the most honest document you have: it shows exactly what was built. Use it to learn the vocabulary, the screens and the flows, and to find **internal contradictions** (two screens that disagree, one button that behaves differently in two places). Check every platform you have: the iOS app, the Android app and the website often disagree with each other, and each disagreement is a clue.
+
+### Outside the company
+
+- **Competitors and comparable products.** How do other coffee, airline or supermarket loyalty programs handle refunds, expiry and redemption? Users bring those expectations with them.
+- **Platform conventions.** Apple's Human Interface Guidelines, Google's Material Design and web standards like <Term id="wcag" /> describe what "normal" looks like: back navigation, <Term id="touch-target">touch targets</Term>, dialogs, permissions. See [Accessibility Basics](/web/accessibility-basics) for the most common checks.
+- **App store listing and marketing pages.** These are public promises. If the listing says "earn 1 point per $1", that's practically a requirement.
+- **Reviews.** One-star reviews often describe real bugs in the users' own words ("my points disappeared after I canceled").
+
+### Inside the company
+
+- **Support tickets.** Ask the support team for the top complaints about the area you're testing. They know where users struggle.
+- **Analytics.** Which features are used most? Which screens do people abandon? Heavy use means high impact.
+- **Designs.** Figma files show what the designer intended, often including <Term id="empty-state">empty states</Term>, errors and loading screens that never made it into a ticket.
+- **API documentation.** A Swagger/<Term id="openapi" /> page lists fields, required values, limits and error codes. A field called `expiresAt` tells you points expire, even if nobody mentioned it. [API Testing with Postman](/web/api-testing-with-postman) shows how to read and call these endpoints.
+- **Code history.** You don't need to read code. Commit messages and pull request (PR) descriptions are written in plain language: "Award points when order is paid, not on pickup" is a requirement in disguise.
+- **Previous bug reports.** Search the tracker for the feature name. Old bugs show weak spots, and closed-as-"works as designed" tickets record decisions.
+- **<Term id="release-notes">Release notes</Term>** and old wiki pages, even outdated ones, show how the feature evolved.
+
+### People
+
+Developers, the product owner (PO), designers, support agents and sales people each hold part of the picture. Sales and support know what customers were *promised*; developers know what was *built*; the PO decides what *should* happen.
+
+<Callout type="tip" title="Ask good questions">
+
+Busy people answer specific questions faster. Instead of "How should loyalty points work?", ask: "When an order is refunded, should the points it earned be removed? Today the app adds 4 more points instead." Short, concrete, with what you observed.
+
+</Callout>
+
+## Oracles: deciding what's a bug
+
+An <strong>oracle</strong> is anything that helps you decide whether a result is right or wrong. A spec is one oracle, and a very convenient one. But there are many others, and experienced testers use several at once.
+
+<Callout type="example" title="Tasting soup without a recipe">
+
+A chef tasting a new soup has no recipe card to compare with, yet instantly knows when it's too salty. They compare it with other soups they've made (comparable products), with what guests expect (user expectations), with what the menu promises ("mild tomato soup", a claim) and with yesterday's batch (history). That's exactly how oracles work.
+
+</Callout>
+
+### The consistency heuristics (HICCUPPS)
+
+Michael Bolton and James Bach, two well-known testing teachers, collected these oracles into a memorable heuristic called **HICCUPPS**. Each letter is a kind of consistency. A behavior that's **inconsistent** with one of them is a candidate problem.
+
+| Consistent with... | Ask yourself | Brewly example |
+| --- | --- | --- |
+| **History** | Did it work differently before? | Last version showed the expiry date; now it doesn't |
+| **Image** | Does it fit the brand the company wants? | A "premium" brand shows "ERR_NULL" in a popup |
+| **Comparable products** | How do similar apps do it? | Other loyalty apps reverse points on refunds |
+| **Claims** | Does it match what was promised? | Listing: "free drink of any size", app: "small only" |
+| **User expectations** | What would a reasonable user expect? | Canceling an order shouldn't add points |
+| **Product** | Is it consistent with itself? | Home shows 112 points, Rewards shows 120 |
+| **Purpose** | Does it serve what the feature is for? | Redeem is hidden two screens deep in Settings |
+| **Statutes and standards** | Does it follow laws and guidelines? | Redeem link is 20 pt tall (iOS asks for 44×44 pt) |
+
+You don't have to memorize the acronym. What matters is the habit: **for every odd behavior, ask "inconsistent with what?"** If you can answer, you have a reason. If you can't, you probably have a question, not a bug.
+
+<Callout type="warning" title="Oracles can be wrong, and can disagree">
+
+Oracles are **heuristics**: useful rules of thumb, not proof. The marketing page might be the outdated one, not the app. A competitor might do something badly. And two oracles can point in opposite directions (the design shows one thing, the developer's PR says another). When that happens, don't pick a side yourself: report the **inconsistency** and let the product owner decide.
+
+</Callout>
+
+## Build a feature map while you explore
+
+A **feature map** (or mind map) is a tree of everything the product does: areas, features, and the details inside them. Start with the app name in the middle, add the main areas (Rewards, Ordering, Payments, Account, Notifications) and keep adding branches as you discover things.
+
+Why it's worth the effort:
+
+- It shows **what exists**, so you can see what you haven't tested yet. That's your <Term id="test-coverage">coverage</Term> without a spec.
+- It's a perfect place to note **risk** (high, medium, low) and **open questions** next to each feature.
+- It becomes **documentation** that the team didn't have before.
+
+Use a whiteboard, a mind map tool (XMind, Miro, FigJam) or a simple indented list. You'll build one for Brewly in the practice section below.
+
+Explore in focused sessions of 60 to 90 minutes, each with a short goal written down first, a <Term id="test-charter" />: "Explore earning and refunding points with card and gift card payments, to find out how the balance changes." [Exploratory Testing](/tutorials/exploratory-testing) covers charters and sessions in depth.
+
+## Write down assumptions and get them confirmed
+
+Without a spec, you'll constantly make assumptions: "points are probably awarded when you pay", "a refund probably removes them". That's fine, as long as you **write them down** and get them confirmed by someone who can decide (usually the product owner). Unwritten assumptions turn into silent gaps in your testing.
+
+A simple assumption log:
+
+| # | Assumption | Based on | Status |
+| --- | --- | --- | --- |
+| A1 | Points are awarded when the order is paid | PR description | Confirmed by dev |
+| A2 | $4.50 earns 4 points (round down) | Listing: "1 point per $1" | Asked PO |
+| A3 | A refund removes the earned points | User expectation | Confirmed by PO |
+| A4 | Tips don't earn points | Guess | Open |
+
+<Compare>
+<Do title="Specific, easy to answer">
+
+"The listing says 1 point per $1. A $4.50 latte earned 5 points. Should it be 4 (round down) or 5 (round to nearest)?"
+
+</Do>
+<Dont title="Vague, gets ignored">
+
+"Can you explain how the points calculation is supposed to work?"
+
+</Dont>
+</Compare>
+
+<Callout type="tip">
+
+Ask in writing (a comment on the ticket or a shared channel), not only in a hallway chat. The answer then becomes documentation that anyone can find later, including you, three months from now.
+
+</Callout>
+
+## Create lightweight documentation as you go
+
+You're not expected to write the missing 40-page spec. But leaving **small, useful artifacts** behind is one of the most valuable things a tester can do on an undocumented product:
+
+- **A <Term id="checklist" />** of what to check for each feature. Reusable for every release and for <Term id="regression-testing" />.
+- **The feature map**, with risk and open questions.
+- **A glossary of the app.** Every product invents words: "beans", "tier", "streak", "pickup slot". Writing them down (with the exact spelling the app uses) helps new teammates and reveals inconsistencies, like "Beans" on iOS and "Points" on Android.
+- **Confirmed decisions**, copied from chats into the ticket or wiki.
+
+A template you can copy into your team's wiki:
+
+```text
+Feature: Loyalty points (Brewly)        Last updated: 14 Oct, by Sam (QA)
+
+What it does (in one sentence):
+  Customers earn points on paid orders and swap 100 points for a free drink.
+
+Sources:  App Store listing, Figma "Rewards v3", Swagger /loyalty, PR #812
+
+Glossary: bean = 1 loyalty point · reward = free drink · tier = Silver/Gold
+
+Confirmed rules:
+  - Points awarded when the order is paid (dev, PR #812)
+  - Refund removes the points earned by that order (PO, 12 Oct)
+
+Open questions:
+  - Do tips earn points?
+
+Checklist: earn · balance on all screens · redeem · refund · expiry · offline
+```
+
+## Prioritize by risk
+
+You'll never test everything, especially when you're still discovering what "everything" is. So test the **riskiest** things first. Risk is roughly **impact × likelihood** (the same idea as the risk scores in [Writing a Test Plan](/tutorials/writing-a-test-plan)):
+
+- **Impact:** what happens if this breaks? Money, personal data, legal problems and core flows (sign in, pay, order) are high impact.
+- **Likelihood:** how likely is it to break? New code, complex rules (rounding, time zones), many integrations, and areas with past bugs are more likely to fail.
+
+| Risk | Typical examples | When to test |
+| --- | --- | --- |
+| **High** | Earning and redeeming points, refunds, payments, balance shown to users | First, deeply |
+| **Medium** | Expiry, tiers, store selection, notifications | Next |
+| **Low** | Profile settings, activity history layout, promo banners | If time allows |
+
+Support tickets and analytics are excellent inputs here: a feature that gets many complaints or a lot of traffic deserves more attention. When you report what you found, you'll also suggest <Term id="severity" />; see [Severity vs Priority](/fundamentals/severity-vs-priority) for how that differs from the team's fixing <Term id="priority" />.
+
+## Reporting bugs when there's no spec
+
+Everything you learned in [How to Write a Bug Report](/tutorials/writing-bug-reports) still applies. The one difference is the **Expected result**: you can't write "as per requirement REQ-12". Instead, **name the oracle** in brackets and, if possible, link or quote it.
+
+<Compare>
+<Do title="Expected, with its oracle">
+
+- **Expected (consistency with the Home tab):** the Rewards tab shows the same balance as Home, 112 points.
+- **Expected (iOS Human Interface Guidelines):** the Redeem control is at least 44×44 pt.
+- **Expected (confirmed by PO in SHOP-311):** a refund removes the points the order earned.
+
+</Do>
+<Dont title="Expected, without a reason">
+
+- **Expected:** correct balance.
+- **Expected:** bigger button.
+- **Expected:** refund should work properly.
+
+</Dont>
+</Compare>
+
+A few more tips:
+
+- **Separate facts from judgment.** The actual result is a fact. The expected result is your judgment, backed by an oracle. Readers can then disagree with the oracle without doubting your observation.
+- **Use "inconsistent with" language** when two sources disagree: "The app allows small drinks only, which is inconsistent with the App Store listing ('any size'). One of them needs to change."
+- **Don't file opinions as bugs.** If no oracle supports it, raise it as a question or an improvement suggestion.
+- **Expect "works as designed".** Sometimes the team decides the odd behavior is intended. That's a good outcome too: you now have a confirmed rule to add to your documentation.
+
+## The method, step by step
+
+<Steps>
+
+1. **Clarify the mission.** Ask your lead what matters most: "Is the goal to find release blockers by Friday, or to learn the whole feature?" and how much time you have.
+2. **Collect sources (30 to 60 minutes).** Store listing, marketing page, Figma, Swagger, recent PRs, support tickets, old bugs. Note who knows what.
+3. **Do a first tour.** Use the feature like a customer would, end to end, on one device. Don't hunt for bugs yet; learn the words and the flows.
+4. **Draw the feature map.** Areas, features, details. Mark what you don't understand with a question mark.
+5. **Log assumptions and ask.** Turn every question mark into a specific, written question for the right person.
+6. **Rate risk and plan sessions.** Pick the high-risk features and write a charter for each session.
+7. **Explore with oracles.** For each odd behavior, ask "inconsistent with what?" Report bugs with the oracle named; log questions instead of guesses.
+8. **Leave documentation behind.** Update the feature map, checklist, glossary and confirmed rules. Turn confirmed rules into test cases for next time.
+
+</Steps>
+
+## Worked example: Brewly's undocumented Loyalty points
+
+Back to Tuesday morning. Here's how an experienced tester tackles the Friday release.
+
+### Tuesday, 9:00: collecting sources
+
+| Source | What it revealed |
+| --- | --- |
+| App Store listing | "Earn 1 bean for every $1. 100 beans = a free drink of any size." (Beans are Brewly's points.) |
+| Figma "Rewards v3" | Rewards tab, a points card on Home, an expiry banner, Silver/Gold tiers |
+| Swagger | `GET /loyalty/balance`, `POST /orders/{id}/refund`, an `expiresAt` field on each points entry |
+| PR #812 | "Award points when the order is paid (not at pickup)" |
+| Support tickets | Two complaints from the beta: "points vanished after canceling" |
+| Developer chat | iOS and Android teams built the screens separately |
+
+Already a lot: a public promise, intended screens, an expiry rule nobody mentioned, the moment points are awarded, a known weak spot (cancellations) and a hint that the two platforms may differ.
+
+### Tuesday, 10:30: first tour and feature map
+
+The tester orders a flat white on iOS, checks the Rewards tab, refunds the order from the order history, then repeats everything on Android. The feature map grows: *Rewards → Earning, Balance, Redeeming, Refunds, Expiry, History*, plus Ordering, Payments and Account around it.
+
+### Tuesday, 11:30: assumptions and questions
+
+The tester posts four questions in the team channel and the ticket:
+
+1. "Should $4.50 earn 4 points (round down, as '1 per $1' suggests) or 5?" → **PO: round down.**
+2. "Should a refund remove the points the order earned?" → **PO: yes.**
+3. "Do gift card payments earn points?" → **PO: yes, any payment.**
+4. "Do tips earn points?" → **PO: not decided.** Becomes a new user story, out of scope for Friday.
+
+### Tuesday afternoon to Wednesday: exploring by risk
+
+High-risk features first: earning, balance, refunds, redeeming. What the tester found:
+
+| # | Finding | Oracle | Severity |
+| --- | --- | --- | --- |
+| 1 | Refunding an order **adds** points instead of removing them | Confirmed by PO (question 2), user expectation | Critical |
+| 2 | $4.50 earns 5 points | Confirmed by PO: round down | Major |
+| 3 | Gift card payments earn 0 points | Claim ("every $1"), confirmed by PO | Major |
+| 4 | Android calls them "Points", iOS "Beans" | Consistency within the product | Minor |
+
+Finding 1 is critical because customers could order, refund and repeat to collect free drinks: real money for the business. Finding 4 surfaced only because the tester was writing the app's glossary.
+
+### Wednesday: the bug report
+
+Here's how finding 3 looks as a report. Note how the expected result names its oracles.
+
+```text
+Title:        Rewards: Paying with a gift card earns 0 points (card payments earn points)
+Environment:  Brewly 3.2.0 (build 410), iPhone 15, iOS 18.0.1, Staging
+Preconditions: Signed in as test user sam.qa; gift card balance $20; 40 points
+Steps:
+  1. Add a Flat white ($4.20) to the cart
+  2. Tap Checkout and choose "Gift card"
+  3. Tap Pay, then open the Rewards tab
+Expected (App Store claim "Earn 1 bean for every $1", confirmed by PO in SHOP-318):
+  Balance increases by 4 points, to 44.
+Actual:
+  Balance stays at 40. No activity entry is added. Same order paid by card earns 4 points.
+Reproducibility: 3/3 attempts
+Attachments:  gift-card-no-points.mp4
+```
+
+### Thursday: leaving documentation behind
+
+Confirmed rules from the PO turn into proper test cases (see [How to Write Test Cases](/tutorials/writing-test-cases)) for every future release:
+
+<TestCases
+  cases={[
+    {
+      id: "TC-LP-01",
+      title: "Paid order earns 1 point per whole dollar, rounded down",
+      priority: "high",
+      type: "positive",
+      preconditions: ["Signed in as a test user with 40 points", "Rule confirmed by PO in SHOP-318"],
+      steps: ["Order a Latte ($4.50) and pay by card", "Open the Rewards tab"],
+      data: "Latte $4.50",
+      expected: "Balance shows 44 points (+4). Activity shows 'Latte · $4.50 · +4'. Home shows the same 44 points.",
+    },
+    {
+      id: "TC-LP-02",
+      title: "Refund removes the points the order earned",
+      priority: "high",
+      type: "negative",
+      preconditions: ["Signed in with 44 points after the order in TC-LP-01"],
+      steps: ["Open Order history", "Refund the Latte order", "Open the Rewards tab"],
+      expected: "Balance returns to 40 points. Activity shows 'Refund · Latte · −4'.",
+    },
+    {
+      id: "TC-LP-03",
+      title: "Gift card payment earns points like a card payment",
+      priority: "medium",
+      type: "positive",
+      preconditions: ["Signed in with 40 points", "Gift card balance at least $5"],
+      steps: ["Order a Flat white ($4.20)", "Pay with the gift card", "Open the Rewards tab"],
+      expected: "Balance shows 44 points (+4), the same as a card payment.",
+    },
+    {
+      id: "TC-LP-04",
+      title: "Balance is identical on Home and Rewards after an order",
+      priority: "medium",
+      type: "edge",
+      preconditions: ["Signed in with 40 points"],
+      steps: ["Place and pay an order", "Check the points card on Home", "Open the Rewards tab", "Repeat on the Android app"],
+      expected: "The same balance, and the same word for points, appears on both screens and both platforms.",
+    },
+  ]}
+/>
+
+The feature map, assumption log, glossary and these test cases go onto one wiki page. On Friday, the next tester to touch loyalty points starts with documentation that didn't exist on Tuesday.
+
+## Common mistakes
+
+| Mistake | Why it hurts | Instead |
+| --- | --- | --- |
+| Refusing to test until there's a spec | The release goes out anyway, untested | Collect sources and start exploring |
+| Filing opinions as bugs | Developers stop trusting your reports | Name an oracle, or ask a question |
+| Keeping assumptions in your head | Gaps nobody knows about | Log them and get them confirmed |
+| Treating the app as always right | You only confirm what was built | Compare it with claims, users, rivals |
+| Treating one oracle as the truth | Outdated pages mislead you | Report inconsistencies, let the PO decide |
+| Testing in random order | Critical bugs found on Friday evening | Map features, rate risk, start high |
+| Leaving nothing behind | The next tester starts from zero | Feature map, checklist, glossary |
+
+</Long>
+
+## Practice 1: Oracle detective
+
+Here's a tiny version of Brewly's Rewards feature, with no spec. You have only the app and its App Store listing. Explore both tabs, then judge each numbered observation: is it a bug, not a bug, or a question to confirm first? And which oracle backs your decision?
+
+<OracleDetective client:visible />
+
+## Practice 2: Map the app
+
+Build a feature map of Brewly. Open each area to "explore" it, rate the risk of each feature you find, and add features you'd expect but don't see listed (offline mode? tiers? store hours?). Then compare your ratings with an experienced tester's and turn the map into notes.
+
+<FeatureMapBuilder client:visible />
+
+<Callout type="note" title="There's no single right risk rating">
+
+Experienced testers disagree on medium vs low all the time. What matters is that **money, data and core flows** end up as high, and that you can explain why you rated something the way you did.
+
+</Callout>
+
+## Before you test something undocumented
+
+<Checklist
+  title="Testing without documentation"
+  storageKey="testing-without-documentation"
+  items={[
+    "I asked my lead what matters most and how much time I have",
+    "I collected sources: app, store listing, marketing page, designs, API docs, PRs, support tickets, old bugs",
+    "I know who to ask: developer, product owner, designer, support, sales",
+    "I did a first tour of the feature as a customer, on each platform",
+    "I drew a feature map and marked unclear areas",
+    "I wrote my assumptions down and asked specific questions in writing",
+    "I rated features by risk and tested the high-risk ones first",
+    "Every bug report names the oracle behind its expected result",
+    "Unclear behavior went in as a question, not as a bug",
+    "I left behind a checklist, feature map, app glossary and confirmed rules",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "In testing, what is an oracle?",
+      options: [
+        "A senior tester who approves bug reports",
+        "Any way of deciding whether a result is right or wrong",
+        "A tool that generates test data",
+        "The official requirements document",
+      ],
+      answer: 1,
+      explain: "A spec is one oracle, but so are comparable products, user expectations, public claims, standards, the product's own behavior and its history.",
+    },
+    {
+      q: "The Home screen shows 112 points and the Rewards screen shows 120. Which oracle tells you this is a bug?",
+      options: [
+        "Comparable products",
+        "Claims",
+        "Consistency within the product",
+        "History",
+      ],
+      answer: 2,
+      explain: "The product contradicts itself: one account can't have two balances. You don't need any outside source to see that one screen is wrong.",
+    },
+    {
+      q: "The app store listing promises a free drink of any size, but the app only allows a small one. What should you do?",
+      options: [
+        "Nothing, the app is the source of truth",
+        "Report the inconsistency, quote the listing, and let the product owner decide which side changes",
+        "Ask marketing to update the listing yourself",
+        "Report it as a crash",
+      ],
+      answer: 1,
+      explain: "A public claim is a strong oracle, but it could be the outdated side. Report the mismatch as a fact and let the person who decides choose the fix.",
+    },
+    {
+      q: "A $4.50 purchase earns 5 points, and the listing says '1 point for every $1'. No one has defined rounding. What's the best next step?",
+      options: [
+        "File a critical bug",
+        "Ignore it, it's close enough",
+        "Log it as an assumption and ask the product owner a specific question",
+        "Change your test cases to expect 5",
+      ],
+      answer: 2,
+      explain: "No oracle settles it, so it's a question, not yet a bug. Ask specifically ('round down to 4, or round to 5?') and record the answer.",
+    },
+    {
+      q: "You have two days and an undocumented feature. What do you test first?",
+      options: [
+        "The features with the highest risk: money, data and core flows",
+        "Whatever screen you open first",
+        "The settings screens, because they are quick",
+        "Everything equally, in alphabetical order",
+      ],
+      answer: 0,
+      explain: "Risk is roughly impact times likelihood. Points that behave like money, payments and the core order flow come first.",
+    },
+    {
+      q: "Which 'Expected' line is best for a bug report without a spec?",
+      options: [
+        "Expected: it should work properly",
+        "Expected: the button should be bigger",
+        "Expected (iOS Human Interface Guidelines): the Redeem button is at least 44×44 pt",
+        "Expected: as discussed",
+      ],
+      answer: 2,
+      explain: "It states the expected behavior precisely and names the oracle it's based on, so the reader can verify the reason.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- **No documentation rarely means no information.** The truth is spread across the app, store listings, designs, API docs, PRs, support tickets, old bugs and people.
+- An **oracle** is any way to decide if a result is right. Look for inconsistency with the product itself, comparable products, user expectations, claims, standards, history (the HICCUPPS heuristic).
+- **Oracles are fallible.** When sources disagree, report the inconsistency and let the product owner decide.
+- Build a **feature map** while you explore, and use it for coverage, risk and open questions.
+- **Write assumptions down** and get them confirmed in writing. No oracle? Ask a question instead of filing a bug.
+- **Test by risk:** money, data and core flows first.
+- In bug reports, **name the oracle** behind your expected result.
+- Leave **lightweight documentation** behind: checklist, feature map, app glossary, confirmed rules.
+
+</KeyTakeaways>

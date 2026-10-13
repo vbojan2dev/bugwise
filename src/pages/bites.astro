@@ -1,0 +1,9 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import BitesFeed from '@/components/islands/BitesFeed';
+---
+
+<BaseLayout title="Bites" description="Quick review cards: test yourself in 10 seconds a card, on what you've learned and what's coming next." bare>
+  <h1 class="sr-only">Bugwise Bites: quick review cards for manual testing</h1>
+  <BitesFeed client:load />
+</BaseLayout>

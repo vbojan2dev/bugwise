@@ -1,0 +1,400 @@
+---
+title: Background and Foreground
+description: What happens to an app when you leave it, why the OS kills it, and what must survive. Learn the app lifecycle on iOS and Android, how to test background and restore scenarios, and hunt bugs in a banking app.
+order: 7
+level: intermediate
+minutes: { short: 30 }
+platform: mobile
+tags: [mobile, app lifecycle, background, state restoration, push notifications, session]
+---
+
+import LifecycleVisualizer from '@/components/demos/mobile-lifecycle/LifecycleVisualizer';
+import { BuggyBankingApp } from '@/components/demos/mobile-lifecycle/BuggyBankingApp';
+
+Daniel is booking a train ticket. Halfway through the passenger form, he switches to his email to copy a booking code. He replies to a message, checks a map, takes a photo. Ten minutes later he goes back to the train app, and it opens on the **home screen**. The form is empty. The seat he picked is gone. He books with a competitor instead.
+
+On the developer's brand-new phone with nothing else running, the app always came back perfectly. On Daniel's three-year-old phone, the OS had **quietly killed it** to free memory. Nobody had tested that.
+
+## Why it matters
+
+People don't use apps in one long session. They jump between apps dozens of times an hour. Every time they leave, your app moves to the **background**, and from that moment the OS decides what happens to it: keep it, freeze it, or kill it.
+
+Background and foreground bugs are some of the most common mobile bugs because:
+
+- **Developers rarely see them.** Fast test phones with lots of memory almost never kill apps.
+- **They depend on time.** "Come back after 5 seconds" and "come back after 2 hours" are completely different tests.
+- **They touch privacy and security:** what's visible in the app switcher, and whether an expired session is handled.
+
+## The app lifecycle
+
+The <Term id="app-lifecycle" /> is the set of states an app moves through. You don't need to know the code, but you do need to know the states, because each one is a test idea.
+
+| State | Visible? | Running code? | Example |
+| --- | --- | --- | --- |
+| **Not running** | No | No | Never opened since the phone restarted |
+| **Foreground, active** | Yes | Yes | You're scrolling the app |
+| **Foreground, inactive** | Yes (partly) | Yes, but gets no touches | App switcher open, Control Center pulled down, an incoming call screen on top |
+| **Background** | No | Briefly | You just pressed Home |
+| **Suspended** | No | No, frozen in memory | A few seconds after leaving |
+| **Terminated** | No | No, removed from memory | The OS killed it, or you swiped it away |
+
+<Tabs labels={['iOS', 'Android']}>
+<Tab>
+
+- iOS names the states exactly like the table: **Not running → Inactive → Active**, then **Background → Suspended** when you leave.
+- An app gets **a few seconds** in the background to save its work (up to about 30 seconds if it asks for extra time). Then it's suspended, unless it uses an approved background mode (audio, navigation, calls, background downloads).
+- A suspended app gets **no warning** when it's terminated. That's why it must save state when going to the background.
+- If the user **force-quits** an app from the app switcher, iOS throws away its saved screen state, and system background transfers for that app are canceled.
+
+</Tab>
+<Tab>
+
+- An Android screen is created, started and resumed (visible and active), then paused and stopped when you leave.
+  <DevNote>These are the **activity callbacks**: `onCreate` → `onStart` → `onResume`, then `onPause` → `onStop`.</DevNote>
+- A stopped app's process is **cached**: kept in memory but not doing anything. When memory runs low, Android kills cached processes, starting with the least recently used.
+- When the process is killed, the screen's **saved instance state** survives. When the user comes back, Android recreates the screen and the app should restore it as if nothing happened.
+- **OEM battery savers** on some brands (Xiaomi, Huawei, OnePlus, Samsung "sleeping apps") kill background apps far more aggressively than stock Android.
+
+</Tab>
+</Tabs>
+
+### Why does the OS kill apps?
+
+- **Memory:** another app (often the camera or a game) needs RAM, so the OS frees it by killing background apps.
+- **Battery:** iOS and Android limit background work to save power. Android's Doze and App Standby, plus manufacturer battery optimizations, can stop apps completely.
+- **Updates and restarts:** an app update or a phone restart terminates everything.
+- **Crashes in the background:** a <Term id="crash" /> while backgrounded looks to the user like "the app forgot everything".
+
+<Callout type="info" title="What users expect">
+Users don't know or care whether the app was suspended or killed. If they didn't swipe it away, they expect to come back to **the same screen, with the same data they typed**. Making that happen after a kill is called **state restoration**, and testing it is your job.
+</Callout>
+
+## Try it: the lifecycle state machine
+
+Press the actions below and watch the app move between states. The panel explains what the app should do at each step, which callbacks the developer gets, and what must survive. Switch between iOS and Android names at the top.
+
+<LifecycleVisualizer client:visible />
+
+<Callout type="tip" title="Paths worth trying">
+
+- **Open → go to Checkout → Home → Reopen.** A warm resume: instant, same screen.
+- **Open → Checkout → Home → OS kills app → Reopen.** A cold start with restoration: should still land on Checkout.
+- **Same, but Swipe away instead of OS kill.** A fresh start is expected here.
+- **Home → OS kills app → Tap notification.** The path that is broken most often.
+
+</Callout>
+
+## Background tasks
+
+Some work must continue after the user leaves. Each type has its own rules and its own bugs.
+
+| Task | Example | How it keeps running | What to test |
+| --- | --- | --- | --- |
+| **Downloads / uploads** | Offline maps, a podcast, uploading an ID photo | iOS background transfer session, Android WorkManager or a foreground service | Leave during transfer: does it finish? Is progress correct on return? What if the network drops? |
+| **Location** | Running tracker, delivery driver app | Background location permission, usually a visible indicator | Lock the phone for 10 minutes: is the route complete, without gaps? |
+| **Music and audio** | Spotify, audiobooks | Background audio mode / media notification | Lock screen controls, headphones, calls while playing |
+| **Background refresh** | News app showing fresh articles on open | iOS Background App Refresh, Android WorkManager. Runs when the **system** decides | Turn Background App Refresh off: does the app still work and refresh on open? |
+| **Push notifications** | "Your order has shipped" | Delivered by Apple / Google, not by the app | Tap them with the app in foreground, background and killed |
+
+<Callout type="warning" title="Background work is never guaranteed">
+Low Power Mode, Battery Saver, Doze, OEM battery optimizations and the user's own settings can all delay or stop background work. Test the app's behavior when background work **didn't** happen, not only when it did.
+</Callout>
+
+## What to test
+
+### Leaving and coming back
+
+<Steps>
+
+1. **Switch apps** (via the app switcher, and via a notification from another app) and come straight back.
+2. **Go Home and return after different gaps:** 5 seconds, 5 minutes, 1 hour, the next morning. Each gap catches different bugs.
+3. **Kill the app from the app switcher**, then reopen. Expect a fresh start, but saved data (cart, login, settings) must still be there.
+4. **Simulate the OS killing the app** (see the tools section) and reopen. Expect to land on the same screen with typed data restored.
+5. **Use the phone heavily in between:** open the camera, a game and a few other apps, then come back. This creates real memory pressure.
+
+</Steps>
+
+### What must survive
+
+- The **current screen** and the navigation back stack.
+- **Typed data:** forms, search queries, half-written messages, filters. See <Term id="state-persistence" />.
+- **Scroll position** in long lists.
+- **Media position** and play/pause state.
+- **Work in progress:** uploads, downloads, a payment that was being processed.
+
+### Coming back after a long time
+
+- **Stale data:** prices, stock, balances, chat messages and delivery status should refresh on return (or at least show when they were last updated).
+- **Session expiry:** banking and health apps end the <Term id="session" /> after a few minutes in the background. On return, the app should ask you to log in **right away**, not show stale personal data and then fail on the first action.
+- **Time-based content:** "Today" labels, countdowns, expired offers and OTP codes are correct after midnight or after hours away.
+
+### Opening from outside the app
+
+A <Term id="push-notification" /> or a <Term id="deep-link" /> must open the **right screen** in all three situations (more in [Push notifications](/features/push-notifications) and [Deep links](/features/deep-links)):
+
+| App state when tapped | Expected result |
+| --- | --- |
+| Foreground | Navigates to the target (or shows an in-app banner first) |
+| Background / suspended | Resumes and navigates to the target |
+| Killed / not running | Cold starts **directly** on the target (after login if needed), with a sensible Back |
+
+### Privacy in the app switcher
+
+The app switcher shows a **snapshot** of each app's last screen. Anyone looking at the phone can see it. Banking, health, password and messaging apps should **blur it or cover it** with the app logo. Open the app switcher on every screen that shows personal data and look closely.
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **State lost after OS kill** | Back on the home screen with an empty form or empty cart | High |
+| 2 | **Sensitive data in the app switcher** | Balance, card number or messages visible in the snapshot | High (privacy) |
+| 3 | **Stale data on return** | Old balance, prices or stock after hours in the background | Medium–High |
+| 4 | **Expired session not detected** | Logged-in screen with old data until an action fails with a vague error | High |
+| 5 | **Notification opens the wrong screen** | Tapping "Your order shipped" opens the home screen when the app was killed | Medium |
+| 6 | **Background upload or download stops** | Progress stuck at 40% forever, no error, no retry | High |
+| 7 | **Crash on restore** | App crashes when reopened after being killed in the background | Critical |
+| 8 | **Duplicate screens** | Each notification tap stacks another copy of the screen; Back has to be pressed many times | Low–Medium |
+| 9 | **Location gaps** | A run or delivery route has straight lines where tracking stopped in the background | High (for that app) |
+| 10 | **Media restarts from zero** | A podcast or video starts over after a warm resume | Medium |
+
+## Find the bug
+
+Northbank is a banking app with **six lifecycle bugs**. Use the **device controls** to send it to the background, wait, let the OS kill it, open the app switcher and send a push notification. The phone's clock moves when you wait. Watch the **network log**: what the app does (and doesn't) request is a big clue.
+
+<BugHunt
+  title="Northbank banking app"
+  bugs={[
+    {
+      title: 'Account balance is visible in the app switcher',
+      hint: 'On the accounts screen, open the App switcher and look at the Northbank card.',
+      detail: 'The snapshot shows the <strong>full balance and recent transactions</strong>. Anyone glancing at the phone can see them. Expected: the app covers or blurs its content before the snapshot is taken (iOS: when the app resigns active; Android: <code>FLAG_SECURE</code> or a privacy overlay).',
+    },
+    {
+      title: 'Stale balance after returning from the background',
+      hint: 'Go Home, Wait 2 min, then reopen the app. Compare the "Updated" time with the clock, then tap refresh.',
+      detail: 'The app shows the old balance and <strong>"Updated 9:41"</strong> while the clock says 9:43, and the network log shows no request on return. Refreshing reveals a €250 payment that arrived meanwhile. Expected: the app refreshes data (or at least checks it) when it returns to the foreground after a while.',
+    },
+    {
+      title: 'Transfer draft lost after the OS kills the app',
+      hint: 'Fill in a transfer, Go Home, tap OS kills app, then reopen Northbank from its icon.',
+      detail: 'The app cold-starts on the <strong>accounts screen</strong> and the recipient, amount and reference are gone. The user never closed the app, so they expect to return to the transfer. Expected: the screen and draft are restored from saved state. (After a user swipe-away, a fresh start is acceptable.)',
+    },
+    {
+      title: 'Notification opens the home screen when the app was killed',
+      hint: 'Compare: Send push and tap it with the app in the background, then again after OS kills app.',
+      detail: 'In the background, tapping opens the €120 transaction correctly. When the app was <strong>not running</strong>, it cold-starts on the accounts screen and ignores the notification. Expected: the transaction details open in both cases.',
+    },
+    {
+      title: 'Upload silently stops in the background',
+      hint: 'Start the ID upload in Verify ID, Go Home before it finishes, then come back.',
+      detail: 'The progress bar is <strong>stuck forever</strong> and still says "Uploading…". The network log shows the request was <code>aborted</code>, but the user is never told. Expected: the upload continues in the background (background transfer / WorkManager), or at least fails visibly and offers a retry.',
+    },
+    {
+      title: 'Expired session still shows the logged-in screen',
+      hint: 'Go Home, Wait 30 min, reopen the app, then try to refresh or send a transfer.',
+      detail: 'The server ended the session after 15 minutes, but the app still shows the balance. The first action fails with a vague <strong>"Something went wrong"</strong> and a <code>401</code> in the network log, and the user is stuck. Expected: on return, the app checks the session and shows the login screen right away, hiding personal data.',
+    },
+  ]}
+>
+  <BuggyBankingApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #4?">
+
+**Title:** Push: tapping "You received €120.00" opens Accounts instead of the transaction when the app is not running
+
+**Steps:** 1. Open Northbank, then go to the Home screen. 2. Force the app to be terminated by the system (Android: `adb shell am kill com.northbank.app`). 3. Send the test push "payment received". 4. Tap the notification.
+
+**Expected:** The app starts on the transaction details for €120.00 from Lisa Park.
+**Actual:** The app starts on the Accounts screen. The same push opens the details correctly when the app is in the background.
+
+**Severity:** Medium · **Reproducible:** 5/5 · **Device:** Pixel 7, Android 15
+
+</Callout>
+
+## Tools & how-to
+
+<Tabs labels={['Android', 'iOS']}>
+<Tab>
+
+**Simulate the OS killing your app (keeps saved state):**
+
+<Steps>
+
+1. Open the app, go to a screen with typed data, press **Home**.
+2. Run `adb shell am kill com.example.app`. It only kills the app if it's in the background, just like the system would.
+3. Reopen the app from the app switcher (Recents). It should restore the screen and the data.
+
+</Steps>
+
+**"Don't keep activities":** in **Settings › System › Developer options**, turn on **Don't keep activities**. Every screen is destroyed as soon as you leave it, so any screen that doesn't save its state shows the bug immediately. Also try **Background process limit › No background processes**. Turn both off again when you're done, as they make the whole phone behave strangely.
+
+**Other useful commands:**
+
+```bash
+adb shell am force-stop com.example.app   # like "Force stop" in Settings (state is NOT kept)
+adb shell am start -W -a android.intent.action.VIEW -d "shop://order/4521" com.example.app   # deep link
+adb shell dumpsys deviceidle force-idle   # push the device into Doze
+adb shell dumpsys deviceidle unforce      # leave Doze
+```
+
+Watch what happens with <Term id="logcat" /> in Android Studio while you test: you'll see the process die and restart.
+
+</Tab>
+<Tab>
+
+**Simulate the OS killing your app (keeps saved state):** Apple's recommended way is to run the app from **Xcode**, press **Home** in the app so it goes to the background, then click **Stop** in Xcode. Relaunch it: state restoration should bring you back. Don't swipe it away in the app switcher for this test, because a force-quit deletes the saved state on purpose.
+
+**Without Xcode (TestFlight builds):** open many heavy apps (camera, a few games, video) and come back after a while. Older iPhones with less memory kill background apps much sooner.
+
+**Useful Simulator tools:**
+
+- **Debug › Simulate Memory Warning** sends a memory warning to the app (it does not kill it, but badly built apps sometimes crash or drop data).
+- **Push notification:** `xcrun simctl push booted com.example.app payload.apns`, or drag an `.apns` file onto the Simulator.
+- **Deep link:** `xcrun simctl openurl booted "shop://order/4521"`.
+- **Background App Refresh:** turn it off for your app in **Settings › General › Background App Refresh** to test the "nothing happened in the background" path.
+
+</Tab>
+</Tabs>
+
+<Callout type="tip" title="Use a long timer, not just a quick switch">
+Many bugs only appear after the session timeout (often 5–15 minutes in banking apps) or after midnight. Ask the team for the exact session timeout and test just before and just after it. A <Term id="real-device" /> left on your desk overnight is a great test tool.
+</Callout>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-BG-001',
+      title: 'Warm resume keeps screen and typed data',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Transfer screen open with recipient and amount filled in'],
+      steps: ['Press Home', 'Wait 30 seconds', 'Reopen the app from the app switcher'],
+      expected: 'The transfer screen is shown with the recipient and amount exactly as typed.',
+    },
+    {
+      id: 'TC-BG-002',
+      title: 'State is restored after the OS kills the app',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Android device with adb', 'Transfer screen open with data filled in'],
+      steps: ['Press Home', 'Run adb shell am kill <package>', 'Reopen the app from Recents'],
+      expected: 'The app cold-starts on the transfer screen with all fields restored. No crash.',
+    },
+    {
+      id: 'TC-BG-003',
+      title: 'App switcher snapshot hides sensitive data',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open the accounts screen with the balance visible', 'Open the app switcher'],
+      expected: 'The Northbank card shows a blurred screen or the app logo. No balance, names or account numbers are readable.',
+    },
+    {
+      id: 'TC-BG-004',
+      title: 'Expired session is detected on return',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Session timeout is 15 minutes'],
+      steps: ['Open the accounts screen', 'Press Home', 'Wait 16 minutes', 'Reopen the app'],
+      expected: 'The login screen appears immediately. No balance or transactions are shown before logging in. After login the user returns to the accounts screen.',
+    },
+    {
+      id: 'TC-BG-005',
+      title: 'Notification opens the target screen when the app is killed',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['App terminated (swiped away or killed by the system)'],
+      steps: ['Send a "payment received" push to the device', 'Tap the notification'],
+      expected: 'The app starts directly on the transaction details. Back leads to the accounts screen.',
+    },
+    {
+      id: 'TC-BG-006',
+      title: 'Data is refreshed after a long time in the background',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['A second test account can send money to the user'],
+      steps: ['Open the accounts screen and note the balance', 'Press Home', 'Send €250 from the second account', 'Wait 5 minutes and reopen the app'],
+      expected: 'The balance includes the €250 without a manual refresh, and the "Updated" time is current.',
+    },
+    {
+      id: 'TC-BG-007',
+      title: 'Upload continues when the app is backgrounded',
+      priority: 'high',
+      type: 'edge',
+      steps: ['Start uploading a 4 MB ID photo', 'At about 30%, press Home', 'Wait 1 minute', 'Reopen the app'],
+      expected: 'The upload has completed (or shows its real progress). If it failed, a clear error with a Retry option is shown.',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="Background and foreground checklist"
+  storageKey="background-and-foreground"
+  items={[
+    'Switch apps and return: same screen, same typed data, same scroll position',
+    'Return after 5 seconds, 5 minutes, 1 hour and the next day',
+    'OS kill (adb shell am kill / Xcode Stop while backgrounded): screen and data restored, no crash',
+    'Android "Don\'t keep activities" on: every screen survives leaving and returning',
+    'Swipe away from the app switcher: fresh start, but saved data (cart, login, settings) is still there',
+    'App switcher snapshot hides balances, card numbers, messages and other personal data',
+    'Stale data (prices, stock, balances, statuses) refreshes on return',
+    'Expired session is detected on return and the login screen appears before any personal data',
+    'Push notifications and deep links open the right screen in foreground, background and killed states',
+    'Uploads, downloads and location tracking continue in the background, or fail visibly with a retry',
+    'Media keeps its position after a warm resume',
+    'Behavior is correct with Low Power Mode / Battery Saver and Background App Refresh turned off',
+    'Tested on an older, low-memory device, not only on the newest phone',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'You press Home. A few seconds later the app is in memory but runs no code. Which state is it in?',
+      options: ['Active', 'Inactive', 'Suspended', 'Not running'],
+      answer: 2,
+      explain: 'After a short time in the background, the OS suspends the app: it stays in memory but is frozen until the user returns (or the OS kills it).',
+    },
+    {
+      q: 'The OS killed the app in the background to free memory. The user did NOT swipe it away. What should happen when they reopen it?',
+      options: ['A fresh start on the home screen is fine', 'The app should restore the same screen and typed data', 'The app should show an error explaining it was killed', 'The user must reinstall the app'],
+      answer: 1,
+      explain: 'From the user\'s point of view, the app was never closed. State restoration should bring them back to where they were.',
+    },
+    {
+      q: 'Which Android developer option destroys each screen as soon as you leave it?',
+      options: ['Show taps', 'Don\'t keep activities', 'Stay awake', 'Strict mode enabled'],
+      answer: 1,
+      explain: '"Don\'t keep activities" is a quick way to find screens that do not save and restore their state.',
+    },
+    {
+      q: 'A banking app shows the account balance in the app switcher. What kind of issue is this?',
+      options: ['A performance issue', 'A localization issue', 'A privacy / security issue', 'Not an issue, it is expected'],
+      answer: 2,
+      explain: 'Anyone looking at the phone can see the snapshot. Sensitive apps should blur or cover it.',
+    },
+    {
+      q: 'Tapping a push notification works when the app is in the background, but opens the home screen when the app was killed. What should you do?',
+      options: ['Nothing, this is normal', 'Report it: the killed / cold start path ignores the notification', 'Only test notifications in the foreground from now on', 'Ask users to keep the app open'],
+      answer: 1,
+      explain: 'Notifications must open the target in all three states. The cold-start path is a different code path and is often broken.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Apps move through **not running, active, inactive, background, suspended and terminated**. Each transition is a test idea.
+- The OS kills background apps to save **memory and battery**, without warning. Users expect to come back to **the same screen and data** anyway.
+- Test **different gaps** (seconds, minutes, hours), **OS kill vs swipe away**, and **"Don't keep activities"** on Android.
+- After a long absence: **refresh stale data** and **check the session** before showing personal data.
+- Notifications and deep links must work from **foreground, background and killed** states.
+- Check the **app switcher snapshot** on every screen with personal data. Related reading: [Interruptions](/mobile/interruptions).
+
+</KeyTakeaways>

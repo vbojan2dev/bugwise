@@ -1,0 +1,337 @@
+---
+title: Device Fragmentation
+description: Thousands of phones, dozens of screen sizes, many OS versions. Learn what device fragmentation is, how to choose a smart device matrix, and which bugs only show up on certain devices.
+order: 2
+level: beginner
+minutes: { short: 30 }
+platform: mobile
+tags: [mobile, devices, fragmentation, compatibility, emulators, device farm]
+---
+
+import DeviceMatrixBuilder from '@/components/demos/mobile-platforms/DeviceMatrixBuilder';
+import { BuggyLayoutLab } from '@/components/demos/mobile-platforms/BuggyLayoutLab';
+
+A banking app passes every test on the team's three test phones: a new iPhone, a new Pixel and a new Galaxy. Two days after release, support tickets pile up: *"The Confirm button is missing on my phone."* *"The app crashes when I open my statements."* *"I never get the payment notification."*
+
+All three complaints come from devices the team never tested: an iPhone SE with its short screen, a cheap Android phone with 2 GB of RAM, and a Xiaomi phone whose battery saver freezes apps in the background. That's **device fragmentation**, and it's one of the main reasons mobile testing is harder than it looks.
+
+## What is fragmentation?
+
+<Term id="fragmentation">Fragmentation</Term> means your app runs on a **huge variety of devices** that differ in many ways at once:
+
+| Dimension | Examples | Why it matters |
+| --- | --- | --- |
+| **Screen size & shape** | 4.7″ iPhone SE, 6.7″ phones, tablets, foldables, notches and punch-holes | Layouts overflow, get cut off or look stretched |
+| **Pixel density** | 160 to 640+ dpi on Android, @2x and @3x on iPhone | Blurry images, wrong sizes if the app uses pixels instead of dp/pt |
+| **OS version** | iOS 17–26, Android 11–16 at the same time | Different permissions, APIs and behaviors |
+| **Manufacturer skin** | Samsung One UI, Xiaomi HyperOS, OPPO ColorOS, stock Pixel | Different fonts, settings, battery savers, sharing and permission screens |
+| **Hardware power** | 2 GB to 16 GB RAM, budget vs flagship chips | Slow screens, memory crashes, the app killed in the background |
+| **Form factor** | Phones, tablets, foldables (folded and unfolded), Chromebooks | Layout must adapt when the screen changes size at runtime |
+| **Other hardware** | Cameras, sensors, NFC, fingerprint vs face unlock | Features that only fail on some devices |
+| **User settings** | Font size, display size, dark mode, language, battery saver | The same phone behaves differently for different people |
+
+Android has **tens of thousands** of device models from hundreds of makers. Apple only sells a few dozen iPhone and iPad models, but even there you still have small and large screens, older and newer iOS versions, and iPad multitasking.
+
+<Callout type="info" title="Points and dp">
+Designers and developers measure screens in **logical units**: *points* (pt) on iOS and *density-independent pixels* (dp) on Android. A 6.1″ iPhone is about 390 pt wide; many Android phones are 360–412 dp wide. When this lesson says "360 × 800", it means logical units, not physical pixels.
+</Callout>
+
+## Why it matters
+
+- **Your users don't own your test phones.** Teams usually test on new, expensive devices. Many users have older, cheaper or smaller ones.
+- **Device-specific bugs are hard to reproduce.** "It works on my phone" is the start of the conversation, not the end. Without the device details, developers can't fix the bug.
+- **Bad reviews are public.** An app that crashes on a popular budget phone gets one-star reviews from all of its owners.
+- **You can't test everything.** That's the real lesson: you need a **smart, small set** of devices that represents your users. It's a form of <Term id="compatibility-testing" />.
+
+## How teams choose a device matrix
+
+A **device matrix** is the list of devices (and OS versions) you test on. Here's how good teams build one:
+
+<Steps>
+
+1. **Start with your analytics.** Look at which devices, OS versions and screen sizes your real users have (Firebase Analytics, App Store Connect, Google Play Console). For a brand-new app, use public market-share data for your target countries.
+2. **Know your supported range.** The product team decides the **minimum OS version** (for example "iOS 17+ and Android 11+"). Test the oldest one you still support: that's where crashes hide.
+3. **Cover the newest OS.** New releases change permissions, notifications and navigation. Install betas early.
+4. **Add the most popular devices.** A handful of models often cover a big share of your users.
+5. **Add the extremes:** a **small screen** (iPhone SE, a 360 dp Android), a **low-end device** (2–3 GB RAM), and a **tablet or foldable** if you support them.
+6. **Mix manufacturers.** At least Samsung plus one other Android maker (Xiaomi, OPPO, Motorola, Pixel), because skins behave differently.
+7. **Review it regularly.** Every few months, update the matrix from fresh analytics.
+
+</Steps>
+
+A typical starter matrix looks like this:
+
+| Slot | Example | Covers |
+| --- | --- | --- |
+| Newest iPhone | The latest iPhone on the latest iOS | New iOS behaviors |
+| Oldest supported iPhone | iPhone XR on iOS 17 | Old iOS, older hardware |
+| Small iPhone | iPhone SE | Short 4.7″ screen |
+| Popular Samsung | Galaxy A-series | Biggest share, One UI |
+| Low-end Android | 2–3 GB RAM phone on an older Android | Performance, memory, old OS |
+| Other maker | Xiaomi or OPPO | Aggressive battery savers, different skin |
+| Stock Android | Pixel on the latest Android | Newest Android features first |
+| Large screen | Foldable or tablet | Adaptive layouts, resizing |
+
+## Build your device matrix
+
+Now it's your turn. Pick devices from the (example) analytics below. Try to cover the risks **without** blowing the time budget.
+
+<DeviceMatrixBuilder client:visible />
+
+<Callout type="tip" title="Tiered testing">
+You don't run every test on every device. A common approach: the **full regression** on 2–3 main devices, a **smoke test** on the rest of the matrix (see [Regression and smoke suites](/tutorials/regression-and-smoke-suites)), and quick **exploratory** checks on unusual devices when a feature is risky (camera, payments, layout changes).
+</Callout>
+
+## Real devices, emulators and cloud device farms
+
+You have three ways to get a device in front of you. Good teams mix all three. (For a deeper look at the first option, see [Simulators and emulators](/mobile/simulators-and-emulators).)
+
+| | Emulators & simulators | Real devices | Cloud device farms |
+| --- | --- | --- | --- |
+| **What it is** | Software on your computer: Android <Term id="emulator" />, Xcode iOS <Term id="simulator" /> | Physical phones on your desk | Real (and virtual) devices in a data center, used over the internet |
+| **Good for** | Fast checks, many OS versions and screen sizes, early development | Real performance, camera, sensors, gestures, push, battery, OEM skins | Many models you don't own, automated runs at scale |
+| **Weak at** | Performance, real hardware, OEM skins (emulators run stock Android) | Cost, maintenance, limited number of models | Latency, cost per minute, some hardware (e.g. NFC) is hard to test remotely |
+| **Cost** | Free | Buying and replacing phones | Subscription or per-minute pricing |
+
+Popular cloud options:
+
+- **BrowserStack** gives you real iOS and Android devices in the browser. *App Live* is for manual, interactive testing; *App Automate* runs automated test scripts.
+- **Firebase Test Lab** (Google) runs **automated** tests on physical and virtual devices: instrumentation tests and the automatic *Robo* crawler for Android, and XCTest for iOS. You get videos, screenshots and logs, but it isn't meant for manual tapping.
+- **AWS Device Farm** offers real Android and iOS devices for both automated test runs and **remote access** sessions where you interact with a device manually.
+
+<Callout type="warning" title="The simulator is not the device">
+The iOS Simulator runs your app on the Mac's processor and doesn't emulate the phone's hardware, so performance, memory limits, camera and many sensors behave differently. The Android Emulator runs stock Android, so you won't see Samsung's or Xiaomi's changes. Always confirm important bugs, and the final regression, on a <Term id="real-device" />.
+</Callout>
+
+## Bugs that only happen on some devices
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Content cut off on small screens** | The main button is below the screen edge and the screen doesn't scroll | High |
+| 2 | **Overlap with large fonts** | Text runs under prices, icons or other text at 130–200% font size | Medium |
+| 3 | **Stretched or blurry images** | Photos distorted on tablets and unfolded foldables, blurry on high-density screens | Low–Medium |
+| 4 | **Layout breaks on fold/unfold** (see [Orientation and screen sizes](/mobile/orientation-and-screen-sizes)) | The screen resets, loses input, or keeps the phone layout on the big screen | Medium–High |
+| 5 | **Low-memory <Term id="crash">crashes</Term>** | App crashes on 2–3 GB phones when loading images, maps or the camera | High |
+| 6 | **Background work killed by OEM battery savers** | No notifications, stale order status, uploads stop (Xiaomi, OPPO, Samsung "sleeping apps") | High |
+| 7 | **Camera differences** | Wrong orientation, black preview or crash when scanning a card on some models | High |
+| 8 | **Notch / cutout overlap** | Header or buttons hidden behind the camera cutout; see <Term id="safe-area">safe area</Term> | Medium |
+| 9 | **OS-version-only bugs** | A feature works on Android 15 but crashes on Android 11 (missing API) | High |
+| 10 | **OEM font or setting differences** | A maker's system font is wider, so labels truncate only on that brand | Low–Medium |
+
+<Callout type="bug" title="Why battery savers cause so many bugs">
+To save battery, some manufacturers stop apps in the background much more aggressively than stock Android does. Delivery tracking, fitness tracking, alarms and chat apps are hit hardest. If your app does anything in the background, test it on a Xiaomi, OPPO/OnePlus or Samsung phone with the default battery settings.
+</Callout>
+
+## Find the bug
+
+This food-delivery product screen looks fine on the default iPhone 16. But it has **five bugs** that only appear on certain devices or settings. Switch device profiles, change the font size, tap around, and lock the phone for ten minutes to see what happens to the order status.
+
+<BugHunt
+  title="Device profile lab"
+  bugs={[
+    {
+      title: 'Small screen: the "Add to order" button is cut off',
+      hint: 'Switch to the iPhone SE.',
+      detail: 'On the short 667 pt screen the button sits below the bottom edge, and the screen <strong>doesn’t scroll</strong>, so users can’t order at all. The content area uses a fixed height with clipping instead of scrolling. It gets worse with larger fonts on other phones too. Expected: the screen scrolls, or the main button is pinned to the bottom.',
+    },
+    {
+      title: 'Large font: product name overlaps the description',
+      hint: 'Set the font size to 200% on any device.',
+      detail: 'The name area has a fixed height that fits two lines at the default text size. With bigger text the name needs more lines and spills over the description below, so both become unreadable. Expected: text containers grow with the content at every font size.',
+    },
+    {
+      title: 'Foldable / tablet: the photo is stretched',
+      hint: 'Pick the unfolded Galaxy Z Fold or the iPad.',
+      detail: 'The round pizza becomes a wide oval. The image has a fixed height and stretches to the full width without keeping its aspect ratio. Expected: the image keeps its proportions (crop or letterbox), and large screens get a layout made for them.',
+    },
+    {
+      title: 'Low-end device: "See all photos" crashes the app',
+      hint: 'On the Moto E13 (2 GB RAM), open the photos.',
+      detail: 'The app shows <em>“FoodNow keeps stopping”</em> and restarts, losing the selected size and extras. It loads all 24 full-size images at once, which runs out of memory on a 2 GB phone. The same tap works on every other device. Expected: images load as small thumbnails and the gallery works on the lowest supported device.',
+    },
+    {
+      title: 'Xiaomi: no order notification and a stale status after locking',
+      hint: 'Lock the phone for 10 minutes on the Xiaomi, then compare with the Pixel.',
+      detail: 'On other phones a <em>“Your rider picked up your order”</em> notification arrives and the status changes to <strong>On the way</strong>. On the Xiaomi profile nothing arrives and the status stays <strong>Preparing · 10 min ago</strong>, because HyperOS’s battery saver froze the app in the background. Expected: status updates arrive via push notifications, and the app refreshes when it returns to the foreground.',
+    },
+  ]}
+>
+  <BuggyLayoutLab client:visible />
+</BugHunt>
+
+<Callout type="example" title="Device bugs need device details">
+
+**Title:** Product page: "Add to order" button not reachable on iPhone SE (screen does not scroll)
+
+**Environment:** iPhone SE (3rd gen), iOS 26.0, default text size, app 3.2.0 (412). *Not reproducible on iPhone 16 or Pixel 8.*
+
+**Steps:** 1. Open Pizza Place. 2. Tap **Margherita pizza**. 3. Try to scroll to the bottom.
+
+**Expected:** The "Add to order" button is visible or reachable by scrolling.
+**Actual:** The screen does not scroll; the button is hidden below the bottom edge.
+
+**Severity:** High (blocks ordering on a popular device) · **Attachment:** screenshot
+
+</Callout>
+
+## Tools and how-to
+
+<Tabs labels={['Android', 'iOS', 'Cloud']}>
+<Tab>
+
+- **Android Studio › Device Manager:** create virtual devices for different screen sizes, densities and Android versions, including foldable, tablet and *Resizable* profiles.
+- **Change size and density on a real phone with <Term id="adb" />:** `adb shell wm size 720x1280` and `adb shell wm density 320`. Undo with `adb shell wm size reset` and `adb shell wm density reset`.
+- **Font and display size:** Settings › Display. Combine the largest font with the largest display size for the worst case.
+- **Low memory:** test on a real low-end phone. In Developer options, *Don't keep activities* helps you find state-loss bugs.
+- **Battery savers:** keep the maker's default battery settings, lock the phone for a while, and watch for missing notifications.
+
+</Tab>
+<Tab>
+
+- **Xcode Simulator:** install simulators for the smallest (iPhone SE) and largest iPhones and an iPad. Add older iOS runtimes in Xcode › Settings › Components.
+- **Larger Text:** Settings › Accessibility › Display & Text Size › Larger Text, with *Larger Accessibility Sizes* turned on.
+- **Display Zoom:** Settings › Display & Brightness › Display Zoom makes the UI bigger, similar to a smaller screen.
+- **Real devices:** keep at least one old, supported iPhone around. The simulator won't show real memory limits or performance.
+
+</Tab>
+<Tab>
+
+- **BrowserStack App Live:** upload your build (or install from TestFlight / Play), pick a real device and test manually in the browser.
+- **Firebase Test Lab:** upload an APK/AAB and run a *Robo* test across a list of devices to catch crashes and layout issues automatically; or run your team's instrumentation or XCTest suites.
+- **AWS Device Farm:** run automated tests across a device pool, or start a *remote access* session to use a real device manually.
+- Always record the exact device model and OS version from the farm in your bug report.
+
+</Tab>
+</Tabs>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-DEV-001',
+      title: 'Main button is reachable on the smallest supported screen',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['iPhone SE (3rd gen) or a 360×640 dp Android device'],
+      steps: ['Open a restaurant', 'Open a product', 'Scroll to the bottom of the screen'],
+      expected: '"Add to order" is fully visible and tappable, either pinned to the bottom or reachable by scrolling.',
+    },
+    {
+      id: 'TC-DEV-002',
+      title: 'Product page is readable at the largest font size',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Font size set to the maximum (Android 200% / iOS largest accessibility size)'],
+      steps: ['Open a product with a long name', 'Check name, price, extras and button'],
+      expected: 'No text is clipped or overlapping. The price is fully readable next to or below the name.',
+    },
+    {
+      id: 'TC-DEV-003',
+      title: 'Layout adapts when a foldable is unfolded',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Foldable device or foldable emulator'],
+      steps: ['Open a product on the folded cover screen', 'Select size L and one extra', 'Unfold the device'],
+      expected: 'The selection is kept, the layout uses the bigger screen sensibly, and images keep their proportions.',
+    },
+    {
+      id: 'TC-DEV-004',
+      title: 'Photo gallery works on the lowest supported device',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Android device with 2 GB RAM on the minimum supported Android version'],
+      steps: ['Open a product', 'Tap "See all photos"', 'Scroll through all photos'],
+      expected: 'The gallery opens and scrolls smoothly. No crash, no "keeps stopping" dialog.',
+    },
+    {
+      id: 'TC-DEV-005',
+      title: 'Order updates arrive with the OEM battery saver on default settings',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Xiaomi or OPPO device, default battery settings', 'Notifications allowed', 'Active order'],
+      steps: ['Place an order', 'Lock the phone for 15 minutes', 'Unlock and open the app'],
+      expected: 'Status notifications arrived while locked, and the order status is up to date when the app opens.',
+    },
+    {
+      id: 'TC-DEV-006',
+      title: 'App launches and core flow works on the oldest supported OS',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Device on the minimum supported OS (e.g. Android 11, iOS 17)'],
+      steps: ['Install the release candidate', 'Log in', 'Place an order with a test card'],
+      expected: 'No crashes; every step works as on the newest OS.',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="Device fragmentation checklist"
+  storageKey="device-fragmentation"
+  items={[
+    'The device matrix is based on real analytics or market data, and reviewed regularly',
+    'The matrix covers both the oldest supported and the newest OS on iOS and Android',
+    'At least one small screen (iPhone SE or 360 dp Android) is in the matrix',
+    'At least one low-end Android (2–3 GB RAM) is in the matrix',
+    'A tablet or foldable is tested if the app supports large screens',
+    'More than one Android manufacturer is covered (Samsung plus another skin)',
+    'Main buttons are reachable on short screens; every screen can scroll when needed',
+    'No text clipping or overlap at the largest font and display size',
+    'Images keep their proportions on wide screens and look sharp on high-density screens',
+    'Fold/unfold and rotation keep the user’s input and adapt the layout',
+    'Background features (notifications, tracking, uploads) work with OEM battery savers on default settings',
+    'Important bugs are confirmed on a real device, not only an emulator or simulator',
+    'Every device bug report includes model, OS version, font/display settings and app build',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'What is device fragmentation?',
+      options: ['When an app crashes into pieces', 'The wide variety of devices, screens, OS versions and manufacturer skins an app must support', 'Splitting a release into phases', 'A bug in the device storage'],
+      answer: 1,
+    },
+    {
+      q: 'You can test on only six devices. Which set is the BEST choice?',
+      options: [
+        'Six of the newest flagship phones',
+        'Six iPhones, because iOS users spend more',
+        'Newest iPhone, small iPhone, popular Samsung, low-end Android, another Android maker, and a foldable or tablet',
+        'Six emulators with the same Android version',
+      ],
+      answer: 2,
+      explain: 'A good matrix covers popular devices plus the extremes: small screen, low-end hardware, different makers, OS range and large screens.',
+    },
+    {
+      q: 'Order notifications never arrive on a Xiaomi phone but work on a Pixel. What is a likely cause?',
+      options: ['Xiaomi phones cannot show notifications', 'The manufacturer’s battery saver stopped the app in the background', 'The Pixel has a bigger screen', 'Dark mode is on'],
+      answer: 1,
+      explain: 'Several manufacturers kill or freeze background apps more aggressively than stock Android. Always test background features on those brands.',
+    },
+    {
+      q: 'Which statement about Firebase Test Lab is TRUE?',
+      options: ['It is only for iOS', 'It runs automated tests (like Robo or instrumentation tests) on devices in Google’s data centers', 'It replaces the need for any real device', 'It is a manual testing app you install on your phone'],
+      answer: 1,
+    },
+    {
+      q: 'Why should important bugs be confirmed on a real device?',
+      options: ['Emulators are illegal for testing', 'Real devices have real performance, memory limits, hardware and manufacturer skins that emulators and simulators don’t reproduce', 'Real devices are always faster', 'Bug trackers only accept real-device bugs'],
+      answer: 1,
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- **Fragmentation** = many screen sizes, densities, OS versions, manufacturer skins, hardware levels and form factors at once.
+- You can't test every device. Build a **device matrix** from analytics: popular models plus the **extremes** (small screen, low-end, oldest and newest OS, another maker, tablet or foldable).
+- **Mix tools:** emulators and simulators for speed, **real devices** for truth, and **cloud device farms** (BrowserStack, Firebase Test Lab, AWS Device Farm) for reach.
+- Classic device-only bugs: **cut-off buttons on small screens, overlap with large fonts, stretched images on big screens, low-memory crashes, and background work killed by battery savers**.
+- Every device bug report needs the **model, OS version, settings and build**. Without them, nobody can reproduce it.
+
+</KeyTakeaways>

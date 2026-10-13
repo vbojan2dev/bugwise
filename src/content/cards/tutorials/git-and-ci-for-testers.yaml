@@ -1,0 +1,46 @@
+teaser: "The ticket says Fixed, but the bug is still on your phone. Before you reopen it, there's one number you should check."
+cards:
+  - type: flip
+    front: "What is a pull request?"
+    back: "A request to merge a branch's changes, usually into main. It shows the changed code, review comments and CI checks. GitLab calls it a merge request."
+  - type: thisorthat
+    prompt: "The ticket says the fix is in build 412. Your staging app shows 2.1.0 (411)."
+    left: "Retest now"
+    right: "Get 412 first"
+    answer: right
+    explain: "Build 411 can't contain a fix that landed in 412. Retesting there would only lead to a false reopen."
+  - type: quiz
+    q: "In 2.1.0 (412), what does 412 identify?"
+    options: ["One exact build", "The patch version", "The release date"]
+    answer: 0
+    explain: "2.1.0 is the version users see. Many builds can share it, so the build number tells everyone exactly which one you tested."
+  - type: spotbug
+    screen: ["FD-327 retest", "Result: still fails", "Build: latest", "Environment: (empty)"]
+    question: "What's wrong with this retest note?"
+    bug: "No exact build number or environment."
+    explain: "Latest changes every hour. Without the build and environment, nobody can tell whether the fix was even in what you tested."
+  - type: quiz
+    q: "A PR's pipeline fails on a map UI test that also fails on main without changes. Best move?"
+    options: ["Reopen the bug", "Re-run until green", "Flag it as likely flaky"]
+    answer: 2
+    explain: "Read which test failed and its history. Ask for one re-run, and make sure the flaky test gets its own ticket and owner."
+  - type: truefalse
+    statement: "A higher build number always contains every earlier fix."
+    answer: false
+    explain: "A newer build can come from a different branch, like a hotfix made from an old release. Check the release notes or the commit."
+  - type: flip
+    front: "Continuous delivery vs continuous deployment?"
+    back: "Delivery keeps every good build ready to release, and a person decides when. Deployment releases every passing change to production automatically."
+  - type: truefalse
+    statement: "A fix can be in your build and still not work because a feature flag is off."
+    answer: true
+    explain: "Feature flags let code ship switched off. Check the flag for your test account before you reopen the bug, and note its state."
+  - type: thisorthat
+    prompt: "Which tells you most reliably that build 412 has the fix?"
+    left: "Ticket is Resolved"
+    right: "412 release notes"
+    answer: right
+    explain: "Resolved only says a developer finished. The build's own notes or CI page link it to the PR; your About screen confirms you have it."
+  - type: tip
+    title: "Ask where builds come from"
+    text: "In your first week, ask which branch staging builds come from and how to get a build for a pull request. It saves hours of confusion."

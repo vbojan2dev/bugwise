@@ -1,0 +1,434 @@
+---
+title: Network Conditions
+description: Real users are on slow 3G, flaky hotel Wi-Fi and in elevators. Learn how networks misbehave, what a resilient app does about it, and how to simulate bad networks on iOS, Android and the web.
+order: 6
+level: beginner
+minutes: { short: 35 }
+platform: mobile
+tags: [network, offline, throttling, mobile testing, performance]
+---
+
+import NetworkTerms from '@/components/demos/mobile-network/NetworkTerms';
+import NetworkLab from '@/components/demos/mobile-network/NetworkLab';
+import { BuggyShopNetwork } from '@/components/demos/mobile-network/BuggyShopNetwork';
+
+Friday evening. Marta orders dinner in a food delivery app while walking to the train. She taps **Place order**, the spinner spins, and she steps into the station elevator. The spinner keeps spinning. She taps again. Back on the street, two confirmation emails arrive: **two dinners, charged twice**.
+
+Nothing was "broken" on the developer's desk, where the office Wi-Fi is fast and never drops. The bug only exists on a real street, with a real phone, on a real network. That's why testing network conditions is one of the most valuable things a mobile tester does.
+
+## Why it matters
+
+- **Most users are not on fast Wi-Fi.** They're on mobile data, moving between cell towers, in basements, on trains and in crowded stadiums.
+- **Network bugs cost money and trust.** Double orders, lost photos, prices that are hours out of date, and "Something went wrong" with no way out.
+- **Developers rarely see them.** A spinner that never stops looks fine for the 80 ms it's visible on office Wi-Fi.
+
+<Callout type="info" title="The tester's job here">
+
+You're not testing the network. You're testing **how the app behaves when the network is slow, flaky, or gone**, and whether the user always knows what's happening and never loses data.
+
+</Callout>
+
+## Wi-Fi, mobile data and the "G"s
+
+A phone connects to the internet in one of two ways: **Wi-Fi** (a local router, often fast but sometimes overloaded or behind a login page) or **mobile data** (the cellular network). Mobile data comes in generations:
+
+| Network | Typical real-world speed | Typical latency | Where you still meet it |
+| --- | --- | --- | --- |
+| **2G / Edge** | 0.1–0.25 Mbps | 500–1000 ms | Rural areas, basements, fallback when 4G is overloaded |
+| **3G** | 0.5–5 Mbps | 100–500 ms | Older networks (many countries are switching it off), weak signal areas |
+| **4G / LTE** | 5–50 Mbps | 30–100 ms | The everyday mobile network for most users |
+| **5G** | 50–1000+ Mbps | 10–30 ms | Cities; drops back to 4G indoors and at the edge of coverage |
+| **Wi-Fi** | 10–500+ Mbps | 5–50 ms | Home, office, cafés, hotels (quality varies wildly) |
+
+<Callout type="tip" title="The signal icon lies">
+
+"5G" or full bars in the status bar doesn't mean a good connection. A packed stadium on 5G can be slower than a quiet 3G cell. When you report a network bug, write down **how** you simulated the network, not just what the status bar showed.
+
+</Callout>
+
+## Latency, bandwidth and packet loss
+
+These three words describe *how* a connection is bad. Each one breaks apps in a different way.
+
+<NetworkTerms />
+
+A useful rule of thumb: **latency hurts chatty apps** (many small requests in a row), **low bandwidth hurts heavy apps** (big images, videos, uploads), and **packet loss hurts everything unpredictably** (requests stall, then fail or succeed seconds later).
+
+## Real-life situations to recreate
+
+Bad networks aren't just "slow". Here are the situations that find the most bugs:
+
+| Situation | What happens to the network | What to watch in the app |
+| --- | --- | --- |
+| **Offline** | No connection at all | Clear offline message, cached content, actions queued or blocked politely |
+| **Airplane mode** | Wi-Fi and cellular off (Wi-Fi can be turned back on separately) | Same as offline; also test turning it off again: does the app recover by itself? |
+| **Switching networks mid-request** | Wi-Fi → cellular when leaving home; the device gets a new IP address and open connections break | In-flight requests fail or hang; uploads and payments must not be lost or duplicated |
+| **Elevator / tunnel** | Connection disappears for 10–60 s, then comes back | Spinner forever? Automatic retry? Data lost? |
+| **Captive portal** (hotel, airport, train Wi-Fi) | Wi-Fi is "connected" but every request returns the portal's login page (HTML, not JSON) | App shows a helpful error instead of crashing on unexpected HTML |
+| **VPN** | Extra latency, different country/IP, some hosts blocked | Region-specific content, login, payments and maps still work |
+| **Data Saver / Low Data Mode** | The OS limits background data (Android Data Saver, iOS Low Data Mode) | Background sync, autoplay video and prefetching respect the setting; the app still works |
+| **Weak signal / crowded network** | High latency and packet loss | Timeouts, retries, double submits |
+
+<Callout type="example" title="Captive portals are sneaky">
+
+On hotel Wi-Fi the phone shows full Wi-Fi bars, but the app's request to `api.shop.example` gets back an HTML login page (often via a redirect) instead of data. An app that blindly parses the response as <Term id="json">JSON</Term> can crash or show garbage. Try it with a proxy tool that returns HTML for an API call (see [Proxy Tools](/mobile/proxy-tools)).
+
+</Callout>
+
+## What a good app does
+
+A resilient app doesn't need a perfect network. It needs good answers to the question *"what if this request is slow, fails, or never comes back?"*
+
+<Steps>
+
+1. **Shows a loading state.** A <Term id="loading-state">loading state</Term> (spinner or skeleton) appears right away, so the user knows the tap worked. Buttons that send something are disabled while waiting, to prevent a <Term id="double-submit">double submit</Term>.
+2. **Uses timeouts.** Every request has a time limit. Without one, a request that lost its packets can hang forever, and the spinner spins forever with it.
+3. **Retries sensibly.** Safe requests (loading a list) are retried automatically a few times, waiting a bit longer each time ("backoff"). Payments and orders are only retried if the server can recognize a repeat. This is called <Term id="idempotency" />.
+4. **Explains errors in human words.** "You're offline. Check your connection and try again." plus a working **Try again** button. Never `NSURLErrorDomain -1009` or a stack trace. See <Term id="error-message">error messages</Term>.
+5. **Shows cached content.** The last loaded data stays visible offline, clearly marked ("Last updated 2 h ago"), instead of an empty screen. Learn more about the <Term id="cache" />.
+6. **Queues actions offline.** A sent message, a liked post or a photo upload is saved and sent when the connection returns, with a visible "Waiting to send" state. Or the action is clearly blocked, never silently dropped.
+7. **Recovers on its own.** When the network comes back, the app refreshes, hides the offline banner and continues queued work without needing a restart.
+
+</Steps>
+
+## Try it: the network lab
+
+This food delivery app loads a list of restaurants. Start on **3G**, then try **Lossy** with the timeout set to **Never**. Then switch on **Timeout**, **Retry** and **Cache** one by one and compare the timeline.
+
+<NetworkLab client:visible />
+
+<Callout type="tip" title="Things to notice">
+
+- On **Lossy** with no timeout, the app never finds out the request failed. Even with **Retry** on, nothing happens: retries need a timeout to trigger.
+- On **Edge** with a **5 s** timeout, every attempt times out, even though the network *would* have delivered in 6.5 s. Timeouts that are too short are bugs too.
+- With **Cache** on, users see something useful at 0 s, even offline. But the content may be old, so it must be labeled.
+
+</Callout>
+
+## What to test
+
+### Loading and slowness
+
+- Every screen that loads data shows a loading state on slow 3G. No frozen UI, no blank screen.
+- Buttons that send data (Pay, Send, Save) are disabled or show progress while waiting. Tapping twice doesn't create two orders.
+- Screens remain usable while images load slowly (text first, images later).
+- Long operations show progress, and the user can cancel or leave safely.
+
+### Offline and errors
+
+- Opening the app offline: cached content with an offline indicator, or a friendly offline screen.
+- Every error message is human-readable and offers a next step. **Try again** actually tries again.
+- Requests time out in a reasonable time. No endless spinners.
+- The app recovers automatically when the connection returns (or after one tap on Try again).
+
+### Interruptions and switching
+
+- Switching Wi-Fi → mobile data (and back) during loading, uploading and paying.
+- Going offline in the middle of an upload, a form submission and a payment: nothing is lost or duplicated, and the user is told what happened.
+- Turning airplane mode on and off with the app in the foreground and in the background. Related: <Term id="interruption">interruptions</Term> and the <Term id="app-lifecycle">app lifecycle</Term>.
+
+### Special networks
+
+- Captive portal Wi-Fi (connected, but no real internet).
+- VPN on, especially with a VPN server in another country.
+- iOS Low Data Mode / Android Data Saver on.
+- Very high latency (1–2 s) with normal bandwidth, and good latency with very low bandwidth.
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Infinite spinner** | Spinner never stops offline or on a lost request; no timeout, no error | High |
+| 2 | **Double submit on slow network** | User taps Pay again because nothing happened; two orders or two payments | Critical |
+| 3 | **Technical error text** | `NSURLErrorDomain Code=-1009`, `SocketTimeoutException`, stack traces | Medium |
+| 4 | **Silent data loss** | A photo, message or form disappears after the connection drops, with no message | High |
+| 5 | **Stale data shown as current** | Old cached prices, balances or stock with no "offline" or "last updated" hint | High |
+| 6 | **Dead retry button** | "Try again" does nothing, or only works after restarting the app | Medium–High |
+| 7 | **No recovery** | The app stays in the offline state after the network returns | Medium |
+| 8 | **Crash on unexpected response** | Captive portal HTML or a truncated response crashes the app | High |
+| 9 | **Too-short timeout** | Works on Wi-Fi, always fails on 3G or Edge although the server answers | High |
+| 10 | **Race condition after reconnecting** | Old responses arrive late and overwrite newer data. See <Term id="race-condition">race conditions</Term> | Medium |
+
+## Find the bug
+
+This sports shop app has **six network bugs**. Use the **Device network** switch under the phone like you'd use airplane mode or a throttling tool. Try every screen on Wi-Fi, on Slow 3G and offline, switch networks *in the middle* of things, and watch the network log.
+
+<BugHunt
+  title="Sports shop on a bad network"
+  bugs={[
+    {
+      title: 'Orders tab spins forever when offline',
+      hint: 'Go offline, then open the Orders tab.',
+      detail: 'The network log shows <code>GET /v2/orders</code> failed instantly with <em>no connection</em>, but the app ignores the error. The spinner never stops, there is no timeout, no message and no retry. Expected: an offline message ("You’re offline. Connect to see your orders.") with a Try again button, or cached orders.',
+    },
+    {
+      title: 'Double order when tapping "Buy now" twice on a slow network',
+      hint: 'Switch to Slow 3G, open a product and tap Buy now twice.',
+      detail: 'The button shows no loading state and stays enabled for ~3.5 s, so a second tap sends a second <code>POST /v2/orders</code>. Two orders are created (check the Orders tab). Expected: the button is disabled with a spinner after the first tap, and the server ignores duplicates (<em>idempotency key</em>).',
+    },
+    {
+      title: 'Raw system error shown when refreshing offline',
+      hint: 'Go offline and tap the refresh button in the Shop.',
+      detail: 'The alert shows <code>Error Domain=NSURLErrorDomain Code=-1009 …</code> including internal keys and the API URL. Expected: a human message like "You’re offline. Check your connection and try again." Technical details belong in logs, not in the UI.',
+    },
+    {
+      title: 'Photo upload silently lost when the connection drops',
+      hint: 'Start changing your profile photo, then go offline before it reaches 100%.',
+      detail: 'The progress bar disappears, the old avatar comes back, and nothing tells the user the upload failed (the log says <em>connection lost</em>). Expected: a clear "Upload failed" message with Retry, or the upload is queued and resumes when the connection returns.',
+    },
+    {
+      title: 'Outdated cached prices shown as current while offline',
+      hint: 'Note the prices on Wi-Fi. Go offline, tap Restart app, and compare.',
+      detail: 'Offline, the app falls back to prices cached yesterday (shoes <strong>$79.99</strong> instead of <strong>$99.99</strong>) with no offline banner and no "last updated" time. Users think the sale is still on. Expected: an offline indicator and a timestamp, or prices hidden until they can be confirmed.',
+    },
+    {
+      title: 'Retry button on a failed order does nothing',
+      hint: 'Go offline, tap Buy now, go back online and tap Retry.',
+      detail: 'Tapping <strong>Retry</strong> sends no request (nothing appears in the network log) and the error banner stays. Expected: Retry sends the order again (once!) and shows the result.',
+    },
+  ]}
+>
+  <BuggyShopNetwork client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #2?">
+
+**Title:** Checkout: tapping "Buy now" twice on a slow network creates two orders
+
+**Environment:** iPhone 15, iOS 18.0, app 3.4.1 (build 812), Network Link Conditioner "3G"
+
+**Steps:** 1. Set the network to 3G. 2. Open "Trail running shoes". 3. Tap **Buy now**. 4. Within 2 seconds, tap **Buy now** again.
+
+**Expected:** One order. The button is disabled and shows progress after the first tap.
+**Actual:** No loading state. Two `POST /v2/orders` requests are sent and two orders (#1043, #1044) appear in Orders.
+
+**Severity:** Critical (customer charged twice) · **Reproducible:** 5/5 on 3G
+
+</Callout>
+
+## How to simulate bad networks
+
+You don't need to ride an elevator all day. Every platform has tools to fake bad networks. Use them to find bugs quickly, then confirm the important ones in the real world.
+
+<Tabs labels={['iOS', 'Android', 'Web views', 'Proxy tools', 'Real world']}>
+<Tab>
+
+**Network Link Conditioner on a real iPhone**
+
+<Steps>
+
+1. Enable the **Developer** menu: connect the iPhone to a Mac with Xcode once, then turn on **Settings → Privacy & Security → Developer Mode** (iOS 16 and later) and restart.
+2. Open **Settings → Developer → Network Link Conditioner**.
+3. Pick a profile such as **3G**, **Edge**, **Very Bad Network**, **High Latency DNS** or **100% Loss**, and turn **Enable** on.
+4. Test, then **turn it off again**. It stays on until you do, and it slows down *every* app on the phone.
+
+</Steps>
+
+You can also add your own profile with exact bandwidth, latency and packet loss values.
+
+**From Xcode:** open **Window → Devices and Simulators**, select the connected device and use **Device Conditions → Network Link** to start a profile.
+
+**For the iOS Simulator:** the simulator uses your Mac's network. Install **Network Link Conditioner** from Apple's *Additional Tools for Xcode* download and enable it in System Settings. Remember that it slows down your whole Mac.
+
+</Tab>
+<Tab>
+
+**Android Emulator**
+
+<Steps>
+
+1. Open the emulator's **Extended controls** (the **⋯** button in the side toolbar).
+2. Go to **Cellular** and set **Network type** (e.g. GSM, EDGE, UMTS/3G, LTE, 5G), **Signal strength** and **Data status** (e.g. turn data off).
+3. For offline tests, pull down the quick settings inside the emulator and turn on **Airplane mode**, or turn Wi-Fi and mobile data off separately.
+
+</Steps>
+
+You can also start the emulator with network options, e.g. `emulator -avd Pixel_8 -netdelay gprs -netspeed edge`.
+
+**Real Android devices** have no built-in throttling, so use airplane mode, Wi-Fi/mobile data toggles, **Data Saver** (Settings → Network & internet), a proxy tool, or a router that can limit speed. In **Developer options**, **Mobile data always active** keeps cellular on while Wi-Fi is connected, which affects how quickly the phone can switch networks; test with it on and off if network switching matters.
+
+</Tab>
+<Tab>
+
+Many apps show some screens as web pages inside the app (web views), and mobile websites are tested in the browser.
+
+<Steps>
+
+1. Open **Chrome DevTools → Network** (or the **Network conditions** panel).
+2. Use the throttling dropdown: presets like **Slow 4G**, **3G** and **Offline**, or add a custom profile with your own download, upload and latency values.
+3. For an Android **web view**, connect the device (debug build with web view debugging enabled) and open `chrome://inspect` in desktop Chrome. For iOS web views, use **Safari → Develop** on the Mac (the app must allow inspection).
+
+</Steps>
+
+Throttling in DevTools only affects that browser tab, not the rest of the app. See <Term id="devtools" />.
+
+</Tab>
+<Tab>
+
+Proxy tools like **Charles** and **Proxyman** can throttle all traffic from a phone that goes through them:
+
+- **Charles:** **Proxy → Throttle Settings…** → enable throttling and choose a preset (e.g. 3G) or set bandwidth and latency yourself. You can limit it to specific hosts.
+- **Proxyman:** **Tools → Network Conditions** → create a rule for a domain with a preset or custom speed.
+
+Proxies can also return errors, empty responses or HTML pages (great for captive-portal tests). Read the next lesson: [Proxy Tools: Charles and Proxyman](/mobile/proxy-tools).
+
+</Tab>
+<Tab>
+
+Simulators are great, but nothing beats reality. Plan a short "walking test" for critical flows like checkout, sending messages or uploading:
+
+- Start a payment on Wi-Fi and walk out of range so the phone switches to mobile data.
+- Use the app in an elevator, a basement, an underground car park or a train.
+- Try a hotel, airport or café Wi-Fi with a login page.
+- Turn on a VPN, and try Low Data Mode / Data Saver.
+- Test on a <Term id="real-device" /> with a cheap prepaid SIM on a slower network.
+
+Write down where you were and what the phone showed, because real-world bugs can be hard to reproduce.
+
+</Tab>
+</Tabs>
+
+<Callout type="warning" title="Don't forget to switch it back">
+
+The most common "bug" reported after network testing is a tester's own phone still running Network Link Conditioner, a proxy or airplane mode. Make "reset network settings" the last step of every network test session.
+
+</Callout>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-NET-001',
+      title: 'Feed shows a loading state on 3G',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Network Link Conditioner set to "3G"'],
+      steps: ['Force-quit and open the app', 'Watch the home feed while it loads'],
+      expected: 'A skeleton or spinner is shown within 0.5 s. Content appears when loaded. No blank screen, no frozen UI.',
+    },
+    {
+      id: 'TC-NET-002',
+      title: 'Opening the app offline shows cached content with an offline banner',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['The app was used online before', 'Airplane mode is on'],
+      steps: ['Open the app', 'Look at the home screen and prices'],
+      expected: 'Previously loaded content is shown with a visible "You’re offline" banner and a "Last updated" time. Prices are clearly marked as possibly outdated.',
+    },
+    {
+      id: 'TC-NET-003',
+      title: 'Order is not duplicated when tapping Pay twice on a slow network',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Network throttled to Edge', 'Basket contains 1 item'],
+      steps: ['Tap "Pay"', 'Immediately tap "Pay" again', 'Wait for the result', 'Open Order history'],
+      expected: 'The button is disabled after the first tap. Exactly one order exists and the card is charged once.',
+    },
+    {
+      id: 'TC-NET-004',
+      title: 'Request times out with a friendly message when packets are lost',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Network Link Conditioner set to "100% Loss"'],
+      steps: ['Pull to refresh the feed', 'Wait up to 60 seconds'],
+      expected: 'Within the agreed timeout (e.g. 15–30 s) the spinner stops and a human-readable error with a working "Try again" button is shown.',
+    },
+    {
+      id: 'TC-NET-005',
+      title: 'Photo upload survives a network switch',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Phone connected to Wi-Fi with mobile data available'],
+      steps: ['Start uploading a 10 MB photo', 'At about 50%, turn Wi-Fi off', 'Wait for the upload to continue or fail'],
+      expected: 'The upload continues over mobile data or clearly fails with a Retry option. The photo is never silently lost.',
+    },
+    {
+      id: 'TC-NET-006',
+      title: 'App recovers automatically when the connection returns',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['App open on the home screen in airplane mode, offline banner visible'],
+      steps: ['Turn airplane mode off', 'Wait 10 seconds without touching the app'],
+      expected: 'The offline banner disappears and the content refreshes without restarting the app.',
+    },
+    {
+      id: 'TC-NET-007',
+      title: 'Captive portal Wi-Fi does not crash the app',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Connected to a Wi-Fi with a login page that has not been accepted (or a proxy rule returning HTML)'],
+      steps: ['Open the app', 'Try to refresh the home screen'],
+      expected: 'No crash. The app shows a message like "Can’t reach FitShop. You may need to log in to this Wi-Fi network."',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="Network conditions checklist"
+  storageKey="network-conditions"
+  items={[
+    'Every data screen shows a loading state on slow 3G / Edge',
+    'Submit buttons are disabled while waiting; double taps never create duplicates',
+    'Requests time out in a reasonable time; no endless spinners',
+    'Error messages are human-readable and offer a next step',
+    '"Try again" buttons really send a new request',
+    'Offline: cached content is shown and clearly marked as offline / last updated',
+    'Actions done offline are queued with a visible status, or clearly blocked',
+    'Switching Wi-Fi ↔ mobile data mid-request loses no data and creates no duplicates',
+    'Going through an elevator/tunnel (10–60 s offline) recovers without a restart',
+    'Captive portal Wi-Fi and unexpected HTML responses do not crash the app',
+    'VPN, Low Data Mode and Data Saver do not break core flows',
+    'Network simulation tools are turned off again after testing',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A screen with many small requests feels slow on 3G, even though each response is tiny. What is most likely the problem?',
+      options: ['Low bandwidth', 'High latency', 'Too much storage used', 'Dark mode'],
+      answer: 1,
+      explain: 'Each request waits for several round trips. With 300 ms of latency, ten small requests in a row can take seconds, even if they are tiny. Bandwidth matters more for big downloads.',
+    },
+    {
+      q: 'The spinner never stops when the network loses packets, and the "Retry" setting makes no difference. What is missing?',
+      options: ['A cache', 'A timeout', 'A bigger image size', 'A push notification'],
+      answer: 1,
+      explain: 'Without a timeout the app never learns that the request failed, so it never retries or shows an error. Retries depend on timeouts.',
+    },
+    {
+      q: 'On a slow network, a user taps "Pay" twice and is charged twice. Which fixes help? (Pick the best answer.)',
+      options: ['Make the button bigger', 'Disable the button while waiting and make the server ignore duplicate requests', 'Show a toast after payment', 'Increase the timeout to 5 minutes'],
+      answer: 1,
+      explain: 'The UI should prevent the second tap (loading state + disabled button), and the server should be idempotent so a repeated request does not create a second payment.',
+    },
+    {
+      q: 'The hotel Wi-Fi shows full bars, but the app crashes on launch. What is a likely cause?',
+      options: ['A captive portal returns an HTML login page instead of JSON', 'The phone is in dark mode', 'The battery is low', '5G is too fast'],
+      answer: 0,
+      explain: 'Captive portals intercept requests until you log in. The app receives HTML instead of the JSON it expects and must handle that gracefully.',
+    },
+    {
+      q: 'Which tool slows down the network for every app on a real iPhone?',
+      options: ['Chrome DevTools throttling', 'Network Link Conditioner in Settings → Developer', 'Android emulator Cellular settings', 'Low Power Mode'],
+      answer: 1,
+      explain: 'Network Link Conditioner on the device affects all traffic on that iPhone. DevTools throttling only affects one browser tab.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Test how the app behaves on slow, flaky and missing networks, not the network itself.
+- **Latency** slows down chatty apps, **bandwidth** slows heavy content, **packet loss** causes random hangs and failures.
+- Good apps show loading states, use timeouts and sensible retries, explain errors in plain words, cache content (clearly labeled) and queue offline actions.
+- The biggest risks are infinite spinners, double submits, silent data loss and stale data shown as current.
+- Simulate with Network Link Conditioner (iOS), emulator cellular settings (Android), DevTools (web views) and proxy throttling, then confirm critical flows in the real world.
+- Always switch simulation tools off when you're done. Related: <Term id="network-throttling" />.
+
+</KeyTakeaways>

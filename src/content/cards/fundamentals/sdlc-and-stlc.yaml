@@ -1,0 +1,44 @@
+teaser: "A missing rule can cost a five-minute chat or a hotfix, refunds and angry reviews. The only difference is when someone notices."
+cards:
+  - type: flip
+    front: "SDLC vs STLC?"
+    back: "The SDLC is the life cycle of building the whole product. The STLC is the testing work only, and it runs inside the SDLC."
+  - type: flip
+    front: "Entry criteria vs exit criteria?"
+    back: "Entry criteria: what must be true before a phase can start. Exit criteria: what must be true before you call it done."
+  - type: quiz
+    q: "In which model is testing mostly one big phase near the end of the project?"
+    options: ["Agile (Scrum)", "Waterfall", "DevOps"]
+    answer: 1
+    explain: "In waterfall each phase is finished before the next starts, so the product is tested only after all development is done. Problems surface late."
+  - type: quiz
+    q: "A tester reads a new story and asks what happens if the coupon expires in the cart. Which STLC phase?"
+    options: ["Requirement analysis", "Test execution", "Test closure"]
+    answer: 0
+    explain: "Reading requirements and asking questions is the first STLC phase. Catching gaps here, before any code exists, is shift-left in action."
+  - type: quiz
+    q: "Which is a good exit criterion for test execution?"
+    options: ["The deadline has arrived", "The developers say they're done", "Planned tests run, no open critical bugs"]
+    answer: 2
+    explain: "Exit criteria are agreed, measurable conditions. A deadline or someone's opinion says nothing about quality."
+  - type: truefalse
+    statement: "Shift-left means testing less at the end of the project."
+    answer: false
+    explain: "It means also testing at the beginning: reviewing requirements, discussing examples before coding, and testing small pieces early. The end-of-project testing stays."
+  - type: truefalse
+    statement: "In the V-model, tests are designed early but run late."
+    answer: true
+    explain: "Each design phase on the left pairs with a test level on the right. Writing the acceptance test alongside the requirement often exposes vague wording early."
+  - type: thisorthat
+    prompt: "Requirements change often and the team wants to show a small working slice to users every two weeks."
+    left: "Waterfall"
+    right: "Agile (Scrum)"
+    answer: right
+    explain: "Agile delivers a small, tested piece every sprint and adjusts based on feedback. Waterfall struggles with change because testing comes so late."
+  - type: spotbug
+    screen: ["STLC status: Test execution", "Build: installed today", "Smoke test: FAILED (login broken)", "Detailed testing: in progress"]
+    bug: "Detailed testing started although the smoke test failed."
+    explain: "A passed smoke test is an entry criterion for execution. On a broken build, detailed testing wastes time and blocks most test cases anyway."
+  - type: tip
+    title: "Be busy in every phase"
+    text: "Question stories in requirements, spot missing loading and error states in designs, write test cases during development, and smoke test production after release."

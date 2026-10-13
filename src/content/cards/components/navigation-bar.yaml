@@ -1,0 +1,45 @@
+teaser: "The back button in the corner says where it will take you. What if it's lying?"
+cards:
+  - type: flip
+    front: "Top bar vs bottom bar: what does each do?"
+    back: "The top bar shows this screen's title, back button and actions. The bottom bar jumps between the app's 3 to 5 main areas."
+  - type: spotbug
+    screen: ["Screen: Margherita", "Back button: ‹ Restaurants", "Tap it → Pizza Roma menu"]
+    bug: "The back label names the wrong screen."
+    explain: "On iOS the back button shows the previous screen's title. Here it shows the tab's first screen, which is only right one level deep."
+  - type: quiz
+    q: "You're far down a list in the Home tab and tap Home again. What should happen?"
+    options: ["Nothing", "The app reloads", "The list scrolls to the top"]
+    answer: 2
+    explain: "Re-tapping the selected tab pops to its first screen, or if you're already there, scrolls to the top."
+  - type: quiz
+    q: "How many destinations belong in a Material bottom navigation bar?"
+    options: ["3 to 5", "1 to 2", "6 to 8"]
+    answer: 0
+    explain: "Three to five. Fewer fit tabs or buttons; more belong in a drawer or a navigation rail."
+  - type: truefalse
+    statement: "Tab bar labels may sit under the iPhone home indicator if they still fit."
+    answer: false
+    explain: "Labels must stay above the home indicator. There they're hard to read, and taps compete with the system's go-home swipe."
+  - type: spotbug
+    screen: ["Orders badge: 0", "Update 1: read", "Update 2: unread (bold)"]
+    bug: "The badge doesn't match the unread count."
+    explain: "A badge must equal the number of unread items. Opening the same update twice must not lower it again."
+  - type: thisorthat
+    prompt: "A restaurant name is too long for the top bar. Which result is acceptable?"
+    left: "Runs under the icons"
+    right: "Truncated with …"
+    answer: right
+    explain: "Truncating keeps the back button and actions usable. Overlapping text is unreadable and taps may hit the wrong thing."
+  - type: thisorthat
+    prompt: "On Android, the app bar's ← arrow goes back one screen but system Back closes the app."
+    left: "Bug"
+    right: "Expected"
+    answer: left
+    explain: "Every way back (arrow, system Back button and gesture) must land on the same screen."
+  - type: flip
+    front: "Why test sticky web headers on a small phone in landscape?"
+    back: "Header, promo strip and cookie bar can leave a tiny slit for content, and can hide the focused link from keyboard users."
+  - type: tip
+    title: "Scroll to the very end"
+    text: "Bars floating over content need extra space below the list. Scroll every long list to the end: the last row must be fully visible."

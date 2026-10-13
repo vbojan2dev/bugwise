@@ -1,0 +1,45 @@
+teaser: "You type 'mug' and see results for 'm'. How can a search box show the wrong results for what's right in it?"
+cards:
+  - type: flip
+    front: "What is a debounce in search?"
+    back: "The app waits until you pause typing, around 200 to 500 ms, before sending a request, instead of searching on every keystroke."
+  - type: spotbug
+    screen: ["Search: lamp", "Showing 18 results", "Bamboo Bowl Set", "Linen Table Lamp", "Wool Blanket"]
+    bug: "The results belong to an older query, not 'lamp'."
+    explain: "A race condition: the slow response for 'l' arrived last and overwrote the 'lamp' results. Apps should debounce and ignore outdated responses."
+  - type: quiz
+    q: "You select the Kitchen and Home category chips. What usually happens to the results?"
+    options: ["They go down (AND)", "They go up (OR)", "They stay the same"]
+    answer: 1
+    explain: "Values inside one filter group are usually combined with OR, so the list grows. Filters from different groups combine with AND and shrink it."
+  - type: spotbug
+    screen: ["Sort: Price low to high", "$100.00", "$110.00", "$12.50", "$9.99"]
+    bug: "Prices are sorted as text, not as numbers."
+    explain: "Text sorting compares character by character, so '100' comes before '12.50'. Prices must be compared numerically."
+  - type: truefalse
+    statement: "Changing the sort order can change the number of results."
+    answer: false
+    explain: "Sorting changes the order, never the set. If the count changes when you switch sort, that's a bug."
+  - type: thisorthat
+    prompt: "You tap Clear all. The chips and badge reset, but the list still shows only Tech products."
+    left: "Bug"
+    right: "Needs a reload"
+    answer: left
+    explain: "Clear all must clear the applied filters too, not just the UI. Users can't get back to the full list, so it's a high-severity bug."
+  - type: quiz
+    q: "Which query is the best check for accent handling?"
+    options: ["cafe vs café", "MUG vs mug", "A 300-character query"]
+    answer: 0
+    explain: "'cafe' and 'café' should return the same products. MUG checks case, and the long query checks input limits."
+  - type: thisorthat
+    prompt: "Shoppers search for something the shop doesn't sell. What should they see?"
+    left: "A loading spinner"
+    right: "Helpful empty state"
+    answer: right
+    explain: "An endless spinner makes users think the app is stuck. A good empty state says what happened and suggests checking spelling or removing filters."
+  - type: flip
+    front: "Why keep search, filters and sort in the URL?"
+    back: "Links can be shared, and Back and refresh return the same filtered list instead of wiping it."
+  - type: tip
+    title: "Count the results every time"
+    text: "After every search, filter and sort change, compare the results count with the products you can actually see. '24 results' above 9 products is a bug."

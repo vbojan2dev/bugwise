@@ -1,0 +1,422 @@
+---
+title: Dropdown / Select
+description: A compact control that hides a list of options until you open it. Learn the native and custom variants, when a dropdown is the wrong choice, and the bugs testers find in long lists and dependent fields.
+category: input
+aka: [Select, Picker, Combo box, Menu]
+platforms: [ios, android, web]
+minutes: 35
+order: 3
+---
+
+import Anatomy from '@/components/demos/dropdown/Anatomy';
+import VariantsGallery from '@/components/demos/dropdown/VariantsGallery';
+import SearchLab from '@/components/demos/dropdown/SearchLab';
+import { RadioExample, SelectExample } from '@/components/demos/dropdown/Examples';
+import { BuggyShippingForm } from '@/components/demos/dropdown/BuggyShippingForm';
+
+Choosing your country at checkout, a T-shirt size in a fashion app, a sort order in a hotel search: whenever an app needs one answer from a known list, there's a good chance it uses a <Term id="dropdown">dropdown</Term>. It saves space by hiding the options until you need them.
+
+That hiding is also its weakness. Testers have to open it, scroll it, search it, use it with a keyboard, and check what happens when another field changes. Let's see how.
+
+## What is a dropdown?
+
+A dropdown (also called a **select** or **picker**) is a **closed field that shows the current value and opens a list of options when you tap it**. You pick one option (or several, in a multi-select), and the list closes again.
+
+You'll usually see dropdowns used for:
+
+- **Long, known lists**: country, state, language, currency.
+- **Settings with many values**: sort order, items per page, time zone.
+- **Product choices**: size, color, quantity.
+- **Dependent choices**: car make → model, country → city.
+
+### Anatomy
+
+<Anatomy />
+
+### How it differs from similar components
+
+| Component | Options visible | Selection | Best for |
+| --- | --- | --- | --- |
+| **Dropdown / select** | Hidden until opened | One (or many, in a multi-select) | 5–15 options when space is tight |
+| **Combo box** (searchable dropdown) | Hidden; filtered as you type | One | Long lists: countries, cities, airports |
+| **Segmented control** | All, in one row | Exactly one | 2–5 short options that switch a view |
+| **Radio buttons** | All, stacked | Exactly one | 2–6 options, especially with longer labels |
+| **Bottom sheet / picker** | Slides up from the bottom (mobile) | One or many | Long or rich lists on phones, with search or descriptions |
+| **Menu** | Hidden until opened | None: you trigger an action | Commands like *Edit, Share, Delete*, not values |
+
+<Callout type="dev" title="Platform names">
+On the web it's a `<select>` element or a custom **listbox**/**combobox**. iOS uses a **pop-up button** (a menu with a checkmark) or a **picker** (the scrolling wheel). Material Design on Android calls it an **exposed dropdown menu**, and Android developers often say **Spinner**. A menu that runs *actions* is not a dropdown, even if it looks like one.
+</Callout>
+
+## Designs & variants
+
+Native dropdowns are drawn by the browser or the operating system, so they're usually robust. Custom ones look nicer, but every behavior (keyboard, positioning, screen readers) has to be rebuilt by the team, and that's where bugs hide.
+
+<VariantsGallery client:visible />
+
+<Callout type="tip" title="Native vs custom: ask early">
+Before testing, find out whether a dropdown is **native** or **custom**. A native `<select>` gets keyboard support, screen reader support and the phone's own picker for free. A custom one needs all of that tested by hand.
+</Callout>
+
+## When to use it
+
+A dropdown is a good choice when:
+
+- There are **more than about 5 options** and showing them all would take too much space.
+- The options are **familiar** to users (they know their country, they don't need to compare).
+- There's a **sensible default**, or the user picks once and rarely changes it.
+- For **long lists (15+)**, add search. Then it becomes a combo box.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Few options: show them all">
+
+<div class="not-prose demo-screen my-3"><RadioExample label="Gift wrap" options={['No gift wrap', 'Gift wrap (+€2.00)']} client:visible /></div>
+
+Both options are visible and one tap away.
+
+</Do>
+<Dont title="Hiding two options in a dropdown">
+
+<div class="not-prose demo-screen my-3"><SelectExample label="Gift wrap" options={['No gift wrap', 'Gift wrap (+€2.00)']} placeholder="Select…" client:visible /></div>
+
+Two taps to see two options, and nothing tells the user there's a price difference. Use [radio buttons](/components/radio-button) or a [segmented control](/components/segmented-control).
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="A clear placeholder">
+
+<div class="not-prose demo-screen my-3"><SelectExample label="Country" options={['Austria', 'Croatia', 'Germany', 'Slovenia']} placeholder="Select a country" helper="Required for shipping" client:visible /></div>
+
+The user has to make a real choice. Submitting without one shows an error.
+
+</Do>
+<Dont title="First option pre-selected">
+
+<div class="not-prose demo-screen my-3"><SelectExample label="Country" options={['Afghanistan', 'Albania', 'Algeria', 'Andorra']} value="Afghanistan" client:visible /></div>
+
+Users skip the field without noticing, and the shop receives hundreds of orders "from Afghanistan". A wrong default is worse than none.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Long list: let users search">
+
+Countries, cities, airports and banks belong in a **combo box**: type "cro" and Croatia appears. On phones, a full-screen list or bottom sheet with a search field works well too. Try the searchable combo box in the gallery above.
+
+</Do>
+<Dont title="Long list: endless scrolling">
+
+<div class="not-prose demo-screen my-3"><SelectExample label="Country" options={['Afghanistan', 'Åland Islands', 'Albania', 'Algeria', 'American Samoa', 'Andorra', 'Angola', 'Anguilla']} placeholder="Select a country" open client:visible /></div>
+
+Around 200 countries and territories, 5 visible at a time. Scrolling to "Croatia" is slow, and finding "United Kingdom" is painful.
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Tester mindset">
+A dropdown for two options, a pre-selected default nobody checks, or 200 options without search are all **usability** findings. Report them during design review, when they're cheap to change.
+</Callout>
+
+## Common bugs
+
+These are the dropdown bugs testers report most often.
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Dependent field not reset** | You change the country, but the old city stays selected, so the order ships to "Zagreb, Serbia" | High |
+| 2 | **Menu clipped or off-screen** | Near the bottom of the screen (or inside a card) the list is cut off and the last options can't be reached | High |
+| 3 | **No keyboard support** | Tab skips the dropdown, or arrows, Enter and Esc do nothing | High (for affected users) |
+| 4 | **Strict search** | "ceske" doesn't find "České Budějovice"; "zagreb" doesn't find "Zagreb" | Medium |
+| 5 | **Unsorted list or duplicates** | Cities appear in random order, "Split" is listed twice | Low–Medium |
+| 6 | **Doesn't close** | Clicking outside or scrolling the page leaves the menu floating on top of the form | Medium |
+| 7 | **Selected value not shown** | After choosing, the field still says "Select…" (but the value was saved) | Medium |
+| 8 | **Wrong default** | The first option is pre-selected, or the saved value isn't shown when you come back to edit | High |
+| 9 | **Placeholder can be submitted** | "Select a country" is accepted as if it were a real value | Medium |
+| 10 | **Long labels truncated** | "Tomorrow, 16:00–2…" or long translations are cut off in the field or menu | Medium |
+| 11 | **Highlighted ≠ selected** | Moving the mouse over an option changes the value without clicking | Medium |
+| 12 | **Screen reader silence** | VoiceOver or TalkBack says "button" or "clickable" with no label and no value | High (for affected users) |
+
+<Callout type="bug" title="Why #1 is so sneaky">
+Each dropdown works perfectly on its own, so the bug only appears when you change fields **in an unusual order**: pick country, pick city, then go back and change the country. Always test dependent fields **backwards**, too. The bad data reaches the warehouse, not the screen, which is why it often slips into <Term id="production" />.
+</Callout>
+
+## Stress-test it
+
+A long list is only usable if search and sorting respect real names with real letters. Compare a naive implementation with a robust one:
+
+<SearchLab client:visible />
+
+<Callout type="info">
+Typing without accents is normal: many people don't have č, ł or ö on their keyboard, or they're in a hurry. Sorting also depends on <Term id="locale" />: in Croatian, *Č* comes right after *C*, while a naive sort puts it after *Z*. This is part of <Term id="localization" /> testing.
+</Callout>
+
+## Find the bug
+
+The checkout form below has **six bugs** in its dropdowns. Test it like a real customer, then like a tester:
+
+- Choose a country and city, then **change the country**.
+- Search for countries in lowercase and **without accents**.
+- Try every option in every list, including the **last** ones.
+- Put the mouse away and use only the **keyboard**.
+- Open a list and **click somewhere else**.
+
+<BugHunt
+  title="Checkout"
+  bugs={[
+    {
+      title: 'City is not reset when the country changes',
+      hint: 'Choose a country and a city, then change the country.',
+      detail: 'Choose <strong>Hrvatska → Zagreb</strong>, then switch the country to <strong>Srbija</strong>: the city still says Zagreb, and the order is placed with <code>"city": "Zagreb", "country": "Srbija"</code>. Expected: changing the country clears the city (or keeps it only if it exists in the new country).',
+    },
+    {
+      title: 'Country search is case- and accent-sensitive',
+      hint: 'Search for a country in lowercase, or without accents.',
+      detail: '"hrv" finds nothing (only "Hrv" works) and "ceska" doesn\'t find <strong>Česká republika</strong>; "osterreich" misses <strong>Österreich</strong>. Expected: search ignores case and accents.',
+    },
+    {
+      title: 'Delivery slot menu is clipped; the last slots cannot be chosen',
+      hint: 'Open Delivery slot and try to pick a Saturday slot with the mouse.',
+      detail: 'The menu opens inside a card that hides overflowing content, so only the first slot or two are visible. Saturday slots can only be reached blindly with the arrow keys. Expected: the menu is fully visible (it renders above the card, or flips upwards).',
+    },
+    {
+      title: 'City dropdown cannot be used with the keyboard',
+      hint: 'Press Tab from the Country field.',
+      detail: 'Focus jumps from Country straight to Street; the city dropdown is never focused, and arrows, Enter and Esc do nothing. It is a plain <code>&lt;div&gt;</code> with a click handler. Expected: it is focusable, opens with Enter/Space/Arrow Down, and supports arrows, Enter and Esc.',
+    },
+    {
+      title: 'City menu does not close when clicking outside',
+      hint: 'Open the City list, then click somewhere else on the page.',
+      detail: 'The list stays open on top of the Street field until you click the dropdown again or pick a city. Expected: clicking outside (or pressing Esc) closes it without changing the value.',
+    },
+    {
+      title: 'City lists are unsorted and contain duplicates',
+      hint: 'Read the city list for Hrvatska or Srbija carefully.',
+      detail: 'Cities appear in database order (Zagreb, Split, Osijek…) and <strong>Split</strong> is listed twice; Novi Sad, Graz, Brno and Mostar are duplicated too. Expected: unique options, sorted alphabetically using the local language rules.',
+    },
+  ]}
+>
+  <BuggyShippingForm client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Checkout: city keeps the old value after changing the country, order is placed with a mismatched address
+
+**Steps:** 1. Open Checkout. 2. Country: choose **Hrvatska**. 3. City: choose **Zagreb**. 4. Change Country to **Srbija**. 5. Choose a delivery slot and tap **Place order**.
+
+**Expected:** After step 4 the City field is cleared and shows only Serbian cities; the order can't be placed until a new city is chosen.
+**Actual:** City still shows "Zagreb". The order is placed with `"city": "Zagreb", "country": "Srbija"`.
+
+**Severity:** High (parcels go to the wrong address) · **Reproducible:** 10/10
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Dropdown test checklist"
+  storageKey="dropdown"
+  items={[
+    'The field shows a clear placeholder (or a deliberate default) on first load',
+    'The selected value is shown in the field after the menu closes, and after reopening the screen',
+    'A required dropdown can\'t be submitted with the placeholder still selected',
+    'Every option can be selected, including the first and the last',
+    'The list is sorted sensibly (alphabetically for the user\'s language) with no duplicates',
+    'Search ignores case, accents and extra spaces, and shows a "no results" message',
+    'Dependent dropdowns reset or update when the parent value changes',
+    'The menu is fully visible near the bottom of the screen, inside cards and in landscape',
+    'Clicking outside, pressing Esc or Back closes the menu without changing the value',
+    'Keyboard: Tab focuses it, Enter/Space/Arrow Down open it, arrows move, Enter selects, Esc closes',
+    'Disabled options look disabled and can\'t be selected by touch, mouse or keyboard',
+    'Long labels and translations fit or wrap in the field and in the menu',
+    'Screen readers announce the label, current value, and the option count or position',
+    'Works with the largest text size, in dark mode, and on small screens',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-DD-001',
+      title: 'Selected value is displayed after choosing',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open Checkout', 'Open the Delivery slot dropdown', 'Choose "Tomorrow, 12:00–16:00"'],
+      expected: 'The menu closes and the field shows "Tomorrow, 12:00–16:00".',
+    },
+    {
+      id: 'TC-DD-002',
+      title: 'City resets when the country changes',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Choose Country "Hrvatska"', 'Choose City "Zagreb"', 'Change Country to "Srbija"', 'Open the City dropdown'],
+      expected: 'City is cleared and shows the placeholder. The list contains only Serbian cities.',
+    },
+    {
+      id: 'TC-DD-003',
+      title: 'Search ignores case and accents',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Click the Country field', 'Type "ceska"', 'Clear and type "HRVATSKA"', 'Clear and type "osterreich"'],
+      expected: 'Each query shows the matching country: Česká republika, Hrvatska, Österreich.',
+    },
+    {
+      id: 'TC-DD-004',
+      title: 'Search with no results',
+      priority: 'low',
+      type: 'negative',
+      steps: ['Click the Country field', 'Type "xyz"'],
+      expected: 'A "No matches" message is shown. Pressing Enter does not select anything.',
+    },
+    {
+      id: 'TC-DD-005',
+      title: 'Last option can be selected near the bottom of the screen',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Phone in landscape, or browser window 600 px high'],
+      steps: ['Scroll so the Delivery slot field is near the bottom edge', 'Open the dropdown', 'Tap the last option'],
+      expected: 'All options are visible (the menu opens upwards or scrolls), and the last option can be selected.',
+    },
+    {
+      id: 'TC-DD-006',
+      title: 'Keyboard-only selection',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Press Tab until the City dropdown is focused', 'Press Arrow Down', 'Press Arrow Down twice', 'Press Enter', 'Press Arrow Down, then Esc'],
+      expected: 'Focus is visible on the field; the list opens; the highlight moves; Enter selects the 3rd city and closes the list; Esc closes the list without changing the value.',
+    },
+    {
+      id: 'TC-DD-007',
+      title: 'Clicking outside closes the menu',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Open the City dropdown', 'Click on an empty area of the page'],
+      expected: 'The menu closes and the previously selected value is unchanged.',
+    },
+    {
+      id: 'TC-DD-008',
+      title: 'Required dropdown blocks submit',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Leave Delivery slot on "Choose a slot"', 'Fill in all other fields', 'Tap "Place order"'],
+      expected: 'The order is not placed. The Delivery slot field shows "Choose a delivery slot".',
+    },
+    {
+      id: 'TC-DD-009',
+      title: 'Saved value is shown when editing',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['An address with Country "Slovenija" and City "Maribor" is saved'],
+      steps: ['Open Account › Addresses', 'Tap Edit on the saved address'],
+      expected: 'Country shows "Slovenija" and City shows "Maribor" (not the placeholder or the first option).',
+    },
+  ]}
+/>
+
+## Accessibility
+
+Custom dropdowns are one of the most common accessibility failures on the web. Check these:
+
+- **Keyboard (web):** the dropdown is reachable with <kbd>Tab</kbd>; <kbd>Enter</kbd>, <kbd>Space</kbd> or <kbd>↓</kbd> open it; arrows move the highlight; <kbd>Enter</kbd> selects; <kbd>Esc</kbd> closes and returns focus to the field. Typing a letter jumps to matching options.
+- **Screen readers** (<Term id="screen-reader">VoiceOver / TalkBack</Term>) should announce the **label**, the **current value**, that it's a **pop-up / combo box**, and whether it's **expanded**. Inside the list, each option should be announced with its position ("Zagreb, 3 of 6") and selected state.
+  <DevNote>In code: `role="combobox"` + `aria-expanded` on the field, `role="listbox"` and `role="option"` + `aria-selected` in the menu.</DevNote>
+- **Visible focus:** both the field and the highlighted option need a clear focus indicator, not only a subtle color.
+- **Highlighted vs selected** must look different, so keyboard users know what Enter will choose.
+- **Contrast** (<Term id="wcag" />): option text at least 4.5:1; the field border and chevron at least 3:1.
+- **<Term id="touch-target">Touch targets</Term>:** options at least 44 pt tall on iOS and 48 dp on Android.
+- **Combo boxes** should announce the number of results as you type ("5 results").
+
+<Callout type="tip">
+Try the gallery above with only your keyboard. Then try the bug hunt's City field. The difference is exactly what a keyboard or screen reader user experiences.
+</Callout>
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- **Pop-up buttons** show a menu with a checkmark. Good for short lists.
+  <DevNote>`UIButton` with a menu, or `Picker` with the `.menu` style in SwiftUI.</DevNote>
+- **Wheel pickers** are used for dates, times and sizes. Test that the value saves when you stop scrolling, not only when you tap Done.
+  <DevNote>`UIPickerView`, `UIDatePicker`, `.wheel` style.</DevNote>
+- A web `<select>` in Safari opens the native iOS picker. Check long option labels there, because they get truncated.
+- Long lists usually open a **new screen** with a search field instead of a menu.
+- Test with **VoiceOver** (the rotor and swipe up/down adjust picker values) and the largest **Dynamic Type** size.
+
+</Tab>
+<Tab>
+
+- Material 3 **exposed dropdown menu**; older apps use a spinner.
+  <DevNote>`ExposedDropdownMenuBox` in Compose, `TextInputLayout` + `AutoCompleteTextView` in Views; the older one is a `Spinner`.</DevNote>
+- The menu can open **above** the field when there's no room below. Test near the bottom of the screen and with the keyboard open.
+- The system **Back** button should close an open menu without leaving the screen.
+- Long lists often use a **bottom sheet** or a full-screen search instead.
+- Test with **TalkBack**, **font scale** and **display size** settings.
+
+</Tab>
+<Tab>
+
+- A native `<select>` is the safest choice: keyboard, screen reader and mobile pickers work out of the box.
+- Custom dropdowns (React, Vue, UI libraries) must follow the ARIA **combobox** / **listbox** pattern. Check the roles in <Term id="devtools" />.
+- Test **positioning**: near the bottom of the window, inside scrolling containers, inside modals and cards with hidden overflow.
+- Test **zoom** at 200% and **small viewports**: does the menu still fit?
+- <Term id="cross-browser-testing">Cross-browser</Term>: native selects look very different in Chrome, Safari and Firefox; check each one.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A form asks "Gift wrap?" with only "Yes" and "No". Which component fits best?',
+      options: ['A dropdown', 'Radio buttons or a segmented control', 'A combo box with search', 'A wheel picker'],
+      answer: 1,
+      explain: 'With two options, showing both is faster and clearer. A dropdown hides them behind an extra tap.',
+    },
+    {
+      q: 'You choose Hrvatska and Zagreb, then change the country to Srbija. The city still shows Zagreb. What kind of bug is this?',
+      options: ['A cosmetic bug', 'A dependent-field bug: the child value is not reset when the parent changes', 'A performance bug', 'Not a bug, users can fix it themselves'],
+      answer: 1,
+      explain: 'The city must be cleared or validated when the country changes, otherwise orders ship to impossible addresses.',
+    },
+    {
+      q: 'Which search query is MOST likely to reveal a search bug in a city combo box?',
+      options: ['"Zagreb"', '"zagreb" or "lodz" (lowercase, without accents)', 'Typing nothing', 'Clicking the first city'],
+      answer: 1,
+      explain: 'Real users type in lowercase and skip accents. A naive "contains" search finds nothing.',
+    },
+    {
+      q: 'The last two options of a dropdown are cut off at the bottom of a card. What should the dropdown do?',
+      options: ['Nothing, users can scroll the page', 'Show the whole menu, for example by opening upwards or rendering above the card', 'Remove the last two options', 'Show a tooltip'],
+      answer: 1,
+      explain: 'Every option must be reachable. Good dropdowns detect the available space and flip, or render in a layer above everything else.',
+    },
+    {
+      q: 'What is the difference between a highlighted and a selected option?',
+      options: ['There is no difference', 'Highlighted = where focus or the mouse is now; selected = the current value', 'Selected options are always at the top', 'Highlighted options are disabled'],
+      answer: 1,
+      explain: 'Moving through the list highlights options; only Enter or a click selects one. Both states must look different.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A dropdown hides a **known list** of options behind a compact field. Use it for **5+ familiar options**; add **search** for long lists.
+- For **2–5 options**, radio buttons or a segmented control are usually better. A **menu** runs actions and is a different component.
+- Prefer a **clear placeholder** over a random pre-selected first option, and make required dropdowns block submit.
+- The classic bugs: **dependent fields not reset, clipped menus, no keyboard support, strict search, unsorted or duplicate options, and menus that won't close**.
+- Always test the **first and last** option, **changing the parent field**, **lowercase and accent-free search**, and **keyboard-only** use.
+
+</KeyTakeaways>

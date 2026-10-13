@@ -1,0 +1,46 @@
+teaser: "A new build lands at 9:40 and stand-up is at 10. Which 15 minutes of testing tell you if it's even worth testing?"
+cards:
+  - type: flip
+    front: "What question does a smoke suite answer?"
+    back: "Is this build testable at all? About 10-20 fast, happy-path checks of the critical journeys. If one fails, the build is rejected."
+  - type: flip
+    front: "Where should regression tests come from?"
+    back: "Critical user journeys, risk (money, data, legal), bug history, and usage analytics showing what real users actually do."
+  - type: quiz
+    q: "Which check belongs in a food delivery app's smoke suite?"
+    options: ["Expired promo code error text", "Place an order with a test card", "Dark mode colors in Settings"]
+    answer: 1
+    explain: "Placing an order is a critical journey on the happy path. The other two are useful regression checks, not smoke."
+  - type: quiz
+    q: "The payment provider SDK was updated, with no UI changes. What do you retest most deeply?"
+    options: ["Ratings and reviews", "Languages and text layout", "Checkout and payment"]
+    answer: 2
+    explain: "Impact analysis: the SDK runs every payment, so checkout gets full tests. Connected areas like promo codes get a quick pass."
+  - type: truefalse
+    statement: "Retesting and regression testing mean the same thing."
+    answer: false
+    explain: "Retesting checks that one specific bug is fixed. Regression testing checks that the change didn't break anything else."
+  - type: truefalse
+    statement: "If the smoke suite fails, you should still run the full regression suite on that build."
+    answer: false
+    explain: "A failed smoke means the build isn't testable. Reject it first, or you'll waste hours and have to run everything again."
+  - type: thisorthat
+    prompt: "A regression test passes and fails randomly with no code change. Release is tomorrow."
+    left: "Re-run until green"
+    right: "Investigate or quarantine"
+    answer: right
+    explain: "Re-running a flaky test until it passes can hide a real bug. Find the cause, and keep it out of the suite until it's reliable."
+  - type: thisorthat
+    prompt: "A stable sign-in and checkout path runs on every build. Automate it or keep it manual?"
+    left: "Automate"
+    right: "Keep manual"
+    answer: left
+    explain: "Stable, frequently repeated checks give automation the best return. Humans are better spent on new features and exploration."
+  - type: spotbug
+    screen: ["QuickBite smoke suite", "Checks: 64", "Estimated time: 2 h 10 min", "Includes: all promo code errors"]
+    question: "What's wrong with this smoke suite?"
+    bug: "It's far too big and deep for smoke."
+    explain: "Smoke should be 10-20 happy-path checks in minutes. This has grown into a mini regression suite; move the extras to P1 or P2."
+  - type: tip
+    title: "Tag every test twice"
+    text: "Give each test a tier (P1, P2, P3) and an area (Checkout, Search). Then picking a subset for a change takes minutes, not guesswork."

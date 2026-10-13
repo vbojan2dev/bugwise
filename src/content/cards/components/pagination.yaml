@@ -1,0 +1,45 @@
+teaser: "Page 2 starts with the last product from page 1. Is that a big deal? Testers find this one all the time."
+cards:
+  - type: flip
+    front: "What is pagination?"
+    back: "Splitting a long list into pages that load one at a time, with Prev, Next and page numbers, like page 5 of 16."
+  - type: spotbug
+    screen: ["Page 1, last item: Tundra Backpack", "Page 2, first item: Tundra Backpack", "Request: offset=19&limit=20"]
+    bug: "The offset is off by one, so items repeat."
+    explain: "Page 2 should start at offset 20. Always compare the last item of one page with the first item of the next."
+  - type: quiz
+    q: "312 items, 20 per page. What should the last page say?"
+    options: ["Showing 301–320 of 312", "Showing 301–312 of 312", "Showing 300–312 of 312"]
+    answer: 1
+    explain: "Page 16 starts at item 301, and the end of the range is capped at the total."
+  - type: thisorthat
+    prompt: "A user goes to page 3, opens a product and presses Back. They land on page 1."
+    left: "Expected"
+    right: "Bug"
+    answer: right
+    explain: "The page belongs in the URL (?page=3), so Back, refresh and shared links keep the user's place."
+  - type: truefalse
+    statement: "Opening ?page=999 should show a helpful message, not an endless spinner."
+    answer: true
+    explain: "Old bookmarks and links hit pages that no longer exist. Explain it and offer a link to the last page."
+  - type: quiz
+    q: "Which pattern makes the footer with Help and Contact hard to reach?"
+    options: ["Numbered pages", "Load more button", "Infinite scroll"]
+    answer: 2
+    explain: "Infinite scroll keeps loading items as you near the bottom, pushing the footer away."
+  - type: spotbug
+    screen: ["Per page: 20 → 50", "Page 8 of 7", "No products"]
+    bug: "Changing the page size kept a page that no longer exists."
+    explain: "After a page size, sort or filter change, the user must land on a page that exists, like page 1."
+  - type: thisorthat
+    prompt: "You see page 1 of a marketplace. New listings are posted. On page 2, one item from page 1 shows again."
+    left: "Offset paging issue"
+    right: "Caching issue"
+    answer: left
+    explain: "With offset paging, new items at the top push everything down, so items repeat. Cursor paging avoids it."
+  - type: flip
+    front: "How does a screen reader know the current page?"
+    back: "The pager is a nav landmark labeled Pagination, and the current page has aria-current=\"page\", read as Page 3, current page."
+  - type: tip
+    title: "Edit the URL by hand"
+    text: "Try ?page=0, ?page=-1, ?page=abc and ?page=999. You hit every boundary in seconds, without clicking through 16 pages."

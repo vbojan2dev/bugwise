@@ -1,0 +1,41 @@
+teaser: "All the planned tests passed. Then everyone born on 29 February stopped getting birthday rewards. Could you have guessed it?"
+cards:
+  - type: flip
+    front: "What is error guessing?"
+    back: "Choosing tests from experience of where software typically breaks, like empty input, zero, leap days or denied permissions."
+  - type: flip
+    front: "What is a fault attack?"
+    back: "Planned error guessing: write a list of likely failures, then design a test to provoke each one."
+  - type: quiz
+    q: "Which of these is NOT an experience-based technique?"
+    options: ["Exploratory testing", "Checklist-based testing", "Boundary value analysis"]
+    answer: 2
+    explain: "Boundary value analysis is systematic and derived from the spec. The other two rely on the tester's experience."
+  - type: quiz
+    q: "Which input is the best error guess for a display name field?"
+    options: ["Five spaces only", "The name Sam", "A name of 15 letters"]
+    answer: 0
+    explain: "Spaces look empty to people but not to a character count. Many apps accept a blank-looking name by mistake."
+  - type: truefalse
+    statement: "Error guessing can replace equivalence partitioning and boundary value analysis."
+    answer: false
+    explain: "Its coverage is hard to measure and depends on experience. Cover the spec systematically first, then guess where the spec is silent."
+  - type: thisorthat
+    prompt: "A banking app's amount field. You have time for one more test."
+    left: "Try -50"
+    right: "Try 30.00"
+    answer: left
+    explain: "Negative numbers are a classic blind spot. A typical value like 30.00 rarely finds anything new."
+  - type: spotbug
+    screen: ["Leaderboard", "1. Leo 🏃�", "2. Mia", "3. Sam"]
+    bug: "The emoji was cut in half by name shortening."
+    explain: "Many emoji are made of several characters joined together. Shortening text by character count can split them and leave a broken box."
+  - type: thisorthat
+    prompt: "Your checklist has 300 items and nobody uses it."
+    left: "Add more items"
+    right: "Prune and pick by risk"
+    answer: right
+    explain: "A checklist must stay usable. Remove items that never find bugs, merge duplicates, and choose the ones that fit each feature."
+  - type: tip
+    title: "Feed your checklist with real bugs"
+    text: "Every bug that escapes to production becomes a checklist item. Over time your list turns past mistakes into fast, targeted tests."

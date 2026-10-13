@@ -1,0 +1,452 @@
+---
+title: Tooltip
+description: A small text bubble that explains a control on hover, focus or long-press. Learn why touch screens have no hover, the WCAG rules for content on hover or focus, edge collisions, and why an icon button still needs its own name.
+category: feedback
+aka: [Popover hint, Info tip, Coachmark (related)]
+platforms: [ios, android, web]
+minutes: 35
+order: 5
+---
+
+import Anatomy from '@/components/demos/tooltip/Anatomy';
+import VariantsGallery from '@/components/demos/tooltip/VariantsGallery';
+import Playground from '@/components/demos/tooltip/Playground';
+import { BuggyTransfer } from '@/components/demos/tooltip/BuggyTransfer';
+import { InlineHelp, RulesInTooltip, PlainTooltip, InteractiveTooltip } from '@/components/demos/tooltip/Examples';
+
+You're sending rent from your banking app on your phone. Next to **IBAN** there's a little ⓘ. You tap it. Nothing. You tap it again, harder. Still nothing. On the laptop the same ⓘ shows a helpful bubble, but only when the mouse is over it. The developer tested with a mouse, and never noticed that **phones don't have one**.
+
+Tooltips look like the most harmless component on the page: a few words in a dark bubble. But they depend on **how** the user points at things (mouse, finger, keyboard, screen reader), they float over other content, and they love to hide behind screen edges. That makes them a great place to find bugs.
+
+## What is a tooltip?
+
+A tooltip is a **small, temporary bubble of plain text that describes the element it's attached to**. It appears when the user hovers over the element with a mouse, moves keyboard focus to it, or (on touch screens) long-presses it. It disappears when they move away.
+
+You'll usually see tooltips used to:
+
+- **Name icon-only buttons**: *Archive*, *Share*, *Add to wishlist*.
+- **Show keyboard shortcuts**: *Bold (Ctrl+B)*.
+- **Add a short hint** next to a form label: *"Shown on the recipient's statement"*.
+- **Show the full text** of something that is cut off, like a long file name.
+
+### Anatomy
+
+<Anatomy />
+
+### Tooltip, toggletip, toast or inline help?
+
+Several components show "a bit of extra text". Picking the wrong one is one of the most common tooltip problems.
+
+| Pattern | Opens when | Content | Good for |
+| --- | --- | --- | --- |
+| **Tooltip** | Hover, focus, long-press | A few words of plain text | Naming icons, shortcuts |
+| **Toggletip / popover** | Click or tap | Text, links, buttons | Explanations, "Learn more" |
+| **[Toast](/components/toast)** | The app shows it after an action | A status message, maybe "Undo" | "Transfer sent" |
+| **Inline help** | Always visible | Text under a field | Rules users need to succeed |
+| **Coachmark** | Once, during onboarding | Title, text, close button | Pointing at a new feature |
+
+<Callout type="info" title="The names are messy">
+Designers say *tooltip* for almost any bubble. Material Design has **plain tooltips** (short text) and **rich tooltips** (title, text and an optional action; the ones with an action usually open on a tap and stay open). Accessibility experts call a click-to-open info bubble a **toggletip**. Apple's TipKit has **popover tips**. Don't argue about the name; test what it **does**: how it opens, what it contains, and how it closes.
+</Callout>
+
+## Designs & variants
+
+Try each one with the mouse, with only the keyboard (<kbd>Tab</kbd>, <kbd>Esc</kbd>), and on a phone (press and hold the Android icons).
+
+<VariantsGallery client:visible />
+
+### Hover, focus, long-press: touch screens have no hover
+
+A tooltip has to work for **every way** people point at things. This is where most tooltip bugs come from.
+
+| Input | How the tooltip should open | How it should close |
+| --- | --- | --- |
+| **Mouse / trackpad** | Hover, after a short delay | Pointer leaves (trigger and tooltip), or <kbd>Esc</kbd> |
+| **Keyboard** | <kbd>Tab</kbd> focus, immediately | Focus moves on, or <kbd>Esc</kbd> |
+| **Touch (Android)** | Long-press the icon button | Shortly after the finger lifts |
+| **Touch (iPhone, web)** | Usually not at all, so don't hide anything important in it | n/a |
+| **Screen reader** | Never "opens"; the text is read as the name or description | n/a |
+
+The key lesson: **on a phone, a hover-only tooltip doesn't exist**. A tap is not a hover. If the information matters on mobile, it must be visible, or opened with a tap as a toggletip.
+
+### Delay and dismissal: WCAG 1.4.13
+
+Mouse tooltips usually wait a few hundred milliseconds before appearing, so they don't flash while the pointer crosses the page. Keyboard focus should show them **right away**.
+
+Once a tooltip is visible, <Term id="wcag" /> success criterion **1.4.13 Content on Hover or Focus** (level AA) asks for three things:
+
+<Steps>
+
+1. **Dismissible.** The user can hide it without moving the pointer or focus, usually with <kbd>Esc</kbd>. A tooltip that covers the next field must not force the user to move away.
+2. **Hoverable.** The user can move the pointer **onto** the tooltip without it disappearing. People who use screen magnifiers need this to read it.
+3. **Persistent.** It stays until the user moves away, dismisses it, or it's no longer relevant. No timer that hides it after two seconds while the pointer is still there.
+
+</Steps>
+
+### Positioning and screen edges
+
+A tooltip normally appears **above** (or below) its trigger, centered. Near an edge there is no room, so a good tooltip:
+
+- **Shifts** sideways to stay fully on screen, while its arrow keeps pointing at the trigger.
+- **Flips** to the other side when there's no room above (for example, under a toolbar at the top of the page).
+- Is **not clipped** by a parent with hidden overflow, a scrolling list, the notch or the <Term id="safe-area" />.
+
+Test the **first and last** icon in every toolbar, at the narrowest <Term id="viewport" /> and with long translations.
+
+### Plain text only
+
+A tooltip disappears when the pointer or focus leaves the trigger, so anything **interactive** inside it is a trap: a mouse user has to "chase" the link, a keyboard user can't Tab into it, and a touch user never sees it. If the bubble needs a **link or a button**, it should be a **toggletip or popover** that opens on click and stays open.
+
+### Icon buttons still need a name
+
+A tooltip that says "Delete" **looks** like the button's name, but a <Term id="screen-reader" /> only uses it if the code connects them. An icon button needs an **accessible name** of its own. Otherwise it's announced as just **"button"**. The tooltip is the visual version of that name, not a replacement for it.
+
+<DevNote>`aria-label="Delete"` on the web, `accessibilityLabel` on iOS, `contentDescription` on Android.</DevNote>
+
+### Onboarding coachmarks
+
+Coachmarks (or "tips") point at a feature the first time a user sees a screen: *"Tap here to start a new note"*. They're related to tooltips, but appear without hovering. Test that they:
+
+- Have a clear **close** button (with a name) and close with Back / <kbd>Esc</kbd>.
+- **Don't come back** after being dismissed, after a restart or an update (unless that's the plan).
+- **Point at the right thing**, on every screen size and in landscape.
+- Don't **block** the very button they're pointing at, and don't stack three on top of each other.
+
+## When to use it
+
+Tooltips are a good choice when:
+
+- You need to **name an icon-only button** for mouse and keyboard users (and the button already has an accessible name).
+- The hint is **nice to know**, not need to know: the user can succeed without ever seeing it.
+- The text is **short**: a few words, one short sentence at most.
+- The product is used with a **mouse or keyboard** (desktop web, tablets with a pointer), or on Android, where long-press shows it.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Rules visible under the field">
+
+<div class="not-prose demo-screen my-3"><InlineHelp /></div>
+
+Users read the rules before they type, on every device.
+
+</Do>
+<Dont title="Rules hidden in a tooltip">
+
+<div class="not-prose demo-screen my-3"><RulesInTooltip /></div>
+
+On a phone the ⓘ does nothing, so users only learn the rules from the error. Need-to-know information belongs on the page.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="A few words of plain text">
+
+<div class="not-prose demo-screen my-3"><PlainTooltip /></div>
+
+Names an icon. Nothing to click inside.
+
+</Do>
+<Dont title="Links and buttons in a tooltip">
+
+<div class="not-prose demo-screen my-3"><InteractiveTooltip /></div>
+
+"Learn more" and "Got it" are hard or impossible to reach. Use a toggletip or popover that opens on click and stays open.
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Tester mindset">
+For every tooltip, ask: **"What happens on a phone?"** and **"What if I only use the keyboard?"** If the answer is "the user never sees it", check whether the text is important. If it is, that's a bug (or a design finding), not a nice-to-have.
+</Callout>
+
+## Common bugs
+
+| # | Bug | What you see | Severity |
+| --- | --- | --- | --- |
+| 1 | **Hover only** | Nothing on Tab, nothing on tap | Medium–High |
+| 2 | **Clipped at the edge** | Half the text is cut off near the screen edge | Medium |
+| 3 | **Not hoverable** | It vanishes when the pointer moves towards it | Medium (fails WCAG) |
+| 4 | **Can't dismiss** | <kbd>Esc</kbd> does nothing; it covers the next field | Medium (fails WCAG) |
+| 5 | **Interactive content** | A "Learn more" link that can't be clicked or reached | Medium |
+| 6 | **Icon button with no name** | Screen reader says just "button" | High (for affected users) |
+| 7 | **Sticky tooltip** | Stays on screen after scrolling, closing a dialog or tapping elsewhere | Low–Medium |
+| 8 | **Flicker** | Tooltips flash on and off while the mouse crosses a toolbar | Low |
+| 9 | **Wrong or stale text** | "Mark as read" on a message that's already read | Medium |
+| 10 | **Coachmark returns** | A dismissed onboarding tip shows up again after every restart | Low–Medium |
+
+<Callout type="bug" title="Why #1 is so common">
+Many web tooltips are built with only `mouseenter` / `mouseleave` events, or with the HTML **`title` attribute**. The `title` tooltip only appears on mouse hover after a delay: not on keyboard focus, not on touch, and screen readers don't reliably read it. If a tooltip works on your laptop, **pick up your phone** and press <kbd>Tab</kbd> before you mark the test as passed.
+</Callout>
+
+## Stress-test it
+
+This mail app toolbar has correct tooltips. Use the settings to break them on purpose and watch the WCAG check. Try it with the mouse, then only with the keyboard, then on your phone.
+
+<Playground client:visible />
+
+<Callout type="info" title="Name or description?">
+Look at the screen reader panel. For **Archive**, the tooltip says the same as the button's name, so it isn't read twice. For **Mute**, the tooltip adds extra information, so it's linked as a **description** and read after the name: *"Mute, button, Mute this conversation…"*.
+
+<DevNote>The description is linked with `aria-describedby`.</DevNote>
+</Callout>
+
+## Find the bug
+
+This "Send money" page in a web bank has **six tooltip bugs**. Explore it like a tester:
+
+- Use the **mouse** on every icon: hover, then try to move onto the bubble.
+- Then use **only the keyboard**: <kbd>Tab</kbd> through the page and press <kbd>Esc</kbd> when something covers the form.
+- Open the **?** next to *Instant transfer* and try its link.
+- Read the **screen reader** panel for every button.
+- If you can, open this page **on a phone** and tap the info icons.
+
+<BugHunt
+  title="Send money"
+  bugs={[
+    {
+      title: 'The IBAN tooltip only works with a mouse',
+      hint: 'Tab to the ⓘ next to IBAN, or tap it on a phone.',
+      detail: 'The tooltip is opened only by <code>pointerenter</code> with a mouse. Keyboard focus and taps do nothing, and the text is not linked to the button, so screen readers don’t hear it either. Expected: it opens on hover <em>and</em> focus, and the important format hint is also visible as inline help for touch users.',
+    },
+    {
+      title: 'The fee tooltip is cut off at the right edge',
+      hint: 'Hover the ⓘ next to the fee at the right.',
+      detail: 'The bubble starts at the icon’s left edge and grows to the right, with no collision handling, so the page clips it mid-sentence. Expected: the tooltip shifts or flips to stay fully visible, with the arrow still pointing at the icon.',
+    },
+    {
+      title: 'The reference tooltip disappears when you move onto it',
+      hint: 'Hover the ⓘ next to Reference and move the mouse up onto the bubble.',
+      detail: 'It hides the moment the pointer leaves the icon, and there is a 12 px gap to cross. Users with screen magnifiers can’t read it. This fails WCAG 1.4.13 <strong>hoverable</strong>. Expected: the pointer can move onto the tooltip and it stays open.',
+    },
+    {
+      title: 'The amount hint can’t be dismissed and covers the next field',
+      hint: 'Click into Amount, then press Esc. Then try to click the Reference field.',
+      detail: 'The hint stays open while Amount has focus and covers the <strong>Reference</strong> field. <kbd>Esc</kbd> does nothing, and the first click on the covered field only closes the hint. This fails WCAG 1.4.13 <strong>dismissible</strong>. Expected: Esc hides it, and it doesn’t cover inputs the user needs next (or it is shown as inline help).',
+    },
+    {
+      title: 'The “See all fees” link can’t be used',
+      hint: 'Open the ? next to Instant transfer and click the link. Then try to reach it with Tab.',
+      detail: 'The “click outside closes” code only ignores the <strong>?</strong> button, so pressing the link counts as an outside click and closes the bubble before the link activates. The link also has <code>tabindex="-1"</code>, so keyboard users can’t reach it. Expected: links belong in a toggletip or popover that stays open, accepts clicks and is reachable with Tab.',
+    },
+    {
+      title: 'The QR button has no accessible name',
+      hint: 'Tab to the QR icon at the top and read the screen reader panel.',
+      detail: 'The tooltip shows “Scan QR code”, but the button has no <code>aria-label</code> and the tooltip isn’t linked to it, so a screen reader announces only <strong>“button”</strong>. Expected: the button has its own name (“Scan QR code”), and the tooltip just shows it visually.',
+    },
+  ]}
+>
+  <BuggyTransfer client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #6?">
+
+**Title:** QR scan icon button on "Send money" has no accessible name (VoiceOver reads "button")
+
+**Steps:** 1. Turn on VoiceOver (macOS: <kbd>Cmd</kbd>+<kbd>F5</kbd>). 2. Open bank.example.com/transfer. 3. Move to the QR icon at the top right.
+
+**Expected:** "Scan QR code, button".
+**Actual:** "button". The visible tooltip "Scan QR code" is not linked to the button, and the button has no `aria-label`.
+
+**Severity:** High for screen reader users (they can't tell what the button does) · **Reproducible:** 10/10 · **Tested with:** VoiceOver + Safari 26, NVDA + Chrome 141 · **Evidence:** Chrome DevTools › Accessibility pane shows *Name: (empty)*.
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Tooltip test checklist"
+  storageKey="tooltip"
+  items={[
+    'Mouse: the tooltip appears on hover after a short delay, without flickering across a toolbar',
+    'Keyboard: it appears immediately on Tab focus and hides when focus moves on',
+    'Esc hides it without moving the pointer or focus (dismissible)',
+    'The pointer can move onto the tooltip without it disappearing (hoverable)',
+    'It stays visible until the user moves away or dismisses it, with no auto-hide timer (persistent)',
+    'Touch: important information is visible or opens with a tap; Android icon buttons show tooltips on long-press',
+    'It is never clipped: check the first and last items, narrow screens, scrolling containers and long translations',
+    'It contains plain text only; anything with a link or button is a toggletip or popover',
+    'Every icon button has its own accessible name; the screen reader never says just "button"',
+    'Extra tooltip text is linked as a description and read by the screen reader',
+    'It disappears on scroll, after closing a dialog or navigating, and never sticks on screen',
+    'The text is correct and up to date for the current state (e.g. "Mark as unread" vs "Mark as read")',
+    'Onboarding tips have a close button, point at the right element and stay dismissed',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-TIP-001',
+      title: 'Tooltip opens on keyboard focus',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open the Send money page', 'Press Tab until the ⓘ next to "IBAN" has focus'],
+      expected: 'The IBAN tooltip appears immediately next to the icon, and the focus ring is visible.',
+    },
+    {
+      id: 'TC-TIP-002',
+      title: 'Esc dismisses a tooltip',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Hover the ⓘ next to "Fee" until the tooltip appears', 'Without moving the mouse, press Esc'],
+      expected: 'The tooltip disappears. The pointer and focus stay where they were. It does not reappear until the pointer leaves and comes back.',
+    },
+    {
+      id: 'TC-TIP-003',
+      title: 'Tooltip is hoverable',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Hover the ⓘ next to "Reference"', 'Move the pointer slowly onto the tooltip text', 'Wait 10 seconds'],
+      expected: 'The tooltip stays visible the whole time, and hides only after the pointer leaves both the icon and the tooltip.',
+    },
+    {
+      id: 'TC-TIP-004',
+      title: 'Tooltip near the right edge stays on screen',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Browser window 360 px wide (DevTools device toolbar)'],
+      steps: ['Hover the right-most ⓘ (Fee)', 'Repeat with the longest supported translation'],
+      expected: 'The whole tooltip is visible inside the viewport; its arrow still points at the icon.',
+    },
+    {
+      id: 'TC-TIP-005',
+      title: 'Information is available on touch devices',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Real phone (iPhone and Android)'],
+      steps: ['Open the Send money page', 'Tap each ⓘ icon'],
+      expected: 'Each tap shows the information (as a toggletip or inline text). Nothing important is available only on hover.',
+    },
+    {
+      id: 'TC-TIP-006',
+      title: 'Icon button has an accessible name',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['VoiceOver, TalkBack or NVDA on'],
+      steps: ['Move to every icon-only button on the page'],
+      expected: 'Each one is announced with a meaningful name, e.g. "Scan QR code, button". None is announced as just "button".',
+    },
+    {
+      id: 'TC-TIP-007',
+      title: 'Long-press tooltip on Android',
+      priority: 'low',
+      type: 'positive',
+      preconditions: ['Android app with icon buttons in the top app bar'],
+      steps: ['Long-press the "Share" icon', 'Lift the finger'],
+      expected: 'A tooltip "Share" appears during the long-press and disappears shortly after the finger lifts. The share sheet does not open.',
+    },
+    {
+      id: 'TC-TIP-008',
+      title: 'Coachmark stays dismissed',
+      priority: 'low',
+      type: 'edge',
+      preconditions: ['Fresh install'],
+      steps: ['Open Notes; the "Start a new note" tip appears', 'Close it with the X', 'Force-quit and reopen the app'],
+      expected: 'The tip does not appear again.',
+    },
+  ]}
+/>
+
+### Tools
+
+- **[DevTools](/web/devtools-for-testers) › Elements:** right-click › *Force state* › `:hover` or `:focus` keeps CSS tooltips open while you inspect them. For JavaScript tooltips, use *Emulate a focused page* (Rendering panel) so they don't close when you click into DevTools.
+- **Accessibility pane:** shows each button's computed **Name** and **Description**. An empty name on an icon button is bug #6.
+- **Device toolbar:** test at 360 px wide and with touch emulation. Remember that emulation is not a real finger: confirm touch behavior on a <Term id="real-device" />.
+- **Screen readers:** VoiceOver (Mac and iPhone), TalkBack (Android), NVDA (Windows, free).
+
+## Accessibility
+
+- **Name first.** Every icon-only button needs an accessible name.
+  <DevNote>On the web that's `aria-label` (or a tooltip linked with `aria-labelledby`). On iOS it's `accessibilityLabel`; on Android, `contentDescription`. For Android toolbar menu items, the item's title usually serves as both the spoken name and the long-press tooltip.</DevNote>
+- **Link extra text as a description.** A screen reader reads a tooltip that adds information after the name.
+  <DevNote>The tooltip gets `role="tooltip"` and is referenced with `aria-describedby` from the trigger.</DevNote>
+- **Never rely on `title`.** The native `title` tooltip doesn't show on keyboard focus or touch, can't be styled, and screen readers handle it inconsistently.
+- **<Term id="keyboard-navigation">Keyboard</Term>.** The trigger must be focusable; focus shows the tooltip, <kbd>Esc</kbd> hides it, and focus never moves **into** a tooltip. If users need to Tab into it, it's a popover.
+- **WCAG 1.4.13.** Dismissible, hoverable, persistent (see above). This is a level AA criterion, so most accessibility audits check it.
+- **Contrast and size.** Tooltip text needs 4.5:1 contrast against its bubble, and must still fit at 200% zoom and the largest text size.
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- iPhone apps rarely use tooltips: there's no hover, and Apple's guidelines prefer **clear labels** and **standard icons**. Icon buttons still need a label for VoiceOver.
+  <DevNote>That's `accessibilityLabel`.</DevNote>
+- On the **Mac** (including Mac Catalyst apps), apps can show a hover tooltip; on **iPad with a trackpad or mouse**, check what the app's iPadOS version actually shows.
+  <DevNote>SwiftUI's `.help("…")` shows the hover tooltip.</DevNote>
+- For feature hints, apps use **TipKit** (iOS 17+): popover tips and inline tips. Test that they close, stay closed, and don't cover what they point at.
+- Larger hints usually live in a **popover** or a [bottom sheet](/components/bottom-sheet).
+
+</Tab>
+<Tab>
+
+- Android has built-in tooltips. They appear on **long-press** and on **mouse hover**.
+  <DevNote>`android:tooltipText`, `TooltipCompat`; `TooltipBox` with `PlainTooltip` / `RichTooltip` in Compose.</DevNote>
+- Action bar / toolbar icons show their title as a tooltip on long-press. Check that the long-press doesn't also **trigger the action**.
+- Material 3 **rich tooltips** can include a title and an action; persistent ones stay open until dismissed. Test them like popovers.
+- Test with **TalkBack**: icon buttons must have a description.
+  <DevNote>That's `contentDescription`.</DevNote>
+
+</Tab>
+<Tab>
+
+- Test hover, focus **and** touch. Use real phones; mobile browsers have no hover, and taps can "stick" a hover state.
+- Check **edges**, scrolling containers and zoom: the tooltip must stay visible and move with its trigger.
+- Inspect the markup: `role="tooltip"`, `aria-describedby` or `aria-labelledby`, no interactive content, no reliance on `title`.
+  <DevNote>Newer HTML features like the **Popover API** (`popover` attribute) help build toggletips and popovers that open on click and close with <kbd>Esc</kbd>.</DevNote>
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'The ⓘ next to "IBAN" works with a mouse on desktop. What is the most important thing to test next?',
+      options: ['The tooltip color', 'Keyboard focus and a tap on a phone', 'The hover delay in milliseconds', 'The tooltip font'],
+      answer: 1,
+      explain: 'Touch screens have no hover, and keyboard users never hover. Hover-only tooltips are the most common tooltip bug.',
+    },
+    {
+      q: 'Which of these belongs in a tooltip?',
+      options: ['Password rules users must follow', '"Learn more" and "Got it" buttons', 'The name of an icon button: "Archive"', 'An error message after saving'],
+      answer: 2,
+      explain: 'Short, plain, nice-to-know text. Rules and errors must be visible; links and buttons belong in a toggletip or popover.',
+    },
+    {
+      q: 'A tooltip disappears as soon as you move the mouse towards it. Which WCAG 1.4.13 requirement fails?',
+      options: ['Dismissible', 'Hoverable', 'Persistent', 'None, this is fine'],
+      answer: 1,
+      explain: 'Hoverable means the pointer can move over the tooltip without it disappearing, e.g. so screen magnifier users can read it.',
+    },
+    {
+      q: 'An icon button shows the tooltip "Delete", but VoiceOver says only "button". What is missing?',
+      options: ['A longer tooltip', 'An accessible name (e.g. aria-label) on the button', 'A hover delay', 'A darker tooltip color'],
+      answer: 1,
+      explain: 'A visual tooltip is not the button\'s name unless the code links them. The button needs its own accessible name.',
+    },
+    {
+      q: 'How do Android apps usually show the tooltip of a toolbar icon button?',
+      options: ['On long-press', 'On a single tap', 'On a double tap', 'They never do'],
+      answer: 0,
+      explain: 'Android shows tooltips on long-press (and on mouse hover). A single tap runs the button\'s action.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A tooltip is a **short, plain-text** hint that appears on **hover, keyboard focus or long-press**. Links and buttons belong in a toggletip or popover.
+- **Touch screens have no hover.** Never hide need-to-know information in a hover-only tooltip.
+- WCAG 1.4.13: tooltips must be **dismissible** (<kbd>Esc</kbd>), **hoverable** and **persistent**.
+- Test the **edges**: tooltips must shift or flip, never get clipped.
+- Every icon button needs its **own accessible name**. The tooltip is just the visible version of it.
+
+</KeyTakeaways>

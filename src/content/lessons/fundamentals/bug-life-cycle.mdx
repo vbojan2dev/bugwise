@@ -1,0 +1,489 @@
+---
+title: Bug Life Cycle
+description: What happens to a bug after you report it — every status from New to Closed, the side exits like Duplicate and Cannot reproduce, who moves the ticket at each step, how it looks in Jira, and what testers do at each stage.
+order: 11
+level: beginner
+minutes: { short: 14, long: 25 }
+platform: both
+tags: [fundamentals, bugs, bug life cycle, jira, process]
+---
+
+import LifeCycle from '@/components/demos/bug-report/LifeCycle';
+import StatusFlow from '@/components/demos/fundamentals-bugs/StatusFlow';
+import TicketSimulator from '@/components/demos/fundamentals-bugs/TicketSimulator';
+
+On Monday you found a nasty bug in a food delivery app: the "Track order" map freezes after switching from Wi-Fi to mobile data. You reported it. On Friday your lead asks: "What happened to that map bug? Is it fixed? Is it in tonight's release?"
+
+If the only answer is "I think I told someone in chat", you have a problem. If the answer is "SHOP-1542 is **Ready for test** in build 4.8.2, I'm retesting it this morning", everyone can relax. That second answer is possible because the bug has a **status**, and the status moves through a known path: the bug life cycle.
+
+## What is the bug life cycle?
+
+The <Term id="bug-life-cycle">bug life cycle</Term> (also called the *defect life cycle*) is the series of **statuses** a <Term id="bug" /> goes through, from the moment someone reports it until the team is done with it.
+
+<Callout type="example" title="An everyday analogy: parcel tracking">
+
+When you order a parcel, the tracking page says *Ordered → Shipped → Out for delivery → Delivered*. Sometimes it says *Delivery failed, retrying tomorrow* or *Returned to sender*. You always know where the parcel is and who has it right now.
+
+A bug ticket works the same way. The status tells everyone **where the bug is** and **who has to do something next**.
+
+</Callout>
+
+The exact status names differ between teams and tools (<Term id="jira" />, Azure DevOps, Linear, GitHub Issues). The ideas behind them are the same everywhere, and that's what this lesson teaches. If you haven't yet, read [How to Write a Bug Report](/tutorials/writing-bug-reports) first: a good report is what gets a bug through this cycle quickly.
+
+<Short>
+
+## The quick version
+
+### The happy path
+
+Most bugs follow this route:
+
+<Steps>
+
+1. **New.** You (the tester) file the <Term id="bug-report" />. Nobody has looked at it yet.
+2. **Triaged / Open.** A lead or product owner checks it is real and not a duplicate, confirms the <Term id="severity" /> and sets the <Term id="priority" />.
+3. **Assigned.** A developer becomes the owner.
+4. **In Progress.** The developer reproduces the bug, finds the cause and writes a fix.
+5. **Fixed / Ready for test.** The fix is in a <Term id="build" /> you can install. "Fixed" means *the developer believes* it is fixed.
+6. **Verified / Closed.** You <Term id="retesting">retest</Term> it on that build, check the features around it, and close it.
+
+</Steps>
+
+If your retest fails, the bug becomes **Reopened** and goes back to the developer with fresh evidence.
+
+### Other ways a bug can end
+
+| Outcome | What it means | What you do |
+| --- | --- | --- |
+| **Duplicate** | Someone already reported it | Add any new details to the original ticket |
+| **Not a bug / Rejected** | It works as designed | Check the requirement; ask politely if unclear |
+| **Won't fix** | Real bug, but the team decided not to fix it | Accept it: it's a business decision |
+| **Cannot reproduce** | The developer couldn't make it happen | Find what's different, add the missing detail |
+| **Deferred / Backlog** | Real bug, fixed later | Make sure the reason is written down |
+
+### Status vs resolution
+
+Many tools have two fields. The **status** says *where* the bug is in the workflow (Open, In Progress, Closed). The **resolution** says *why* it ended (Fixed, Duplicate, Won't fix, Cannot reproduce). A closed bug is not always a fixed bug.
+
+### Try it
+
+Click each status to see who owns the bug at that point.
+
+<LifeCycle client:visible />
+
+<Callout type="tip">
+
+Switch to **Detailed** at the top of the page for the full story: each status in depth, triage meetings, how Jira handles statuses and resolutions, how to retest well, how to respond to "Cannot reproduce" and "Not a bug", and the metrics teams track.
+
+</Callout>
+
+</Short>
+
+<Long>
+
+## Why teams track a bug's status
+
+A small team with five bugs could keep them in their heads. A real team has hundreds of open bugs, several developers, a few testers, a product owner and a release date. Without statuses, three things go wrong very quickly:
+
+- **Bugs get forgotten.** Someone says "I'll look at it", goes on holiday, and nobody notices the bug never moved.
+- **Nobody knows what is safe to release.** Is the checkout bug fixed? Fixed *and checked*? In which build?
+- **Work gets done twice, or not at all.** Two developers fix the same bug while a third bug sits untouched.
+
+A status answers one simple question for everyone: **who has to do what next?** It also gives the team a history: when the bug was found, who touched it, how long each step took, and how many times it came back.
+
+<Callout type="info" title="The life cycle is a state machine">
+
+Each status is a *state*, and each move (called a **transition**) is only allowed from certain states. You can't verify a bug that was never fixed. If that idea sounds interesting, it's exactly what [state transition testing](/fundamentals/state-transition-testing) is about.
+
+</Callout>
+
+## The statuses, one by one
+
+Here is a typical workflow. The color shows who usually moves the bug forward.
+
+<StatusFlow />
+
+### New
+
+You've just filed the report. It's in the queue, but nobody has confirmed it yet. Before you press **Create**, the quality of your report decides how fast it moves on: clear steps, exact <Term id="environment" />, evidence. See [How to Write a Bug Report](/tutorials/writing-bug-reports).
+
+### Triaged / Open
+
+Someone (a QA lead, a team lead, the product owner, or the whole team in a triage meeting) reviews the bug and decides three things: **Is it real? Is it new? How urgent is it?** They confirm or adjust the severity you proposed and set the priority. If it passes, it becomes **Open** (some tools call this *Confirmed*, *Accepted* or *To Do*).
+
+### Assigned
+
+A developer is named as the owner. Some teams skip this status and simply fill the *Assignee* field while the bug is Open.
+
+### In Progress
+
+The developer is actively working on it: reproducing it, finding the root cause, writing and reviewing the fix. This is when they may ask you questions in comments. Answer quickly, because a waiting developer often switches to something else.
+
+### Fixed / Resolved
+
+The code change is done, reviewed and merged. Important: it is **not verified yet**. It only means the developer believes the bug is gone. In many tools the developer also fills in a **Fix version** (which build or release contains the fix).
+
+### Ready for test
+
+The fix is now in a build that testers can install: a new <Term id="staging" /> deploy for a website, or a new <Term id="testflight" /> or internal build for a mobile app. The bug is assigned back to QA. Some teams call this *Retest*, *In QA* or *Ready for QA*, and some merge it with *Fixed*.
+
+### Verified / Closed
+
+You retested the bug and it's gone. **Verified** means QA has confirmed the fix. **Closed** means the team is finished with it, often when the release containing the fix ships. Many teams use only one of the two.
+
+### Reopened
+
+The retest failed, or the bug came back later. The ticket goes back to the developer, with a comment that says exactly which build you tested and what still happens. A bug can be reopened more than once.
+
+## Who moves the bug
+
+| Who | Typical moves |
+| --- | --- |
+| **Tester** | Creates it (New); moves Ready for test → Verified or Reopened; adds missing details after "Cannot reproduce" |
+| **QA lead / team lead / PO** | New → Open (triage); sets priority; assigns; decides Duplicate, Won't fix, Deferred |
+| **Developer** | Assigned → In Progress → Fixed → Ready for test; may resolve as Cannot reproduce or Not a bug |
+| **Release / CI tools** | Some teams move bugs to Closed automatically when the release ships |
+
+<Callout type="note">
+
+These are the most common habits, not rules. In a small startup the tester might triage, assign and close everything. In a large company only the lead may be allowed to mark a bug Won't fix. Ask your team on day one: *"Who is allowed to move bugs between which statuses?"*
+
+</Callout>
+
+## The side exits
+
+Not every bug ends with "Fixed". These outcomes are normal and don't mean you did a bad job.
+
+<Tabs labels={["Duplicate", "Not a bug", "Won't fix", "Cannot reproduce", "Deferred"]}>
+<Tab>
+
+**Duplicate.** The same bug is already reported. Your ticket is linked to the original and closed. A <Term id="duplicate-bug" /> wastes time, so search the tracker before filing.
+
+**Who decides:** usually the lead in triage, sometimes the developer.
+
+**What you do:** if your report adds something new (another device, a clearer recording), copy it into the original ticket as a comment. If you think it was closed wrongly ("same symptom, different cause or platform"), explain the difference politely and ask for it to be reopened.
+
+</Tab>
+<Tab>
+
+**Not a bug** (also *Rejected*, *Works as designed*, *Invalid*). The app does what it was designed to do, or the report is based on a misunderstanding.
+
+**Who decides:** the developer or lead, ideally checked against the requirement.
+
+**What you do:** read the reason and check the <Term id="requirement" /> or <Term id="acceptance-criteria" />. If the requirement agrees with the developer, accept it gracefully. If the requirement is unclear or you think users will be confused, bring it to the product owner. That's not a bug fight; it's a question about what the product *should* do.
+
+</Tab>
+<Tab>
+
+**Won't fix** (also *Won't do*). It's a real bug, but the team decided not to fix it: it's too rare, too expensive to fix, or the feature is being removed next month.
+
+**Who decides:** the product owner or lead. It's a business decision.
+
+**What you do:** make sure the reason is written in the ticket, then let it go. If new facts appear later (more users affected, a customer complaint), you can raise it again.
+
+</Tab>
+<Tab>
+
+**Cannot reproduce** (also *Works for me*). The developer followed your steps and didn't see the bug.
+
+**Who decides:** the developer.
+
+**What you do:** see [Handling "Cannot reproduce"](#handling-cannot-reproduce) below. In short: find what's different between your setup and theirs, and add it.
+
+</Tab>
+<Tab>
+
+**Deferred** (also *Backlog*, *Postponed*, *Later*). A real bug that will be fixed, just not now, usually because other work is more urgent before the release.
+
+**Who decides:** the product owner or lead.
+
+**What you do:** check that the ticket says why and until when (for example "after the 5.0 release"). Deferred bugs with a known <Term id="workaround" /> often go into the <Term id="release-notes" /> as known issues.
+
+</Tab>
+</Tabs>
+
+## Status vs resolution
+
+This confuses many beginners, so let's be precise. Many trackers, including Jira, have **two separate fields**:
+
+- **Status:** where the bug is in the workflow *right now*. Example: Open, In Progress, Closed.
+- **Resolution:** *why* the work ended. Example: Fixed, Duplicate, Won't fix, Cannot reproduce. While the bug is still being worked on, the resolution is empty (Jira shows it as **Unresolved**).
+
+| Status | Resolution | What it means |
+| --- | --- | --- |
+| In Progress | Unresolved | Someone is working on it |
+| Closed | Fixed | Fixed and verified |
+| Closed | Duplicate | Closed because another ticket covers it |
+| Closed | Won't fix | Real bug, deliberately left |
+| Resolved | Cannot reproduce | Waiting for more info, or for someone to close it |
+
+<Callout type="warning" title="'Closed' is not the same as 'fixed'">
+
+When someone asks "how many bugs did we close this sprint?", check the resolutions. Ten closed bugs might be four fixes, three duplicates and three Won't fix.
+
+</Callout>
+
+## Triage meetings
+
+**Triage** comes from emergency medicine: deciding which patients need help first. In bug triage, a small group reviews new bugs and decides what happens to each one.
+
+- **Who:** usually a QA lead or tester, a developer or tech lead, and the product owner (the person who decides priorities).
+- **How often:** from daily (just before a big release) to once or twice a week. Some teams triage asynchronously in the tracker instead of meeting.
+- **What they decide for each bug:** Is it valid? Is it a duplicate? What are the severity and priority? Who fixes it, and in which <Term id="sprint" /> or release? Does it need more information?
+
+<Steps>
+
+1. **Make your bugs triage-ready.** Clear title, steps, environment, evidence, a proposed severity.
+2. **Know the impact.** Be ready to say how many users, which platforms, whether there's a workaround, whether it's a regression.
+3. **Keep it short.** A good triage spends one or two minutes per bug. Long debates move to the ticket.
+4. **Accept the decision.** Priority is a business call. If you strongly disagree, add facts to the ticket, not volume to the meeting.
+
+</Steps>
+
+How severity and priority are decided is a whole topic of its own: see [Severity vs Priority](/fundamentals/severity-vs-priority).
+
+## How it looks in Jira
+
+<Term id="jira" /> is the most common tracker you'll meet, so it's worth knowing how it handles all this. [Working with Jira](/tutorials/working-with-jira) covers the tool in more depth.
+
+- **Workflows differ per team.** A Jira *workflow* is the set of statuses and allowed transitions for a project. Every company configures its own. Team-managed projects often start with just *To Do → In Progress → Done*. Older company-managed projects often use *Open → In Progress → Resolved → Closed*, with *Reopened*. Many QA teams add *Ready for test* or *In QA*.
+- **Status categories.** Whatever the names, Jira groups every status into three categories with fixed colors: **To Do** (grey), **In Progress** (blue) and **Done** (green). That's why a status lozenge's color tells you more than its name.
+- **Transitions are buttons.** You don't type a status; you click the status button on the ticket and choose an allowed next step, like *Ready for test → Verified*. Some transitions open a screen asking for a resolution or a comment.
+- **The Resolution field** is set when a bug reaches a Done status. Typical values are Done or Fixed, Won't Do, Duplicate and Cannot Reproduce, but teams can change them.
+- **History.** The *History* tab under Activity shows every field change with who and when. It's the life cycle of that bug, written down.
+
+Handy searches (JQL) for a tester:
+
+```sql
+-- Bugs waiting for me to retest
+project = SHOP AND type = Bug AND status = "Ready for test" AND assignee = currentUser()
+
+-- Every unresolved bug I reported
+type = Bug AND reporter = currentUser() AND resolution = Unresolved
+
+-- Bugs that were reopened in the last 30 days
+type = Bug AND status CHANGED TO "Reopened" AFTER -30d
+```
+
+<Callout type="tip">
+
+Status names in JQL must match your team's workflow exactly. If `"Ready for test"` returns an error, open any bug, click the status button and look at what your team actually calls it.
+
+</Callout>
+
+## What testers do at "Ready for test"
+
+This is the moment you own the bug again, and it's where good testers stand out. You are doing two different things here:
+
+- <Term id="retesting">Retesting</Term>: repeating the original steps to confirm *this* bug is gone.
+- <Term id="regression-testing">Regression testing</Term> around the fix: checking that the change didn't break anything nearby.
+
+<Steps>
+
+1. **Check the build.** Make sure the build you installed actually contains the fix. Compare the ticket's *Fix version* with your app's version and build number (on mobile, usually in Settings or an About screen; on the web, sometimes in the page footer or a version endpoint).
+2. **Use the same environment.** Same platform, similar device and OS, same account type and data as in the original report. If the bug was only on iOS 18 in the Germany store, retest exactly that.
+3. **Repeat the original steps.** Exactly as written. Then repeat them once more: an intermittent bug that passes once isn't proven fixed.
+4. **Try close variations.** Other data (a different discount code, a longer name), other platforms the fix touched, both orientations, slow network.
+5. **Check the neighbors.** Fixes often break the features next to them. If the checkout total was fixed, check the order confirmation, the receipt email and the cart total too.
+6. **Write a verification comment.** Then move the ticket on: Verified if all good, Reopened if not.
+
+</Steps>
+
+<Compare>
+<Do title="Useful verification comment">
+
+Verified on ShopFast iOS 5.3.1 (818), iPhone 15 iOS 18.1 and iPhone SE iOS 17.6, Germany store. Original steps pass 3/3. Also checked: fixed-amount code, no code, card payment, order confirmation total.
+
+</Do>
+<Dont title="Says nothing">
+
+Works now.
+
+</Dont>
+</Compare>
+
+When a retest fails, reopen the bug with the build you tested, what still happens, and new evidence. If the original bug is fixed but you found a *different* problem, file a **new** bug and link it instead of reopening.
+
+## Handling "Cannot reproduce"
+
+A "Cannot reproduce" result is not an insult. It usually means one detail is missing from the report.
+
+<Steps>
+
+1. **Read what the developer tried.** Which build, device, account, data? Compare it with your setup line by line.
+2. **Reproduce it again yourself** on the latest build. Maybe it really was fixed by another change.
+3. **Look for the difference.** Common culprits: account type or region, existing data (a saved card, a full cart), app version, OS version, device type, language and <Term id="locale" />, network, timing, a feature flag, or the order of steps.
+4. **Add the missing piece.** Update the preconditions in the report, attach a new recording, and reopen or reassign the bug.
+5. **Offer to pair.** "Want me to show you on my phone?" is often the fastest path.
+
+</Steps>
+
+If you can't reproduce it either, say so honestly. Note how often you tried, and keep an eye out for it. Intermittent bugs are often caused by timing, such as a <Term id="race-condition" />.
+
+## Handling "Not a bug"
+
+<Compare>
+<Do title="Professional">
+
+Thanks for checking. I read the story SHOP-880 again: AC 3 says the discount applies "to all payment methods", so I expected Apple Pay to show the discounted total. If the intended behavior is different, could we update the AC so we're all aligned? @Lena (PO) for a decision.
+
+</Do>
+<Dont title="Escalating">
+
+This is OBVIOUSLY a bug. Reopening. Please actually test it this time.
+
+</Dont>
+</Compare>
+
+- **Point to the source of truth:** the requirement, the design, platform guidelines, or how similar screens behave.
+- **Separate the bug from the opinion.** "This doesn't match AC 3" is a bug. "I think this is confusing" is valid feedback, but it's a product decision.
+- **Let the product owner decide** if you and the developer disagree. Then accept the decision.
+
+There's an interview question about exactly this: see [What do you do when a developer says it's not a bug?](/interview/developer-says-not-a-bug).
+
+## Metrics teams track
+
+Because every status change is recorded, teams can measure how bugs flow. Two numbers you'll hear about often:
+
+- **Reopen rate:** the share of fixed bugs that fail retest or come back. A high reopen rate suggests fixes are rushed or retests are too narrow. It's a team signal, not a score for one developer.
+- **Bug aging:** how long bugs stay open, often shown as "open bugs older than 30 days". Old bugs are a sign of a growing backlog, or of bugs nobody will ever fix (which should then be closed as Won't fix, honestly).
+
+Others you may see: time from New to triage, time to fix by priority, and the number of open critical bugs before a release.
+
+<Callout type="warning" title="Metrics are for the process, not for blame">
+
+Counting "bugs found per tester" or "bugs caused per developer" encourages bad behavior: splitting one bug into five, or arguing every bug down. Use metrics to improve how the team works.
+
+</Callout>
+
+</Long>
+
+## Practice: follow one bug through its life
+
+Time to try it yourself. One realistic bug, three roles, a few decisions. Some choices are better than others, and some lead to detours you'll meet in real projects. Play it more than once to see the different paths.
+
+<TicketSimulator client:visible />
+
+## Exercise: where is this bug now?
+
+For each situation, decide the **status** (and resolution, if any) and what **you, the tester,** should do next. Then open the sample answer.
+
+1. A developer comments: "Fixed in build 2.4.0 (311)". The app on your test phone is 2.4.0 (309).
+2. Your report about a fitness app's step counter was closed as a Duplicate of a ticket about the *calories* counter.
+3. You retest a banking app fix: the transfer limit bug is gone, but now the confirmation screen shows the wrong date.
+4. A delivery app bug about a typo in the Help screen was moved to the backlog with no comment.
+5. A developer resolved your bug as "Cannot reproduce". You notice they tested on Wi-Fi; you found it on mobile data.
+
+<details>
+<summary><strong>Show a sample answer</strong></summary>
+
+1. **Status:** Fixed or Ready for test. **You:** wait for or install build 311 first. Retesting on 309 proves nothing, because the fix isn't in it.
+2. **Status:** Closed, resolution Duplicate. **You:** compare the two tickets. If steps counter and calories counter are different symptoms, explain the difference politely and ask for it to be reopened and linked as "relates to".
+3. **Status:** Verified for the original bug. **You:** file a **new** bug for the wrong date and link it to the original ("caused by" or "relates to"), so each bug can be tracked separately. Some teams prefer reopening if the new problem was clearly caused by the fix; follow your team's rule.
+4. **Status:** Deferred / Backlog. **You:** that's a reasonable decision for a typo, but ask for a one-line reason so the ticket doesn't look forgotten.
+5. **Status:** Resolved, resolution Cannot reproduce. **You:** reproduce it again on mobile data, add "Network: mobile data (4G)" to the preconditions, attach a recording, and reopen or reassign it.
+
+</details>
+
+<Checklist
+  title="Bug life cycle checklist for testers"
+  storageKey="bug-life-cycle"
+  items={[
+    "I search for duplicates before I file a new bug",
+    "I know my team's workflow: which statuses exist and who may move bugs between them",
+    "I watch my bugs and answer developer questions quickly",
+    "Before retesting, I check that my build contains the fix (fix version vs build number)",
+    "I retest on the same platform, OS, account and data as the original report",
+    "I check the features around every fix, not only the original steps",
+    "My verification comments name the build, the device and what I checked",
+    "When a retest fails, I reopen with the build I tested and new evidence",
+    "When a bug is 'Cannot reproduce', I look for the missing detail before replying",
+    "When a bug is 'Not a bug', I check the requirement and let the product owner decide",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "A developer moves your bug to 'Fixed'. What does that status tell you?",
+      options: [
+        "The bug is gone and can be closed",
+        "The developer believes it is fixed; it still needs to be verified",
+        "The bug will be in the next release for sure",
+        "You should file a new bug",
+      ],
+      answer: 1,
+      explain: "'Fixed' means the code was changed. Only a retest on a build that contains the fix shows whether the bug is really gone.",
+    },
+    {
+      q: "Which pair correctly describes status vs resolution?",
+      options: [
+        "Status = how bad the bug is; resolution = how fast to fix it",
+        "Status = where the bug is in the workflow; resolution = why the work on it ended",
+        "They are two names for the same field",
+        "Status is set by testers; resolution is set by customers",
+      ],
+      answer: 1,
+      explain: "A bug can be Closed (status) with resolution Fixed, Duplicate, Won't fix or Cannot reproduce. Closed doesn't always mean fixed.",
+    },
+    {
+      q: "Your bug comes back as 'Cannot reproduce'. What is the best first step?",
+      options: [
+        "Reopen it with the comment 'Still happens for me'",
+        "Close it, the developer knows best",
+        "Compare the developer's setup with yours and find the missing detail",
+        "File the same bug again with a new title",
+      ],
+      answer: 2,
+      explain: "Most 'Cannot reproduce' results come from a missing precondition: a region, an account state, a device or OS version, a network condition.",
+    },
+    {
+      q: "At 'Ready for test', which plan is best?",
+      options: [
+        "Run only the original steps once",
+        "Ask the developer to demo it on their machine",
+        "Check the build has the fix, repeat the original steps, try close variations, and check nearby features",
+        "Close it if the developer's comment sounds confident",
+      ],
+      answer: 2,
+      explain: "Retesting confirms the bug is gone; checking variations and neighbors catches incomplete fixes and regressions before customers do.",
+    },
+    {
+      q: "Who usually decides that a real bug is 'Won't fix'?",
+      options: [
+        "The tester who found it",
+        "The product owner or lead, as a business decision",
+        "The customer",
+        "Nobody, it happens automatically after 30 days",
+      ],
+      answer: 1,
+      explain: "Won't fix weighs cost, risk and value. That's a product decision. The tester makes sure the facts are in the ticket.",
+    },
+    {
+      q: "Your team's reopen rate doubled this quarter. What is the most sensible reading?",
+      options: [
+        "The testers are reopening bugs to look busy",
+        "One developer is bad and should be named",
+        "Fixes may be rushed or retests too narrow; the team should look at why",
+        "Reopen rate doesn't mean anything",
+      ],
+      answer: 2,
+      explain: "Metrics like reopen rate are signals about the process. Use them to ask better questions, not to blame people.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- The bug life cycle is the set of **statuses** a bug moves through. The status tells everyone **who has to do what next**.
+- Happy path: **New → Triaged/Open → Assigned → In Progress → Fixed → Ready for test → Verified/Closed**. A failed retest means **Reopened**.
+- Side exits: **Duplicate, Not a bug, Won't fix, Cannot reproduce, Deferred**. They're normal, not failures.
+- **Status** is where the bug is; **resolution** is why it ended. Closed doesn't always mean fixed.
+- Workflows and names **differ per team and tool**. Learn your team's workflow on day one.
+- At Ready for test, **retest the original steps and check around the fix** on a build that really contains it.
+- Respond to "Cannot reproduce" with the missing detail, and to "Not a bug" with the requirement. Stay factual and friendly.
+- Metrics like **reopen rate** and **bug aging** help the team improve. They're not for blaming people.
+
+</KeyTakeaways>

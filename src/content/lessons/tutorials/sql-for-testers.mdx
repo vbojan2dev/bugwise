@@ -1,0 +1,668 @@
+---
+title: SQL for Testers
+description: Learn the SQL a manual tester really needs, from SELECT and WHERE to JOINs, GROUP BY and NULL traps, then find real bugs in a practice food delivery database right in your browser.
+order: 10
+level: beginner
+minutes: { short: 25, long: 40 }
+platform: both
+tags: [SQL, database, test data, back end, interview]
+---
+
+import SqlPlayground from '@/components/demos/sql/SqlPlayground.astro';
+import JoinExplorer from '@/components/demos/sql/JoinExplorer';
+
+It's Thursday afternoon at FoodDash, a food delivery app. A support ticket comes in: *"I was charged €33.50, but my receipt only adds up to €30."* Your lead pings you: "The app looks fine to me. Can you check order 1007 in the database and tell me what was actually saved?"
+
+If you know a little <Term id="sql" />, that's a five-minute job. Without it, you're stuck waiting for a developer.
+
+That's why "basic SQL" shows up in most junior QA job ads, and why many interviews include a small "write a query" task. The good news: testers need only a small, very learnable part of SQL. This lesson teaches exactly that part, and ends with a practice <Term id="database" /> full of real-looking bugs for you to find.
+
+## Why testers use SQL
+
+The screens you test are only a window onto data stored on a server. SQL lets you look behind the window. Testers use it for four everyday jobs:
+
+<div class="not-prose my-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="font-semibold">1. Check what the app really saved</p>
+    <p class="mt-1 text-sm text-muted">The screen says "Order placed". Is there a new row with the right total, status and coupon?</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="font-semibold">2. Find test data</p>
+    <p class="mt-1 text-sm text-muted">"I need a user with a canceled order and no city." One query beats clicking through 200 accounts.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="font-semibold">3. Set up preconditions</p>
+    <p class="mt-1 text-sm text-muted">Confirm that the state your <Term id="precondition">preconditions</Term> need really exists, or create it in your own test database.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="font-semibold">4. Investigate bugs</p>
+    <p class="mt-1 text-sm text-muted">Is the wrong price a display bug or a saving bug? The database answers that, and makes your bug report much sharper.</p>
+  </div>
+</div>
+
+<Callout type="warning" title="Rule number one: read, don't write">
+
+Testers **read** data. Never run `UPDATE`, `DELETE`, `INSERT` or anything that changes structure on a shared, <Term id="staging" /> or <Term id="production" /> database unless your team has explicitly asked you to. One `DELETE` without a `WHERE` empties the whole table for everyone. Ask for a **read-only** account, and do your write experiments on your own test database (like the one at the end of this lesson).
+
+</Callout>
+
+<Short>
+
+## The essentials
+
+### Tables, rows and keys
+
+A database stores data in <Term id="table">tables</Term>. Each **row** is one thing (one user, one order) and each **column** is one property (email, total, status). Every table has a <Term id="primary-key" />, usually `id`, that is unique per row. Tables point to each other with <Term id="foreign-key">foreign keys</Term>: `orders.user_id` holds the `id` of the user who placed the order.
+
+### The clauses you'll use most
+
+```sql
+SELECT id, status, total        -- which columns
+FROM orders                     -- which table
+WHERE status = 'delivered'      -- which rows
+  AND total > 20
+ORDER BY total DESC             -- sort, highest first
+LIMIT 10;                       -- only the first 10
+```
+
+They always appear in this order. Text goes in **single quotes**; numbers don't.
+
+| You want… | Write |
+| --- | --- |
+| Exact match / not equal | `city = 'Berlin'`, `status <> 'canceled'` |
+| A pattern | `email LIKE '%@mail.test'` |
+| One of a list | `status IN ('preparing', 'on_the_way')` |
+| A range (inclusive) | `total BETWEEN 10 AND 20` |
+| An empty value | `city IS NULL` (never `= NULL`) |
+
+### Counting and grouping
+
+```sql
+SELECT status, COUNT(*) AS orders
+FROM orders
+GROUP BY status;
+```
+
+`COUNT`, `SUM`, `AVG`, `MIN` and `MAX` summarize rows. `GROUP BY` gives one result row per group. `WHERE` filters rows **before** grouping; `HAVING` filters groups **after** it, for example `HAVING COUNT(*) > 1`.
+
+### Joining tables
+
+A <Term id="join" /> combines related rows. An **INNER JOIN** keeps only rows with a match on both sides. A **LEFT JOIN** keeps every row from the first table and fills the missing side with <Term id="null-value">NULL</Term>, which is perfect for finding things that are missing:
+
+```sql
+-- Orders that have no items (a bug!)
+SELECT o.id
+FROM orders o
+LEFT JOIN order_items oi ON oi.order_id = o.id
+WHERE oi.id IS NULL;
+```
+
+### Three bug-hunting recipes
+
+```sql
+-- Duplicate emails, ignoring capitalization
+SELECT LOWER(email), COUNT(*) FROM users
+GROUP BY LOWER(email) HAVING COUNT(*) > 1;
+
+-- Order items whose order doesn't exist (orphan rows)
+SELECT oi.* FROM order_items oi
+LEFT JOIN orders o ON o.id = oi.order_id
+WHERE o.id IS NULL;
+
+-- Orders whose total doesn't match their items
+SELECT o.id, o.total, SUM(oi.quantity * oi.unit_price) AS items_total
+FROM orders o JOIN order_items oi ON oi.order_id = o.id
+GROUP BY o.id, o.total
+HAVING ROUND(SUM(oi.quantity * oi.unit_price), 2) <> o.total;
+```
+
+<Callout type="tip">
+
+NULL means "no value". Nothing equals NULL, not even NULL, so `WHERE city = NULL` silently returns zero rows. Use `IS NULL` / `IS NOT NULL`.
+
+</Callout>
+
+Switch to **Detailed** at the top of the page for the full walkthrough: every operator with examples, aggregates, INNER vs LEFT JOIN with a live demo, NULL traps, tester recipes, preparing test data safely, and real tools. Or jump straight to the practice database below.
+
+</Short>
+
+<Long>
+
+## The basics: databases, tables and keys
+
+Think of a database as a set of very strict spreadsheets. Each sheet is a **table** with a fixed list of columns, and every column has a type: whole numbers (`INTEGER`), decimals (`REAL`, `DECIMAL`), text (`TEXT`, `VARCHAR`), dates and so on.
+
+The practice database in this lesson is a simplified FoodDash, the same food delivery app you test in the [Capstone](/capstone). It has five tables:
+
+<div class="not-prose my-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4 font-mono text-[13px]">
+    <p class="font-sans font-semibold">users</p>
+    <p class="mt-1"><span class="text-warn">🔑 id</span>, name, email, city, signed_up</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4 font-mono text-[13px]">
+    <p class="font-sans font-semibold">restaurants</p>
+    <p class="mt-1"><span class="text-warn">🔑 id</span>, name, cuisine, city, rating</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4 font-mono text-[13px]">
+    <p class="font-sans font-semibold">coupons</p>
+    <p class="mt-1"><span class="text-warn">🔑 id</span>, code, percent, once_per_user, valid_until</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-brand/40 bg-brand-soft p-4 font-mono text-[13px]">
+    <p class="font-sans font-semibold">orders</p>
+    <p class="mt-1"><span class="text-warn">🔑 id</span>, <span class="text-info">user_id → users</span>, <span class="text-info">restaurant_id → restaurants</span>, status, total, <span class="text-info">coupon_id → coupons</span>, created_at</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4 font-mono text-[13px]">
+    <p class="font-sans font-semibold">order_items</p>
+    <p class="mt-1"><span class="text-warn">🔑 id</span>, <span class="text-info">order_id → orders</span>, dish, quantity, unit_price</p>
+  </div>
+</div>
+
+- The **primary key** (🔑) uniquely identifies a row. There is exactly one order with `id = 1007`.
+- A **foreign key** (→) stores another table's primary key. `orders.user_id = 2` means "this order belongs to user 2". One user can have many orders, and one order can have many items.
+- A column may allow **NULL**, meaning "no value". In FoodDash, `users.city` and `orders.coupon_id` can be NULL.
+
+<Callout type="info" title="Many databases, one language">
+
+PostgreSQL, MySQL, SQL Server, Oracle and SQLite all speak SQL. The basics in this lesson work almost everywhere; small differences (like `LIMIT`) are noted where they matter. The playground uses SQLite.
+
+</Callout>
+
+## SELECT: reading data
+
+Every read starts with `SELECT` (which columns) and `FROM` (which table):
+
+```sql
+SELECT * FROM restaurants;                 -- every column
+SELECT name, city FROM restaurants;        -- only these two
+SELECT name AS restaurant, rating FROM restaurants;  -- rename a column in the result
+SELECT DISTINCT city FROM restaurants;     -- each city once
+```
+
+- `*` is handy for a first look, but on real tables with 40 columns, pick the ones you need.
+- `AS` gives a column a friendlier name in the result. It doesn't change the table.
+- `DISTINCT` removes duplicate result rows. `SELECT DISTINCT city FROM restaurants` lists Belgrade, Novi Sad and Berlin once each.
+- End each query with a semicolon `;`. Keywords aren't case-sensitive (`select` works), but writing them in capitals makes queries easier to read.
+
+## WHERE: picking the rows you need
+
+`WHERE` keeps only the rows where a condition is true.
+
+| Operator | Example | Meaning |
+| --- | --- | --- |
+| `=` | `status = 'delivered'` | Equal |
+| `<>` (or `!=`) | `status <> 'canceled'` | Not equal |
+| `>` `<` `>=` `<=` | `total >= 20` | Greater / smaller |
+| `LIKE` | `email LIKE '%@mail.test'` | Matches a pattern |
+| `IN` | `status IN ('preparing', 'on_the_way')` | Any value in the list |
+| `BETWEEN` | `total BETWEEN 10 AND 20` | In a range, both ends included |
+| `IS NULL` | `coupon_id IS NULL` | Has no value |
+| `IS NOT NULL` | `coupon_id IS NOT NULL` | Has a value |
+
+Combine conditions with `AND`, `OR` and `NOT`. When you mix `AND` and `OR`, use brackets, because `AND` is evaluated first:
+
+```sql
+-- Delivered or on the way, AND over 20 euros
+SELECT id, status, total
+FROM orders
+WHERE (status = 'delivered' OR status = 'on_the_way')
+  AND total > 20;
+```
+
+Without the brackets you would get every on-the-way order over 20 **plus every delivered order of any size**. That's a classic wrong-result bug in testers' own queries.
+
+### LIKE patterns
+
+`%` matches any number of characters (even none) and `_` matches exactly one.
+
+| Pattern | Matches |
+| --- | --- |
+| `'Mia%'` | Starts with "Mia" |
+| `'%@mail.test'` | Ends with "@mail.test" |
+| `'%pizza%'` | Contains "pizza" anywhere |
+| `'_ana%'` | Any first letter, then "ana": Dana, Hana, Jana… |
+
+<Callout type="note" title="Upper and lower case">
+
+Whether `'mia' = 'Mia'` is true depends on the database and its settings. PostgreSQL and SQLite treat them as different; MySQL usually treats them as equal. `LIKE` differs too (it's case-insensitive in SQLite and MySQL by default, case-sensitive in PostgreSQL, which has `ILIKE`). To be safe, compare `LOWER(email) = LOWER('Mia.Novak@mail.test')`.
+
+</Callout>
+
+### Dates
+
+In most databases, you write dates as text in the ISO format `'YYYY-MM-DD'`, and comparisons work as expected:
+
+```sql
+SELECT id, created_at
+FROM orders
+WHERE created_at >= '2025-09-10';
+```
+
+Watch out with `BETWEEN` on date-time columns: `created_at BETWEEN '2025-09-01' AND '2025-09-07'` stops at midnight at the **start** of September 7, so orders placed later that day are missed. Use `created_at < '2025-09-08'` for the upper limit instead.
+
+## ORDER BY and LIMIT
+
+Without `ORDER BY`, the database may return rows in **any** order, and that order can change between runs. If the order matters, say so:
+
+```sql
+SELECT id, total
+FROM orders
+ORDER BY total DESC, id ASC   -- highest total first; ties sorted by id
+LIMIT 5;                      -- the top five
+```
+
+`ASC` (smallest first) is the default. `LIMIT` works in PostgreSQL, MySQL and SQLite. SQL Server uses `SELECT TOP 5 ...`, and both SQL Server and Oracle support `OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY` (Oracle also allows the shorter `FETCH FIRST 5 ROWS ONLY`).
+
+<Callout type="tip" title="A free test idea">
+
+If an app lists "newest first" or "cheapest first", compare it with your own `ORDER BY` query. Sorting bugs with ties (two items with the same price) are common, and you can only spot them when you know the real data.
+
+</Callout>
+
+## Counting and totals: aggregates, GROUP BY and HAVING
+
+Aggregate functions turn many rows into one value:
+
+| Function | Example | Returns |
+| --- | --- | --- |
+| `COUNT(*)` | `SELECT COUNT(*) FROM orders` | Number of rows (15) |
+| `COUNT(column)` | `SELECT COUNT(coupon_id) FROM orders` | Rows where that column is **not NULL** |
+| `SUM` | `SELECT SUM(total) FROM orders WHERE status = 'delivered'` | The sum |
+| `AVG` | `SELECT AVG(rating) FROM restaurants` | The average |
+| `MIN` / `MAX` | `SELECT MIN(created_at), MAX(created_at) FROM orders` | The smallest / largest |
+
+### GROUP BY
+
+`GROUP BY` splits the rows into groups and runs the aggregate once per group:
+
+```sql
+SELECT status, COUNT(*) AS orders, SUM(total) AS revenue
+FROM orders
+GROUP BY status;
+```
+
+| status | orders | revenue |
+| --- | --- | --- |
+| canceled | 2 | 22.9 |
+| delivered | 10 | 201.4 |
+| on_the_way | 1 | 16.9 |
+| preparing | 2 | 27.1 |
+
+Rule of thumb: every column in `SELECT` must either be inside an aggregate or listed in `GROUP BY`. (SQLite and older MySQL setups let you break this rule and quietly return a random value from the group. Don't rely on it.)
+
+This is exactly how you test a dashboard: if the admin panel says "11 delivered orders" and your query says 10, someone is counting wrong.
+
+### WHERE vs HAVING
+
+`WHERE` filters **rows before** they are grouped. `HAVING` filters **groups after** the aggregates are calculated.
+
+<Compare>
+<Do title="HAVING for conditions on aggregates">
+
+```sql
+SELECT user_id, COUNT(*) AS orders
+FROM orders
+WHERE status <> 'canceled'   -- rows
+GROUP BY user_id
+HAVING COUNT(*) >= 2;         -- groups
+```
+
+Users with at least two non-canceled orders.
+
+</Do>
+<Dont title="Aggregates in WHERE">
+
+```sql
+SELECT user_id, COUNT(*)
+FROM orders
+WHERE COUNT(*) >= 2
+GROUP BY user_id;
+```
+
+Error: "misuse of aggregate". When WHERE runs, nothing has been counted yet.
+
+</Dont>
+</Compare>
+
+## JOINs: combining tables
+
+Real questions span several tables: "Which **customer** placed this **order** at which **restaurant**?" A JOIN matches rows using the keys:
+
+```sql
+SELECT o.id, u.name AS customer, r.name AS restaurant, o.total
+FROM orders o
+JOIN users u       ON u.id = o.user_id
+JOIN restaurants r ON r.id = o.restaurant_id
+WHERE o.id = 1007;
+```
+
+- `orders o` gives the table a short **alias**, so you can write `o.id` instead of `orders.id`.
+- The `ON` condition says how rows belong together: foreign key = primary key.
+- When two tables have a column with the same name (`name`, `id`), you must prefix it, or you'll get an "ambiguous column name" error.
+
+### INNER JOIN vs LEFT JOIN
+
+`JOIN` on its own means **INNER JOIN**: only rows that have a partner on both sides. A **LEFT JOIN** keeps every row from the left (first) table, and when there's no partner, the right side's columns are NULL. Try the three versions:
+
+<JoinExplorer client:visible />
+
+That difference is the heart of many tester queries:
+
+- **Find what's missing:** `LEFT JOIN` + `WHERE right_side.id IS NULL` finds orders without items, users who never ordered, restaurants with no orders.
+- **Beware of hidden rows:** an `INNER JOIN` silently drops the broken order. If your "orders per restaurant" report uses an inner join, a restaurant with zero orders won't appear at all instead of showing 0.
+
+```sql
+-- Users who have never placed an order
+SELECT u.id, u.name
+FROM users u
+LEFT JOIN orders o ON o.user_id = u.id
+WHERE o.id IS NULL;
+```
+
+<Callout type="info" title="RIGHT and FULL joins">
+
+`RIGHT JOIN` is a mirrored LEFT JOIN, and `FULL OUTER JOIN` keeps unmatched rows from both sides. You'll rarely need them: swap the table order and use LEFT JOIN instead.
+
+</Callout>
+
+## NULL: the trap behind many wrong results
+
+NULL means "no value" or "unknown". It isn't 0, it isn't an empty string `''`, and it doesn't behave like a normal value. These are the traps that catch testers (and developers) all the time:
+
+| Trap | What happens | Do this instead |
+| --- | --- | --- |
+| `WHERE coupon_id = NULL` | Zero rows, no error | `WHERE coupon_id IS NULL` |
+| `WHERE city <> 'Berlin'` | Rows with a NULL city are skipped too (5 rows instead of 7) | Add `OR city IS NULL` |
+| `COUNT(city)` vs `COUNT(*)` | `COUNT(city)` skips NULLs (8 instead of 10) | Use `COUNT(*)` to count rows |
+| `AVG(rating)` | Ignores NULL ratings, it doesn't treat them as 0 | Decide which one the requirement means |
+| `NOT IN (SELECT coupon_id FROM orders)` | Returns nothing if the list contains a NULL | Use `NOT EXISTS` or a LEFT JOIN |
+| `total + NULL` | The result is NULL | `COALESCE(discount, 0)` replaces NULL with 0 |
+
+<Callout type="example" title="A NULL bug you can see in the app">
+
+A "Deliveries outside Berlin" report uses `WHERE city <> 'Berlin'`. Two customers with no city saved are silently left out, so the numbers on the dashboard are too low. Nobody notices until someone counts by hand.
+
+</Callout>
+
+## Typical tester queries
+
+These recipes cover most of what testers do with SQL day to day. In the practice database below, each one finds a real bug.
+
+### Verify that the UI saved the right data
+
+You place an order in the app, then check exactly what was stored:
+
+<Steps>
+
+1. **Find the record.** Use something you know from the UI, like the order number on the confirmation screen: `SELECT * FROM orders WHERE id = 1007;` If you don't have an id, use your test user plus time: `WHERE user_id = 2 ORDER BY created_at DESC LIMIT 1`.
+2. **Check every field the screen showed.** Status, total, coupon, timestamps. Then check the fields the screen didn't show, like `coupon_id` or `created_at`. Is the time zone right?
+3. **Check the related rows.** `SELECT * FROM order_items WHERE order_id = 1007;` Are all dishes there, with the right quantities and prices?
+4. **Check that the numbers agree.** Does the total match the sum of the items? Did exactly **one** order get created, not two after a double tap?
+
+</Steps>
+
+### Find duplicates
+
+```sql
+SELECT LOWER(email) AS email, COUNT(*) AS accounts
+FROM users
+GROUP BY LOWER(email)
+HAVING COUNT(*) > 1;
+```
+
+`GROUP BY ... HAVING COUNT(*) > 1` is the universal duplicate finder. Group by whatever should be unique: an email, a coupon code, an order number, a payment id. Use `LOWER()` or `TRIM()` when duplicates may hide behind capitals or spaces.
+
+### Find orphan rows
+
+```sql
+SELECT oi.*
+FROM order_items oi
+LEFT JOIN orders o ON o.id = oi.order_id
+WHERE o.id IS NULL;
+```
+
+Orphans are rows whose foreign key points to nothing, often left behind when something was deleted. Check them after delete features, migrations and imports.
+
+### Find totals that don't add up
+
+```sql
+SELECT o.id, o.total, ROUND(SUM(oi.quantity * oi.unit_price), 2) AS items_total
+FROM orders o
+JOIN order_items oi ON oi.order_id = o.id
+GROUP BY o.id, o.total
+HAVING ROUND(SUM(oi.quantity * oi.unit_price), 2) <> o.total;
+```
+
+<Callout type="note" title="Why ROUND?">
+
+Many databases store decimals like 10.20 as binary floating-point numbers, which can't hold them exactly. Adding them can give 14.100000000000001 instead of 14.1, which makes a correct order look wrong. Rounding to 2 decimals avoids those false alarms. (Well-designed money columns use an exact type like `DECIMAL(10,2)`, or store cents as whole numbers.)
+
+</Callout>
+
+### Find rule violations
+
+Business rules make great queries. "WELCOME10 may be used once per user":
+
+```sql
+SELECT o.user_id, c.code, COUNT(*) AS times_used
+FROM orders o
+JOIN coupons c ON c.id = o.coupon_id
+WHERE c.once_per_user = 1
+GROUP BY o.user_id, c.code
+HAVING COUNT(*) > 1;
+```
+
+Other rules worth a query: no delivered order without a delivery time, no coupon used after `valid_until`, no negative quantities, no order total of 0.
+
+<Callout type="bug" title="Put the query in your bug report">
+
+When SQL helped you find a bug, paste the query and its result into the [bug report](/tutorials/writing-bug-reports), with the ids involved (for example, "order 1007: total 33.50, items 30.00"). Developers can rerun it, and it proves the problem is in the stored data, not only on the screen.
+
+</Callout>
+
+## Database checks in your test cases
+
+A database check fits into a normal [test case](/tutorials/writing-test-cases) as part of the expected result:
+
+<TestCases
+  cases={[
+    {
+      id: "TC-DB-01",
+      title: "Placed order is stored with the correct total and items",
+      priority: "high",
+      type: "positive",
+      preconditions: ["Signed in as test user luka.petrovic@mail.test", "Cart is empty", "Read-only access to the test database"],
+      steps: ["Add 2 × Spicy tuna roll (10.20) and 2 × Salmon nigiri (4.80) from Sushi Zen Garden", "Place the order and note the order number", "Run SELECT * FROM orders WHERE id = <order number>", "Run SELECT * FROM order_items WHERE order_id = <order number>"],
+      expected: "The app shows a total of 30.00. orders has exactly one new row with status 'preparing' and total 30.00. order_items has exactly 2 rows that add up to 30.00.",
+    },
+    {
+      id: "TC-DB-02",
+      title: "Sign-up rejects an email that differs only in capitalization",
+      priority: "high",
+      type: "negative",
+      preconditions: ["An account exists for mia.novak@mail.test"],
+      steps: ["Open Sign up", "Enter Mia.Novak@mail.test and a valid password", "Tap Create account", "Run SELECT id, email FROM users WHERE LOWER(email) = 'mia.novak@mail.test'"],
+      expected: "The app shows 'An account with this email already exists'. The query still returns exactly 1 row.",
+    },
+    {
+      id: "TC-DB-03",
+      title: "Once-per-user coupon can't be used a second time",
+      priority: "medium",
+      type: "negative",
+      preconditions: ["The test user has one delivered order that used WELCOME10"],
+      steps: ["Add any dish to the cart", "Enter coupon WELCOME10 at checkout", "Try to place the order", "Run the coupon-usage query grouped by user_id and code"],
+      expected: "The app shows 'You have already used this coupon' and no order is created. WELCOME10 still appears only once for this user.",
+    },
+  ]}
+/>
+
+## Preparing test data: INSERT, UPDATE and DELETE
+
+Sometimes the fastest way to reach a precondition ("a user with an expired coupon") is to create it directly. That's fine **only on a database that is yours**: a local copy, a personal test environment, or a shared test database where your team explicitly allows it.
+
+```sql
+-- Create a test coupon that has already expired
+INSERT INTO coupons (id, code, percent, once_per_user, valid_until)
+VALUES (90, 'QA_EXPIRED', 10, 1, '2025-01-31');
+
+-- Move one test order to another status
+UPDATE orders SET status = 'canceled' WHERE id = 1013;
+
+-- Remove the test coupon again
+DELETE FROM coupons WHERE id = 90;
+```
+
+<Callout type="warning" title="Habits that prevent disasters">
+
+- **Write the SELECT first.** Run `SELECT * FROM orders WHERE id = 1013;`, check that it returns exactly the rows you mean, then turn it into the `UPDATE` with the **same** `WHERE`.
+- **Never run UPDATE or DELETE without WHERE.** Without it, every row in the table changes.
+- **Use a transaction when you can.** `BEGIN;` … your change … check the result … then `ROLLBACK;` to undo or `COMMIT;` to keep it. (Many tools auto-commit each statement unless you turn that off.)
+- **Mark your data.** Prefixes like `QA_` make test records easy to find and clean up.
+- **Never touch production data.** If a test needs a production change, it's a job for the team, with approval.
+
+</Callout>
+
+You can try all three statements in the playground below. It's your own copy, and **Reset database** undoes everything.
+
+## Tools you'll meet at work
+
+- **DBeaver** (free, works with almost every database), **pgAdmin** (PostgreSQL), **MySQL Workbench** (MySQL), **SQL Server Management Studio** (SQL Server) and **DataGrip** (paid, by JetBrains).
+- Ask for a **read-only** database user for each <Term id="environment" />. DBeaver also has a "Read-only connection" option in the connection settings: switch it on for anything shared.
+- Many teams also have an **admin panel** that shows the same data. It's convenient, but it may hide fields or apply its own logic. SQL shows you the raw truth.
+- Save useful queries in a shared file or wiki page. A team "query cookbook" pays off quickly.
+
+<Callout type="info" title="How SQL fits with other back-end testing">
+
+SQL checks what was **stored**. [API testing](/web/api-testing-with-postman) checks what the server **returns**. [DevTools](/web/devtools-for-testers) shows what the browser **sent and received**. Together they tell you exactly which layer a bug lives in, which is the idea behind <Term id="grey-box-testing" />.
+
+</Callout>
+
+## Common mistakes
+
+<Callout type="bug" title="Watch out for these">
+
+- **`= NULL` instead of `IS NULL`.** The query runs, returns nothing, and you wrongly conclude "no such rows".
+- **Forgetting brackets around OR.** `a OR b AND c` means `a OR (b AND c)`.
+- **INNER JOIN when you need LEFT JOIN.** The rows you're looking for (the broken ones) disappear.
+- **Joining on the wrong column.** `ON o.id = oi.id` instead of `ON oi.order_id = o.id` gives nonsense that looks plausible.
+- **Trusting the default row order.** Without `ORDER BY`, the order is not guaranteed.
+- **Double quotes for text.** In standard SQL, `"Berlin"` means a column named Berlin. Text uses single quotes: `'Berlin'`.
+- **Testing on stale data.** Check you're connected to the right environment before concluding anything.
+- **Running writes on a shared database.** Even "just one quick UPDATE" can break someone else's test run.
+
+</Callout>
+
+</Long>
+
+## Practice: find the bugs in FoodDash
+
+Time to use it. Below is a real SQLite database running in your browser, filled with FoodDash data. Some of that data is broken in ways that real apps get broken. Work through the 10 exercises: the first five practice the basics, the last five are bug hunts.
+
+- Press **Run** (or <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd>) to see your result, and **Check answer** to compare it with the expected result.
+- Column names and column order don't matter. Row order only matters when the task says so.
+- Want to experiment with `UPDATE` or `DELETE`? Go ahead: it's your private copy, and **Reset database** restores it. Checks always use the original data.
+
+<SqlPlayground />
+
+<Callout type="example" title="Bonus bug">
+
+There's at least one more bug hiding in the data that no exercise asks about: a coupon used **after** its `valid_until` date. Can you write the query that finds it? (Join `orders` to `coupons` and compare `created_at` with `valid_until`.)
+
+</Callout>
+
+## Before you run a query at work
+
+<Checklist
+  title="SQL safety and accuracy checklist"
+  storageKey="sql-for-testers"
+  items={[
+    "I'm connected to the right environment (test, not production)",
+    "My database user or connection is read-only, unless I'm on my own test database",
+    "Text values are in single quotes and NULL checks use IS NULL",
+    "Mixed AND/OR conditions have brackets",
+    "I chose INNER or LEFT JOIN on purpose, joining foreign key to primary key",
+    "I used ORDER BY whenever row order matters",
+    "Money comparisons are rounded or use an exact type",
+    "Any UPDATE or DELETE was tested first as a SELECT with the same WHERE",
+    "The query and its result are pasted into the bug report",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "You want users who have no city saved. Which condition is correct?",
+      options: ["WHERE city = NULL", "WHERE city IS NULL", "WHERE city = ''", "WHERE city = 0"],
+      answer: 1,
+      explain: "NULL isn't equal to anything, not even NULL, so = NULL never matches. IS NULL is the only reliable check.",
+    },
+    {
+      q: "Which query lists the orders that have no items?",
+      options: [
+        "orders JOIN order_items ... WHERE oi.id IS NULL",
+        "orders LEFT JOIN order_items ... WHERE oi.id IS NULL",
+        "SELECT * FROM order_items WHERE order_id IS NULL",
+        "SELECT DISTINCT order_id FROM order_items",
+      ],
+      answer: 1,
+      explain: "A LEFT JOIN keeps every order and fills the item columns with NULL when there's no match. An INNER JOIN drops those orders before WHERE even runs.",
+    },
+    {
+      q: "What does HAVING do that WHERE can't?",
+      options: [
+        "Sort the result",
+        "Filter groups using aggregates like COUNT(*)",
+        "Join two tables",
+        "Remove duplicate rows",
+      ],
+      answer: 1,
+      explain: "WHERE filters single rows before grouping. HAVING filters the groups afterwards, so it can use COUNT, SUM and the other aggregates.",
+    },
+    {
+      q: "Which query finds email addresses used by more than one account?",
+      options: [
+        "SELECT DISTINCT email FROM users",
+        "SELECT email FROM users WHERE COUNT(*) > 1",
+        "SELECT email, COUNT(*) FROM users GROUP BY email HAVING COUNT(*) > 1",
+        "SELECT email FROM users ORDER BY email",
+      ],
+      answer: 2,
+      explain: "GROUP BY the value that should be unique, then HAVING COUNT(*) > 1. Add LOWER(email) when duplicates may differ only in capitalization.",
+    },
+    {
+      q: "A ticket says order 1013 has the wrong status. You have access to the shared staging database. What should you do first?",
+      options: [
+        "Run UPDATE orders SET status = 'delivered' WHERE id = 1013 to fix it",
+        "Run SELECT * FROM orders WHERE id = 1013 and compare it with the app",
+        "Run DELETE FROM orders WHERE id = 1013 and place a new order",
+        "Ask a customer to place the order again",
+      ],
+      answer: 1,
+      explain: "Testers read first. Changing shared data hides the bug, can break other people's tests and destroys the evidence you need for the bug report.",
+    },
+    {
+      q: "Why might SUM(quantity * unit_price) show 14.100000000000001 instead of 14.1?",
+      options: [
+        "The database is corrupted",
+        "Decimals stored as floating-point numbers aren't exact, so use ROUND",
+        "SUM always adds 0.000000000000001",
+        "The order has a hidden item",
+      ],
+      answer: 1,
+      explain: "Floating-point numbers can't represent values like 10.2 exactly. Round before comparing money, or the query reports false alarms.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Testers use SQL to **verify what the app saved**, **find test data**, **check preconditions** and **investigate bugs**.
+- **Read, don't write:** no UPDATE or DELETE on shared or production databases. Use a read-only user and your own test database for experiments.
+- `SELECT … FROM … WHERE … GROUP BY … HAVING … ORDER BY … LIMIT` is the order to remember. Text goes in single quotes.
+- **WHERE** filters rows, **HAVING** filters groups. `GROUP BY … HAVING COUNT(*) > 1` finds duplicates.
+- **INNER JOIN** keeps matches only; **LEFT JOIN** + `IS NULL` finds what's missing: orders without items, orphan rows, users who never ordered.
+- **NULL** is not a value: use `IS NULL`, and remember that `<>`, `COUNT(column)` and `NOT IN` treat it in surprising ways.
+- Paste your query and its result into the bug report. It makes the bug easy to reproduce and proves where it lives.
+
+</KeyTakeaways>

@@ -1,0 +1,147 @@
+---
+import { getCollection, type CollectionEntry } from 'astro:content';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/ui/Icon.astro';
+import { getComponents, getLessons, lessonSection, lessonSlug } from '@/lib/content';
+import { getSection } from '@/data/site';
+import { glossaryCategories } from '@/data/labels';
+import { href } from '@/lib/url';
+import { abs, breadcrumbs } from '@/lib/seo';
+
+/** One page per glossary term, so each term can be found and linked on its own. */
+export async function getStaticPaths() {
+  const terms = (await getCollection('glossary')).sort((a, b) => a.data.term.localeCompare(b.data.term));
+  const pages = [
+    ...(await getLessons()).map((l) => ({
+      title: l.data.title,
+      section: getSection(lessonSection(l)).short,
+      href: `/${lessonSection(l)}/${lessonSlug(l)}`,
+      body: l.body ?? '',
+    })),
+    ...(await getComponents()).map((c) => ({ title: c.data.title, section: 'Components', href: `/components/${c.id}`, body: c.body ?? '' })),
+  ];
+  return terms.map((t, i) => {
+    const re = new RegExp(`<Term\\s+id=["']${t.id}["']`);
+    const usedIn = pages.filter((p) => re.test(p.body)).map(({ body: _body, ...p }) => p);
+    const related = t.data.related.map((r) => terms.find((x) => x.id === r)).filter((x) => !!x);
+    return { params: { id: t.id }, props: { t, prev: terms[i - 1], next: terms[i + 1], related, usedIn, total: terms.length } };
+  });
+}
+
+interface Props {
+  t: CollectionEntry<'glossary'>;
+  prev?: CollectionEntry<'glossary'>;
+  next?: CollectionEntry<'glossary'>;
+  related: CollectionEntry<'glossary'>[];
+  usedIn: { title: string; section: string; href: string }[];
+  total: number;
+}
+const { t, prev, next, related, usedIn, total } = Astro.props;
+const { term, short, definition, example, aka, category } = t.data;
+const path = `/glossary/${t.id}`;
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'DefinedTerm',
+    name: term,
+    ...(aka.length ? { alternateName: aka } : {}),
+    description: definition,
+    url: abs(path, Astro.site),
+    inDefinedTermSet: { '@type': 'DefinedTermSet', name: 'Bugwise QA Glossary', url: abs('/glossary', Astro.site) },
+  },
+  breadcrumbs([['Glossary', '/glossary'], [term, path]], Astro.site),
+];
+---
+
+<BaseLayout title={`${term}: QA glossary`} description={`${term} in software testing: ${short}`} jsonLd={jsonLd}>
+  <article class="container-page max-w-3xl py-10 sm:py-14">
+    <nav aria-label="Breadcrumb" class="flex flex-wrap items-center gap-1.5 text-sm text-faint">
+      <a href={href('/glossary')} class="hover:text-fg">Glossary</a>
+      <Icon name="chevron-right" size={14} />
+      <span class="text-muted">{glossaryCategories[category]}</span>
+    </nav>
+
+    <h1 class="mt-4 text-3xl font-bold tracking-tight text-balance sm:text-4xl">{term}</h1>
+    {aka.length > 0 && <p class="mt-2 text-sm text-faint">Also called: {aka.join(', ')}</p>}
+    <p class="mt-4 text-lg leading-relaxed text-muted">{short}</p>
+
+    <section class="card mt-8 p-6">
+      <h2 class="text-xs font-semibold tracking-wider text-faint uppercase">Definition</h2>
+      <p class="mt-2 text-[1.05rem] leading-relaxed">{definition}</p>
+      {
+        example && (
+          <div class="mt-5 rounded-xl bg-subtle px-4 py-3">
+            <h2 class="text-xs font-semibold tracking-wider text-faint uppercase">In practice</h2>
+            <p class="mt-1.5 leading-relaxed text-muted">{example}</p>
+          </div>
+        )
+      }
+    </section>
+
+    {
+      usedIn.length > 0 && (
+        <section class="mt-10">
+          <h2 class="text-lg font-semibold">Learn it in context</h2>
+          <p class="mt-1 text-sm text-muted">Lessons that use this term.</p>
+          <ul class="mt-4 grid gap-2 sm:grid-cols-2">
+            {usedIn.slice(0, 10).map((u) => (
+              <li>
+                <a
+                  href={href(u.href)}
+                  class="flex items-center gap-3 rounded-xl border border-line px-4 py-3 text-sm transition-colors hover:border-brand hover:bg-subtle/60"
+                >
+                  <span class="min-w-0 flex-1">
+                    <span class="block font-medium">{u.title}</span>
+                    <span class="block text-xs text-faint">{u.section}</span>
+                  </span>
+                  <Icon name="arrow-right" size={15} class="shrink-0 text-faint" />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      related.length > 0 && (
+        <section class="mt-10">
+          <h2 class="text-lg font-semibold">Related terms</h2>
+          <ul class="mt-4 grid gap-3 sm:grid-cols-2">
+            {related.map((r) => (
+              <li>
+                <a href={href(`/glossary/${r.id}`)} class="card block h-full p-4 transition-shadow hover:shadow-soft">
+                  <span class="font-semibold">{r.data.term}</span>
+                  <span class="mt-1 block text-sm leading-snug text-muted">{r.data.short}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    <nav aria-label="More terms" class="mt-12 grid gap-3 border-t border-line pt-6 sm:grid-cols-3 sm:items-center">
+      <div class="min-w-0">
+        {
+          prev && (
+            <a href={href(`/glossary/${prev.id}`)} class="text-sm text-muted hover:text-fg">
+              ← {prev.data.term}
+            </a>
+          )
+        }
+      </div>
+      <a href={href(`/glossary#${t.id}`)} class="text-sm font-medium text-brand hover:underline sm:text-center">All {total} terms</a>
+      <div class="min-w-0 sm:text-right">
+        {
+          next && (
+            <a href={href(`/glossary/${next.id}`)} class="text-sm text-muted hover:text-fg">
+              {next.data.term} →
+            </a>
+          )
+        }
+      </div>
+    </nav>
+  </article>
+</BaseLayout>

@@ -1,0 +1,46 @@
+teaser: "The payment sandbox is down and your checkout case can't finish. Is that a failed test? Most beginners say yes, and it costs a developer an afternoon."
+cards:
+  - type: flip
+    front: "Test case repository vs test run?"
+    back: "The repository is the library of all cases, reused every release. A run is a selection of them executed on one build and one environment."
+  - type: thisorthat
+    prompt: "Checkout shows 'Payment service unavailable'. The team channel says the payment sandbox is down until 15:00."
+    left: "Failed"
+    right: "Blocked"
+    answer: right
+    explain: "You couldn't reach what the case checks, and the cause is outside the product. Write the reason and re-run it later."
+  - type: thisorthat
+    prompt: "The expired code SPRING5 is accepted and the discount applies. The case expects 'This code has expired'."
+    left: "Failed"
+    right: "Blocked"
+    answer: left
+    explain: "You ran the case and the product did the wrong thing. That's a failure, and it needs a linked bug."
+  - type: quiz
+    q: "A 'Sign in with Face ID' case ended up in an Android run. Best status?"
+    options: ["Blocked", "Skipped / N/A", "Failed"]
+    answer: 1
+    explain: "It doesn't apply to the device: nothing is broken and nothing was checked. Next time, filter platform-specific cases out when building the run."
+  - type: quiz
+    q: "Bug FD-118 is fixed in build 412. What happens to the case that found it?"
+    options: ["It's closed automatically", "Nothing, the developer tested it", "It's retested on build 412"]
+    answer: 2
+    explain: "The case goes to Retest and is run again on the build with the fix. If it passes, the bug can be closed."
+  - type: truefalse
+    statement: "When build 413 arrives mid-run, you should keep recording results in the build 412 run."
+    answer: false
+    explain: "One run per build and environment. Start a new run for 413 so every result says which build it came from."
+  - type: spotbug
+    screen: ["C202 Expired code is rejected", "Status: Failed", "Actual result: doesn't work", "Linked bug: none"]
+    question: "What's wrong with this result?"
+    bug: "Vague actual result and no linked bug."
+    explain: "A failure needs a concrete actual result, evidence and a bug key. Otherwise nobody can fix it or know when to retest."
+  - type: flip
+    front: "Name three test management tools from job ads."
+    back: "TestRail (standalone, connects to Jira), Xray (inside Jira: Test, Test Plan, Test Execution issues) and Zephyr (Jira apps with test cycles)."
+  - type: truefalse
+    statement: "A shared spreadsheet is a legitimate way for a small team to manage test runs."
+    answer: true
+    explain: "With a repository tab, one tab per run and a status dropdown, a spreadsheet works fine until many testers, devices or releases make a tool worth it."
+  - type: tip
+    title: "Never pass what you didn't run"
+    text: "Out of time? Leave the case Untested and say so in the report. An honest gap is fine; a fake pass is the worst thing a tester can do."

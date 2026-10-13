@@ -1,0 +1,412 @@
+---
+title: Drawer / Hamburger Menu
+description: A panel of destinations that slides in from the side, usually opened with the ☰ button. Learn modal and standard drawers, the hamburger debate, edge swipes vs back swipes, and the focus, scroll and "still open" bugs testers find in them.
+category: navigation
+aka: [Navigation drawer, Side menu, Hamburger menu, Off-canvas menu]
+platforms: [ios, android, web]
+minutes: 30
+order: 4
+---
+
+import Anatomy from '@/components/demos/drawer/Anatomy';
+import VariantsGallery from '@/components/demos/drawer/VariantsGallery';
+import Playground from '@/components/demos/drawer/Playground';
+import { BuggyShopMenu } from '@/components/demos/drawer/BuggyShopMenu';
+import { VisibleNav, HiddenNav } from '@/components/demos/drawer/Static';
+
+You're on a clothing shop's website on your phone. You tap ☰, pick **Sale**, and... the page behind changes, but the menu is still covering it. You close it by hand. Then you scroll the menu and the page behind it scrolls too. Each of these is small, but together they make the shop feel broken, and some shoppers simply leave.
+
+Three short lines (☰) hide a whole navigation system. A drawer has to open and close in many ways, **move focus** correctly, **lock** the page behind, show **where you are**, and stay out of the way of the system's own gestures. Let's learn how a good one behaves.
+
+## What is a drawer?
+
+A **navigation drawer** is a panel of destinations that **slides in from the side** of the screen (the left in left-to-right languages, the right in Arabic or Hebrew). It's usually opened by the **menu button**, the three-line icon people call the **hamburger** (☰). On the web the same thing is called a *hamburger menu*, *side menu* or *off-canvas menu*.
+
+It holds destinations that don't fit in, or don't deserve, a permanent spot on screen: all the categories of a shop, mail folders and labels, Settings, Help, Legal.
+
+### Anatomy
+
+<Anatomy />
+
+### Modal or standard?
+
+| Type | Where | How it behaves |
+| --- | --- | --- |
+| **Modal drawer** | Phones, small windows | Slides **over** the page with a **scrim**. Must be closed before you can use the page again. Like a [modal](/components/modal). |
+| **Standard (permanent) drawer** | Tablets, desktops | Sits **next to** the content, no scrim. Often collapsible to a narrow **rail** of icons. |
+
+Many apps switch between the two at a <Term id="breakpoint" />: a modal drawer on a phone, a standard drawer on a tablet in landscape. Test **both sides of the breakpoint**, and what happens when you rotate or resize while the drawer is open.
+
+### How it differs from similar components
+
+| Component | Best for | Visible? |
+| --- | --- | --- |
+| **Drawer** | Many or secondary destinations | Hidden until opened (modal) |
+| **[Bottom bar](/components/navigation-bar)** | 3–5 main areas, used often | Always on screen |
+| **[Tabs](/components/tabs)** | Sections of one screen | Always on screen |
+| **[Bottom sheet](/components/bottom-sheet)** | Actions or options for the current task | Opened on demand |
+
+## Designs & variants
+
+Open and close each drawer in every way you can think of: tap, swipe, Esc, keyboard only.
+
+<VariantsGallery client:visible />
+
+<Callout type="info" title="Platform habits">
+**Android:** Material Design has a modal and a standard navigation drawer, and many apps still use them. In its 2025 *Expressive* update, Material 3 marks the navigation drawer as being deprecated and recommends the **expanded navigation rail** instead (aimed mainly at medium and larger windows, so many phone apps still use a modal drawer). **iOS:** Apple's guidelines have no hamburger menu. iPhone apps use a **tab bar**; iPad apps use a **sidebar**, which behaves like a standard drawer. A hamburger in an iPhone app is usually a cross-platform or web-style design. **Web:** the hamburger menu is everywhere on mobile sites.
+</Callout>
+
+## When to use it
+
+- There are **many destinations** (more than five), like the categories of a shop or the folders of a mail app.
+- The destinations are **secondary** or used **rarely**: Settings, Help, Legal, account switching.
+- On **wide screens**, as a standard drawer that's always visible.
+- On **mobile websites**, where the desktop's top navigation doesn't fit.
+
+## Good and bad uses
+
+### The hamburger debate
+
+Hiding navigation saves space, but **people use what they can see**. A well-known Nielsen Norman Group study (2016) found that people used hidden navigation much less often than visible navigation, found things more slowly, and rated the tasks as harder. The effect was strongest on desktop, where hiding the menu wasn't even necessary.
+
+There's another side, and you should know it too:
+
+- Today almost everyone **recognizes** ☰ as "menu". The problem is **out of sight, out of mind**, not confusion.
+- A drawer is a **reasonable home for secondary destinations**, as long as the main ones are visible.
+- On a small phone, a long list of shop categories simply has to go **somewhere**.
+
+The usual middle ground: keep the **3–5 most important destinations visible** (a bottom bar or tabs) and put the rest behind ☰.
+
+<Compare>
+<Do title="Main areas visible, extras in the menu">
+
+<div class="not-prose demo-screen my-3"><VisibleNav /></div>
+
+Home, Search, Orders and Account are one tap away. ☰ holds categories, Help and Settings.
+
+</Do>
+<Dont title="Everything behind ☰">
+
+<div class="not-prose demo-screen my-3"><HiddenNav /></div>
+
+To check an order, users must remember that Orders exists and open the menu every time.
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Tester mindset">
+If a key task (search, cart, orders) is only reachable through ☰, mention it in your review. That's a design finding, not a bug, and it's cheapest to change before release. Analytics often confirm it: features hidden in a drawer get used less.
+</Callout>
+
+## How a good drawer behaves
+
+### Opening
+
+- **The menu button** must have a **name** ("Menu" or "Open navigation menu").
+  <DevNote>On the web it's a real `<button>` with `aria-expanded` that switches between `false` and `true`, and `aria-controls` pointing to the menu.</DevNote>
+- **Edge swipe.** Some apps let you pull the drawer out from the edge of the screen. That edge is shared with the system:
+  - **iOS:** the left edge swipe means **Back**. If a drawer also listens to it, one of the two loses. The safe rule: edge swipe opens the drawer **only on the first screen** of the app, where there's nothing to go back to.
+  - **Android** (gesture navigation): a swipe from **either** side edge is **system Back**. Since Android 10, a drawer can still be pulled out by **pressing and holding** at the edge, then dragging. A quick swipe must stay Back.
+
+  See [Gestures › Edge swipes belong to the system](/mobile/gestures#edge-swipes-belong-to-the-system) for the details.
+- **Focus moves into the drawer**, usually to the current destination or the first link, so keyboard and <Term id="screen-reader" /> users know it opened.
+
+### Closing
+
+| Exit | Where | What must happen |
+| --- | --- | --- |
+| **Choose a destination** | Everywhere | Navigate **and close** the drawer |
+| **Tap the scrim** | Modal drawers | Close. The tap must **not** reach the page behind |
+| **Swipe the drawer away** | iOS, Android, mobile web | Close |
+| **Close button (✕) / ☰ again** | Web, often apps | Close |
+| **Esc** | Web, hardware keyboards | Close |
+| **System Back** | Android | Close the drawer **first**, not the screen behind |
+| **Route change** | Web (single-page apps) | Close, even when the page changed some other way (a link inside the page, browser Back) |
+
+After closing, **focus returns to the menu button**. Otherwise keyboard users are thrown back to the top of the page, or into nothing.
+
+### While it's open
+
+A modal drawer is a dialog, so the rules from [Modal](/components/modal#focus-in-trapped-and-back) apply:
+
+- **Focus is trapped** inside the drawer (<Term id="focus-trap" />). <kbd>Tab</kbd> must not wander through the links hidden behind the <Term id="scrim" />.
+- **Scroll lock:** the page behind must not scroll when you scroll the drawer or swipe on the scrim. A long drawer scrolls on its own; when it reaches the end, the page behind stays still. See [Modal › Scroll lock](/components/modal#scroll-lock).
+- The screen reader must not read the page behind.
+  <DevNote>On the web: `aria-modal="true"` or `inert` on the rest of the page.</DevNote>
+
+### Showing where you are
+
+The **current destination** is highlighted (Material: a pill-shaped indicator) and, on the web, marked with `aria-current="page"`. Test it on **every** page, including pages reached **without** the drawer: from a link in the page, a [deep link](/features/deep-links), a search result or browser Back. A classic web bug: matching the URL with "starts with", so **Home** (`/`) matches every page.
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Nameless menu button** | Screen reader says "button"; `aria-expanded` stays `false` | High (for affected users) |
+| 2 | **Stays open after navigating** | The page changes behind the still-open menu | Medium |
+| 3 | **Page behind scrolls** | Scrolling the menu or the scrim moves the page | Medium |
+| 4 | **Wrong item highlighted** | "Home" is marked on every page, or nothing is | Low–Medium |
+| 5 | **Focus escapes** | Tab goes to links behind the scrim; Esc does nothing | High (for affected users) |
+| 6 | **Focus lost on close** | After closing, focus jumps to the top of the page | Medium |
+| 7 | **Back swipe opens the drawer** | On iOS, swiping back from a detail screen pulls the drawer instead | Medium–High |
+| 8 | **Back closes the app** | Android system Back closes the app instead of the drawer | High |
+| 9 | **Taps go through the scrim** | Tapping the dimmed area also presses a button behind it | Medium |
+| 10 | **Broken at the breakpoint** | Rotating with the drawer open leaves a scrim with no drawer, or two menus | Medium |
+
+<Callout type="bug" title="Why #2 happens">
+On a classic website, every link loads a new page, so the menu is "closed" for free. **Single-page apps** (React, Vue, Angular…) only swap the content, so the menu stays exactly as it was unless the developer closes it on every route change. Always pick a destination from the menu, then check whether the menu is still open.
+</Callout>
+
+## Try it: the drawer lab
+
+Open the drawer with ☰ and from the **edge**. Close it every way: scrim, swipe, <kbd>Esc</kbd>, System Back, choosing a folder. Then open a message and **swipe from the left edge** on both platforms. Switch *Edge swipe opens the drawer* to **Every screen** and try again.
+
+<Playground client:visible />
+
+## Find the bug
+
+This mobile clothing shop has a hamburger menu with **five bugs**. Explore it like a tester:
+
+- Open the menu and **pick a page**. Look at the menu and at what's highlighted.
+- **Scroll** with the menu open (mouse wheel or finger over the menu and the dimmed area). Watch *Page scroll* in the inspector.
+- Use only the **keyboard**: <kbd>Tab</kbd> to the menu button, <kbd>Enter</kbd>, then <kbd>Tab</kbd> and <kbd>Esc</kbd>.
+- Watch the **accessibility inspector** below the shop: what is focused, its name and its state.
+
+<BugHunt
+  title="Threadline mobile shop"
+  bugs={[
+    {
+      title: 'Menu button has no name and aria-expanded never changes',
+      hint: 'Tab to the ☰ button and read the inspector, before and after opening the menu.',
+      detail: 'The button contains only an icon, so the inspector shows <strong>(no name)</strong>: a screen reader just says “button”. Its state stays <strong>collapsed</strong> (<code>aria-expanded="false"</code>) even while the menu is open. Expected: a name like “Menu” and <code>aria-expanded</code> switching to <code>true</code>.',
+    },
+    {
+      title: 'Menu stays open after choosing a page',
+      hint: 'Open the menu and tap “Women”.',
+      detail: 'The page and the URL change behind the scrim, but the menu stays open and must be closed by hand. The app swaps content without closing the menu on route change. Expected: choosing a destination navigates <em>and</em> closes the menu.',
+    },
+    {
+      title: 'Page behind scrolls while the menu is open',
+      hint: 'Open the menu and scroll over the menu or the dimmed area.',
+      detail: 'The product list behind moves and <strong>Page scroll</strong> in the inspector changes. There’s no scroll lock. Expected: the page stays still while the menu is open.',
+    },
+    {
+      title: '“Home” is highlighted on every page',
+      hint: 'Go to Sale or My orders, then open the menu.',
+      detail: 'The current item is found with “URL starts with”, and every path starts with <code>/</code>, so <strong>Home</strong> is always marked (and has <code>aria-current="page"</code>). Expected: the item for the current page, e.g. Sale on <code>/sale</code>.',
+    },
+    {
+      title: 'Esc doesn’t close the menu and focus goes to the page behind',
+      hint: 'Open the menu with Enter, then press Tab a few times, then Esc.',
+      detail: 'Focus stays on ☰ when the menu opens, and <kbd>Tab</kbd> walks through the basket and product links <strong>behind the open menu</strong> before it reaches the menu. <kbd>Esc</kbd> does nothing. Expected: focus moves into the menu, stays there (<em>focus trap</em>), Esc closes it, and focus returns to ☰.',
+    },
+  ]}
+>
+  <BuggyShopMenu client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #2?">
+
+**Title:** Hamburger menu stays open after choosing a page
+
+**Steps:** 1. Open shop.example.com on a phone (or at 375 px wide). 2. Tap ☰. 3. Tap **Women**.
+
+**Expected:** The Women page opens and the menu closes; focus is on the page.
+**Actual:** The URL and content change to Women, but the menu and scrim stay open. The user must tap ✕ or the scrim.
+
+**Severity:** Medium (extra step on every navigation) · **Reproducible:** 10/10 · **Browsers:** Safari iOS 26, Chrome Android 141
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Drawer test checklist"
+  storageKey="drawer"
+  items={[
+    'The menu button has a name and is at least 44 pt / 48 dp; on the web aria-expanded switches false/true',
+    'Opening moves focus into the drawer; the screen reader announces it',
+    'Tab and Shift+Tab stay inside an open modal drawer',
+    'Scrim tap, swipe, ✕, Esc and Android system Back all close it, without side effects',
+    'Choosing a destination navigates and closes the drawer',
+    'After closing, focus returns to the menu button',
+    'The page behind does not scroll and cannot be tapped while the drawer is open',
+    'The current destination is highlighted on every page, also when reached without the drawer',
+    'Badges in the drawer (e.g. unread counts) are correct and update',
+    'iOS: the left edge swipe still goes back on deeper screens',
+    'Android: a quick edge swipe is system Back; the drawer opens only by button or press-and-hold',
+    'Long labels, translations and large text fit or wrap; a long drawer scrolls on its own',
+    'Rotating or resizing across the breakpoint with the drawer open leaves a sane state',
+    'Right-to-left languages open the drawer from the right edge',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-DRW-001',
+      title: 'Menu closes after choosing a page',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open shop.example.com at 375 px wide', 'Tap ☰', 'Tap "Women"'],
+      expected: 'The Women page opens, the menu and scrim are gone, and "Women" is highlighted the next time the menu opens.',
+    },
+    {
+      id: 'TC-DRW-002',
+      title: 'Keyboard: open, trap, close, return',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Tab to ☰ and press Enter', 'Press Tab repeatedly', 'Press Shift+Tab repeatedly', 'Press Esc'],
+      expected: 'Focus moves into the menu, cycles only through menu items, Esc closes the menu, and focus is back on ☰.',
+    },
+    {
+      id: 'TC-DRW-003',
+      title: 'Screen reader announces name and state',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['VoiceOver or TalkBack on'],
+      steps: ['Move to the menu button', 'Activate it', 'Move back to the button'],
+      expected: 'Before: "Menu, button, collapsed". After opening: "expanded" (or "Close menu"). Menu items are read, the page behind is not.',
+    },
+    {
+      id: 'TC-DRW-004',
+      title: 'Scroll lock while the drawer is open',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Scroll the page halfway down', 'Open the drawer', 'Scroll over the drawer and over the scrim (wheel, trackpad, finger)', 'Close the drawer'],
+      expected: 'The page behind never moves. After closing, it is at the same position as before.',
+    },
+    {
+      id: 'TC-DRW-005',
+      title: 'Current page is highlighted',
+      priority: 'low',
+      type: 'positive',
+      steps: ['Open /sale from a banner on the home page (not via the menu)', 'Open the drawer'],
+      expected: 'Only "Sale" is highlighted and has aria-current="page". "Home" is not.',
+    },
+    {
+      id: 'TC-DRW-006',
+      title: 'iOS back swipe on a detail screen',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['iOS app with a drawer on the first screen'],
+      steps: ['Open a message from the inbox', 'Swipe from the left edge to the right'],
+      expected: 'The app goes back to the inbox. The drawer does not open.',
+    },
+    {
+      id: 'TC-DRW-007',
+      title: 'Android system Back with the drawer open',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open the drawer on the first screen', 'Press system Back (button, then gesture)'],
+      expected: 'The drawer closes. The app stays open on the same screen.',
+    },
+    {
+      id: 'TC-DRW-008',
+      title: 'Resize across the breakpoint while open',
+      priority: 'low',
+      type: 'edge',
+      steps: ['Open the modal drawer on a tablet in portrait', 'Rotate to landscape (standard drawer)', 'Rotate back'],
+      expected: 'No leftover scrim, no duplicate menu, the current page still highlighted, the page usable.',
+    },
+  ]}
+/>
+
+### Tools
+
+- **Web:** in [DevTools](/web/devtools-for-testers), use the device toolbar for phone widths, check `aria-expanded` live in the **Elements** panel, and use the **Accessibility** pane to see each element's name and role. Type `document.activeElement` in the Console to see where focus really is.
+- **Screen readers:** VoiceOver on Mac (<kbd>Cmd</kbd>+<kbd>F5</kbd>) and iPhone, TalkBack on Android, NVDA on Windows.
+- **Android Emulator:** test system Back in **gesture** and **3-button** navigation (*Settings › System › Gestures › System navigation*), rotate with the toolbar, and switch the language to Arabic to check the right-to-left drawer.
+- **iOS Simulator:** drag from the very left edge with the mouse to test the back swipe on every screen that has a drawer.
+
+## Accessibility
+
+- **Button:** a real button with a name ("Menu", "Open navigation menu") and an expanded state that reflects the drawer. Changing the label to "Close menu" while open is fine too.
+  <DevNote>`aria-expanded` reflects the state and `aria-controls` points to the menu.</DevNote>
+- **Focus:** moves into the drawer on open, stays inside while open, returns to the button on close.
+  <DevNote>On the web, the rest of the page gets `inert` or the drawer is a `role="dialog"` with `aria-modal="true"`.</DevNote>
+- **Landmark:** the list of links is a navigation landmark with a label, and the current link is announced as the current page.
+  <DevNote>A `<nav>` with a label (e.g. `aria-label="Main"`); the current link has `aria-current="page"`.</DevNote>
+- **Not gesture-only:** every drawer opened by a swipe also has a visible button, and every drawer closed by a swipe also has ✕, Esc and Back. <Term id="wcag" /> 2.5.7 (*Dragging Movements*) asks that dragging always has a simple tap alternative.
+- **<Term id="touch-target">Touch targets</Term>:** ☰ and each item at least 44×44 pt / 48×48 dp. Destination rows in Material drawers are 56 dp tall.
+- **Visible focus** on every item, and enough contrast for the current-page indicator (3:1) and labels (4.5:1).
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- No native hamburger on iPhone. If an app has one, it's custom: test the **left edge back swipe** on every screen, VoiceOver, and the **Dynamic Type** sizes.
+- **iPad:** a **sidebar** works like a standard drawer and can be shown or hidden. Test it in **Split View** and **Slide Over**, where the window is narrow.
+  <DevNote>`UISplitViewController`, SwiftUI `NavigationSplitView`.</DevNote>
+
+</Tab>
+<Tab>
+
+- Material **modal** and **standard** navigation drawers, or a navigation rail on bigger screens.
+  <DevNote>`ModalNavigationDrawer`, `DismissibleNavigationDrawer`, `PermanentNavigationDrawer` in Compose.</DevNote>
+- **System Back** must close the drawer first. With **predictive back**, the drawer should slide along with the gesture and only close on release.
+- Gesture navigation reserves both edges for Back: the drawer opens by button, or press-and-hold at the edge.
+
+</Tab>
+<Tab>
+
+- Usually a `<button>` plus a `<nav>` panel, built by hand or with a UI library. Inspect `aria-expanded`, `aria-controls`, focus, `inert` and scroll lock.
+- **Single-page apps:** check that every route change (menu link, in-page link, browser Back) closes the menu.
+- **Responsive:** the hamburger appears below a <Term id="breakpoint" />. Resize across it with the menu open, and check that desktop navigation and the hamburger never show at the same time.
+- Mobile Safari: check that the page behind doesn't scroll when you swipe on the scrim, and that the menu isn't hidden behind the browser toolbar.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A user picks "Sale" in the hamburger menu. The Sale page loads behind, but the menu stays open. What is it?',
+      options: ['Correct, users close menus themselves', 'A bug: choosing a destination should also close the menu', 'A performance issue', 'A screen reader setting'],
+      answer: 1,
+      explain: 'Choosing a destination navigates and closes a modal drawer. Single-page apps often forget to close it on route change.',
+    },
+    {
+      q: 'Which situation fits a drawer best?',
+      options: ['Home, Search, Cart and Account used all day', '25 shop categories plus Help and Settings', 'Overview, Specs and Reviews of a product', 'Choosing a delivery time'],
+      answer: 1,
+      explain: 'Many or secondary destinations fit a drawer. Main areas fit a bottom bar, sections fit tabs, and a single choice fits a sheet or picker.',
+    },
+    {
+      q: 'On iOS, on a message detail screen, you swipe from the left edge and the drawer opens. Why is that a problem?',
+      options: ['It is not, swipes can do anything', 'On iOS the left edge swipe means Back, so users can\'t go back the way they expect', 'Drawers must only open from the right', 'It uses too much memory'],
+      answer: 1,
+      explain: 'The left edge belongs to the back swipe. Drawers that use it should only do so on the first screen, where there is nothing to go back to.',
+    },
+    {
+      q: 'On a website, the hamburger button\'s aria-expanded is "false" while the menu is open. Who is affected?',
+      options: ['Nobody, it is invisible', 'Screen reader users, who are told the menu is collapsed', 'Only mouse users', 'Search engines only'],
+      answer: 1,
+      explain: 'Screen readers announce the state from aria-expanded. If it never changes, users don\'t know the menu opened.',
+    },
+    {
+      q: 'The drawer is open. You press Tab and focus lands on a product link behind the dimmed area. What is missing?',
+      options: ['A focus trap', 'A bigger scrim', 'A badge', 'A loading state'],
+      answer: 0,
+      explain: 'A modal drawer must keep focus inside until it closes, then return focus to the menu button.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A **modal drawer** slides over the page with a scrim; a **standard drawer** sits next to the content on wide screens.
+- Hidden navigation gets **used less**. Keep the main destinations visible and put **secondary or many** destinations in the drawer.
+- Closing must work **every way**: choosing a destination, scrim, swipe, ✕, Esc, Android Back, and every route change on the web.
+- While open: **focus moves in and is trapped**, the page behind **doesn't scroll**, and on close focus **returns to ☰**.
+- The **current page is highlighted** correctly on every page, and the ☰ button has a **name** and a live **aria-expanded**.
+- Edge swipes compete with **iOS back swipe** and **Android system Back**. The system gesture must win on deeper screens.
+
+</KeyTakeaways>

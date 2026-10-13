@@ -1,0 +1,417 @@
+---
+title: Badge
+description: The little red number on a tab, the dot on an avatar, the "Sale" label on a product. Learn count, dot and status badges, app icon badges on iOS and Android, and the zero, overflow, stale count and accessibility bugs testers find in them.
+category: feedback
+aka: [Notification badge, Counter, Dot indicator, Status badge, Pill]
+platforms: [ios, android, web]
+minutes: 35
+order: 6
+---
+
+import Anatomy from '@/components/demos/badge/Anatomy';
+import VariantsGallery from '@/components/demos/badge/VariantsGallery';
+import Playground from '@/components/demos/badge/Playground';
+import { ZeroExample, CapExample, StatusExample } from '@/components/demos/badge/Examples';
+import { BuggyChatApp } from '@/components/demos/badge/BuggyChatApp';
+
+A red **3** on the Chats tab. A dot on the bell. **Sale −20%** on a pair of running shoes. A **12** on your banking app's icon that won't go away, no matter how many times you open the app.
+
+Badges are tiny, but they make a promise: *"there's something here for you"*. When the promise is wrong (a "0" that should be gone, a count that never updates, a number nobody can hear) users stop trusting it, or they open the app twenty times a day for nothing. Here's how to test them.
+
+## What is a badge?
+
+A badge is a **small marker attached to another element** (an icon, a tab, an avatar, a card) that adds a bit of status. It doesn't do anything on its own; tapping the badge is tapping the thing it sits on.
+
+There are three kinds, and it's worth naming them correctly in bug reports:
+
+| Kind | Looks like | Means | Example |
+| --- | --- | --- | --- |
+| **Count badge** | Small pill with a number | *How many* new things | Chats **3**, cart **2** |
+| **Dot badge** | Small dot, no number | *Something* new, or a presence state | Dot on the bell, green dot on an avatar |
+| **Status label** (pill, tag) | Word in a colored pill | A *property* of the item | **New**, **Sale −20%**, **Sold out**, **In transit** |
+
+Count and dot badges are about **attention** and change all the time. Status labels describe the item and change with its data. Both are <Term id="ui-state" /> that has to match the real data behind it.
+
+### Anatomy
+
+<Anatomy />
+
+## Designs & variants
+
+<VariantsGallery client:visible />
+
+### Where badges sit
+
+- **On icons in tab bars and navigation bars**: the top-right corner of the icon, overlapping it slightly, never covering it. See [Navigation Bar](/components/navigation-bar#badges-are-counts-not-decorations) and [Tabs](/components/tabs#badges-stay-current).
+- **Inside a tab or list row**: a counter next to the label (*Inbox 24*, *Unread 3*). Here it's part of the text, not floating on top.
+- **On avatars**: a presence dot (online, away) in the bottom-right corner, with a ring in the background color so it stands out from the photo.
+- **On cards and product tiles**: a status label in a corner or next to the price, like the "Sold out" label on the [Card](/components/card) page.
+- **On the app icon**: drawn by the operating system, not by the app. More on that below.
+
+### The rules for counts
+
+<Steps>
+
+1. **Zero hides the badge.** "0" means "nothing new", which is exactly what *no badge* says. A red "0" is a bug.
+2. **Big numbers are capped.** Exact counts above a limit don't help anyone and break the layout. iOS apps usually show **99+**; Material 3 allows at most four characters, so **999+**.
+3. **The number is the truth.** It equals the number of unread (or new) things, not "how many arrived since you last looked", unless the spec says otherwise.
+4. **It updates when the truth changes.** Reading a message, marking all as read, reading it on another device, deleting it: the badge follows, without a restart.
+5. **It has words for screen readers.** The visible "3" becomes "Chats, 3 unread" in the accessible name.
+
+</Steps>
+
+### When does the count update?
+
+Ask this before you test, because there are two valid designs:
+
+- **Realtime**: the server pushes changes (a <Term id="push-notification" />, a websocket) and the badge updates while you look at the screen. Typical for chat.
+- **On open or refresh**: the app fetches counts when it starts, comes back from the background or the user pulls to refresh. Typical for shops and news.
+
+Either way, the badge must be right **after every way of reading**: opening the item, "Mark all as read", swiping it away, reading it on the web, and coming back from the background ([Background and foreground](/mobile/background-and-foreground)). And when the user reads something, the badge should drop **immediately**, without waiting for the next sync.
+
+### App icon badges (iOS and Android)
+
+The number or dot on the **app icon** is drawn by the system, so it follows the system's rules:
+
+- **iOS** shows a red number on the icon. The app can only set it if the user allowed **notifications with badges**; the user can switch badges off per app in *Settings › Notifications*. The app (or its server, via the push payload) is responsible for setting it back to zero. A stuck icon badge is one of the most common badge bugs.
+- **Android** (8.0 and newer) shows **notification dots**: a dot appears while the app has active notifications, and long-pressing the icon shows them. Some launchers (Samsung, for example) can show a number instead. The dot disappears when the notifications are dismissed, so test dismissing them, not only opening the app. On Android 13+, notifications need a runtime permission, so no permission means no dot. See [Push Notifications](/features/push-notifications).
+- **Web**: installed web apps can set an icon badge where the browser and OS support it. Websites often put the count in the page title instead: *(3) Inbox*.
+  <DevNote>Icon badges use the Badging API (`navigator.setAppBadge()`).</DevNote>
+
+## Push it to the limits
+
+Try the counts testers always try: 0, 1, 99, 100, 1,000 and 12,345. Then shrink the screen, raise the text size and turn off the count in the accessible name.
+
+<Playground client:visible />
+
+<Callout type="info" title="A zero that iOS will happily show">
+In UIKit, a tab bar item's badge is a **string**: `nil` hides it, but `"0"` shows a red zero. A developer converting a number to text without checking for zero gets exactly the bug from the first row of the table below. SwiftUI's `.badge(0)` hides itself, which is why the bug can appear in one screen of an app and not another.
+</Callout>
+
+## When to use it
+
+- To show that **new or unread things** are waiting somewhere else: messages, notifications, order updates.
+- To show **how many items** are in a container the user cares about: cart, downloads queue.
+- To show a short **status** that helps users scan a list: *Sale*, *New*, *Sold out*, *Delivered*.
+- To show **presence**: online, away, busy.
+
+## Good and bad uses
+
+<Compare>
+<Do title="No badge when there's nothing new">
+
+<div class="not-prose demo-screen my-3"><ZeroExample good /></div>
+
+The Calls tab is quiet. Users can trust that a badge means something.
+
+</Do>
+<Dont title="A badge that says 0">
+
+<div class="not-prose demo-screen my-3"><ZeroExample /></div>
+
+Red and alarming, but it means "nothing". Users tap it anyway, every time.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Capped at 99+">
+
+<div class="not-prose demo-screen my-3"><CapExample good /></div>
+
+Fits on the icon and says the same: "a lot".
+
+</Do>
+<Dont title="The exact four-digit count">
+
+<div class="not-prose demo-screen my-3"><CapExample /></div>
+
+"1284" is too wide for the tab and spills over the neighbor.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Status as a word">
+
+<div class="not-prose demo-screen my-3"><StatusExample good /></div>
+
+"Sale −20%" and "New" are readable by everyone, including screen readers.
+
+</Do>
+<Dont title="Status as a colored dot">
+
+<div class="not-prose demo-screen my-3"><StatusExample /></div>
+
+Red means sale, green means new, if you can see the difference. Many people can't.
+
+</Dont>
+</Compare>
+
+Also avoid badges as decoration (a permanent "NEW" on a feature launched a year ago), badges on everything at once (if every tab has a badge, none stands out), and badges for things the user can't act on.
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Zero shown** | A red "0" instead of no badge | Low–Medium |
+| 2 | **No cap** | "1000" or "12345" overflows the tab, overlaps the next icon or is cut off | Medium |
+| 3 | **Stale count** | Badge doesn't drop after reading, only after restarting the app | Medium |
+| 4 | **Wrong count** | Counts messages instead of chats (or the other way round), counts read items, counts twice | Medium |
+| 5 | **Stuck app icon badge** | The icon shows 12 even though everything is read | Medium |
+| 6 | **Count not spoken** | Screen reader says "Chats, tab" but not "3 unread" | High (for affected users) |
+| 7 | **Color-only status** | Sale and New differ only by red vs green | Medium |
+| 8 | **Badge hides the anchor** | With large text or on a small screen the badge covers the icon | Medium |
+| 9 | **Low contrast** | Light text on a bright red or a pastel pill; invisible in <Term id="dark-mode" /> | Low–Medium |
+| 10 | **Inconsistent counts** | Tab says 3, the list shows 2 unread, the app icon says 5 | Medium |
+| 11 | **Negative or nonsense values** | "-1" after deleting, "NaN", "undefined" | Medium |
+| 12 | **Localization** | "99+" or "Sold out" not translated, or a long word like "Ausverkauft" truncated | Low–Medium |
+
+<Callout type="bug" title="Count bugs hide in the edges">
+Most count bugs only appear at **0**, at the **cap** (99 → 100) and when the count **changes while you watch**. That's [boundary value analysis](/fundamentals/boundary-value-analysis) applied to a red dot: always test 0, 1, the cap, cap + 1 and a very large number, and test every way the count can go **down**.
+</Callout>
+
+## Find the bug
+
+This messenger has **six badge bugs**. Explore it like a tester:
+
+- Look at every tab's badge. Then **visit** each tab and come back.
+- Open a few unread chats and go back. Does the Chats badge agree with the list? Try **Restart app**.
+- Turn on **Screen reader** and tap a tab once to hear it (twice to open it).
+- Open **Shop** and turn on the **grayscale** color filter.
+- Turn on **Larger text** and look at the tab bar.
+
+<BugHunt
+  title="Messenger badges"
+  bugs={[
+    {
+      title: 'Calls shows a red "0" after the missed calls were seen',
+      hint: 'Open the Calls tab, then go back to Chats and look at the Calls icon.',
+      detail: 'Opening Calls sets the missed count to 0, but the badge stays visible with <strong>"0"</strong>. The code checks whether a count exists, not whether it is greater than zero. Expected: the badge disappears at 0.',
+    },
+    {
+      title: '"1284" is not capped and spills over the next tab',
+      hint: 'Look at the Channels tab badge, especially on the right edge of its tab.',
+      detail: 'The full number is shown and the pill is wider than the tab, running into the Shop tab. With Larger text it gets worse. Expected: a cap such as <strong>99+</strong> (iOS convention) or 999+ (Material 3), and the badge stays inside its tab.',
+    },
+    {
+      title: 'Chats badge doesn\'t update after reading',
+      hint: 'Open Ana\'s and Marko\'s chats, go back, and compare the badge with the list. Then tap Restart app.',
+      detail: 'The list shows fewer unread chats, but the badge still says <strong>3</strong>. Only after a restart does it drop. The count was calculated once at launch instead of being derived from the unread chats. Expected: the badge updates immediately after each chat is read.',
+    },
+    {
+      title: 'Screen reader hears the tab but not the count',
+      hint: 'Turn on Screen reader, tap the Chats tab once, then a chat row once.',
+      detail: 'The tab is read as <strong>"Chats, selected, tab, 1 of 5"</strong>. The red 3 is hidden from assistive technology and nothing replaces it. The chat rows do it right ("Ana, 2 unread messages…"). Expected: "Chats, 3 unread, tab, 1 of 5".',
+    },
+    {
+      title: 'Sale and New differ only by color',
+      hint: 'Open Shop, read the legend, then turn on the grayscale color filter. Also try the screen reader on a product.',
+      detail: 'Products are marked only with a red or green dot. In grayscale (and for many colorblind users) the two dots look the same, and the screen reader says nothing about them. This fails WCAG 1.4.1 Use of Color (Level A). Expected: a text label such as "Sale −20%" or "New", which also ends up in the accessible name.',
+    },
+    {
+      title: 'With Larger text the badge covers the icon',
+      hint: 'Turn on Larger text and look at the Chats, Calls and Channels icons.',
+      detail: 'To keep the bigger badge inside the narrow tab, the large-text layout moves it onto the icon. Now a red blob hides the chat bubble, phone and bell. Expected: the badge stays at the icon\'s top-right corner, overlapping only slightly, at every text size.',
+    },
+  ]}
+>
+  <BuggyChatApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #3?">
+
+**Title:** Chats tab badge doesn't decrease after reading chats; updates only after app restart
+
+**Steps:** 1. Launch the app with 3 unread chats (badge shows 3). 2. Open Ana's chat and go back. 3. Open Marko's chat and go back.
+
+**Expected:** Badge shows 2, then 1.
+**Actual:** Badge still shows 3, while the list shows only 1 unread chat. After force-quitting and relaunching, the badge shows 1.
+
+**Severity:** Medium · **Reproducible:** 10/10 · **Note:** Also check "Mark all as read" and reading on the web app.
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Badge test checklist"
+  storageKey="badge"
+  items={[
+    'The count equals the real number of unread or new items, as defined in the spec (chats vs messages)',
+    'At 0 the badge disappears; it never shows "0", a negative number or "NaN"',
+    'Large counts are capped (99+ or 999+) and the badge stays inside its tab or icon area',
+    'The badge updates immediately after reading, mark all as read, deleting and reading on another device',
+    'The badge is correct after a push notification, after returning from the background and after a restart',
+    'Tab badge, list counts and app icon badge agree with each other',
+    'The app icon badge clears when everything is read (iOS) and the notification dot goes away when notifications are dismissed (Android)',
+    'With badges or notifications turned off in system settings, the app behaves sensibly',
+    'Screen readers announce the count with the element ("Chats, 3 unread"), and the count updates in the name',
+    'Status labels use words (and maybe an icon), not color alone; check with a grayscale filter',
+    'Badge text has at least 4.5:1 contrast, and the badge 3:1 against what is behind it, in light and dark mode',
+    'At the largest text size and on the smallest screen, the badge does not cover its icon or overlap neighbors',
+    'Status labels and "99+" are translated, and long translations fit',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-BDG-001',
+      title: 'Badge disappears at zero',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['2 missed calls, Calls badge shows 2'],
+      steps: ['Open the Calls tab', 'Go back to Chats'],
+      expected: 'The Calls badge is gone. No "0" is shown.',
+    },
+    {
+      id: 'TC-BDG-002',
+      title: 'Count is capped above the limit',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Test account with 99, then 100, then 1,284 unread items'],
+      steps: ['Open the app with 99 unread', 'Receive one more item', 'Switch to the account with 1,284 unread'],
+      data: 'Counts: 99, 100, 1,284',
+      expected: 'Badge shows "99", then "99+", then "99+". It stays inside its tab on the smallest supported screen.',
+    },
+    {
+      id: 'TC-BDG-003',
+      title: 'Badge updates after reading',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['3 unread chats'],
+      steps: ['Open one unread chat and go back', 'Use "Mark all as read"'],
+      expected: 'Badge shows 2 right after going back, then disappears after Mark all as read. No restart needed.',
+    },
+    {
+      id: 'TC-BDG-004',
+      title: 'Badge syncs when read on another device',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Same account on phone and web, 2 unread chats'],
+      steps: ['Read both chats on the web', 'Return to the app on the phone (from the background)'],
+      expected: 'The tab badge and the app icon badge both clear within the expected sync time.',
+    },
+    {
+      id: 'TC-BDG-005',
+      title: 'Screen reader announces the count',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['VoiceOver or TalkBack on', '3 unread chats'],
+      steps: ['Move focus to the Chats tab'],
+      expected: 'The screen reader says something like "Chats, 3 unread, tab, 1 of 5". After reading one chat, it says "2 unread".',
+    },
+    {
+      id: 'TC-BDG-006',
+      title: 'Status labels without color',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Open the shop list', 'Turn on a grayscale color filter (iOS: Accessibility › Display & Text Size › Color Filters; Android: Accessibility › Color correction or Developer options › Simulate color space)'],
+      expected: 'Every status (Sale, New, Sold out) is still readable as text.',
+    },
+    {
+      id: 'TC-BDG-007',
+      title: 'App icon badge clears (iOS)',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Notifications with badges allowed', 'App icon shows 4'],
+      steps: ['Open the app', 'Read all 4 items', 'Go to the home screen'],
+      expected: 'The app icon shows no badge.',
+    },
+  ]}
+/>
+
+## Accessibility
+
+- **The count belongs in the accessible name.** A visual badge is usually hidden from assistive tech, so the element itself must say it: "Chats, 3 unread", "Cart, 2 items". This is WCAG 4.1.2 Name, Role, Value (Level A). Test with a <Term id="screen-reader" />.
+  <DevNote>The badge is hidden with `aria-hidden="true"`. On the web, use `aria-label` on the button or visually hidden text; on iOS the `accessibilityValue` or label; on Android the `contentDescription` or state description.</DevNote>
+- **Say what's capped.** If the badge shows "99+", the name can say "more than 99 unread". Never just "99 plus".
+- **Changing counts.** Users don't need every change announced, but if a count change matters (an item added to the cart), a polite announcement helps (WCAG 4.1.3 Status Messages, Level AA). See <Term id="aria" />.
+- **Not color alone.** Status labels need text; presence dots need a text equivalent ("Ana, online"). WCAG 1.4.1 Use of Color (Level A).
+- **Contrast.** The number in the badge needs 4.5:1 against the badge color, and the badge 3:1 against what's behind it (WCAG 1.4.3 / 1.4.11). White on a bright red often lands around 3.5:1, so measure it with a <Term id="contrast-ratio" /> checker, in light and in dark mode.
+- **Text size.** At the largest <Term id="dynamic-type" /> or font scale, the badge must stay readable and must not hide its icon or the neighbor.
+- **<Term id="touch-target">Touch targets</Term>.** The badge isn't a separate target; the element it sits on is, and it needs at least 44×44 pt on iOS and 48×48 dp on Android. On the web, WCAG 2.5.8 (AA) asks for at least 24×24 CSS px; 44×44 px (2.5.5, AAA) is the comfortable target.
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- Tab bar badges: red pill with white text by default.
+  <DevNote>`badgeValue` on `UITabBarItem` (a string; `"0"` shows a zero) or `.badge()` in SwiftUI.</DevNote>
+- App icon badges need notification permission **with badges**. Test: allow, deny, and turning Badges off later in *Settings › Notifications*.
+- Push payloads can set the icon badge. Check it's correct after a push arrives while the app is closed, and that it clears when the app is opened and the items are read.
+- Test with **VoiceOver** and the largest **Dynamic Type** size (long-press a tab bar item to see the large content viewer).
+
+</Tab>
+<Tab>
+
+- Material 3 badges: a **6 dp** dot or a **16 dp** badge with up to four characters ("999+").
+  <DevNote>`Badge` / `BadgedBox` (Compose) or `BadgeDrawable` (Views).</DevNote>
+- App icons show **notification dots** on most launchers; the dot follows the app's active notifications. Test dismissing notifications, and the Notification dot setting in system settings.
+- Android 13+ asks for notification permission; without it there are no notifications and no dots ([App permissions](/features/app-permissions)).
+- Test with **TalkBack**, a large **font size** and **display size**, and on a narrow phone in landscape.
+
+</Tab>
+<Tab>
+
+- Badges are usually custom `<span>`s. Check the button's accessible name in DevTools' **Accessibility** pane: does it include the count?
+- The page title count *(3) Inbox* and installed web apps' icon badges (where supported) must match the in-page badge.
+  <DevNote>Icon badges are set with `navigator.setAppBadge()`.</DevNote>
+- Test at **200% zoom** and narrow viewports: header badges often overlap the logo or the next icon ([Responsive design testing](/web/responsive-design-testing)).
+- Check realtime updates in two browser tabs: read in one, watch the other.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'All messages have been read. What should the Chats tab badge show?',
+      options: ['"0"', 'Nothing, the badge disappears', 'A grey dot', 'The total number of chats'],
+      answer: 1,
+      explain: 'Zero means nothing new. No badge says that clearly; a red "0" just creates noise.',
+    },
+    {
+      q: 'There are 1,284 unread updates. What is the usual way to display that on a tab bar icon?',
+      options: ['1284', '1.2k', '99+ (iOS convention) or 999+ (Material 3)', 'A question mark'],
+      answer: 2,
+      explain: 'A capped number fits on the icon and still says "a lot". The exact count can be shown inside the screen.',
+    },
+    {
+      q: 'VoiceOver says "Chats, tab, 1 of 5" while the badge shows 3. What is wrong?',
+      options: ['Nothing, the badge is visible', 'The count is missing from the accessible name', 'VoiceOver is broken', 'The badge color is wrong'],
+      answer: 1,
+      explain: 'Blind users never learn about the unread messages. The tab should be read as "Chats, 3 unread".',
+    },
+    {
+      q: 'A shop marks sale items with a red dot and new items with a green dot. What do you report?',
+      options: ['Nothing', 'Color-only status: add text labels like "Sale" and "New"', 'The dots are too small', 'Red should mean new'],
+      answer: 1,
+      explain: 'Red and green look similar to many colorblind users and say nothing to screen readers (WCAG 1.4.1 Use of Color).',
+    },
+    {
+      q: 'The badge drops only after restarting the app. Which test found it?',
+      options: ['Reading items and watching the badge without restarting', 'Checking the badge color', 'Rotating the device', 'Changing the language'],
+      answer: 0,
+      explain: 'Badges must update when the data changes. Always test every way the count can go down, without a restart.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Three kinds: **count badges**, **dot badges** and **status labels**. Name them correctly in bug reports.
+- **Zero hides** the badge, **big numbers are capped** (99+, 999+), and the badge stays inside its space without hiding the icon.
+- The count is **data**: it must match the list, update immediately when items are read, and agree with the app icon badge.
+- App icon badges belong to the **OS**: on iOS they need notification permission with badges; on Android they're usually dots tied to active notifications.
+- **Accessibility**: the count goes into the accessible name ("Chats, 3 unread"), status uses **words, not only color**, and contrast is checked in light and dark mode.
+
+</KeyTakeaways>

@@ -1,0 +1,584 @@
+---
+title: How to Write a Bug Report
+description: Learn how to write bug reports developers can act on right away — titles, steps, expected vs actual, severity vs priority, evidence for mobile and web, and the bug life cycle — with a full worked example and a hands-on exercise.
+order: 2
+level: beginner
+minutes: { short: 11, long: 30 }
+platform: both
+tags: [bug reports, documentation, defects, jira]
+---
+
+import { BugReportCard } from '@/components/demos/bug-report/BugReportCard';
+import FixThisReport from '@/components/demos/bug-report/FixThisReport';
+import TitleBuilder from '@/components/demos/bug-report/TitleBuilder';
+import LifeCycle from '@/components/demos/bug-report/LifeCycle';
+
+You're testing a shopping app. You add a pair of shoes to the cart, go to checkout, type in a card number, and the **Pay** button just... stays grey. You found a <Term id="bug" />. Congratulations!
+
+Now comes the part that decides whether that bug ever gets fixed: **writing it down**. A great find with a poor report often ends up as "Cannot reproduce" and quietly disappears. A great report gets picked up, fixed and shipped, sometimes the same day.
+
+## Why bug reports matter
+
+A <Term id="bug-report">bug report</Term> is a written description of a problem, detailed enough that someone else can **see the bug for themselves**. That last part is the whole point:
+
+<Callout type="info" title="The golden rule">
+
+**A developer can only fix what they can reproduce.** If they can't make the bug happen on their own device, they can't find the cause, and they can't prove their fix works.
+
+</Callout>
+
+Your report is a set of instructions for recreating the problem, plus the evidence that it's real. It's read by more people than you might think:
+
+- **Developers** use it to reproduce and fix the bug.
+- **The lead or product owner** uses it to decide how urgent it is.
+- **You (or another tester)** use it later to <Term id="retesting">retest</Term> the fix.
+- **Everyone** searches old reports months later, when a similar bug shows up.
+
+If you've read [How to Write Test Cases](/tutorials/writing-test-cases), a lot of this will feel familiar. A bug report is like a <Term id="test-case" /> that failed: preconditions, steps, expected result. It adds what actually happened and the proof.
+
+<Short>
+
+## The essentials
+
+### What goes into a bug report
+
+| Field | Example |
+| --- | --- |
+| ID | SHOP-1423 (usually created by the tool) |
+| Title | Checkout: Pay button stays disabled after entering a valid card on iOS 18 |
+| Environment | ShopFast 4.12.0 (build 812), iPhone 15, iOS 18.0.1, Staging |
+| Preconditions | Signed in; 1 item in cart; no saved cards |
+| Steps to reproduce | 1. Tap Checkout 2. Select Card 3. Enter 4242 4242 4242 4242, 12/30, 123 |
+| Expected result | Pay button becomes enabled and places the order |
+| Actual result | Pay button stays grey and can't be tapped; no error shown |
+| Severity / Priority | Major / High |
+| Reproducibility | 5/5 attempts |
+| Attachments | Screen recording, screenshot, device log |
+
+### Write a title that says where, what and when
+
+A good title follows a simple formula: **Where + What + When**.
+
+> **Checkout:** Pay button stays disabled **after entering a valid card on iOS 18**
+
+<Compare>
+<Do title="Specific">
+
+Checkout: Pay button stays disabled after entering a valid card on iOS 18
+
+</Do>
+<Dont title="Vague">
+
+Payment broken!!!
+
+</Dont>
+</Compare>
+
+### Severity vs priority
+
+- **<Term id="severity">Severity</Term>** is how badly the bug hurts the product (a crash is worse than a typo).
+- **<Term id="priority">Priority</Term>** is how soon the team should fix it.
+
+Want the full picture? See [Severity vs Priority](/fundamentals/severity-vs-priority).
+
+They're independent. A typo in the app's name on the home screen is low severity but high priority. A crash in a settings screen almost nobody uses can be high severity but lower priority.
+
+### Five habits of great bug reports
+
+<Steps>
+
+1. **One bug per report.** Found two problems? File two reports.
+2. **Exact steps and data.** Numbered steps, real values, starting from a known state.
+3. **Expected vs actual.** Say what should happen and what you saw instead. Never just "doesn't work".
+4. **Count how often it happens.** Try again and write "3/5 attempts" or "5/5".
+5. **Attach evidence.** A short screen recording beats a paragraph. Add logs when you can.
+
+</Steps>
+
+### A great bug report
+
+<BugReportCard />
+
+<Callout type="tip">
+
+Keep the tone factual and friendly. You're describing the **product**, not judging the people who built it.
+
+</Callout>
+
+Switch to **Detailed** at the top of the page for the full walkthrough: every field explained, the four severity and priority combinations, how to capture evidence on iOS, Android and the web, how to isolate a bug, the bug life cycle, and Jira tips.
+
+</Short>
+
+<Long>
+
+## Anatomy of a bug report
+
+Teams use different tools (<Term id="jira" />, Azure DevOps, Linear, GitHub Issues, even a spreadsheet), but good bug reports contain the same building blocks.
+
+| Field | What it means | Example |
+| --- | --- | --- |
+| **ID** | A unique reference. Usually generated by the tool | `SHOP-1423` |
+| **Title** | One line that says where, what and when | Checkout: Pay button stays disabled after entering a valid card on iOS 18 |
+| **<Term id="environment">Environment</Term>** | Where you saw it: app version and <Term id="build" />, device, OS version, browser and version, test environment (<Term id="staging" /> or <Term id="production" />), network | ShopFast 4.12.0 (build 812), iPhone 15, iOS 18.0.1, Staging, Wi-Fi |
+| **<Term id="precondition">Preconditions</Term>** | The state needed before step 1: account type, data, settings | Signed in; 1 item in cart; no saved cards |
+| **Steps to reproduce** | Numbered, specific actions with exact <Term id="test-data" /> | 1. Tap **Checkout** 2. Select **Credit or debit card** 3. Enter… |
+| **<Term id="expected-result">Expected result</Term>** | What should happen, according to the requirement or common sense | Pay button becomes enabled; tapping it places the order |
+| **<Term id="actual-result">Actual result</Term>** | What really happened, described precisely | Pay button stays grey and can't be tapped; no error shown |
+| **<Term id="severity">Severity</Term>** | How badly the bug affects the product | Critical / Major / Minor / Trivial |
+| **<Term id="priority">Priority</Term>** | How soon it should be fixed | Highest / High / Medium / Low |
+| **Reproducibility** | How often the bug happens when you follow the steps | 5/5 attempts (always), 2/10 (intermittent) |
+| **Attachments** | Proof and clues: screenshots, screen recordings, device logs, browser console errors, network recordings (HAR files) | `pay-button-disabled.mp4`, `iphone15-console.log` |
+| **Component / labels** | Which part of the product, plus searchable tags | Component: Checkout · Labels: ios, payments, regression |
+
+<Callout type="info" title="Nice extras">
+
+Many teams also add: **notes** on what you already ruled out (more on that in *Isolating the bug*), a **workaround** if one exists, a link to the <Term id="user-story" /> or test case that failed, and the **version where it last worked** if this is a regression.
+
+</Callout>
+
+## Writing a great title
+
+The title is the most-read part of your report. It shows up in lists, search results, sprint boards and notification emails. Many people will only ever read the title, so it has to work on its own.
+
+Use the formula **Where + What + When**:
+
+| Part | Question it answers | Example |
+| --- | --- | --- |
+| **Where** | Which screen or feature? | Checkout: |
+| **What** | What goes wrong, as you observed it? | Pay button stays disabled |
+| **When** | Under which condition, trigger or platform? | after entering a valid card on iOS 18 |
+
+<Compare>
+<Do title="Where + what + when">
+
+- Checkout: Pay button stays disabled after entering a valid card on iOS 18
+- Order tracking: Courier map freezes after switching from Wi-Fi to mobile data
+- Search: Results show yesterday's prices when the cache is not cleared
+
+</Do>
+<Dont title="Vague or emotional">
+
+- Payment broken!!!
+- Map issue
+- Bug in search
+- URGENT: app is unusable
+
+</Dont>
+</Compare>
+
+A few rules of thumb:
+
+- **Describe the symptom, not your guess at the cause.** "Pay button stays disabled" is a fact. "Card validation regex is wrong" is a guess, and it might be wrong.
+- **Skip "Bug:" and "Issue with".** Everyone knows it's a bug; it's in the bug tracker.
+- **Keep it under about 100 characters.** Details go in the description.
+- **No capitals, no exclamation marks.** Urgency belongs in the priority field.
+
+Try it yourself:
+
+<TitleBuilder client:visible />
+
+## Steps, expected and actual
+
+These three fields are where most reports fall apart.
+
+### Steps to reproduce
+
+Write steps as if the reader has never opened the app. Start from a known state (that's what preconditions are for), use one action per step, name the exact buttons, and give the exact data.
+
+<Compare>
+<Do title="Reproducible">
+
+**Preconditions:** Signed in with a test account that has no saved cards. Cart contains 1 item ($54.97).
+
+1. Open the **Cart** tab and tap **Checkout**.
+2. Select **Credit or debit card**.
+3. Enter card number `4242 4242 4242 4242`, expiry `12/30`, CVC `123`.
+4. Tap outside the fields to close the keyboard.
+
+</Do>
+<Dont title="A guessing game">
+
+1. Go to checkout.
+2. Try to pay with a card.
+3. It doesn't work.
+
+</Dont>
+</Compare>
+
+<Callout type="note" title="About that card number">
+
+`4242 4242 4242 4242` is a public **test** card number published by payment providers such as Stripe. It only works in test mode. Never put real card numbers, passwords or personal data in a bug report.
+
+</Callout>
+
+### Expected vs actual
+
+**Expected** is what *should* happen. Point to the requirement if there is one. **Actual** is what *did* happen, described as precisely as a camera would.
+
+<Compare>
+<Do title="Precise">
+
+**Expected:** The "Pay $54.97" button becomes enabled (blue). Tapping it places the order and opens the confirmation screen.
+
+**Actual:** The "Pay $54.97" button stays grey and nothing happens when tapped. No error is shown under any field.
+
+</Do>
+<Dont title="Useless">
+
+**Expected:** It works.
+
+**Actual:** It doesn't work.
+
+</Dont>
+</Compare>
+
+"Doesn't work" could mean the app <Term id="crash">crashed</Term>, froze, showed an <Term id="error-message" />, or did nothing. Each of those points to a completely different cause.
+
+## One bug per report
+
+It's tempting to save time by listing everything you found in one ticket. Don't.
+
+<Callout type="warning" title="Why combined reports go wrong">
+
+- Two bugs often belong to **two different developers** (payments vs profile).
+- When one is fixed, the ticket gets closed and the **other bug is forgotten**.
+- The ticket can't have one correct severity, priority or status.
+- Nobody can search for it properly later.
+
+</Callout>
+
+If two bugs seem connected (for example, the same error appears in two places), file them separately and **link** them. Let the developer decide whether it's one cause.
+
+## Severity vs priority
+
+These two fields sound similar, and confusing them is one of the most common beginner mistakes (and a very common interview question). Here's what you need for writing reports; the in-depth lesson, with a triage practice board, is [Severity vs Priority](/fundamentals/severity-vs-priority).
+
+- **<Term id="severity">Severity</Term>** describes the **impact** on the product or user. It's mostly a technical judgment, and testers usually suggest it.
+- **<Term id="priority">Priority</Term>** describes the **order of fixing**. It's a business decision, usually made by the product owner or lead.
+
+Typical severity levels (scales vary by team):
+
+| Severity | Meaning | Example |
+| --- | --- | --- |
+| **Critical** | Crash, data loss, security hole, or a core flow fully blocked with no workaround. Some teams put a separate <Term id="blocker" /> level above it | App crashes on launch; payments fail for everyone |
+| **Major** | A main feature is broken or wrong, but a workaround exists | Card payment fails on iOS, Apple Pay still works |
+| **Minor** | A small feature misbehaves; the user can carry on | Sorting by price ignores items on sale |
+| **Trivial** | Cosmetic: typos, alignment, colors | Button label is 2 px off-center |
+
+### The four combinations
+
+Because they measure different things, every combination is possible:
+
+| | **High priority** | **Low priority** |
+| --- | --- | --- |
+| **High severity** | The app crashes when the user taps **Pay**. Fix now. | The app crashes when importing contacts from a 15-year-old phone format almost no one uses. Serious, but rare. |
+| **Low severity** | The company name is misspelled on the login screen, or the price shows the wrong currency symbol before a big launch. Harmless technically, embarrassing publicly. | A tooltip in a rarely visited settings screen has a typo. |
+
+<Callout type="tip">
+
+Suggest a severity based on facts, and leave priority to the team unless your process says otherwise. If you think something is urgent, explain *why* in the description ("affects every iOS user who pays by card") instead of shouting in the title.
+
+</Callout>
+
+## Reproducibility
+
+Before you file, **follow your own steps again**. Then write down how often the bug happened:
+
+- **5/5 attempts (always)**: great, the developer will see it straight away.
+- **3/5 attempts**: intermittent. Still very useful; say so honestly.
+- **1/10 attempts**: rare. Report it anyway, with every detail you have and a recording of the time it happened.
+
+A bug you can reproduce every time is <Term id="reproducible" />. Bugs that come and go often point to timing problems such as a <Term id="race-condition" />, slow networks, or leftover data in the <Term id="cache" />, so the number itself is a clue for the developer.
+
+<Callout type="info" title="Tips for intermittent bugs">
+
+- Note **what was different** when it happened: battery saver on, poor signal, app was in the background, first launch of the day.
+- Keep a **screen recording running** while you try, so you capture it when it happens.
+- Write down the **exact time** it happened. Developers can match it against server logs.
+
+</Callout>
+
+## Gathering evidence
+
+Evidence turns "I saw something weird" into a fact nobody can argue with. Aim for **at least one visual** (screenshot or recording) and, when you can, **logs**.
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+**Screenshot:** press the **Side button + Volume Up** together (Home button + Side button on older iPhones). Use the markup tool to circle the problem.
+
+**Screen recording:** open **Control Center** and tap the **Screen Recording** button. If it's missing, add it in Control Center settings. Recordings are usually the single most useful attachment: they show the exact taps and timing.
+
+**Device logs:** connect the iPhone to a Mac. With a debug build running from Xcode, errors appear in the **Xcode console**. Without Xcode, open the **Console** app on the Mac, select the iPhone, and filter by the app name. Developers often add their own in-app debug menu too; ask your team.
+
+**Crash logs:** on the iPhone, go to **Settings → Privacy & Security → Analytics & Improvements → Analytics Data** and look for files starting with the app's name.
+
+**On the <Term id="simulator" />:** **Cmd + S** saves a screenshot. To record video, run `xcrun simctl io booted recordVideo bug.mp4` in Terminal (press Ctrl + C to stop).
+
+</Tab>
+<Tab>
+
+**Screenshot:** press **Power + Volume Down** together.
+
+**Screen recording:** swipe down twice to open **Quick Settings** and tap **Screen record** (Android 11 and newer; the exact name varies by manufacturer). Turn on "Show touches" if offered, so taps are visible.
+
+**Device logs with adb logcat:** enable **Developer options** and **USB debugging**, connect the phone, and use the Android Debug Bridge (`adb`) on your computer (new to it? see [adb Basics](/mobile/adb-basics)):
+
+```bash
+adb logcat -c                 # clear old logs
+# ...now reproduce the bug on the phone...
+adb logcat -d > bug-log.txt   # save everything logged so far to a file
+adb logcat '*:E'              # or: watch only errors, live (quotes stop zsh from expanding *)
+```
+
+Crashes usually show up as a `FATAL EXCEPTION` with a stack trace. Attach the file; the developer will know what to look for.
+
+**Full bug report:** `adb bugreport` creates a zip with logs and system info. It's large, so only attach it when a developer asks.
+
+</Tab>
+<Tab>
+
+Open the browser's <Term id="devtools" /> with **F12** or **Ctrl + Shift + I** (Windows) or **Cmd + Option + I** (Mac). [DevTools for Testers](/web/devtools-for-testers) covers each panel in depth.
+
+**Console tab:** look for red error messages. Copy them into the report as text (not just a screenshot), so they're searchable.
+
+**Network tab:** reproduce the bug with the Network tab open and look for failed requests (status codes in red, like `400`, `500`, or "failed"). Click one to see the request and response. Tick **Preserve log** so requests survive page reloads.
+
+**HAR file:** a HAR file is a recording of every network request on the page. In Chrome, click the download (Export HAR) button in the Network tab. Developers can open it and see exactly what the browser sent and received.
+
+**Also note:** browser name and version, operating system, window size or device emulation, and whether you were signed in. Try an incognito/private window to rule out extensions and leftover <Term id="cookie">cookies</Term>.
+
+**Testing a website on an iPhone?** Turn on **Settings → Apps → Safari → Advanced → Web Inspector** on the phone (on iOS 17 and older: **Settings → Safari → Advanced**), connect it to a Mac, and use Safari's **Develop** menu to open Web Inspector for the page on the phone.
+
+</Tab>
+</Tabs>
+
+<Callout type="warning" title="Protect sensitive data">
+
+Logs, screenshots and especially HAR files can contain passwords, <Term id="session" /> tokens, cookies and personal data. Use test accounts, crop or blur anything sensitive, and check exports before attaching them. Recent Chrome versions remove the most sensitive headers from HAR exports by default, but don't rely on that alone.
+
+</Callout>
+
+## Isolating the bug
+
+Finding a bug is step one. Narrowing it down is what makes you a tester developers love. Spend a few minutes asking "does it still happen if…?" Each answer goes into the **Notes** section of your report.
+
+<Steps>
+
+1. **Other platform?** Does it happen on Android too, or only on iOS? On the website as well as the app? A bug on one platform points to platform code; a bug everywhere points to the server or shared logic.
+2. **Other device or OS version?** Only on iOS 18, or also iOS 17? Only on a small screen? Only on a Samsung phone? (Android <Term id="fragmentation" /> makes this one important.)
+3. **Other browser?** Only in Safari, or also in Chrome and Firefox? This is the heart of <Term id="cross-browser-testing" />.
+4. **Other account or state?** Signed in vs signed out? New account vs old account? Empty cart vs full cart?
+5. **Other data?** Only with this card, or any card? Only with long names, special characters, or another currency?
+6. **Previous version?** Did it work in the last release? If yes, it's a regression, which is extremely useful to know.
+7. **Clean state?** Does it still happen after clearing the app's cache, reinstalling, or in a private browser window?
+
+</Steps>
+
+<Callout type="example" title="From vague to precise">
+
+"Pay button doesn't work" became, after five minutes of isolating: *"Only on iOS 18, only with cards (Apple Pay works), any card number, not in the previous build 4.11.2."* The developer now knows to look at the iOS card form changes made in the latest release.
+
+</Callout>
+
+Don't overdo it, though. If the bug is clearly serious, report it quickly with what you have, and add findings as comments.
+
+## How to write a bug report, step by step
+
+<Steps>
+
+1. **Reproduce it.** Make the bug happen again from a fresh start. Note the exact steps and data as you go.
+2. **Search for duplicates.** Someone may have reported it already. If so, add your details as a comment instead of filing a new one.
+3. **Isolate it.** Run through the "does it still happen if…" questions above.
+4. **Capture evidence.** Record the screen while reproducing; save logs, console errors or a HAR file.
+5. **Write the title.** Where + What + When.
+6. **Fill in the details.** Environment, preconditions, steps, expected, actual, reproducibility, severity, component, labels.
+7. **Re-read it as a stranger.** Could a developer who's never seen this screen reproduce it from your text alone? Better still, follow your own steps once more, word for word.
+
+</Steps>
+
+## Worked example
+
+Here's the bug from the start of this lesson, written up properly. Notice how it answers every question before a developer has to ask.
+
+<BugReportCard />
+
+<Callout type="tip" title="What makes it great">
+
+- The **title** alone tells you where, what and when.
+- The **environment** includes the exact build, so the developer can install the same version.
+- **Preconditions and test data** are specific: no saved cards, one item, the exact test card number.
+- **Expected vs actual** are precise and observable.
+- The **notes** show isolation work: not on Android, not in the previous build, Apple Pay works. That's a regression with a workaround, which also explains the severity.
+- **Evidence** includes a recording, a screenshot and a device log.
+- The tone is calm and factual throughout.
+
+</Callout>
+
+## The bug life cycle
+
+Once you file a report, it moves through a series of statuses called the <Term id="bug-life-cycle" />. Exact names vary by team and tool, but the idea is the same everywhere. For every status, who moves the bug and a hands-on ticket simulator, see the [Bug Life Cycle](/fundamentals/bug-life-cycle) lesson.
+
+<LifeCycle client:visible />
+
+Your job doesn't end when you click **Create**. Watch your tickets, answer developers' questions quickly, and when a bug reaches **Retest** (many teams call it *Ready for test*), verify it on a build that contains the fix. While you're there, check the features around it too; fixes sometimes break neighbors, which is why teams also run <Term id="regression-testing" />.
+
+<Callout type="tip" title="When your bug comes back as Cannot reproduce">
+
+Don't take it personally, and don't just reopen it. Try again on the build the developer used, then add whatever was missing: a different device, a specific account, a recording. Most "cannot reproduce" bugs are a missing precondition.
+
+</Callout>
+
+## Tone: factual, no blame
+
+Bug reports are read by people who worked hard on the feature. A report that sounds like an accusation makes everyone defensive and slows the fix down. You'll also be working with these developers every day.
+
+<Compare>
+<Do title="Factual">
+
+The Pay button stays disabled after entering a valid card on iOS 18. It worked in build 4.11.2. Recording attached.
+
+</Do>
+<Dont title="Blaming">
+
+Payments are broken AGAIN. Did anyone even test this before release?? This is really basic stuff.
+
+</Dont>
+</Compare>
+
+- **Describe the product, not people.** "The button stays disabled", not "you broke the button".
+- **Stick to observations.** Leave out sarcasm, guesses about who's at fault, and words like "obviously" or "again".
+- **Be humble about causes.** "This might be related to…" is fine; "the developer forgot to…" is not.
+- **Say thanks** when a bug is fixed. It costs nothing and builds trust.
+
+## Jira tips
+
+<Term id="jira" /> is the most common bug tracker you'll meet. A few habits make your reports much easier to work with:
+
+- **Choose the issue type "Bug"**, not Task or Story, so it shows up in bug filters and reports.
+- **Search before you create.** Use the search bar, or JQL (Jira's query language), for example:
+
+  ```sql
+  project = SHOP AND type = Bug AND text ~ "pay button" AND statusCategory != Done
+  ```
+
+- **Use the fields your team uses**: *Affects version* (where you found it), *Component*, *Labels*, *Environment*, *Priority*. Consistent fields make dashboards and filters work.
+- **Link related tickets** with "relates to", "is blocked by" or "duplicates", and link the bug to the story it belongs to.
+- **Format for readability.** Use numbered lists for steps and code blocks for error messages and log snippets.
+- **Drag and drop attachments** straight into the ticket, and give them meaningful names (`pay-button-disabled.mp4`, not `IMG_4821.MOV`).
+- **@mention** people only when you need their attention, and **watch** your own tickets so you see questions.
+- **Use a template.** Many teams keep a bug description template with the headings Environment, Preconditions, Steps, Expected, Actual, Notes. If yours doesn't, suggest one.
+
+</Long>
+
+## Practice: fix this bug report
+
+A teammate filed the report below. It has the right idea, but almost every part needs work. Find the problems, then compare it with the improved version.
+
+<FixThisReport client:visible />
+
+## Before you submit a bug report
+
+<Checklist
+  title="Before you submit a bug report"
+  items={[
+    "I reproduced the bug again from a fresh start",
+    "I searched the tracker and this is not a duplicate",
+    "The title says where, what and when, without capitals or exclamation marks",
+    "The report describes only one bug",
+    "Environment is complete: app version and build, device, OS (and browser if web), test environment",
+    "Preconditions and exact test data are listed",
+    "Steps are numbered, specific, one action each",
+    "Expected and actual results are both written precisely",
+    "Reproducibility is stated, for example 3/5 attempts",
+    "A screenshot or screen recording is attached, plus logs if available",
+    "No real passwords, card numbers or personal data in text or attachments",
+    "Severity, component and labels are set",
+    "The tone is factual and friendly",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "Why is the 'steps to reproduce' section so important?",
+      options: [
+        "It makes the report look longer and more professional",
+        "A developer can only fix a bug they can make happen themselves",
+        "It is required by Jira",
+        "It replaces the need for screenshots",
+      ],
+      answer: 1,
+      explain: "If the developer can't reproduce the bug, they can't find the cause or verify the fix. Clear steps are what make reproduction possible.",
+    },
+    {
+      q: "Which title follows the Where + What + When formula best?",
+      options: [
+        "Bug in checkout",
+        "PAY BUTTON BROKEN!!!",
+        "Checkout: Pay button stays disabled after entering a valid card on iOS 18",
+        "The card validation logic has a mistake",
+      ],
+      answer: 2,
+      explain: "It names the screen (where), the observed symptom (what) and the condition (when). The last option is a guess at the cause, not an observation.",
+    },
+    {
+      q: "The company logo is misspelled on the home screen the day before launch. What is the most likely classification?",
+      options: [
+        "High severity, high priority",
+        "Low severity, high priority",
+        "High severity, low priority",
+        "Low severity, low priority",
+      ],
+      answer: 1,
+      explain: "Nothing is technically broken (low severity), but it's highly visible and embarrassing, so it should be fixed right away (high priority).",
+    },
+    {
+      q: "While testing checkout you also notice a blurry profile photo. What should you do?",
+      options: [
+        "Add it to the end of the checkout bug report",
+        "Ignore it, it is not related to checkout",
+        "File a separate bug report for the photo",
+        "Mention it to a developer in chat instead",
+      ],
+      answer: 2,
+      explain: "One bug per report. Separate reports can be assigned, prioritized and closed independently, so nothing gets lost.",
+    },
+    {
+      q: "A bug happened 3 times out of 5 attempts. How should you report it?",
+      options: [
+        "Don't report it until it happens every time",
+        "Write 'Reproducibility: 3/5 attempts' and add any clues about when it happened",
+        "Write 'Always' so it gets attention",
+        "Write 'Random'",
+      ],
+      answer: 1,
+      explain: "An honest rate is a clue in itself: intermittent bugs often point to timing, network or caching problems.",
+    },
+    {
+      q: "Your bug is marked 'Fixed'. What happens next?",
+      options: [
+        "Nothing, the bug is done",
+        "You retest it on a build that contains the fix, then close or reopen it",
+        "The developer closes it",
+        "You file a new bug report",
+      ],
+      answer: 1,
+      explain: "'Fixed' means the developer believes it's fixed. A tester verifies it in Retest, then closes it if it passes or reopens it with fresh evidence if it doesn't.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A bug report exists so someone else can **reproduce** the bug. If they can't, it won't get fixed.
+- Use the title formula **Where + What + When**, and describe symptoms, not guesses.
+- Always include environment (app version and build, device, OS, browser), preconditions, exact steps, expected and actual results.
+- **One bug per report**, with a reproducibility rate like "3/5 attempts".
+- **Severity** is impact; **priority** is fixing order. They are independent.
+- Attach evidence: screen recordings, screenshots, device logs, console errors, HAR files. Remove sensitive data.
+- Isolate before you file, keep the tone factual and blame-free, and follow your bug through its life cycle to retest.
+
+</KeyTakeaways>

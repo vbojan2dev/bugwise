@@ -1,0 +1,46 @@
+teaser: "A new swipe-to-delete worked perfectly when users swiped. The trouble started when they didn't."
+cards:
+  - type: flip
+    front: "What separates a swipe from a drag?"
+    back: "Speed at release. If the finger is still moving fast when it lifts, it's a swipe. If it slowed down before lifting, it's a drag."
+  - type: flip
+    front: "What is touch slop?"
+    back: "A small movement threshold (8 dp by default on Android, about a millimeter). A wobbling finger that moves less than that still counts as not moving."
+  - type: quiz
+    q: "Why can single taps on a zoomable photo feel slightly slow?"
+    options: ["It waits ~300 ms for a second tap", "The long-press timer must run first", "The photo is still loading"]
+    answer: 0
+    explain: "If a view supports double tap, the app only knows a tap was single after the double-tap window has passed."
+  - type: quiz
+    q: "Users say emails vanish 'by themselves' while scrolling. What should you test first?"
+    options: ["Dark mode", "Push notifications", "Diagonal scrolling over swipeable rows"]
+    answer: 2
+    explain: "Without a direction lock, a slightly diagonal scroll also counts as a swipe, which then deletes the row on release."
+  - type: truefalse
+    statement: "With VoiceOver on, a single tap on an email row opens it."
+    answer: false
+    explain: "With a screen reader, a single tap selects and a double tap activates. Custom swipes never reach the app, so they need accessibility actions."
+  - type: truefalse
+    statement: "A button should fire when the finger lifts, not when it touches down."
+    answer: true
+    explain: "WCAG 2.5.2 Pointer Cancellation: firing on lift lets users slide off a button to cancel a tap they didn't mean."
+  - type: thisorthat
+    prompt: "A photo carousel can only be changed by swiping. There are no other controls."
+    left: "Fine, swiping is standard"
+    right: "Needs arrow buttons too"
+    answer: right
+    explain: "WCAG 2.5.1: path-based gestures like swipes need a single-pointer alternative, such as Next and Previous arrows."
+  - type: thisorthat
+    prompt: "Android, gesture navigation. A swipe starts at the very left edge, right on top of a swipeable email row."
+    left: "Go back"
+    right: "Swipe the row"
+    answer: left
+    explain: "Edges belong to the system. Swipes from the very edge go back; only swipes that start on the row itself should act on the row."
+  - type: spotbug
+    screen: ["Inbox · 12 emails", "User presses and holds a row", "Menu: Reply, Delete, Archive", "Email opens underneath, marked read"]
+    bug: "The long press also triggered the tap action."
+    explain: "Once a long press fires, the tap must be canceled. Otherwise the user gets two actions at once: the menu and the opened email."
+  - type: spotbug
+    screen: ["Nudge an email 24 px to the left", "Email deleted", "No Undo, no Trash folder"]
+    bug: "A tiny swipe deletes permanently, with no way back."
+    explain: "Destructive gestures need a deliberate threshold, like half the row, plus an Undo afterwards. A 24 px nudge happens by accident."

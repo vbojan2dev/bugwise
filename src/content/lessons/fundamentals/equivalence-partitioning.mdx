@@ -1,0 +1,479 @@
+---
+title: Equivalence Partitioning
+description: You can't test every possible value, so don't try. Learn to split inputs and outputs into groups that behave the same, test one value from each, and catch more bugs with far fewer tests.
+order: 7
+level: beginner
+minutes: { short: 15, long: 20 }
+platform: both
+tags: [fundamentals, test design, techniques, black-box]
+---
+
+import PartitionStrip from '@/components/demos/fundamentals-ep-bva/PartitionStrip';
+import PartitionBuilder from '@/components/demos/fundamentals-ep-bva/PartitionBuilder';
+import FieldTester from '@/components/demos/fundamentals-ep-bva/FieldTester';
+
+You're testing the sign-up screen of a fitness app. The requirement is one line long: **"Users must be 18 to 60 years old."** There's an *Age* field and a *Continue* button.
+
+So you type 18. It works. You type 19. Works. 20, 21, 22… After ten minutes you've typed 43 ages and you haven't even tried 0, -5, 150, "abc", 25.5 or leaving the field empty. And this is **one field** on **one screen**.
+
+There has to be a smarter way. There is, and it's called <Term id="equivalence-partitioning">equivalence partitioning</Term> (EP). It's the first test design technique most testers learn, and you'll use it every single day.
+
+## Why you can't test every value
+
+Even a tiny field accepts a huge number of possible inputs: every whole number, every decimal, negative numbers, letters, emoji, spaces, pasted text, nothing at all. Multiply that by every other field on the form and every phone and browser, and you get more combinations than anyone could run in a lifetime.
+
+This is one of the seven testing principles from [What Is Software Testing?](/fundamentals/what-is-software-testing): **exhaustive testing is impossible**. The real skill is choosing a *small* set of tests that still finds the bugs. EP is the tool for exactly that.
+
+## The big idea: values that behave the same
+
+<Callout type="example" title="An everyday analogy: cinema tickets">
+
+A cinema charges €6 for children under 12, €11 for adults from 12 to 64, and €7 for seniors from 65. The cashier doesn't care if you are 30 or 31. Every adult pays the same €11.
+
+So if you wanted to check that the ticket machine charges correctly, you would not try all 53 adult ages. One adult (say 35), one child (say 8) and one senior (say 70) would tell you almost everything. Each of those groups is an **equivalence partition**.
+
+</Callout>
+
+An **equivalence partition** (also called an **equivalence class**) is a group of values that the software should treat **in exactly the same way**. If one value in the group works, the others should too. If one fails, the others probably fail the same way.
+
+That gives us the core rule of EP:
+
+> **Split the possible values into partitions, then test one representative value from each partition.**
+
+For our fitness app, the age rule creates three partitions on the number line:
+
+<PartitionStrip
+  title="Age field · fitness app sign-up (18–60)"
+  segments={[
+    { range: '≤ 17', label: 'Too young · rejected', kind: 'invalid', grow: 1.1 },
+    { range: '18 – 60', label: 'Accepted', kind: 'valid', grow: 1.8 },
+    { range: '≥ 61', label: 'Too old · rejected', kind: 'invalid', grow: 1.1 },
+  ]}
+  caption="Three partitions on the line, so three tests: for example 12, 35 and 72. Testing 36 as well adds nothing new, because it's in the same partition as 35."
+/>
+
+EP is a <Term id="black-box-testing">black-box</Term> technique: you derive tests from the requirement, not from the code. You don't need to know how the app was built, only how it *should* behave.
+
+<Short>
+
+## The quick version
+
+### Valid and invalid partitions
+
+- A **valid partition** holds values the app should **accept** (ages 18–60). Testing it is <Term id="positive-testing" />.
+- An **invalid partition** holds values the app should **reject** with a clear <Term id="error-message">error message</Term> (ages 17 and below, 61 and above). Testing it is <Term id="negative-testing" />.
+
+Some partitions can't be drawn on a number line at all, and they're where many real bugs hide:
+
+- **Empty**: the user leaves Age blank.
+- **Not a number**: "abc" pasted into the field.
+- **Wrong kind of number**: 25.5 when the rule says whole years.
+
+So the age field really has **six** partitions, and EP gives you six tests: 12, 35, 72, empty, "abc", 25.5.
+
+### Where partitions hide
+
+| What you're testing | Example | Partitions |
+| --- | --- | --- |
+| A number range | Cart quantity 1–10 | 0 or less · 1–10 · 11+ |
+| Text length | Promo code 6–10 chars | empty · 1–5 · 6–10 · 11+ |
+| A set of options | Payment method | each option behaves differently |
+| A format | Email | valid · missing @ · missing domain… |
+| An output | Shipping by order total | €4.99 · €2.99 · free |
+
+### How many tests?
+
+At least **one per partition**. Then use one rule to keep things clear:
+
+- **Valid partitions can share a test.** One sign-up with a valid age, a valid email and a valid country covers three valid partitions at once.
+- **Invalid partitions get a test each.** If you enter age 15 *and* a broken email together, the app may only complain about the email, and you never find out whether age 15 is rejected.
+
+### Three classic mistakes
+
+1. **Forgetting the empty partition.** "Nothing typed" is a value too, and a favorite crash.
+2. **Mixing partitions.** Overlapping groups ("0–18" and "18–60" both contain 18), or several invalid values in one test.
+3. **Forgetting non-numeric input in number fields.** A number keyboard doesn't stop paste, autofill or someone calling the <Term id="api" /> directly.
+
+<Callout type="tip">
+
+Switch to **Detailed** at the top for the full walk-through: partitions for ranges, lengths, option lists, email formats and outputs, plus a worked sign-up example.
+
+</Callout>
+
+</Short>
+
+<Long>
+
+## Doing EP step by step
+
+Here's the process you'll follow every time, using the fitness app's age field.
+
+<Steps>
+
+1. **Find the input (or output) and its rule.** "Age: whole years from 18 to 60."
+2. **Find where the behavior changes.** Below 18 the app rejects you; from 18 it accepts; from 61 it rejects again. Those change points split the line into partitions.
+3. **Add the partitions that aren't on the line.** Empty field, non-numeric text, decimals. Ask: "What else could a user (or a bug) send here?"
+4. **Label each partition valid or invalid.** Valid = should be accepted. Invalid = should be rejected with a helpful message.
+5. **Pick one representative value per partition.** Something clearly inside it: 35 rather than 18. (The edges get their own technique; more on that below.)
+6. **Turn them into test cases**, combining valid partitions and keeping invalid ones separate. See [How to Write Test Cases](/tutorials/writing-test-cases) for the format.
+
+</Steps>
+
+The result for the age field:
+
+| Partition | Type | Test value | Expected |
+| --- | --- | --- | --- |
+| 18 to 60 | Valid | 35 | Accepted |
+| 17 or less | Invalid | 12 | "You must be at least 18" |
+| 61 or more | Invalid | 72 | "This plan is for ages 18 to 60" |
+| Empty | Invalid | (blank) | "Enter your age" |
+| Not a number | Invalid | abc | "Age must be a number" |
+| Decimal | Invalid | 25.5 | "Enter whole years" |
+
+Six tests instead of hundreds, and each one checks something genuinely different.
+
+<Callout type="info" title="Is the 'decimal' partition always invalid?">
+
+Only because the requirement says *whole years*. For a weight field in the same app (say 30.0–300.0 kg), decimals are perfectly valid. Partitions always come from the requirement, never from habit. If the requirement doesn't say, that's a question for the product owner, and asking it is part of your job.
+
+</Callout>
+
+## Valid and invalid partitions
+
+A **valid partition** contains values the system should accept and process normally. Testing these is <Term id="positive-testing" />: "does it work when used correctly?"
+
+An **invalid partition** contains values the system should refuse, ideally with a clear, friendly <Term id="error-message" />. Testing these is <Term id="negative-testing" />: "does it fail gracefully when used incorrectly?"
+
+<Callout type="warning" title="Invalid doesn't mean 'not worth testing'">
+
+Beginners often test the valid partition carefully and the invalid ones barely at all. But real users mistype, paste, skip fields and change their minds all the time. A form that crashes on an empty field is a real <Term id="failure" />, even if "nobody should do that".
+
+</Callout>
+
+There can be **more than one valid partition** too. That happens whenever the app does something *different* for different valid values, like the cinema's child, adult and senior prices. All three are valid, but each gives a different result, so each needs its own test.
+
+## Where partitions hide
+
+Partitions aren't just for number fields. Once you start looking, you'll see them everywhere.
+
+### Numbers and ranges
+
+The classic case: a minimum, a maximum, and everything in between. In a shop's cart, the quantity of one item must be 1 to 10.
+
+<PartitionStrip
+  title="Cart quantity (1–10)"
+  segments={[
+    { range: '≤ 0', label: 'Error', kind: 'invalid' },
+    { range: '1 – 10', label: 'Cart updates', kind: 'valid', grow: 1.6 },
+    { range: '≥ 11', label: '"Max 10 per order"', kind: 'invalid' },
+  ]}
+/>
+
+Plus the off-the-line partitions: **empty** (the user deletes the number and taps away: does the cart show 0, NaN, or the old value?), **decimals** (2.5 socks) and **text**. See the [shopping cart and checkout](/features/shopping-cart-and-checkout) lesson for more cart traps.
+
+Some rules have only one limit: "withdraw at least €10" has a valid partition (€10 and up) and one invalid partition (under €10), plus empty and non-numeric.
+
+### Text length
+
+For text fields, the "number" is the **length**. A food delivery app's promo code field is optional, but a filled-in code must be 6 to 10 characters:
+
+<PartitionStrip
+  title="Promo code length (optional, 6–10 characters)"
+  segments={[
+    { range: '0', label: 'No code · OK', kind: 'valid', grow: 0.8 },
+    { range: '1 – 5', label: 'Too short', kind: 'invalid' },
+    { range: '6 – 10', label: 'Format OK', kind: 'valid' },
+    { range: '≥ 11', label: 'Too long', kind: 'invalid' },
+  ]}
+  caption="Because the field is optional, empty is a VALID partition here. In a required field, the same empty value would be invalid. Same value, different rule, different partition."
+/>
+
+Text also has **content** partitions: letters only, digits, symbols ("SAVE-10!"), spaces at the start or end, upper vs lower case, <Term id="diacritics" /> (é, ö, ž) and emoji. Each one is worth a thought: "should this behave differently?" The [text field](/components/text-field) page goes deeper.
+
+### Sets of options
+
+When the input is a choice from a list, each option that leads to **different behavior** is its own partition. Options that behave identically can share one.
+
+| Input | Partitions | Why |
+| --- | --- | --- |
+| Payment method | Card · PayPal · Apple Pay / Google Pay · Pay on delivery | Each one runs a different flow (3-D Secure, redirect, wallet sheet, no payment step) |
+| Shipping country (EU shop) | Home country · other EU country · non-EU country · no country chosen | Different shipping prices, VAT and customs rules |
+| Country list for the phone prefix | One country per *format group*, not 195 countries | Countries with the same number format behave the same |
+
+You would not test all 195 countries in a [dropdown](/components/dropdown). You'd ask the team which countries are treated differently (different tax, currency, address format, delivery rules) and pick one from each group. Don't forget the invalid partition: **nothing selected**.
+
+### Formats
+
+Some inputs are valid only in a certain shape. The best-known example is email:
+
+| Partition | Example | Expected |
+| --- | --- | --- |
+| Valid format | anna@shop.com | Accepted |
+| Missing @ | anna.shop.com | "Enter a valid email" |
+| Missing domain | anna@ | "Enter a valid email" |
+| Space inside | anna @shop.com | "Enter a valid email" |
+| Empty | (blank) | "Email is required" |
+
+Real email rules are surprisingly complex (plus signs like `anna+promo@shop.com` and long domain endings like `.travel` are valid), so they are good extra partitions to check against the requirement. More on this in [Login and Sign-up](/features/login-and-sign-up).
+
+The same thinking works for phone numbers, postcodes, card expiry dates (MM/YY) and IBANs.
+
+### Outputs
+
+EP isn't only for what the user types. You can also partition **outputs**: the different results the app can produce. Then you pick inputs that land you in each output partition.
+
+A shop calculates shipping from the order total:
+
+<PartitionStrip
+  title="Shipping cost by order total (output partitions)"
+  segments={[
+    { range: 'under €20', label: '€4.99 shipping', kind: 'output' },
+    { range: '€20 – 49.99', label: '€2.99 shipping', kind: 'output', grow: 1.2 },
+    { range: '≥ €50', label: 'Free shipping', kind: 'output' },
+  ]}
+  caption="All three are valid, but each produces a different output. Three tests: e.g. carts worth €12, €35 and €80."
+/>
+
+Other output partitions you'll meet: a banking app showing a balance as positive, zero or negative (overdrawn); a search returning no results, one result or many (see [Search, Filters and Sorting](/features/search-filters-and-sorting)); a fitness app's weekly summary for "goal reached" vs "goal missed".
+
+## How many test cases do you need?
+
+The minimum is **one test per partition**. The share of partitions you've tested is your **EP coverage**: if you identified 6 partitions and tested 4, that's 67% coverage. Aim for 100%.
+
+But a form has several fields, and that's where the combining rule matters.
+
+<Compare>
+<Do title="Combine valid, isolate invalid">
+
+- **Test 1:** age 35, email anna@shop.com, country Germany → account created (three valid partitions in one go)
+- **Test 2:** age **12**, everything else valid → age error
+- **Test 3:** email **anna@**, everything else valid → email error
+
+</Do>
+<Dont title="Several invalid values at once">
+
+- **Test 1:** age **12**, email **anna@**, country **none** → "Enter a valid email"
+
+Did the app reject age 12? You can't tell. The email error may have hidden the others.
+
+</Dont>
+</Compare>
+
+Why does this work?
+
+- **Valid values can be combined** because, if everything passes, every partition has been shown to work. If one test fails, you investigate and split it.
+- **Invalid values must be tested one at a time** because of *error masking*: many apps stop at the first problem they find, or show only one message. A second invalid value can hide behind the first, and a real bug (age 12 being accepted) slips through.
+
+So for a sign-up form with three fields that have 6, 5 and 3 partitions, you don't need 6 × 5 × 3 = 90 tests. You need a few tests that cover all valid partitions together, plus one test for each invalid partition. That's usually 10–15 tests, which you can actually run.
+
+## Common mistakes
+
+| Mistake | Example | Fix |
+| --- | --- | --- |
+| Missing the empty / null partition | Never leaving Age blank | Always add "empty" (and "only spaces" for text) |
+| Overlapping partitions | "0–18" and "18–60": where does 18 go? | Partitions must not overlap, and must leave no gaps |
+| Mixing invalid values in one test | Age 12 + broken email together | One invalid partition per test |
+| No non-numeric input for numbers | Never typing "abc" in Quantity | Add a "not a number" partition |
+| Splitting without a reason | Testing ages 20, 30, 40 and 50 | Only split where the rule behaves differently |
+| Testing only the happy path | Only valid partitions | Invalid partitions usually outnumber valid ones |
+
+<Callout type="bug" title="'But the field only allows numbers!'">
+
+A numeric keyboard on a phone, or `type="number"` on the web, does **not** guarantee a number. Users can paste text, autofill can insert odd values, desktop browsers let you type `e`, `+` and `-` into number inputs, and anyone can send data straight to the <Term id="api" /> with a tool like <Term id="postman" />. Test the "not a number" partition anyway, and check what reaches the server. [Security Basics](/web/security-basics) explains why the server must never trust the client.
+
+</Callout>
+
+## Where EP stops and boundaries begin
+
+EP tells you that 35 represents the whole 18–60 partition. But what if the developer typed `age > 18` instead of `age >= 18`? Then 35 still passes and the bug survives, because the mistake lives exactly **on the edge**, at 18.
+
+That's why EP has a partner technique: [Boundary Value Analysis](/fundamentals/boundary-value-analysis). EP picks a value from the middle of each partition; BVA tests the edges between them. You'll almost always use them together.
+
+</Long>
+
+See also: [Error Guessing and Checklists](/fundamentals/error-guessing) for the inputs no partition list mentions, like spaces only, emoji or a leap day.
+
+## Practice: build the partitions
+
+Pick a requirement, split the number line where the behavior changes, label each partition, choose a value to test, and decide which partitions live off the line. The trainer tells you what you got right and why.
+
+<PartitionBuilder client:visible />
+
+## Test it: which partition does your value fall into?
+
+Now be the tester. Type values into the app and watch which partition each one hits. Try to cover every partition with as few values as possible; a second value from the same partition teaches you nothing new.
+
+<FieldTester client:visible />
+
+## Your turn: a small spec
+
+A fitness app lets users set a **daily step goal**:
+
+> The step goal is a whole number from **1,000 to 50,000**. The field is required. Users also pick a **goal type**: Walking, Running or Cycling. Cycling goals are measured in kilometers instead of steps, so the screen changes when Cycling is selected.
+
+Write down the partitions for both inputs, mark each one valid or invalid, pick a test value for each, and work out the smallest set of tests that covers them all.
+
+<details>
+<summary><strong>Show a model answer</strong></summary>
+
+**Step goal partitions**
+
+| Partition | Type | Test value |
+| --- | --- | --- |
+| 1,000 – 50,000 | Valid | 8,000 |
+| 999 or less | Invalid | 500 |
+| 50,001 or more | Invalid | 80,000 |
+| Empty | Invalid | (blank) |
+| Not a number | Invalid | "ten" |
+| Decimal | Invalid | 7500.5 |
+
+**Goal type partitions:** Walking and Running behave the same (steps), so they can share one partition; Cycling is its own partition (kilometers, different screen); and "nothing selected" is invalid if the type is required (ask!).
+
+**Tests:** two valid tests (8,000 steps + Running; a valid km goal + Cycling), plus one test for each of the five invalid step-goal partitions and one for "no goal type". That's **8 tests**. If you also tested Walking separately, that's a reasonable extra, but EP says it adds little.
+
+Bonus question for the team: is the 1,000–50,000 range also used for the Cycling km goal? Probably not, so Cycling may need its own range partitions.
+
+</details>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: "TC-EP-01",
+      title: "Sign-up accepts an age inside the valid partition",
+      priority: "high",
+      type: "positive",
+      preconditions: ["Fitness app is on the Create account screen"],
+      steps: ["Enter a valid email and password", "Enter age 35", "Tap Continue"],
+      data: "age: 35 (partition 18–60)",
+      expected: "No error is shown and the Choose your goals screen opens.",
+    },
+    {
+      id: "TC-EP-02",
+      title: "Sign-up rejects an age below the valid range",
+      priority: "high",
+      type: "negative",
+      preconditions: ["Fitness app is on the Create account screen"],
+      steps: ["Enter a valid email and password", "Enter age 12", "Tap Continue"],
+      data: "age: 12 (partition 17 or less)",
+      expected: "The message 'You must be at least 18 to sign up' appears under the Age field, and the account is not created.",
+    },
+    {
+      id: "TC-EP-03",
+      title: "Sign-up rejects an empty age field",
+      priority: "medium",
+      type: "negative",
+      preconditions: ["Fitness app is on the Create account screen"],
+      steps: ["Enter a valid email and password", "Leave Age empty", "Tap Continue"],
+      data: "age: (blank)",
+      expected: "The message 'Enter your age' appears, focus moves to the Age field, and the app does not crash.",
+    },
+    {
+      id: "TC-EP-04",
+      title: "Sign-up rejects non-numeric text pasted into the age field",
+      priority: "medium",
+      type: "negative",
+      preconditions: ["Fitness app is on the Create account screen", "The text 'abc' is on the clipboard"],
+      steps: ["Enter a valid email and password", "Long-press the Age field and paste", "Tap Continue"],
+      data: "age: abc",
+      expected: "Either the paste is blocked, or the message 'Age must be a number' appears. The account is not created.",
+    },
+  ]}
+/>
+
+<Checklist
+  title="Equivalence partitioning checklist"
+  storageKey="equivalence-partitioning"
+  items={[
+    "I found every place in the requirement where the behavior changes",
+    "I listed at least one valid and one invalid partition for each input",
+    "I added the empty partition (and 'only spaces' for text)",
+    "I added a non-numeric partition for every number field",
+    "My partitions don't overlap and leave no gaps",
+    "I considered output partitions (different results, prices, messages)",
+    "I picked one clear representative value from each partition",
+    "I combined valid partitions, but tested each invalid partition on its own",
+    "I asked the team about any partition the requirement doesn't explain",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "A cart allows 1 to 10 of an item. Which set of values is a correct minimal EP set for the number line?",
+      options: ["1, 5, 10", "1, 10, 11", "-3, 5, 15", "5, 6, 7"],
+      answer: 2,
+      explain: "There are three partitions on the line: 0 or less, 1 to 10, and 11 or more. -3, 5 and 15 test one value from each. '1, 5, 10' and '5, 6, 7' only test the valid partition, and '1, 10, 11' never tries the 0-or-less partition.",
+    },
+    {
+      q: "Why should invalid partitions be tested one at a time?",
+      options: [
+        "Because testing them together takes longer",
+        "Because one error can hide another, so you can't tell which value was really rejected",
+        "Because invalid values are less important",
+        "Because the ISTQB forbids combining values",
+      ],
+      answer: 1,
+      explain: "This is error masking. If the app only reports the first problem, a second invalid value may never be checked, and a real bug can slip through.",
+    },
+    {
+      q: "A promo code field is optional; filled-in codes must be 6 to 10 characters. Which partition is empty input in?",
+      options: ["An invalid partition", "A valid partition", "The 1–5 characters partition", "It isn't a partition"],
+      answer: 1,
+      explain: "Because the field is optional, leaving it empty is allowed (no discount is applied). In a required field, empty would be invalid. The rule decides the partition.",
+    },
+    {
+      q: "A shop's payment screen offers Card, PayPal and Pay on delivery. How should you partition this input?",
+      options: [
+        "One partition: 'a payment method was chosen'",
+        "One partition per option that behaves differently, plus 'nothing selected'",
+        "Only test Card, because it's the most popular",
+        "Payment methods can't be partitioned",
+      ],
+      answer: 1,
+      explain: "Each method runs a different flow, so each is its own partition. 'Nothing selected' is an invalid partition if a method is required.",
+    },
+    {
+      q: "Shipping costs €4.99 under €20, €2.99 from €20 to €49.99, and is free from €50. You test a €35 cart and an €80 cart. What is EP's verdict?",
+      options: [
+        "Full EP coverage of the shipping output",
+        "Not enough: the 'under €20' output partition is untested",
+        "Too many tests: one cart is enough",
+        "You have to test every cent from €0.01 to €50",
+      ],
+      answer: 1,
+      explain: "There are three output partitions, one per shipping price. €35 and €80 cover two of them; a cart worth, say, €12 is needed for the third.",
+    },
+    {
+      q: "The Age field opens a number keyboard on phones. Do you still need a 'not a number' partition?",
+      options: [
+        "No, the keyboard makes letters impossible",
+        "Yes, because paste, autofill and direct API calls can still send text",
+        "Only on Android",
+        "Only if the developer asks for it",
+      ],
+      answer: 1,
+      explain: "The keyboard is a convenience, not a validation. Users can paste, and anyone can call the API directly, so the app and server must handle non-numeric input.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- You can't test every value, so group them: an **equivalence partition** is a set of values the app should treat the same way.
+- Test **one representative value per partition**. More values from the same partition add little.
+- Every input has **valid** and **invalid** partitions, and some partitions live off the number line: **empty**, **not a number**, wrong format.
+- Partitions exist for ranges, text lengths, option lists, formats and **outputs** (prices, messages, results).
+- **Combine valid partitions** in one test; test **invalid partitions one at a time** so errors can't hide each other.
+- EP picks values from the middle of partitions. The edges need [Boundary Value Analysis](/fundamentals/boundary-value-analysis).
+
+</KeyTakeaways>
+
+<Callout type="tip" title="Next step">
+
+Now that you can find the partitions, learn where bugs *really* love to hide: on the edges between them. Continue with [Boundary Value Analysis](/fundamentals/boundary-value-analysis), which uses the same age field, cart and shipping examples.
+
+</Callout>

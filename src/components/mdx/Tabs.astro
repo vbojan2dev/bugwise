@@ -1,0 +1,48 @@
+---
+interface Props {
+  labels: string[];
+}
+const { labels } = Astro.props;
+---
+
+<qa-tabs class="my-7 block">
+  <div class="flex gap-1 overflow-x-auto rounded-xl border border-line bg-subtle p-1" role="tablist">
+    {
+      labels.map((l, i) => (
+        <button
+          type="button"
+          role="tab"
+          aria-selected={i === 0 ? 'true' : 'false'}
+          class="tab-btn shrink-0 rounded-lg px-3.5 py-1.5 text-sm font-medium text-muted transition-all"
+        >
+          {l}
+        </button>
+      ))
+    }
+  </div>
+  <div class="tab-panels mt-4"><slot /></div>
+</qa-tabs>
+
+<style>
+  .tab-btn[aria-selected='true'] {
+    background: var(--surface);
+    color: var(--fg);
+    box-shadow: var(--shadow-sm);
+  }
+</style>
+
+<script>
+  class QaTabs extends HTMLElement {
+    connectedCallback() {
+      const buttons = [...this.querySelectorAll<HTMLButtonElement>(':scope > [role=tablist] > button')];
+      const panels = [...this.querySelectorAll<HTMLElement>(':scope > .tab-panels > [data-tab]')];
+      const select = (i: number) => {
+        buttons.forEach((b, j) => b.setAttribute('aria-selected', String(i === j)));
+        panels.forEach((p, j) => (p.hidden = i !== j));
+      };
+      buttons.forEach((b, i) => b.addEventListener('click', () => select(i)));
+      select(0);
+    }
+  }
+  customElements.define('qa-tabs', QaTabs);
+</script>

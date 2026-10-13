@@ -1,0 +1,414 @@
+---
+title: Exploratory Testing
+description: Learn to explore an app like a professional tester, with charters, time-boxed sessions, heuristics and tours, good notes and a clear debrief, then run a real session on a buggy parking app.
+order: 6
+level: beginner
+minutes: { short: 10, long: 20 }
+platform: both
+tags: [exploratory testing, charters, heuristics, session-based testing]
+---
+
+import CharterBuilder from '@/components/demos/tutorial-stories/CharterBuilder';
+import ExploratorySession from '@/components/demos/tutorial-stories/ExploratorySession';
+
+It's Thursday morning. A new build of **ParkEasy**, a street-parking app, has just landed on TestFlight. Your lead writes: "The new payment flow goes to the stores on Monday. The test cases all pass, but I don't trust it yet. Can you spend 90 minutes exploring it and debrief me at 4?"
+
+No script. No list of steps. Just you, the app and 90 minutes. Some testers love this moment, others freeze. This lesson gives you a method, so you'll be in the first group.
+
+## What exploratory testing is
+
+<Term id="exploratory-testing" /> means **learning about the app, designing tests and running them at the same time**. Each thing you try teaches you something, and what you learn decides what you try next.
+
+<Callout type="example" title="Think of a detective">
+
+A detective doesn't follow a fixed checklist. They look at the scene, notice something odd, follow that lead, and adjust. But they still work methodically: they know what case they're solving, take notes and report back. Exploratory testing is detective work for apps.
+
+</Callout>
+
+It's **not** random clicking. Random clicking has no goal, no notes and nothing to report. Exploration has a mission (a <Term id="test-charter">charter</Term>), a time limit and a debrief.
+
+<Short>
+
+## The essentials
+
+### Exploratory vs ad-hoc vs scripted
+
+<Compare>
+<Do title="Exploratory">
+
+"For 60 minutes, explore checkout with boundary amounts and double taps to discover how payments can go wrong." Notes taken, findings reported.
+
+</Do>
+<Dont title="Random clicking">
+
+"I tapped around for a while. Looks fine." No goal, no notes, no idea what was covered.
+
+</Dont>
+</Compare>
+
+### Charters: your mission in one sentence
+
+A popular formula:
+
+> **Explore** &lt;target&gt; **with** &lt;resources&gt; **to discover** &lt;information&gt;.
+
+For example: *Explore the parking payment flow with boundary durations and repeated taps to discover how ParkEasy handles money.*
+
+### A session in three steps
+
+<Steps>
+
+1. **Charter and time box.** Pick one charter and a fixed time, often 60 to 90 minutes.
+2. **Explore and take notes.** Write down what you tested, bugs, questions and ideas, with rough times.
+3. **Debrief.** Tell your lead what you covered, what you found, what blocked you and what's left.
+
+</Steps>
+
+### Heuristics: ideas for what to try
+
+- **Goldilocks**: too small, too big, just right (0, 1, the maximum, more than the maximum, very long text).
+- **Interruptions**: a call, lock screen, rotation, switching apps.
+- **Back button tour**: press Back on every screen, especially after something is saved or paid.
+- **Empty states**: open every screen before you have any data.
+- **Money tour**: follow the features people pay for, and tap the important buttons twice.
+
+### What to note
+
+| Note | Example |
+| --- | --- |
+| What you tested | "Duration stepper, all values 0 to 4 h" |
+| Bugs | "Double tap on Pay charged €3.00 twice" |
+| Questions | "Is 4 h the max in every zone?" |
+| Ideas | "Next session: no network during payment" |
+
+Switch to **Detailed** for session-based test management, more tours, pairing, how exploratory fits with scripted tests, and how to report your session.
+
+</Short>
+
+<Long>
+
+## What it is and what it isn't
+
+Every tester explores a little. The difference is whether you do it **deliberately**. Here's how three common ways of testing compare:
+
+| | Scripted testing | Exploratory testing | <Term id="ad-hoc-testing">Ad-hoc testing</Term> |
+| --- | --- | --- | --- |
+| **Plan** | Written <Term id="test-case">test cases</Term> | A charter and a time box | None |
+| **Design** | Before running | While running | Not really |
+| **Notes** | Pass/fail per case | Coverage, bugs, questions, ideas | Rarely |
+| **Best at** | Repeatable checks, known rules | Finding the unknown | A quick look |
+
+<Callout type="note" title="People use these words differently">
+
+Some teams call any unscripted testing "ad-hoc", others use "ad-hoc" and "exploratory" as synonyms. The most common usage, and the one in this lesson: **exploratory testing is structured** (charter, time box, notes, debrief), **ad-hoc testing isn't**.
+
+</Callout>
+
+### When exploratory testing shines
+
+- **New features** before anyone has written test cases, like the brand-new ParkEasy payment flow.
+- **Unclear or missing requirements**, when you learn the product by using it (see [Testing Without Documentation](/tutorials/testing-without-documentation)).
+- **Risky areas** like payments, sign-in and data that users can lose.
+- **After a big change**, to find side effects that the <Term id="regression-testing">regression</Term> cases don't look for.
+- **When the test cases all pass** but something still feels off. Scripts only find what someone thought of in advance.
+
+It's less suitable as your **only** approach for rules that must be re-checked identically on every release (like "an account locks after 5 failed sign-ins"), for compliance evidence, or for things a machine checks better (thousands of users at once).
+
+## Charters
+
+A <Term id="test-charter" /> is the mission for one session. It keeps you focused without telling you every step. The most widely used template comes from Elisabeth Hendrickson's book *Explore It!*:
+
+> **Explore** &lt;target&gt; **with** &lt;resources&gt; **to discover** &lt;information&gt;.
+
+| Part | Question | Example |
+| --- | --- | --- |
+| **Target** | Where will you explore? | the parking payment flow |
+| **Resources** | With what tools, data, conditions or heuristics? | boundary durations and repeated taps |
+| **Information** | What do you want to learn? | how ParkEasy handles money |
+
+<Compare>
+<Do title="Focused charter">
+
+Explore **order tracking** with **airplane mode and a slow 3G connection** to discover **how status updates recover after losing signal**.
+
+</Do>
+<Dont title="Too broad, too vague">
+
+Explore **the app** with **a phone** to discover **bugs**.
+
+</Dont>
+</Compare>
+
+A good charter is big enough for a whole session and small enough to finish. If you're done in 10 minutes, it was too narrow. If you'd need a week, split it. Try building a few:
+
+<CharterBuilder client:visible />
+
+<Callout type="tip" title="Where charters come from">
+
+Look at the risks: what's new, what's complicated, what costs money, what broke last time, what users complain about. Each risk becomes a charter. Charters can also come from <Term id="acceptance-criteria" />, recent bug reports, app store reviews and your own "that looked odd" notes from earlier sessions.
+
+</Callout>
+
+## Session-based test management
+
+Exploration is easy to start and hard to account for. "I tested for three days" tells your lead nothing. **Session-based test management** (SBTM), created by Jonathan and James Bach, fixes that by cutting exploration into measurable chunks.
+
+<Steps>
+
+1. **One charter per session.** You can note other ideas, but you don't chase them now. They become future charters.
+2. **A time box.** Sessions are uninterrupted, typically 60 to 120 minutes, with 90 a popular default. Turn off chat. Short sessions (around 45 minutes) are fine for small charters.
+3. **A session sheet.** Charter, tester, start time, duration, the areas covered, bugs, issues (things that blocked or slowed you) and notes.
+4. **A rough time split.** Roughly how much time went into actually testing, investigating bugs and setting up (installing builds, creating test data). If setup takes 70%, that's a problem worth raising.
+5. **A debrief.** A short conversation with your lead, right after the session, while it's fresh.
+
+</Steps>
+
+### The debrief: PROOF
+
+A classic debrief checklist from SBTM is **PROOF**:
+
+| Letter | Ask yourself | ParkEasy example |
+| --- | --- | --- |
+| **P**ast | What happened during the session? | Explored payment with all durations and repeated taps |
+| **R**esults | What did I find? | 3 bugs: €0 parking, double charge on double tap, Back after paying shows Pay again |
+| **O**bstacles | What got in the way? | Wallet ran empty, needed a reset |
+| **O**utlook | What still needs doing? | Payment with no network; zones with a 2-hour maximum |
+| **F**eelings | How do I feel about this area? | Nervous about payments; would not ship Monday as is |
+
+"Feelings" may sound soft, but a tester's gut feeling about risk is real information. Say it, and back it with what you saw.
+
+## Heuristics and tours
+
+A **heuristic** is a rule of thumb: a quick way to come up with ideas that are often useful but not guaranteed. Experienced testers carry dozens in their head. Here are the ones beginners get the most out of.
+
+### SFDIPOT: a map of what to look at
+
+Part of James Bach's Heuristic Test Strategy Model, often remembered as "San Francisco Depot". Each letter is a different angle on the same app:
+
+| Letter | Look at | ParkEasy idea |
+| --- | --- | --- |
+| **S**tructure | What it's made of | App, wallet service, map, push notifications |
+| **F**unction | What it does | Start, extend and stop parking |
+| **D**ata | What it processes | Zone codes, plates, durations, money |
+| **I**nterfaces | How it connects | Payment API, the OS share sheet, other apps |
+| **P**latform | What it depends on | iOS and Android versions, location services |
+| **O**perations | How people really use it | In the rain, one-handed, in a hurry |
+| **T**ime | When things happen | Session expires at midnight, <Term id="time-zone">time zones</Term>, slow networks |
+
+### Quick heuristics and tours
+
+A **tour** is a themed walk through the app, popularised by James Whittaker. Each one gives your session a theme:
+
+| Heuristic or tour | What you do |
+| --- | --- |
+| **CRUD** | Create, Read, Update, Delete every kind of data. Then read it again from other screens. |
+| **Goldilocks** | Too small, too big, just right: 0, 1, the max, max + 1, empty, 500 characters, emoji. Classic <Term id="boundary-value-analysis" /> and <Term id="edge-case">edge cases</Term>. |
+| **Interruptions** | Calls, notifications, lock screen, <Term id="orientation">rotation</Term>, app switching, low battery mode. See <Term id="interruption" /> and [Interruptions](/mobile/interruptions). |
+| **Back button tour** | Press Back (system and in-app) on every screen, especially after saving, paying or deleting. |
+| **Money tour** | Follow the features customers pay for or that sell the app. Bugs there cost the most. |
+| **Empty and full** | Every screen with no data (<Term id="empty-state" />) and with lots of data. |
+| **Double tap** | Tap important buttons twice, fast. Looks for a <Term id="double-submit" />. |
+| **Long text** | Long names, long translations, large system font. Watch for <Term id="truncation" /> and overflow. |
+| **Network** | Airplane mode, slow 3G, switching Wi-Fi to mobile data mid-action. See [Network Conditions](/mobile/network-conditions). |
+
+You don't need all of them in one session. Pick two or three that match your charter. Experienced testers combine heuristics with <Term id="error-guessing" />: "This kind of feature usually breaks here."
+
+## Taking notes
+
+Notes turn an exploration into evidence. Keep them short, timestamped and in four buckets:
+
+- **Tested**: what you covered and how ("Duration: 0, 15, 60, 240, tapped + at 240").
+- **Bugs**: what went wrong, enough to reproduce later.
+- **Questions**: things you're unsure are bugs ("Should Back after paying go to Sessions?").
+- **Ideas**: things to try in a future session ("Payment with no network").
+
+```text
+SESSION: ParkEasy payment, 90 min, Thu 10:00
+CHARTER: Explore the parking payment flow with boundary durations and
+         repeated taps to discover how ParkEasy handles money.
+
+10:04 TESTED  Duration stepper: 15 min up to 4 h, + disabled at 4 h. OK.
+10:09 BUG     - goes down to 0 min, Continue works, "Pay €0.00" accepted.
+10:15 QUESTION Is 4 h the maximum in every zone, or does it depend on the sign?
+10:21 BUG     Double tap on Pay: wallet −€6.00, two identical sessions.
+10:33 IDEA    Next session: pay in airplane mode, kill app during "Paying…".
+10:40 TESTED  Back from Confirm returns to the form, values kept. OK.
+10:41 BUG     Back after "You're parked" shows Pay again. Paid twice.
+```
+
+<Callout type="tip" title="Record while you go">
+
+Screen recording during the whole session costs nothing and saves you when a bug is hard to reproduce. On iOS use the Control Center screen recording; on Android the built-in screen recorder (`adb shell screenrecord` also works, but each recording is capped at a few minutes, so it suits short clips). Then turn the bug notes into proper [bug reports](/tutorials/writing-bug-reports).
+
+</Callout>
+
+## Pairing
+
+Exploring in pairs often finds more than two people alone. One person **drives** (uses the device), the other **navigates** (watches, takes notes, suggests "now try rotating"). Swap every 20 minutes or so.
+
+- **Tester + tester**: great for learning heuristics from each other.
+- **Tester + developer**: the developer sees how real users break things and often knows exactly where the weak spots are.
+- **Tester + product owner or designer**: quick answers to "Is this a bug or intended?"
+
+## How exploratory fits with scripted testing
+
+They're partners, not rivals. Scripted tests protect what you already know; exploration discovers what you don't.
+
+<Steps>
+
+1. **Explore a new feature** to learn it and find the first bugs.
+2. **Turn the important findings into test cases** (for example "Pay is disabled while paying") and add them to the regression suite.
+3. **Run the scripted cases** on every release, by hand or automated.
+4. **Keep exploring** around changes and risky areas, because the scripts will never cover everything.
+
+</Steps>
+
+Many teams run their scripted checks first (a quick <Term id="smoke-testing">smoke test</Term> to make sure the build is alive) and spend the rest of the time on charters.
+
+## Reporting what you found
+
+Your lead doesn't want a diary. They want to decide something. A good session report answers:
+
+- **What did you cover, and what didn't you?** (Coverage is as important as bugs.)
+- **What did you find?** Bugs with links to their reports, sorted by importance.
+- **What questions need answers?** Who should answer them?
+- **What's your recommendation?** "I'd ship" or "I wouldn't ship Monday, because…"
+- **What's next?** Follow-up charters for the gaps.
+
+<Compare>
+<Do title="Useful debrief">
+
+"Covered the full payment flow and all durations. 3 bugs, two of them charge customers twice (BUG-412, BUG-413). Didn't cover offline payment yet. I'd hold the release until 412 and 413 are fixed, and I'd like one more session on offline payment."
+
+</Do>
+<Dont title="Diary">
+
+"I tested ParkEasy all morning. Found some stuff. Seems mostly OK."
+
+</Dont>
+</Compare>
+
+## Common mistakes
+
+<Callout type="bug" title="Watch out for these">
+
+- **No charter.** Without a goal you wander around familiar screens and miss the risky ones.
+- **Chasing every rabbit.** You find something interesting outside the charter and spend an hour on it. Note it as an idea and come back to it in another session.
+- **No notes.** You'll forget half of what you did by the debrief, and you can't prove coverage.
+- **Only the happy path.** Exploration is the perfect time for the weird stuff: Back, rotation, empty, huge, twice, offline.
+- **Only one device.** Swap between iOS and Android, a small phone and a big one, light and <Term id="dark-mode">dark mode</Term>.
+- **Calling it "ad-hoc" in the report.** Your work had a method. Report the charter, coverage and findings, and people will trust it.
+
+</Callout>
+
+</Long>
+
+## Practice: your first exploratory session
+
+Time to explore for real. **ParkEasy** has six hidden bugs that the happy path never shows. Pick a charter, start the 10-minute time box, use the app and the device buttons (System back, Rotate) and write notes as you go. When you end the session, the debrief shows which bugs you triggered, which you missed, and generates your session report.
+
+<ExploratorySession client:visible />
+
+<Callout type="note" title="Why most people miss some">
+
+Each charter makes some bugs likely and others unlikely. That's not a flaw: it's why teams run **several** sessions with different charters, ideally by different people. Try a second charter and compare.
+
+</Callout>
+
+## Before you start a session
+
+<Checklist
+  title="Exploratory session checklist"
+  storageKey="exploratory-testing"
+  items={[
+    "I have one charter: target, resources and the information I want",
+    "I've set a time box and turned off chat and notifications",
+    "The build, test accounts and test data are ready",
+    "Screen recording is on",
+    "I've picked two or three heuristics or tours that fit the charter",
+    "My notes have four buckets: tested, bugs, questions, ideas",
+    "I tried Back, rotation, interruptions, empty states and long text where they make sense",
+    "Ideas outside the charter are noted for later, not chased now",
+    "Bugs are turned into bug reports after the session",
+    "I debriefed: covered, found, obstacles, what's left and my gut feeling",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "What best describes exploratory testing?",
+      options: [
+        "Clicking around randomly until something breaks",
+        "Learning, designing tests and running them at the same time, guided by a charter",
+        "Running written test cases faster than usual",
+        "Testing without taking any notes",
+      ],
+      answer: 1,
+      explain: "Exploration is simultaneous learning, test design and execution, with a mission, a time box, notes and a debrief. Random clicking has none of those.",
+    },
+    {
+      q: "Which charter is the strongest?",
+      options: [
+        "Explore the app to find bugs",
+        "Explore the Submit button color",
+        "Explore order tracking with airplane mode and slow 3G to discover how status updates recover",
+        "Explore everything on all devices",
+      ],
+      answer: 2,
+      explain: "It names a focused target, concrete resources (network conditions) and the information the team needs.",
+    },
+    {
+      q: "You're exploring payments and notice the profile photo upload looks broken. What should you do?",
+      options: [
+        "Switch to the photo upload for the rest of the session",
+        "Ignore it completely",
+        "Write it down as a bug or idea and continue with your charter",
+        "End the session",
+      ],
+      answer: 2,
+      explain: "Stay on charter, but never lose a finding. Note it (and report it if it's clearly a bug), then plan a separate session for it.",
+    },
+    {
+      q: "The Goldilocks heuristic means trying values that are…",
+      options: ["Only valid and typical", "Too small, too big and just right", "Picked at random", "Copied from production"],
+      answer: 1,
+      explain: "Too small, too big, just right: 0, 1, the maximum and beyond, empty and very long. It's boundary thinking turned into a habit.",
+    },
+    {
+      q: "What does the debrief after a session mainly give your lead?",
+      options: [
+        "A list of every tap you made",
+        "What was covered, what was found, what blocked you and what's left",
+        "Your test cases for next year",
+        "Nothing; debriefs are optional",
+      ],
+      answer: 1,
+      explain: "The debrief (for example PROOF: past, results, obstacles, outlook, feelings) turns exploration into information the team can decide on.",
+    },
+    {
+      q: "How do exploratory and scripted testing relate?",
+      options: [
+        "Exploratory replaces scripted testing",
+        "Scripted testing makes exploration unnecessary",
+        "They complement each other: important findings from exploration become scripted regression cases",
+        "They must never be used on the same feature",
+      ],
+      answer: 2,
+      explain: "Scripts re-check what you already know; exploration finds what nobody thought of. The best findings become new scripted cases.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Exploratory testing is learning, designing and running tests at the same time. It's structured, not random clicking.
+- A charter gives each session a mission: **Explore** target **with** resources **to discover** information.
+- Sessions are time-boxed (often 60 to 120 minutes), with notes on what you tested, bugs, questions and ideas.
+- Heuristics and tours give you ideas: Goldilocks, CRUD, interruptions, back button, money tour, empty states, double tap, long text.
+- Debrief right after the session: coverage, findings, obstacles, what's left and your gut feeling.
+- Exploration and scripted tests are partners: turn important findings into regression cases, and keep exploring the risky parts.
+
+</KeyTakeaways>

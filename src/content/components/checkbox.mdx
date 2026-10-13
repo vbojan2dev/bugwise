@@ -1,0 +1,443 @@
+---
+title: Checkbox
+description: The little box you tick to agree, pick several items or select a whole list at once. Learn its states (including "mixed"), when it beats a switch or a radio button, and the consent and keyboard bugs testers find in it.
+category: input
+aka: [Check box, Tick box]
+platforms: [ios, android, web]
+minutes: 30
+order: 6
+---
+
+import Anatomy from '@/components/demos/checkbox/Anatomy';
+import VariantsGallery from '@/components/demos/checkbox/VariantsGallery';
+import SelectAllPlayground from '@/components/demos/checkbox/SelectAllPlayground';
+import { HitArea, ConsentForm, LongLabel, NotificationForm } from '@/components/demos/checkbox/Examples';
+import { BuggySignUp } from '@/components/demos/checkbox/BuggySignUp';
+
+"I agree to the Terms." "Remember me." "Leave at the door." "Select all." You tick boxes like these dozens of times a week, usually without thinking. That's exactly why checkbox bugs are so sneaky: the box you can't tap, the "Select all" that lies about how many emails you're deleting, the marketing consent that was ticked *for* you.
+
+A checkbox is also where UI testing meets **legal** testing. Let's learn both sides.
+
+## What is a checkbox?
+
+A checkbox is a small square the user **ticks to say "yes, include this"**. Each checkbox is **independent**: ticking one doesn't untick the others. And, unlike a <Term id="toggle-switch">toggle switch</Term>, ticking a checkbox usually **does nothing on its own**. The choice is applied when the user presses a button like **Continue**, **Save** or **Pay**.
+
+You'll see checkboxes used for:
+
+- **A single yes/no in a form**: *I agree to the Terms*, *Remember me*, *Billing address is the same as delivery*.
+- **Picking several items from a list**: cuisines in a food app filter, newsletter topics, pizza toppings.
+- **Bulk actions**: ticking emails, photos or files, then pressing **Archive** or **Delete**.
+- **Consent**: *Send me offers by email*, *Share my data with partners*.
+
+### Anatomy
+
+<Anatomy />
+
+### The states
+
+A checkbox has more states than "ticked or not". Each one needs testing:
+
+| State | Looks like | Meaning |
+| --- | --- | --- |
+| **Unchecked** | Empty box | Not selected |
+| **Checked** | Filled box with a tick | Selected |
+| **Mixed** (indeterminate) | Filled box with a dash | Parent of a list where **some** children are checked |
+| **Disabled** | Faded, keeps its tick or not | Can't be changed right now |
+| **Error** | Red box + error text | A required box was left unchecked |
+| **Focused** | Ring or highlight around it | Keyboard focus is here (web, external keyboards) |
+
+<Callout type="info" title="Mixed is a display state, not a value">
+You can't really "tick" mixed. It only appears on a **parent** checkbox ("Select all") when some of the items below are ticked. Screen readers announce it as "mixed" or "partially checked".
+
+<DevNote>On the web it's set with JavaScript (`input.indeterminate = true`).</DevNote>
+</Callout>
+
+### Checkbox vs toggle switch vs radio button
+
+The fastest way to spot a wrong component is to ask two questions: **can the user pick more than one?** and **does it apply immediately?**
+
+| Component | How many? | When it applies | Example |
+| --- | --- | --- | --- |
+| **Checkbox** | Zero, one or many | **On Submit / Save** | Toppings, "I agree to the Terms" |
+| **Toggle switch** | One setting, on/off | **Immediately** | Dark theme, Wi-Fi |
+| **Radio buttons** | **Exactly one** of a few | Usually on Submit | Standard / Express delivery |
+| **Segmented control** | Exactly one of 2–5 | Immediately | Day / Week / Month |
+
+See also the [radio button](/components/radio-button), [toggle switch](/components/toggle-switch) and [segmented control](/components/segmented-control) pages.
+
+## Designs & variants
+
+The idea is the same everywhere, but the platforms disagree on what it looks like. iOS doesn't even have one.
+
+<VariantsGallery client:visible />
+
+<Callout type="tip" title="iOS has no checkbox">
+iPhone apps show multi-select with **checkmarks in a list** (like the gallery above), with circular selection marks in edit mode (Mail, Photos), or with a custom-drawn box. If your iOS app has square checkboxes, they're custom, so test them extra carefully with VoiceOver.
+
+<DevNote>UIKit has no checkbox control, and SwiftUI's checkbox style exists only on macOS.</DevNote>
+</Callout>
+
+### "Select all" and the mixed state
+
+A parent checkbox that controls a list is one of the most bug-prone patterns in any app. The rule is simple, and it must hold after **every** click:
+
+<SelectAllPlayground client:visible />
+
+What happens when you click a parent that shows a dash? Most apps **select all**, some **clear all**. Both are fine if the behavior is consistent and matches the spec. What's never fine: the parent saying "all" when it isn't, or a count that disagrees with the ticks.
+
+## When to use it
+
+A checkbox is the right choice when:
+
+- The user can pick **any number** of options, including none: *Wi-Fi, Parking, Pool*.
+- There's **one optional yes/no** in a form: *Remember me*, *Send me a copy*.
+- The user must **actively agree** to something before continuing: *I accept the Terms*.
+- The choice is applied **later**, when the user presses a button.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Checkboxes in a form with Save">
+
+<div class="not-prose demo-screen my-3"><NotificationForm /></div>
+
+Nothing changes until **Save preferences**. That's what checkboxes communicate.
+
+</Do>
+<Dont title="Switches in a form with Save">
+
+<div class="not-prose demo-screen my-3"><NotificationForm asSwitch /></div>
+
+Switches promise an instant effect. Here users can't tell if the change already happened or needs Save.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="The whole row is the hit area">
+
+<div class="not-prose demo-screen my-3"><HitArea good /></div>
+
+Tapping the label ticks the box. Easy on a phone, and required for accessibility.
+
+</Do>
+<Dont title="Only the tiny box reacts">
+
+<div class="not-prose demo-screen my-3"><HitArea /></div>
+
+A 14 px target on a touch screen. Users tap the text, nothing happens, and they think the form is broken.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Marketing consent left unticked">
+
+<div class="not-prose demo-screen my-3"><ConsentForm /></div>
+
+The user has to opt in actively. Terms and marketing are separate boxes.
+
+</Do>
+<Dont title="Marketing consent pre-ticked">
+
+<div class="not-prose demo-screen my-3"><ConsentForm prechecked /></div>
+
+The user "agreed" to offers without doing anything. In many countries this doesn't count as consent.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Long label with a hanging indent">
+
+<div class="not-prose demo-screen my-3"><LongLabel good /></div>
+
+The box lines up with the first line and the text wraps under itself.
+
+</Do>
+<Dont title="Text wraps under the box">
+
+<div class="not-prose demo-screen my-3"><LongLabel /></div>
+
+Hard to scan, and with large text it's unclear which box belongs to which sentence.
+
+</Dont>
+</Compare>
+
+Also avoid checkboxes when the user must pick **exactly one** option (use radio buttons) and for a **single setting that applies immediately** (use a switch).
+
+<Callout type="warning" title="Consent checkboxes are a legal topic">
+Under the EU's GDPR, consent has to be an active choice: the regulation's Recital 32 says that silence, pre-ticked boxes or inactivity should not count as consent, and the EU Court of Justice confirmed this for pre-ticked boxes (the *Planet49* case, 2019). Similar rules exist in other countries, and they often require separate consent for separate purposes (for example, not bundling marketing into "I accept the Terms"). You're a tester, not a lawyer: if a consent box is pre-ticked or bundled, **report it** and let product and legal decide. See also <Term id="consent-banner">consent banners</Term>.
+</Callout>
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Label not clickable** | Tapping the text does nothing, only the tiny box reacts | Medium |
+| 2 | **"Select all" out of sync** | Parent stays ticked after you untick one item, never shows mixed, or the count is wrong | High (if it drives a bulk delete) |
+| 3 | **Pre-ticked consent** | Marketing or data-sharing boxes are ticked by default | High (legal risk) |
+| 4 | **Not keyboard operable** | A custom checkbox can be focused but <kbd>Space</kbd> doesn't toggle it, or it can't be focused at all | High (for affected users) |
+| 5 | **Required box not enforced** | The form submits without "I agree", or only the browser checks it and the server accepts the request anyway | High |
+| 6 | **Error not explained** | A required box turns red with no text, or the error isn't announced to screen readers | Medium |
+| 7 | **State lost** | Ticks disappear after going Back, rotating, or a validation error elsewhere on the form | Medium |
+| 8 | **Disabled but clickable** | A greyed-out box can still be toggled by tapping or with the keyboard | Medium |
+| 9 | **Long labels break** | Text wraps under the box, gets truncated, or overlaps at large font sizes | Low–Medium |
+| 10 | **Silent screen reader** | VoiceOver / TalkBack doesn't say "checkbox", "checked" or the label | High (for affected users) |
+
+<Callout type="bug" title="Why bug #5 matters">
+Hiding the Continue button until the box is ticked, or using the browser's `required` attribute, is only a UI check. Anyone can send the request directly with <Term id="devtools">DevTools</Term> or a proxy. If the server doesn't check that the Terms were accepted, you can end up with accounts that never agreed to anything. When you can, ask the developer how the server validates it, or try the request without the field. This is classic <Term id="input-validation" /> on both sides.
+</Callout>
+
+## Find the bug
+
+This travel site's sign-up flow has **six checkbox bugs**. Explore it like a tester:
+
+- Click the **text** next to each box, not just the box.
+- Try to continue without ticking anything. Read the screen carefully.
+- On step 2, use **Select all**, then untick one topic. Watch the count.
+- Use only the keyboard: <kbd>Tab</kbd> to each checkbox and press <kbd>Space</kbd>.
+- Go to step 2 and press **Back**. Is everything as you left it?
+
+<BugHunt
+  title="Travel site sign-up"
+  bugs={[
+    {
+      title: 'Clicking the Terms text does nothing',
+      hint: 'Click the words "I agree to the Terms…" instead of the box.',
+      detail: 'Only the tiny 14 px box reacts. The text is a plain <code>&lt;span&gt;</code>, not a <code>&lt;label&gt;</code> connected to the checkbox. Compare it with the marketing checkbox below it, where the text works. Expected: clicking the label toggles the box, and the touch target is large enough to hit easily.',
+    },
+    {
+      title: 'Marketing consent is pre-ticked',
+      hint: 'Look at the second checkbox before touching anything, then check the summary at the end.',
+      detail: '"Send me travel deals and partner offers" starts <strong>ticked</strong>, and the final summary says <em>Marketing emails: Yes</em> although the user never chose that. Expected: consent boxes are unticked by default, so the user opts in actively. Under GDPR a pre-ticked box is not valid consent.',
+    },
+    {
+      title: 'Topic checkboxes ignore the Space key',
+      hint: 'On step 2, press Tab until a topic is focused, then press Space.',
+      detail: 'The rows are focusable <code>&lt;div role="checkbox"&gt;</code> elements with only a click handler. <kbd>Space</kbd> does nothing (the page may scroll instead), so keyboard and switch-control users can’t pick topics. Expected: <kbd>Space</kbd> toggles a focused checkbox, as it does for a native <code>&lt;input type="checkbox"&gt;</code>.',
+    },
+    {
+      title: '"Select all" doesn’t update when you untick one topic',
+      hint: 'Tick Select all, then untick "Car rental". Look at the parent and the count.',
+      detail: 'The parent stays fully ticked and still says <strong>5 selected</strong>, although only 4 are. It never shows the mixed (dash) state. Ticking all five one by one also leaves the parent unticked. Expected: the parent and the count are always calculated from the children: none = unchecked, some = mixed, all = checked.',
+    },
+    {
+      title: 'Terms error has no message',
+      hint: 'Enter a valid email, leave the Terms unticked and press Continue.',
+      detail: 'Nothing happens except a thin red outline around the box. There is no text and nothing is announced, so screen reader users (and many sighted users) don’t know why they’re stuck. The email error, by contrast, shows a clear message. Expected: a visible error text like "Accept the Terms to continue", connected to the checkbox and announced.',
+    },
+    {
+      title: 'Going Back resets the checkboxes on step 1',
+      hint: 'Tick Terms, untick marketing, continue, then press Back.',
+      detail: 'The email is kept, but Terms is unticked again and marketing is ticked again. A user who presses Continue a second time without noticing is now subscribed to marketing. Expected: all choices are kept when navigating back and forth (<em>state persistence</em>).',
+    },
+  ]}
+>
+  <BuggySignUp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #4?">
+
+**Title:** Sign-up step 2: "Select all" stays checked and shows "5 selected" after unticking a topic
+
+**Steps:** 1. Complete step 1 and continue. 2. Tick **Select all**. 3. Untick **Car rental**.
+
+**Expected:** Parent shows the mixed state (dash) and the count reads "4 selected".
+**Actual:** Parent stays fully ticked and the count still reads "5 selected". The summary at the end correctly lists 4 topics.
+
+**Severity:** Medium here (wrong count). On a screen where "Select all" drives a **bulk delete**, the same bug would be High.
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Checkbox test checklist"
+  storageKey="checkbox"
+  items={[
+    'Default states match the spec, and consent or marketing boxes are unticked by default',
+    'Tapping the box AND the label toggles it, and the touch target is at least 44×44 pt / 48×48 dp',
+    'Each checkbox is independent (ticking one does not change another, unless it is a parent)',
+    'Parent "Select all" shows unchecked / mixed / checked correctly after every single change',
+    'Counts and bulk actions ("Delete 3 items") always match the ticked items',
+    'Required boxes block submission with a clear, visible error text that is announced',
+    'The server rejects a request without the required consent (not only the UI)',
+    'Ticks survive Back navigation, rotation, app backgrounding and validation errors elsewhere',
+    'Disabled boxes look disabled and cannot be toggled by touch or keyboard',
+    'Long labels wrap with the box aligned to the first line, also at the largest text size and in other languages',
+    'Checked, unchecked and mixed are distinguishable without color, in light and dark mode',
+    'Web: Tab reaches each checkbox, Space toggles it, and the focus ring is visible',
+    'Screen reader announces label, "checkbox" and the state (checked / not checked / mixed)',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-CB-001',
+      title: 'Account cannot be created without accepting the Terms',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Open the sign-up page', 'Enter a valid email', 'Leave "I agree to the Terms" unticked', 'Press Continue'],
+      expected: 'The user stays on the page. An error text "Accept the Terms to continue" appears next to the checkbox and is announced by the screen reader. No account is created.',
+    },
+    {
+      id: 'TC-CB-002',
+      title: 'Server rejects sign-up without Terms acceptance',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Proxy tool or DevTools available'],
+      steps: ['Fill in the form and tick the Terms', 'Intercept the sign-up request', 'Remove or set the termsAccepted field to false', 'Send the request'],
+      data: 'termsAccepted: false',
+      expected: 'The API responds with a 4xx error and no account is created.',
+    },
+    {
+      id: 'TC-CB-003',
+      title: 'Marketing consent is off by default and respected',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open the sign-up page', 'Check the marketing checkbox without touching it', 'Complete sign-up without ticking it', 'Open the account\'s email preferences'],
+      expected: 'The marketing box is unticked on load, and the account shows marketing emails as off.',
+    },
+    {
+      id: 'TC-CB-004',
+      title: 'Parent checkbox shows mixed state',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Inbox has 5 emails'],
+      steps: ['Tick "Select all"', 'Untick one email'],
+      expected: 'The parent shows a dash (mixed), the counter reads "4 selected", and Archive acts on exactly 4 emails.',
+    },
+    {
+      id: 'TC-CB-005',
+      title: 'Ticking every item individually checks the parent',
+      priority: 'low',
+      type: 'edge',
+      preconditions: ['Inbox has 5 emails, none ticked'],
+      steps: ['Tick all 5 emails one by one'],
+      expected: 'The parent becomes fully checked and the counter reads "5 selected".',
+    },
+    {
+      id: 'TC-CB-006',
+      title: 'Label tap toggles the checkbox',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Tap the text "Remember me" (not the box)', 'Tap it again'],
+      expected: 'The box is ticked after the first tap and unticked after the second.',
+    },
+    {
+      id: 'TC-CB-007',
+      title: 'Checkbox can be operated with the keyboard',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Web, desktop browser'],
+      steps: ['Press Tab until the checkbox is focused', 'Press Space twice'],
+      expected: 'A visible focus ring appears. Space ticks and then unticks the box. The page does not scroll.',
+    },
+    {
+      id: 'TC-CB-008',
+      title: 'Ticks are kept after navigating back',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Tick Terms and untick marketing on step 1', 'Continue to step 2', 'Press Back (in-app and with the browser / system back)'],
+      expected: 'Step 1 shows exactly the choices the user made: Terms ticked, marketing unticked.',
+    },
+  ]}
+/>
+
+## Accessibility
+
+- **Use the real thing if you can.** A native `<input type="checkbox">` gets keyboard support, form submission and screen reader announcements for free. Inspect custom checkboxes with <Term id="devtools" />. See <Term id="aria" />.
+  <DevNote>Custom checkboxes need `role="checkbox"`, `aria-checked` (`true`, `false` or `mixed`), `tabindex="0"` and a <kbd>Space</kbd> key handler.</DevNote>
+- **Connect the label.** The label makes the text clickable *and* gives the checkbox its spoken name. On mobile, make the whole row the <Term id="touch-target">touch target</Term>: 44×44 pt on iOS, 48×48 dp on Android.
+  <DevNote>`<label for>` (or wrapping the input in a `<label>`).</DevNote>
+- **Group related boxes.** A set like "Email me about" belongs in a group, so <Term id="screen-reader">screen readers</Term> read the question before the options.
+  <DevNote>A `<fieldset>` with a `<legend>`.</DevNote>
+- **Announce errors.** A required box needs a visible error text, and the error should be announced. A red outline alone fails users who can't see it.
+  <DevNote>Link the error with `aria-describedby`; announce it, for example, with `role="alert"`.</DevNote>
+- **Not color alone.** The tick or dash shape must show the state. The box border needs at least **3:1** contrast against the background (<Term id="wcag" />).
+- **Keyboard (web):** <kbd>Tab</kbd> moves between checkboxes (each one is its own tab stop, unlike radio buttons), and <kbd>Space</kbd> toggles. <kbd>Enter</kbd> usually submits the form instead.
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- **No native checkbox.** Multi-select uses checkmarks in lists, selection circles in edit mode, or custom-drawn boxes.
+- For custom boxes, VoiceOver should say something like "Leave at the door, button, selected" or "checkbox, checked" depending on how it's built. Silence or just "button" is a bug.
+- Test at the largest **Dynamic Type** sizes: long consent labels must wrap, not truncate.
+- Check that the whole row is tappable, not just the drawn box.
+
+</Tab>
+<Tab>
+
+- Material 3 checkboxes have an **18 dp box** inside a **48 dp** touch target, and support a **tri-state** (indeterminate) mode.
+  <DevNote>`Checkbox` (Compose) or `CheckBox` (Views).</DevNote>
+- In lists, the whole row is usually tappable. Test tapping the text.
+  <DevNote>Compose `Modifier.toggleable` on the row.</DevNote>
+- TalkBack announces "Checked" / "Not checked" plus the label. Test with **font scale**, **display size** and dark theme.
+- Watch for state lost after **rotation** or process death (Don't keep activities in Developer options helps).
+
+</Tab>
+<Tab>
+
+- Native `<input type="checkbox">` looks different in each browser. Custom ones are very common, so check keyboard and ARIA.
+- The `required` attribute and disabled buttons are **client-side only**. Make sure the server validates consent too.
+- Test the **browser Back button** and a page reload: are ticks restored or reset as the spec says?
+- Check `indeterminate` parents, bulk actions and counts on long, paginated lists ("Select all 50 on this page" vs "all 1,240").
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'In a "Choose your pizza toppings" form with an Add to cart button, which control fits best?',
+      options: ['Radio buttons', 'Checkboxes', 'Toggle switches', 'A segmented control'],
+      answer: 1,
+      explain: 'Users can pick any number of toppings, and the choice applies when they press Add to cart. That is exactly what checkboxes are for.',
+    },
+    {
+      q: 'You tick "Select all" in an inbox, then untick one email. What should the parent checkbox show?',
+      options: ['Checked', 'Unchecked', 'Mixed (a dash)', 'Disabled'],
+      answer: 2,
+      explain: 'Some, but not all, children are checked, so the parent shows the mixed (indeterminate) state.',
+    },
+    {
+      q: 'A sign-up form has "Send me offers by email" ticked by default. What do you do?',
+      options: ['Nothing, users can untick it', 'Report it: consent should be an active opt-in', 'Report it as a cosmetic bug', 'Untick it and move on'],
+      answer: 1,
+      explain: 'Pre-ticked consent boxes are not valid consent under GDPR and similar laws. Report it and let product and legal decide.',
+    },
+    {
+      q: 'A custom checkbox can be focused with Tab, but Space does nothing. Who is affected most?',
+      options: ['Nobody, mouse users can click it', 'Keyboard and switch-control users', 'Only Safari users', 'Users with slow internet'],
+      answer: 1,
+      explain: 'People who can\'t use a mouse or touch screen have no way to tick it. Native checkboxes handle Space automatically.',
+    },
+    {
+      q: 'The Continue button stays disabled until "I agree to the Terms" is ticked. Is that enough?',
+      options: ['Yes, the user can\'t continue', 'No, the server must also reject requests without consent', 'Yes, if the box is red', 'No, the box should be pre-ticked'],
+      answer: 1,
+      explain: 'UI checks can be bypassed with DevTools or a proxy. The server is the real gatekeeper.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Checkboxes are **independent** and usually apply **on Submit**. Exactly one choice → radio buttons. Instant on/off → toggle switch.
+- States to test: **unchecked, checked, mixed, disabled, error, focused**, in light and dark mode.
+- A **"Select all"** parent must always match its children: none = unchecked, some = mixed, all = checked, and counts must agree.
+- The **label is part of the target**. Tapping the text must toggle the box.
+- **Consent boxes must not be pre-ticked**, and required boxes must be enforced on the **server** with a clear, announced error.
+- Custom checkboxes need **Space** to work, plus the right role and state for screen readers.
+
+</KeyTakeaways>

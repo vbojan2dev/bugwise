@@ -1,0 +1,422 @@
+---
+title: iOS vs Android Differences
+description: The same app behaves differently on iPhone and Android. Learn the platform differences in navigation, UI, permissions, notifications and releases, and what each one means for your testing.
+order: 1
+level: beginner
+minutes: { short: 35 }
+platform: mobile
+tags: [mobile, ios, android, platform differences, permissions, notifications]
+---
+
+import PlatformExplorer from '@/components/demos/mobile-platforms/PlatformExplorer';
+import { BuggyPlatformApp } from '@/components/demos/mobile-platforms/BuggyPlatformApp';
+
+A food-delivery startup builds its app on iPhones. Every tester owns an iPhone, every demo runs on an iPhone. Launch day goes well, until the Android reviews arrive: *"Pressing Back closes the whole app."* *"I can't get rid of the menu at the bottom."* *"It asked for notifications and then said they were on, but nothing ever came."*
+
+None of these bugs existed on iOS. They came from **building one design and shipping it to two platforms** that work differently. Your job as a tester is to know those differences well enough to spot them, so let's learn them.
+
+## Why it matters
+
+iOS and Android are not just "two skins" of the same thing. They have different **navigation models**, different **UI components**, different **permission rules**, different **release processes**, and very different **device landscapes**.
+
+- **Users notice.** People expect apps to behave like the rest of their phone. An Android user presses Back dozens of times a day; if your app ignores it, the app feels broken.
+- **The code is often different.** Even cross-platform apps (React Native, Flutter, Kotlin Multiplatform) use platform-specific code for navigation, permissions and notifications. A fix on one platform does not fix the other.
+- **Bugs hide on the platform nobody tests.** Teams usually have a "home" platform. The other one gets less attention and collects bugs.
+
+<Callout type="tip" title="Tester mindset">
+Never write "works on mobile" in a test report. Write **which platform, which device and which OS version** you tested on. "Passed on iPhone 15, iOS 26" says something; "passed on mobile" doesn't.
+</Callout>
+
+## The big differences at a glance
+
+| Area | iOS | Android |
+| --- | --- | --- |
+| **Going back** | Back chevron in the navigation bar + swipe from the left edge | System Back (edge swipe or ◁ button) on *every* screen, plus the arrow in the app bar |
+| **Main navigation** | Tab bar at the bottom | Navigation bar (bottom), navigation rail or drawer on big screens |
+| **Menus of actions** | Action sheet with a separate Cancel button | Bottom sheet or menu, dismissed by swipe, tap outside or Back |
+| **Confirmations** | Centered alert, must tap a button | Material dialog, usually dismissible by Back or tapping outside |
+| **Quick messages** | No built-in toast; banners or inline messages | Toasts and snackbars |
+| **Permissions** | System prompt shown **once**; after that, only Settings | Can ask again; after two denials (Android 11+) the dialog stops appearing |
+| **Notifications** | Always needs permission | Needs permission on Android 13+; users can mute **channels** |
+| **System font** | SF Pro | Roboto in Material, but makers ship their own fonts |
+| **Beta testing** | TestFlight | Play Console testing tracks, Firebase App Distribution |
+| **Devices** | A few dozen iPhone and iPad models | Thousands of models from hundreds of makers |
+
+## Explore: same screen, two platforms
+
+Here's the same order screen built properly for each platform. Switch platforms, pick a situation, and tap the numbered hotspots. Try the **System Back** and **edge swipe** controls too: they're the single most important difference to test.
+
+<PlatformExplorer client:visible />
+
+## Navigation: the biggest source of bugs
+
+### iOS: back chevron and edge swipe
+
+On iOS, screens are stacked on top of each other. Each new screen slides in from the right and shows a **back chevron** (‹) with the previous screen's title. Users can also **swipe from the left edge** to drag the screen away. There is no system-wide Back button.
+
+What breaks:
+
+- **The swipe-back gesture is disabled**, often by accident when developers customize the navigation bar or hide the back button. Users swipe and nothing happens.
+- A swipe-back on a screen with **unsaved changes** discards the data without asking.
+- A half-finished swipe (start swiping, then let go) leaves the screen in a weird state.
+
+### Android: system Back everywhere
+
+Android has a **system Back** that works in every app: a swipe in from the left *or right* edge in gesture navigation, or the ◁ button in 3-button navigation. Your app must handle it on **every screen and every state**:
+
+<Steps>
+
+1. **Keyboard open?** Back closes the keyboard first.
+2. **Dialog, sheet or menu open?** Back closes it, like tapping Cancel.
+3. **On a deeper screen?** Back goes to the previous screen.
+4. **On the start screen of the app?** Back leaves the app (the user lands on the home screen).
+
+</Steps>
+
+Newer Android versions add **predictive back**: when the user starts the back gesture, apps that support it show a preview of where they'll land (the previous screen or the home screen), and the user can cancel by sliding back. Since Android 15 these previews appear for apps that opted in; for apps that target Android 16 they're on by default. Test that the preview matches where you really end up.
+
+<Callout type="bug" title="The classic cross-platform bug">
+An Android app copied from an iOS design shows a "‹ Back" chevron on screen, but the developer only wired up the chevron. **System Back closes the app** instead of going back, or does nothing in a dialog. Always test system Back, never only the on-screen arrow.
+</Callout>
+
+For swipes, long presses and other touch input, see [Gestures](/mobile/gestures).
+
+### Tabs vs bottom navigation
+
+Both platforms put the main sections at the bottom, but they behave differently:
+
+- **iOS tab bar:** tapping the active tab again usually scrolls to the top or returns to that tab's first screen. Each tab keeps its own history. In iOS 26, Apple's Liquid Glass design makes the tab bar float over the content, and apps can let it shrink as you scroll.
+- **Android navigation bar:** the active destination gets a pill-shaped indicator. Pressing Back from another tab normally returns to the start tab before leaving the app.
+
+## UI conventions that differ
+
+| Component | iOS | Android (Material 3) | What to look for |
+| --- | --- | --- | --- |
+| **Alert / dialog** | Centered, buttons side by side or stacked; destructive in red | Rounded dialog, left-aligned text, text buttons bottom-right | Back / tap outside counts as Cancel on Android, never as "Confirm" |
+| **Menu of actions** | Action sheet with a Cancel button | Modal bottom sheet with a drag handle | No iOS action sheet in an Android app |
+| **Switch** | Green pill (<Term id="toggle-switch">toggle switch</Term>) | Material switch, theme color, optional check icon | State announced by the <Term id="screen-reader">screen reader</Term> |
+| **Date & time picker** | Compact field, inline calendar or scrolling wheels | Calendar dialog with a typing mode; clock-dial time picker | The native picker for each platform, correct first day of week |
+| **Share** | iOS share sheet | Android Sharesheet | The system sheet opens with the right content |
+| **Short feedback** | Banner or inline message (no native toast) | <Term id="toast">Toast</Term> or snackbar | Message isn't hidden behind the keyboard or nav bar |
+| **Font** | SF Pro, scales with <Term id="dynamic-type">Dynamic Type</Term> | Roboto or the maker's font, scales with Font size (up to 200% on Android 14+) | No clipped text at the largest size on either |
+| **Haptics** | Precise, consistent Taptic Engine | Vibration quality varies a lot between devices | Haptics feel right and can be turned off |
+
+<Callout type="info">
+Learn more about specific components on their own pages: <a href="/components/date-picker">date picker</a>, <a href="/components/modal">modal</a>, <a href="/components/toggle-switch">toggle switch</a> and <a href="/components/toast">toast</a>.
+</Callout>
+
+## Permissions: same idea, different rules
+
+Both platforms ask the user before an app can use the camera, location, microphone, photos, contacts or notifications. These are <Term id="app-permissions">app permissions</Term> (see the [App permissions](/features/app-permissions) feature lesson), and the rules differ in ways that create real bugs.
+
+<Tabs labels={['iOS', 'Android']}>
+<Tab>
+
+- The system prompt appears **only once per permission**. If the user taps **Don't Allow**, the app can never show it again. The only way back is the **Settings** app.
+- Location offers **Allow Once**, **Allow While Using App** and **Don't Allow**, plus a **Precise** on/off switch.
+- Photos can be shared as **limited access** (only selected photos).
+- The text under the title is the app's own **purpose string**. Apple requires it, and App Review rejects vague ones.
+- Good apps show their own explanation screen *before* triggering the one-shot system prompt.
+
+</Tab>
+<Tab>
+
+- Permissions have been asked at **runtime** since Android 6. The app can ask again after a denial.
+- Since Android 11, if the user denies the same permission **twice**, Android stops showing the dialog (it behaves like "Don't ask again"). The app must then send the user to Settings.
+- Location, camera and microphone offer **Only this time** (Android 11+). The permission is revoked soon after the user leaves the app.
+- Location offers **Precise** or **Approximate** (Android 12+). Photos can be shared partially ("Select photos", Android 14+).
+- Android may **auto-reset permissions** of apps that haven't been used for a few months.
+
+</Tab>
+</Tabs>
+
+What to test on both: every answer (allow, one-time, deny), revoking the permission in Settings while the app is in the background, and the "permanently denied" state, where the app must explain how to turn it back on instead of failing silently.
+
+## Notifications
+
+<Term id="push-notification">Push notifications</Term> look similar on both platforms, but the setup differs:
+
+- **iOS** always needs the user's permission before showing alerts. The prompt appears once. Users can also choose how notifications appear (banners, lock screen, summary) and turn on Focus modes.
+- **Android 13 and newer** require the `POST_NOTIFICATIONS` runtime permission, so notifications are off for a new install until the user allows them. On Android 12 and older, notifications are allowed by default.
+- **Android notification channels** (Android 8+) group notifications by type, like "Order updates" and "Promotions". Users can mute one channel and keep the others.
+
+Test that the app's own notification toggle **matches the real system permission** (more in [Push notifications](/features/push-notifications)). A switch that says "On" while the OS blocks notifications is one of the most common bugs in this area.
+
+## Keyboards and autofill
+
+- **Android has many keyboards**: Gboard, Samsung Keyboard, SwiftKey and others. Each one handles autocorrect, suggestions and emoji differently. Test with at least two.
+- **iOS number pads have no Return key.** If the app doesn't add a Done button or tap-outside handling, the user can't close the keyboard and can't reach the button below it.
+- **The keyboard covers content.** Check that the focused field and the main button stay visible on short screens.
+- **Autofill:** iOS offers Password AutoFill and one-time codes from SMS above the keyboard; Android's Autofill framework works with Google Password Manager and other <Term id="password-manager">password managers</Term>. Fields must be marked correctly (username, new password, one-time code), or autofill won't appear.
+
+## Distribution, review and beta testing
+
+How a <Term id="build" /> reaches users is different too, and testers are often in charge of the beta builds (more in [Beta distribution](/mobile/beta-distribution)).
+
+| | App Store (iOS) | Google Play (Android) |
+| --- | --- | --- |
+| **Beta testing** | <Term id="testflight">TestFlight</Term>: internal testers from your team, external testers after a quick Beta App Review; builds expire after 90 days | Testing tracks: **internal** (up to 100 testers, available within minutes), **closed** and **open** |
+| **Other options** | <Term id="firebase-app-distribution">Firebase App Distribution</Term> for ad-hoc builds | Firebase App Distribution, or sharing APKs directly (sideloading) |
+| **Review** | Every version is reviewed by Apple; most are reviewed within a day | Automated plus manual checks; usually hours, sometimes several days |
+| **Gradual release** | Phased release over 7 days for automatic updates | Staged rollout to a percentage of users, can be halted |
+| **Rollback** | No rollback: you must ship a new version | No rollback either, but you can halt a staged rollout |
+
+<Callout type="warning" title="Why this matters for testing">
+On both stores you can't instantly undo a bad <Term id="release" />. A serious bug means a new build, a new review and days of waiting. That's why the final regression run before submission matters so much more on mobile than on the web.
+</Callout>
+
+## OS updates and hardware variety
+
+- **iOS users update fast.** Most iPhones move to the newest major iOS within a few months, so teams can drop old versions sooner. Apple also supports devices for many years, so a 6-year-old iPhone may still run the newest iOS.
+- **Android is spread across many versions.** Updates depend on the phone maker and carrier, so at any time your users run five or more different Android versions. See [Device fragmentation](/mobile/device-fragmentation) for how to deal with this.
+- **Hardware varies a lot more on Android:** screen sizes, cameras, chips, RAM, foldables and makers' own skins (Samsung One UI, Xiaomi HyperOS). Every <Term id="os-version">OS version</Term> and skin can change how permissions, notifications or background work behave.
+
+## What to test
+
+Group your platform checks like this:
+
+- **Navigation:** system Back in every state (Android), edge swipe on every pushed screen (iOS), tabs keep their state, deep links land on the right screen with a sensible back path.
+- **Platform UI:** native pickers, sheets and dialogs on each platform; dialogs dismiss correctly; text fits with large fonts.
+- **Permissions:** allow, one-time, deny, permanently deny, revoke in Settings, then return to the app.
+- **Notifications:** first-time prompt, denied state, the app's toggle vs the real system setting, Android channels, tapping a notification opens the right screen.
+- **Keyboard and autofill:** keyboard can always be dismissed, fields stay visible, password and one-time-code autofill appear.
+- **Lifecycle:** [backgrounding](/mobile/background-and-foreground), <Term id="interruption">interruptions</Term> like calls, and the OS killing the app. Both platforms do this, but differently.
+- **Release:** install the TestFlight / internal-track build, and test <Term id="upgrade-testing">upgrading</Term> from the version in the store.
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **System Back not handled** | Android Back closes the app from a deep screen, or does nothing in a dialog | High |
+| 2 | **Swipe-back disabled** | iOS edge swipe does nothing on some screens | Medium |
+| 3 | **Wrong platform component** | iOS action sheet or wheel picker inside an Android app | Low–Medium |
+| 4 | **Permission state out of sync** | App toggle shows "On" but the OS denied the permission | High |
+| 5 | **Permanently denied = dead end** | Feature silently fails; no explanation or link to Settings | High |
+| 6 | **Missing Android 13 notification permission** | No notifications ever arrive on new Android phones | High |
+| 7 | **Keyboard can't be dismissed** | iOS number pad covers the Pay button | High |
+| 8 | **Dismissing a dialog confirms it** | Back or tap outside triggers the destructive action | Critical |
+| 9 | **Text clipped at large font sizes** | Labels cut off with Dynamic Type or Android Font size at max | Medium |
+| 10 | **Beta build differs from store build** | Bug only appears in the TestFlight or Play build, not in debug | Medium–High |
+
+## Find the bug
+
+This food-delivery app ships to both platforms, and it has **six bugs**. Some only appear on Android, some only on iOS. Switch between the two devices, and explore:
+
+- Open the order, then use **System Back** (Android) or the **edge swipe** (iOS).
+- Open the **⋮ / ⋯** menu, the delivery time and the "Cancel order" dialog, and try to close each one in every way you can.
+- Turn on **Order updates** and answer the notification prompt both ways (use **Restart app** to start over).
+
+<BugHunt
+  title="FoodNow order screen"
+  bugs={[
+    {
+      title: 'Android: system Back closes the app from the order screen',
+      hint: 'On Android, open the order and press System Back.',
+      detail: 'Instead of returning to the Orders list, the app closes and you land on the home screen. Only the on-screen chevron works. The chevron itself is copied from iOS (<strong>‹ Orders</strong>); Android uses an arrow. Expected: system Back goes to the previous screen.',
+    },
+    {
+      title: 'Android: iOS wheel picker for delivery time',
+      hint: 'On Android, tap Delivery time.',
+      detail: 'The Android build shows the iOS-style scrolling wheel with Cancel/Done in iOS blue. Expected: a Material picker (for example a list of time slots or the Material time picker) that fits the rest of the Android UI.',
+    },
+    {
+      title: 'Android: action sheet instead of a bottom sheet, and tapping outside does nothing',
+      hint: 'On Android, open the ⋮ menu and tap the dimmed area above it.',
+      detail: 'The menu is an iOS action sheet with a separate <strong>Cancel</strong> button and no drag handle. Tapping the scrim does not close it. Expected: a Material bottom sheet that closes when you tap outside, swipe it down or press Back.',
+    },
+    {
+      title: 'Android: the "Cancel this order?" dialog ignores system Back',
+      hint: 'On Android, open the Cancel order dialog and press System Back.',
+      detail: 'Nothing happens; the user is stuck until they tap a button. Expected: Back dismisses the dialog and keeps the order, exactly like <em>Keep order</em>. (Tapping outside correctly dismisses it, which makes the inconsistency easy to miss.)',
+    },
+    {
+      title: 'iOS: swipe back from the left edge does nothing',
+      hint: 'On iOS, open the order and swipe from the left edge.',
+      detail: 'The interactive back gesture is disabled on the order screen, so users must reach for the chevron at the top. Expected: an edge swipe pops back to the Orders list, like everywhere else in iOS.',
+    },
+    {
+      title: 'iOS: notifications switch shows On after "Don’t Allow"',
+      hint: 'On iOS, turn on Order updates and tap Don’t Allow.',
+      detail: 'The switch turns <strong>On</strong> even though iOS will never deliver notifications, and the app never mentions Settings. Because iOS shows the system prompt only once, the user has no idea why updates never arrive. Expected: the switch stays off and the app explains how to enable notifications in Settings (Android handles this correctly).',
+    },
+  ]}
+>
+  <BuggyPlatformApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Android: system Back on Order details closes the app instead of returning to Orders
+
+**Environment:** Pixel 8, Android 16, gesture navigation, app build 3.2.0 (412)
+
+**Steps:** 1. Open the app. 2. Tap **Order #4821**. 3. Swipe in from the screen edge (system Back).
+
+**Expected:** The Orders list is shown.
+**Actual:** The app closes and the home screen appears. The on-screen back arrow works correctly.
+
+**Severity:** High · **Reproducible:** 5/5, also with 3-button navigation
+
+</Callout>
+
+## Tools and how-to
+
+<Tabs labels={['iOS', 'Android']}>
+<Tab>
+
+- **Xcode Simulator:** test layouts, permissions and navigation on many iPhone and iPad models. The edge swipe works with a mouse drag from the left edge. It's a <Term id="simulator" />, so camera, some sensors and real performance need a <Term id="real-device" />.
+- **Reset permissions:** on a device, delete and reinstall the app, or use Settings › General › Transfer or Reset iPhone › Reset › Reset Location & Privacy. On the simulator: `xcrun simctl privacy booted reset all <bundle-id>`.
+- **Test push on the simulator:** drag an `.apns` payload file onto the simulator window, or run `xcrun simctl push booted <bundle-id> payload.apns`.
+- **TestFlight:** install the TestFlight app, accept the invite, and always note the build number you tested.
+- **Large text:** Settings › Accessibility › Display & Text Size › Larger Text.
+
+</Tab>
+<Tab>
+
+- **Android Studio Emulator:** create devices with different Android versions. Switch between gesture and 3-button navigation in Settings › System › Navigation mode (the exact path varies by phone maker).
+- **Revoke a permission with <Term id="adb" />:** `adb shell pm revoke <package> android.permission.POST_NOTIFICATIONS`, or use Settings › Apps › your app › Permissions.
+- **Read crash logs:** `adb logcat` shows <Term id="logcat" /> output; filter by your app's package name.
+- **Notification channels:** long-press a notification, or open Settings › Apps › your app › Notifications to mute single channels.
+- **Internal testing:** join via the opt-in link from Play Console, then install from the Play Store. Note the version code.
+- **Font size:** Settings › Display › Display size and text (called Font size on some phones).
+
+</Tab>
+</Tabs>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-PLAT-001',
+      title: 'Android system Back returns to the previous screen',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Android device with gesture navigation', 'User has at least one order'],
+      steps: ['Open the app', 'Tap an order in the Orders list', 'Swipe in from the left screen edge (system Back)'],
+      expected: 'The Orders list is shown with its scroll position kept. The app does not close.',
+    },
+    {
+      id: 'TC-PLAT-002',
+      title: 'Android system Back dismisses a dialog without confirming it',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Open an order', 'Tap "Cancel order"', 'Press system Back'],
+      expected: 'The dialog closes, the order is NOT canceled, and the order screen is still shown.',
+    },
+    {
+      id: 'TC-PLAT-003',
+      title: 'iOS edge swipe goes back from every pushed screen',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['iPhone'],
+      steps: ['Open an order', 'Swipe from the left edge to the middle of the screen and let go', 'Repeat, but stop halfway and slide back'],
+      expected: 'A full swipe returns to the Orders list. A canceled swipe leaves the order screen fully visible and usable.',
+    },
+    {
+      id: 'TC-PLAT-004',
+      title: 'Denied notification permission is reflected in the app (iOS)',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Fresh install', 'Notifications never requested'],
+      steps: ['Open an order', 'Turn on "Order updates"', 'Tap "Don’t Allow" in the system prompt', 'Turn on "Order updates" again'],
+      expected: 'The switch stays off after the denial. On the second attempt the app explains that notifications are off and offers to open Settings.',
+    },
+    {
+      id: 'TC-PLAT-005',
+      title: 'Android 13+ asks for notification permission',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Android 13 or newer', 'Fresh install'],
+      steps: ['Open the app and log in', 'Place an order or turn on "Order updates"'],
+      expected: 'The system "Allow FoodNow to send you notifications?" dialog appears at that moment. After "Allow", an order update notification arrives in the "Order updates" channel.',
+    },
+    {
+      id: 'TC-PLAT-006',
+      title: 'Permanently denied location shows a path to Settings',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Deny location permission twice (Android) or once (iOS)', 'Tap "Use my current location" on the address screen'],
+      expected: 'The app explains why location is needed and shows a button that opens the app’s Settings page. Manual address entry still works.',
+    },
+    {
+      id: 'TC-PLAT-007',
+      title: 'Number pad can be dismissed on iOS',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['iPhone SE or other small screen'],
+      steps: ['Open checkout', 'Tap the "Tip amount" field', 'Try to close the keyboard'],
+      expected: 'A Done button or tapping outside closes the number pad, and the Pay button becomes reachable.',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="iOS vs Android checklist"
+  storageKey="ios-vs-android"
+  items={[
+    'Android: system Back works on every screen, with the keyboard, dialogs, sheets and menus open',
+    'Android: Back from the start screen leaves the app; from other tabs it returns to the start tab',
+    'iOS: edge swipe goes back on every pushed screen, and a canceled swipe leaves no glitches',
+    'Unsaved changes are never lost by Back or a swipe without a confirmation',
+    'Each platform uses its own pickers, sheets, dialogs and share sheet',
+    'Dismissing a dialog (Back, tap outside) never confirms a destructive action',
+    'Every permission answer works: allow, one-time, deny and permanently deny',
+    'App toggles match the real OS permission (notifications, location) after changes in Settings',
+    'Android 13+: notification permission is requested at a sensible moment; channels are named clearly',
+    'The keyboard can always be dismissed and never hides the focused field or main button',
+    'Password and one-time-code autofill appear on both platforms',
+    'Text fits at the largest Dynamic Type / Font size setting on both platforms',
+    'The TestFlight / internal-testing build is tested, with the build number noted in reports',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'An Android app shows a "‹ Back" chevron at the top. What is the MOST important thing to test?',
+      options: ['That the chevron is blue', 'That system Back (gesture or button) also goes back correctly', 'That the chevron is 44×44 pt', 'That the title is centered'],
+      answer: 1,
+      explain: 'Android users rely on system Back far more than on-screen arrows. Apps copied from iOS designs often forget to handle it.',
+    },
+    {
+      q: 'A user on iOS tapped "Don’t Allow" for notifications. What can the app do?',
+      options: ['Show the system prompt again next launch', 'Nothing, notifications are impossible forever', 'Explain the benefit and send the user to the Settings app', 'Turn notifications on silently'],
+      answer: 2,
+      explain: 'iOS shows the system prompt only once. After a denial, only the user can change it in Settings, so the app should explain and link there.',
+    },
+    {
+      q: 'Notifications never arrive on a new Android 15 phone but work on an Android 12 phone. What is the likely cause?',
+      options: ['Android 15 does not support notifications', 'The app never requests the POST_NOTIFICATIONS permission required since Android 13', 'The phone is in dark mode', 'The notification channel is too long'],
+      answer: 1,
+      explain: 'Android 13 introduced a runtime permission for notifications. On Android 12 and older, notifications are allowed by default.',
+    },
+    {
+      q: 'On Android, a "Delete account?" dialog is open and the user presses Back. What should happen?',
+      options: ['The account is deleted', 'Nothing', 'The dialog closes and nothing is deleted', 'The app closes'],
+      answer: 2,
+      explain: 'Back on a dialog means Cancel. Dismissing must never trigger the destructive action.',
+    },
+    {
+      q: 'Which is TRUE about releases?',
+      options: ['You can roll back an App Store release instantly', 'Google Play lets you halt a staged rollout, but neither store has an instant undo', 'TestFlight builds never expire', 'Android apps are never reviewed'],
+      answer: 1,
+      explain: 'Neither store lets you instantly revert. Play can halt a staged rollout; Apple has phased release. A fix always means a new build.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- iOS and Android differ in **navigation, UI components, permissions, notifications, releases and devices**. Always test both, and always say which one you tested.
+- The number one cross-platform bug: **Android system Back not handled**. On iOS, check that the **edge swipe** works.
+- Each platform should use **its own** dialogs, sheets, pickers and share sheet. iOS patterns in an Android app (or vice versa) are valid findings.
+- iOS shows each permission prompt **once**; Android stops asking after **two denials**. Test the denied path and make sure the app's toggles match the real OS setting.
+- Android 13+ needs the **notification permission**; Android channels let users mute types of notifications.
+- Releases can't be undone instantly, so test the **TestFlight / internal-testing build** before it goes out.
+
+</KeyTakeaways>

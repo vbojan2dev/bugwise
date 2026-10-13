@@ -1,0 +1,519 @@
+---
+title: How to Write Test Cases
+description: Learn what a test case is, what goes into one, and how to write clear, useful test cases — with a full worked example for a mobile banking sign-in screen.
+order: 1
+level: beginner
+minutes: { short: 8, long: 15 }
+platform: both
+tags: [test design, documentation, test cases]
+---
+
+Picture this: you've just joined a team building a banking app. Your lead says, "Can you write test cases for the new sign-in screen?" You nod confidently — and then quietly wonder what exactly that means.
+
+By the end of this lesson, you'll know. You'll be able to take a requirement, turn it into a set of clear test cases, and write them so well that anyone on the team could pick them up and run them.
+
+## What is a test case?
+
+A <Term id="test-case">test case</Term> is a **written set of instructions for checking one specific thing** in an app. It says what you need before you start, exactly what to do, and what *should* happen.
+
+<Callout type="example" title="Think of a recipe">
+
+A good recipe tells you the ingredients (preconditions and test data), the steps in order, and what the finished dish should look like (the expected result). Anyone can follow it and get the same outcome. A good test case works the same way.
+
+</Callout>
+
+Why bother writing them down instead of just "trying the app"?
+
+- **Repeatability** — the same checks can be run on every new <Term id="build" />, by anyone.
+- **Clarity** — developers and product owners can see exactly what was tested.
+- **Coverage** — writing cases forces you to think about what could go wrong, not just the happy path.
+- **Evidence** — when something breaks, you can show precisely which check failed and how.
+
+<Short>
+
+## The essentials
+
+### What goes into a test case
+
+Every test case needs, at minimum:
+
+- **ID** and a **title** that says what is being checked
+- **<Term id="precondition">Preconditions</Term>** — what must be true before you start
+- **Steps** — numbered, specific actions
+- **<Term id="test-data">Test data</Term>** — the exact values you'll use
+- **<Term id="expected-result">Expected result</Term>** — what should happen, written so it can only pass or fail
+- **Priority** — how important the check is (for a test case, this means how important it is to run, not the bug priority from [Severity vs Priority](/fundamentals/severity-vs-priority))
+
+When you run the test, you also record the **<Term id="actual-result">actual result</Term>** and a **status** (Pass, Fail, Blocked).
+
+### A compact template
+
+| Field | Example |
+| --- | --- |
+| ID | TC-001 |
+| Title | Sign in with valid email and password |
+| Preconditions | App installed; user has an active account |
+| Steps | 1. Open the app 2. Enter email 3. Enter password 4. Tap **Sign in** |
+| Test data | anna@test.com / Secret123! |
+| Expected result | Home screen opens and shows "Hi, Anna" |
+| Priority | High |
+
+### The process in one line
+
+Read the <Term id="requirement" /> → list what could happen (good inputs, bad inputs, limits) → write precise steps → write a clear expected result → review.
+
+### Three example cases
+
+Here are three cases for a mobile banking app's **Sign in** screen (password must be at least 8 characters; the account locks after 5 failed attempts):
+
+<TestCases
+  cases={[
+    {
+      id: "TC-001",
+      title: "Sign in with valid email and password",
+      priority: "high",
+      type: "positive",
+      preconditions: ["App is installed", "An active account exists for anna@test.com"],
+      steps: ["Open the app", "Enter the email in the Email field", "Enter the password in the Password field", "Tap 'Sign in'"],
+      data: "email: anna@test.com / password: Secret123!",
+      expected: "The Home screen opens and shows the account overview with the greeting 'Hi, Anna'.",
+    },
+    {
+      id: "TC-002",
+      title: "Error message is shown for a wrong password",
+      priority: "high",
+      type: "negative",
+      preconditions: ["An active account exists for anna@test.com"],
+      steps: ["Open the app", "Enter the email", "Enter a wrong password", "Tap 'Sign in'"],
+      data: "email: anna@test.com / password: WrongPass1",
+      expected: "The user stays on the Sign in screen and sees 'Incorrect email or password'.",
+    },
+    {
+      id: "TC-003",
+      title: "Account locks after the 5th failed sign-in attempt",
+      priority: "high",
+      type: "edge",
+      preconditions: ["An active account exists for anna@test.com with 0 failed attempts"],
+      steps: ["Open the app", "Enter the email and a wrong password, tap 'Sign in'", "Repeat step 2 four more times (5 failed attempts in total)"],
+      data: "email: anna@test.com / password: WrongPass1",
+      expected: "After the 5th attempt the app shows 'Your account is locked. Reset your password to continue.' Signing in with the correct password is still refused.",
+    },
+  ]}
+/>
+
+<Callout type="tip">
+
+One case = one thing to check. If your title needs the word "and" to join two different checks, split it into two cases.
+
+</Callout>
+
+Switch to **Detailed** at the top of the page for the full walkthrough: test scenarios vs test cases, the step-by-step process, ten worked cases, good vs bad examples, and mobile-specific tips.
+
+</Short>
+
+<Long>
+
+## Anatomy of a test case
+
+Different companies use different tools — a spreadsheet, <Term id="jira" /> with a test plugin, or a dedicated test management tool — but almost all test cases contain the same fields.
+
+| Field | What it means | Example |
+| --- | --- | --- |
+| **ID** | A unique reference so people can talk about the case | `TC-LOGIN-004` |
+| **Title** | A short summary of what is being checked. Start with the behavior, not "Test…" | Password shorter than 8 characters is rejected |
+| **<Term id="precondition">Preconditions</Term>** | Everything that must be true *before* step 1 | App installed; user is signed out; account exists |
+| **Steps** | Numbered, specific actions, one action per step | 1. Open the app 2. Tap the Email field… |
+| **<Term id="test-data">Test data</Term>** | The exact values to use | Email: anna@test.com, Password: Abc1234 (7 chars) |
+| **<Term id="expected-result">Expected result</Term>** | What should happen, stated clearly enough that the result is obviously Pass or Fail | Message "Password must be at least 8 characters" appears under the field |
+| **Priority** | How important the case is to run (not the same as a bug's priority) | High / Medium / Low |
+| **Type** | What kind of check it is | <Term id="positive-testing">Positive</Term>, <Term id="negative-testing">negative</Term>, <Term id="edge-case">edge</Term> |
+| **<Term id="actual-result">Actual result</Term>** | What really happened when you ran it (filled in during execution) | Message appeared as expected |
+| **Status** | The outcome of the run | Pass / Fail / Blocked / Not run |
+
+<Callout type="info" title="Optional but useful fields">
+
+Many teams also add: a link to the requirement or <Term id="user-story" /> (this is what powers a <Term id="traceability-matrix" />), the platform or device, the <Term id="environment" /> (for example <Term id="staging" />), the author, and a link to any <Term id="bug-report" /> raised when the case failed.
+
+</Callout>
+
+## Test scenario vs test case
+
+These two are easy to confuse.
+
+- A **<Term id="test-scenario">test scenario</Term>** is a *high-level idea* of what to test. It answers "**what** should we check?"
+- A **<Term id="test-case">test case</Term>** is the *detailed instructions* for one check. It answers "**how** exactly do we check it?"
+
+One scenario usually turns into several test cases. (There's a third artifact, the checklist, and [Test Scenarios vs Test Cases vs Checklists](/tutorials/scenarios-cases-checklists) explains when to use each.)
+
+| Test scenario | Test cases it might produce |
+| --- | --- |
+| Check that a user can sign in | Valid email and password · Email with uppercase letters · Password exactly 8 characters |
+| Check that invalid sign-ins are handled | Wrong password · Unregistered email · Empty fields · Invalid email format |
+| Check the account lock rule | Lock on 5th failed attempt · No lock after 4 failed attempts |
+
+A group of related test cases is called a <Term id="test-suite" />. For example, all the cases above could live in a "Sign in" suite.
+
+<Callout type="note">
+
+Some teams, especially fast-moving ones, work mainly from scenarios or a <Term id="checklist" /> instead of fully detailed cases. That's fine for experienced testers who know the product. Detailed cases shine when the feature is risky (like banking), when new people will run the tests, or when you need proof of what was tested.
+
+</Callout>
+
+## How to write test cases, step by step
+
+<Steps>
+
+1. **Read the requirement carefully.** Read the <Term id="requirement" />, user story or <Term id="acceptance-criteria" /> at least twice. Underline every rule, number and message. Write down anything unclear and ask about it *before* writing cases — this is <Term id="verification" /> at its cheapest.
+2. **Identify the scenarios.** List the big things a user can do or experience on this screen: sign in successfully, fail to sign in, get locked out, reveal the password, reset a forgotten password.
+3. **Think positive, negative and edge.** For each scenario, ask three questions. What happens with **valid** input (<Term id="positive-testing" />)? What happens with **invalid** input (<Term id="negative-testing" />)? What happens **at the limits** — exactly 8 characters, exactly 5 attempts (<Term id="edge-case">edge cases</Term> and <Term id="boundary-value-analysis" />, covered in depth in [Boundary Value Analysis](/fundamentals/boundary-value-analysis))?
+4. **Write clear, specific steps.** One action per step. Name the exact button or field. Assume the reader has never seen the app.
+5. **Define the expected result.** Say exactly what should be on the screen: which screen opens, which message appears (word for word if the requirement gives it), what is enabled or disabled. If you can't write an expected result, the requirement probably needs clarifying.
+6. **Review.** Re-read each case as if you were someone else. Better still, ask a teammate to review. Check that every rule in the requirement is covered by at least one case (<Term id="test-coverage" />).
+
+</Steps>
+
+## Worked example: a banking app sign-in screen
+
+Let's put it all together. Here is the requirement for the sign-in screen of a mobile banking app called **PocketBank**.
+
+<Callout type="info" title="Requirement: PocketBank — Sign in">
+
+1. The user signs in with their **email** and **password**.
+2. The password must be **at least 8 characters**. If it is shorter, the app shows "Password must be at least 8 characters" under the field and does not attempt to sign in.
+3. If the email or password is wrong, the app shows "Incorrect email or password".
+4. After **5 failed attempts** in a row, the account is **locked** and the app shows "Your account is locked. Reset your password to continue."
+5. A **Show password** toggle (eye icon) reveals and hides the password text.
+6. A **Forgot password?** link opens the Reset password screen.
+7. A successful sign-in opens the Home screen.
+
+</Callout>
+
+<Callout type="warning" title="Questions a good tester would ask first">
+
+Requirements are rarely perfect. Before writing cases, you might ask the product owner:
+
+- Does the failed-attempt counter **reset** after a successful sign-in?
+- Is the email **case-insensitive** (is `Anna@Test.com` the same as `anna@test.com`)?
+- Is the **Sign in** button disabled when fields are empty, or does it show a message?
+- What happens if the email format is invalid, like `anna@test`?
+
+For this example, let's say the answers are: yes, the counter resets; yes, email is case-insensitive; the button is disabled until both fields have text; and an invalid email shows "Enter a valid email address".
+
+</Callout>
+
+### The test cases
+
+<TestCases
+  cases={[
+    {
+      id: "TC-SIGNIN-001",
+      title: "Sign in with valid email and password",
+      priority: "high",
+      type: "positive",
+      preconditions: ["PocketBank is installed and the user is signed out", "An active account exists for anna@test.com"],
+      steps: ["Open PocketBank", "Tap the Email field and enter the email", "Tap the Password field and enter the password", "Tap 'Sign in'"],
+      data: "email: anna@test.com / password: Secret123!",
+      expected: "The Home screen opens and shows the account overview with the greeting 'Hi, Anna'.",
+    },
+    {
+      id: "TC-SIGNIN-002",
+      title: "Wrong password shows an error and keeps the user on Sign in",
+      priority: "high",
+      type: "negative",
+      preconditions: ["User is signed out", "An active account exists for anna@test.com with 0 failed attempts"],
+      steps: ["Open PocketBank", "Enter the email", "Enter the wrong password", "Tap 'Sign in'"],
+      data: "email: anna@test.com / password: WrongPass1",
+      expected: "The message 'Incorrect email or password' appears. The user stays on the Sign in screen.",
+    },
+    {
+      id: "TC-SIGNIN-003",
+      title: "Unregistered email shows the same generic error",
+      priority: "medium",
+      type: "negative",
+      preconditions: ["User is signed out", "No account exists for nobody@test.com"],
+      steps: ["Open PocketBank", "Enter the unregistered email", "Enter any valid-length password", "Tap 'Sign in'"],
+      data: "email: nobody@test.com / password: Secret123!",
+      expected: "The message 'Incorrect email or password' appears. The app does not reveal whether the email is registered.",
+    },
+    {
+      id: "TC-SIGNIN-004",
+      title: "Password with 7 characters is rejected before sign-in",
+      priority: "high",
+      type: "edge",
+      preconditions: ["User is signed out"],
+      steps: ["Open PocketBank", "Enter the email", "Enter a 7-character password", "Tap 'Sign in'"],
+      data: "email: anna@test.com / password: Abc1234 (7 characters)",
+      expected: "The message 'Password must be at least 8 characters' appears under the Password field. No sign-in attempt is made and the failed-attempt counter does not increase.",
+    },
+    {
+      id: "TC-SIGNIN-005",
+      title: "Password with exactly 8 characters is accepted",
+      priority: "high",
+      type: "edge",
+      preconditions: ["User is signed out", "An active account exists for ben@test.com whose password is exactly 8 characters"],
+      steps: ["Open PocketBank", "Enter the email", "Enter the 8-character password", "Tap 'Sign in'"],
+      data: "email: ben@test.com / password: Abcd1234 (8 characters)",
+      expected: "No length message appears. The Home screen opens.",
+    },
+    {
+      id: "TC-SIGNIN-006",
+      title: "Account locks on the 5th consecutive failed attempt",
+      priority: "high",
+      type: "edge",
+      preconditions: ["User is signed out", "An active account exists for anna@test.com with 0 failed attempts"],
+      steps: ["Open PocketBank", "Enter the email and the wrong password, then tap 'Sign in'", "Repeat step 2 until 5 failed attempts have been made", "Enter the correct password and tap 'Sign in'"],
+      data: "email: anna@test.com / wrong: WrongPass1 / correct: Secret123!",
+      expected: "After the 5th failed attempt the message 'Your account is locked. Reset your password to continue.' appears. In step 4 the user still cannot sign in, even with the correct password.",
+    },
+    {
+      id: "TC-SIGNIN-007",
+      title: "Account does not lock after 4 failed attempts followed by a correct one",
+      priority: "medium",
+      type: "edge",
+      preconditions: ["User is signed out", "An active account exists for anna@test.com with 0 failed attempts"],
+      steps: ["Open PocketBank", "Enter the email and the wrong password, then tap 'Sign in'", "Repeat step 2 until 4 failed attempts have been made", "Enter the correct password and tap 'Sign in'"],
+      data: "email: anna@test.com / wrong: WrongPass1 / correct: Secret123!",
+      expected: "The Home screen opens. The account is not locked.",
+    },
+    {
+      id: "TC-SIGNIN-008",
+      title: "Show password toggle reveals and hides the password",
+      priority: "medium",
+      type: "positive",
+      preconditions: ["User is on the Sign in screen"],
+      steps: ["Enter the password in the Password field", "Tap the eye icon", "Tap the eye icon again"],
+      data: "password: Secret123!",
+      expected: "Before step 2 the password is masked (dots). After step 2 it shows as plain text 'Secret123!'. After step 3 it is masked again. The typed text is unchanged throughout.",
+    },
+    {
+      id: "TC-SIGNIN-009",
+      title: "Forgot password link opens the Reset password screen",
+      priority: "medium",
+      type: "positive",
+      preconditions: ["User is on the Sign in screen"],
+      steps: ["Tap 'Forgot password?'"],
+      expected: "The Reset password screen opens. Tapping the back button returns to the Sign in screen.",
+    },
+    {
+      id: "TC-SIGNIN-010",
+      title: "Sign in button is disabled while a field is empty",
+      priority: "low",
+      type: "negative",
+      preconditions: ["User is on the Sign in screen with both fields empty"],
+      steps: ["Look at the 'Sign in' button", "Enter the email only", "Clear the email and enter the password only"],
+      data: "email: anna@test.com / password: Secret123!",
+      expected: "The 'Sign in' button is disabled (greyed out and not tappable) in all three steps.",
+    },
+  ]}
+/>
+
+<Callout type="tip" title="Notice the patterns">
+
+- Every rule in the requirement is covered by at least one case.
+- The limits are tested from **both sides**: 7 vs 8 characters, 4 vs 5 attempts. That's <Term id="boundary-value-analysis" /> in action.
+- Each expected result is specific enough that two different testers would agree on Pass or Fail.
+- TC-SIGNIN-003 checks a **security** detail: a generic message stops attackers from discovering which emails have accounts.
+
+</Callout>
+
+## Good vs bad test cases
+
+Most weak test cases fail in one of three ways.
+
+### Vague steps vs specific steps
+
+<Compare>
+<Do title="Specific">
+
+1. Open PocketBank.
+2. Enter `anna@test.com` in the Email field.
+3. Enter `Abc1234` (7 characters) in the Password field.
+4. Tap **Sign in**.
+
+</Do>
+<Dont title="Vague">
+
+1. Open the app.
+2. Log in with a short password.
+3. Check it.
+
+</Dont>
+</Compare>
+
+"A short password" could mean 1 character or 7. "Check it" tells the reader nothing. Two testers would run this case two different ways.
+
+### Multiple checks in one case
+
+<Compare>
+<Do title="One case, one purpose">
+
+**TC-SIGNIN-008:** Show password toggle reveals and hides the password.
+
+**TC-SIGNIN-009:** Forgot password link opens the Reset password screen.
+
+</Do>
+<Dont title="Everything at once">
+
+**TC-01:** Check the sign-in screen works, the eye icon works, forgot password works, and the account locks.
+
+</Dont>
+</Compare>
+
+If the giant case fails, which part failed? You can't mark it "half passed", and the bug report becomes a guessing game.
+
+### Missing or fuzzy expected result
+
+<Compare>
+<Do title="Clear expected result">
+
+The message "Password must be at least 8 characters" appears under the Password field. No sign-in attempt is made.
+
+</Do>
+<Dont title="Fuzzy or missing">
+
+Error is shown. *(Or nothing at all.)*
+
+</Dont>
+</Compare>
+
+"Error is shown" would pass even if the app displayed "Something went wrong" — which would actually be a bug. A good expected result leaves no room for argument.
+
+## Common mistakes
+
+<Callout type="bug" title="Watch out for these">
+
+- **Only testing the happy path.** Real users mistype, lose signal and tap things twice. Write negative and edge cases too.
+- **Missing preconditions.** "Sign in with valid credentials" fails if the tester doesn't have an account. Say what must exist first.
+- **No test data.** "Enter a valid email" leaves the tester guessing. Give the actual values.
+- **Copying the requirement as the test.** "Verify the account locks after 5 attempts" is a scenario, not a case. Add the steps and the exact expected result.
+- **Hidden assumptions.** "Go to settings" — from where? Which settings? Write for someone new.
+- **Steps that depend on another test.** Each case should be runnable on its own, with its own preconditions.
+- **Never updating cases.** When the app changes, outdated cases cause false failures and confusion. Keep them current.
+
+</Callout>
+
+## Tips for mobile-specific test cases
+
+Mobile apps live in a messy world. A sign-in screen that works perfectly on a desk can break on a bus. Add cases (or at least checklist items) for these situations:
+
+### Rotation
+
+- Enter the email and password, then rotate the phone to landscape. Is the typed text still there?
+- Is the **Sign in** button still visible and tappable in landscape?
+
+### Keyboard
+
+- Does the email field open the email keyboard (with `@` and `.`)?
+- Does the keyboard cover the **Sign in** button on a small screen? Can the user scroll to it?
+- Does the **Next** key move from Email to Password, and does **Done** or **Go** submit?
+- Does the app accept the password from a password manager or autofill?
+
+### Interruptions
+
+- Receive a phone call or notification mid-typing. When you return, is the screen the same?
+- Send the app to the background for a few minutes and reopen it. Is the user still on Sign in, and is the password safely cleared if the team expects that?
+- Lock and unlock the screen during sign-in.
+
+### Network
+
+- Tap **Sign in** in airplane mode. Does a clear "No internet connection" message appear, instead of a spinner forever?
+- Switch from Wi-Fi to mobile data while signing in.
+- Try on a slow connection. Can the user tap **Sign in** twice and send two requests? (That's a classic <Term id="race-condition" />.)
+
+<Callout type="info" title="Devices matter too">
+
+Run your most important cases on a mix of <Term id="real-device">real devices</Term>, <Term id="emulator">emulators</Term> and <Term id="simulator">simulators</Term> — at least one small Android phone, one recent iPhone, and ideally one older OS version. Also try large system font sizes, <Term id="dark-mode" />, and a <Term id="screen-reader" /> for <Term id="accessibility-testing" />.
+
+</Callout>
+
+</Long>
+
+## Before you submit a test case
+
+Use this quick checklist every time you finish writing a case.
+
+<Checklist
+  title="Before you submit a test case"
+  items={[
+    "The title clearly says what is being checked",
+    "The case checks only one thing",
+    "All preconditions are listed (accounts, settings, starting screen)",
+    "Every step is a single, specific action",
+    "Exact test data is provided",
+    "The expected result is specific enough to be clearly Pass or Fail",
+    "Priority and type (positive, negative, edge) are set",
+    "The case links back to its requirement or user story",
+    "Someone who has never seen the app could run it",
+    "Spelling of buttons and messages matches the app or requirement exactly",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "Which of these is a test scenario rather than a test case?",
+      options: [
+        "Enter anna@test.com and Abc1234, tap Sign in, expect the length message",
+        "Check that invalid sign-ins are handled",
+        "TC-005: Password with exactly 8 characters is accepted, with steps and expected result",
+        "Tap the eye icon and expect the password to show as plain text",
+      ],
+      answer: 1,
+      explain: "A scenario is a high-level idea of what to test. It gets broken down into several detailed test cases.",
+    },
+    {
+      q: "The requirement says passwords must be at least 8 characters. Which pair of inputs best tests the boundary?",
+      options: [
+        "1 character and 50 characters",
+        "7 characters and 8 characters",
+        "8 characters and 20 characters",
+        "Empty and 100 characters",
+      ],
+      answer: 1,
+      explain: "Boundary value analysis tests right at the edge: just below the limit (7, should fail) and exactly at the limit (8, should pass).",
+    },
+    {
+      q: "What is wrong with the expected result 'It works'?",
+      options: [
+        "Nothing, it is short and clear",
+        "It should be written in capital letters",
+        "It is not specific enough to decide Pass or Fail",
+        "Expected results are optional",
+      ],
+      answer: 2,
+      explain: "A good expected result describes exactly what should happen — which screen opens or which message appears — so any tester reaches the same verdict.",
+    },
+    {
+      q: "Which field describes what must be true before you start the test?",
+      options: ["Test data", "Preconditions", "Actual result", "Priority"],
+      answer: 1,
+      explain: "Preconditions list the starting state, such as 'user is signed out' or 'an account exists for anna@test.com'.",
+    },
+    {
+      q: "You're writing mobile-specific cases for a sign-in screen. Which is the best example?",
+      options: [
+        "Check the sign-in screen looks nice",
+        "Rotate to landscape after typing the email and check the text is kept and Sign in is still visible",
+        "Sign in, then check the eye icon, then reset the password",
+        "Test everything on one phone",
+      ],
+      answer: 1,
+      explain: "It targets a real mobile situation (rotation), has a clear action, and a clear expected result.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A test case is a precise, repeatable set of instructions for checking **one** thing.
+- The core fields are ID, title, preconditions, steps, test data, expected result and priority; actual result and status are filled in when you run it.
+- A test scenario says **what** to test; test cases say **how**.
+- Cover positive, negative and edge cases — and test limits from both sides.
+- Specific steps and a crystal-clear expected result are what separate useful cases from useless ones.
+- For mobile apps, think about rotation, the keyboard, interruptions and network changes.
+
+</KeyTakeaways>
+
+**Next: run your cases.** See how test cases are organized into runs, executed and tracked in [Test Runs and Test Management Tools](/tutorials/test-runs-and-test-management).

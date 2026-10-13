@@ -1,0 +1,43 @@
+teaser: "You pick a delivery time, swipe the panel away... did it save or not? Bottom sheets hide more bugs than you'd think."
+cards:
+  - type: flip
+    front: "Modal vs standard bottom sheet?"
+    back: "A modal sheet dims and blocks the page until you close it. A standard sheet sits beside the content, and the page behind still works."
+  - type: quiz
+    q: "The list in a sheet is scrolled halfway. You drag down on the list. What should move?"
+    options: ["The sheet, towards closing", "The list, scrolling back up", "The page behind"]
+    answer: 1
+    explain: "Content scrolls first. Only when the list is at the very top does a downward drag move the sheet."
+  - type: spotbug
+    screen: ["Delivery time: ASAP", "Picked 12:30 in the sheet", "Swiped the sheet down", "Delivery time: 12:30"]
+    bug: "Swiping down saved an unconfirmed choice."
+    explain: "Every exit except Confirm means cancel. A swipe must never save something the user didn't confirm."
+  - type: truefalse
+    statement: "Swiping down is enough as the only way to close a sheet."
+    answer: false
+    explain: "Keyboard, switch control and many screen reader users can't swipe. Add Cancel or Close, plus Esc, Back and the escape gesture."
+  - type: thisorthat
+    prompt: "A six-field Add card form needs to open from checkout."
+    left: "Bottom sheet"
+    right: "Full screen"
+    answer: right
+    explain: "Long forms in sheets get cut off, the keyboard covers fields, and one stray swipe can throw everything away."
+  - type: spotbug
+    screen: ["Sheet open, page dimmed", "Tapped the dim area over +", "Sheet closed", "Burgers in cart: 2"]
+    bug: "The scrim tap reached the page behind."
+    explain: "The scrim must block the page. Tapping it should only close the sheet, never press a button underneath."
+  - type: quiz
+    q: "What are detents?"
+    options: ["Heights a sheet snaps to", "Buttons in the header", "Shadows under the sheet"]
+    answer: 0
+    explain: "iOS sheets snap to detents such as medium (about half) and large (almost full). They should reopen at the default height."
+  - type: flip
+    front: "What should happen when the keyboard opens in a sheet?"
+    back: "The sheet moves up so the focused field and the main button stay visible, in portrait and landscape."
+  - type: truefalse
+    statement: "On Android, System Back should close an open modal sheet first."
+    answer: true
+    explain: "Back closes the topmost layer, the sheet, rather than leaving the screen behind it."
+  - type: tip
+    title: "Scroll first, then drag"
+    text: "Scroll a sheet's list down a bit, then drag down on the list. If the sheet moves instead of the list, you found a bug."

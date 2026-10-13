@@ -1,0 +1,430 @@
+---
+title: Search Bar
+description: The field at the top of the screen that finds things. Learn the iOS, Material and web versions, how focus, the keyboard, suggestions, clear and cancel should behave, and the bugs testers find in the field itself.
+category: input
+aka: [Search field, Search box]
+platforms: [ios, android, web]
+minutes: 30
+order: 9
+---
+
+import { IOSSearchField } from '@/components/demos/search-bar/SearchBar';
+import Anatomy from '@/components/demos/search-bar/Anatomy';
+import VariantsGallery from '@/components/demos/search-bar/VariantsGallery';
+import Playground from '@/components/demos/search-bar/Playground';
+import { BuggyFoodSearch } from '@/components/demos/search-bar/BuggyFoodSearch';
+
+Open almost any app and the first thing you see is a grey field with a magnifying glass: *Search Amazon*, *Dishes, restaurants*, *Search in mail*. It's often the most used control in the whole app, and users expect it to behave exactly like the one in every other app.
+
+It's also deceptively complex. Behind that one field sit the keyboard, suggestions, recent searches, a clear button, a Cancel button and focus handling. This page is about **the field itself**. What happens *after* you search (results, filters, sorting, debounce and race conditions) is covered on the [Search, filters & sorting](/features/search-filters-and-sorting) page.
+
+## What is a search bar?
+
+A search bar is a **single-line text field that takes a query and finds matching content**. It looks like a <Term id="text-field" />, but it behaves differently: what you type is a question to the app, not data to be saved.
+
+Search bars work in one of two ways, and testers must know which one they're looking at:
+
+- **Live filtering**: the list below updates as you type (contacts, settings, a list of 50 recipes). No Search key needed.
+- **Submit search**: you type, optionally pick a suggestion, then press **Search** (Enter) and the app asks the server (shops, maps, mail).
+
+Many apps mix the two: they show **suggestions** and **recent searches** while you type, and real **results** after you submit.
+
+### Anatomy
+
+<Anatomy />
+
+### How it differs from similar components
+
+| Component | You type… | You get… |
+| --- | --- | --- |
+| **Search bar** | A free-text query | Results, matching or partly matching |
+| **Text field** | Data to save (name, email) | Validation, then the value is stored |
+| **Combo box** | Part of an option's name | One option from a fixed list (see [Dropdown](/components/dropdown)) |
+| **Filter chips** | Nothing, you tap | A narrower list, by fixed categories |
+
+<Callout type="dev" title="Platform names">
+iOS has **UISearchBar** (usually inside a **UISearchController**) and SwiftUI's `.searchable`. Material 3 has a **search bar** that opens a **search view**. On the web it's `<input type="search">` inside a form marked with `role="search"` (or the newer `<search>` element). Users just say "the search box".
+</Callout>
+
+## Designs & variants
+
+<VariantsGallery client:visible />
+
+### Focus and the keyboard
+
+The moment a user taps the field, a lot should happen at once, and each part is testable:
+
+- **The keyboard opens** with a **Search** key instead of Return.
+  <DevNote>On iOS that's the search return key type; on Android `imeOptions="actionSearch"`; on the web `type="search"` in a form, or `enterkeyhint="search"`.</DevNote>
+- **Auto-capitalization and autocorrect are off.** A plain text field capitalizes the first letter and "corrects" words. In a search field that turns *iphone* into *Iphone* and *airpods* into *airports*.
+- **The screen switches into search mode**: on iOS the large title collapses and **Cancel** appears; in Material the bar expands into a full **search view**.
+- **Recent searches** or suggestions appear while the field is still empty.
+- **The Search key submits** the query and usually hides the keyboard, so the results are visible.
+
+### Suggestions and recent searches
+
+Suggestions (also called <Term id="autocomplete" />) are a list that pops up under the field, so they share the bugs of dropdowns: keyboard navigation, highlighted vs selected, clipped lists. The [Dropdown](/components/dropdown) page covers the listbox pattern in detail. Recent searches add their own rules:
+
+- **Most recent first**, and **no duplicates**: searching "pizza" twice moves it to the top, it doesn't add a second row.
+- **Treat variants as the same search**: "Pizza", "pizza" and "pizza " are one entry.
+- **Each entry can be removed**, and removed entries stay gone.
+- **They're private**: after logging out or switching accounts, the next user must not see them.
+- **Blank searches are never saved.**
+
+### Clear, Cancel, Back and Esc
+
+| Action | What it should do |
+| --- | --- |
+| **Clear (×)** | Empty the field, clear its results, keep focus and the keyboard |
+| **Cancel** (iOS) | Leave search mode, hide the keyboard, restore the screen exactly as it was |
+| **Back** (Android) | First close the keyboard or search view, then navigate back |
+| **Esc** (web) | Close the suggestions; in some browsers (Chrome, Safari) it also clears an `<input type="search">` |
+
+<Callout type="tip" title="Ask early: live or submit?">
+Before testing, find out whether results should update **while typing** or only **after Search**. If it's live, check the <Term id="debounce" /> and fast typing (see the [feature page](/features/search-filters-and-sorting)). If it's submit, the Search key and the suggestion list are your main targets.
+</Callout>
+
+## When to use it
+
+A search bar is a good choice when:
+
+- There's **more content than people can scroll through comfortably**: products, contacts, messages, settings.
+- Users **know what they're looking for** and can name it ("ramen", "invoice March").
+- Search is a **main task**: then keep the bar visible at the top, not hidden behind an icon.
+- Content has many attributes, so a fixed set of filters can't cover every question.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Search where it saves time">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><IOSSearchField value="" onChange={() => {}} placeholder="Search 2,400 products" /><p class="mt-2 text-[13px] text-[rgba(60,60,67,.6)]">Hundreds of items, many ways to name them.</p></div>
+
+A shop with thousands of products. Search is the fastest path.
+
+</Do>
+<Dont title="Search for a handful of options">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><IOSSearchField value="" onChange={() => {}} placeholder="Search delivery options" /><p class="mt-2 text-[13px] text-[rgba(60,60,67,.6)]">Standard · Express · Pickup</p></div>
+
+Three options are faster to scan than to type. Show them as a list, radio buttons or a segmented control.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Specific placeholder, real label">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><IOSSearchField value="" onChange={() => {}} placeholder="Dishes, restaurants" label="Search dishes and restaurants" /></div>
+
+The placeholder says *what* you can search, and screen readers get a proper label.
+
+</Do>
+<Dont title="Vague placeholder as the only label">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><IOSSearchField value="" onChange={() => {}} placeholder="Type here…" /></div>
+
+Type *what*? Search everything, or only this list? And once you start typing, the hint is gone.
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Tester mindset">
+Missing or confusing search is a **usability** finding. So is a search that only finds exact product names when users type colloquial words ("sneakers" vs "trainers"). Report it with the queries you tried.
+</Callout>
+
+## Common bugs
+
+These are the bugs testers report most often in the search field itself.
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Search key does nothing** | You press Search/Enter, nothing happens; only tapping a suggestion works | High |
+| 2 | **Clear (×) leaves stale results** | The field is empty but old results stay, or × closes the keyboard | Medium |
+| 3 | **Auto-capitalization / autocorrect on** | "iphone" becomes "Iphone", "airpods" becomes "airports"; results are wrong or empty | High |
+| 4 | **Spaces and case not handled** | "pizza " or "PIZZA" finds nothing, although "pizza" works | Medium |
+| 5 | **Blank query accepted** | Pressing Search on an empty or spaces-only field shows everything or an error | Low–Medium |
+| 6 | **Duplicate or leaked recents** | "pizza" three times, deleted entries come back, or the previous user's searches appear | Medium (High if private) |
+| 7 | **Cancel doesn't restore the screen** | After Cancel the selected tab, filter or scroll position is reset | Medium |
+| 8 | **Stale suggestions** | The list still shows suggestions for an older query | Medium |
+| 9 | **Keyboard covers results** | After submitting, the keyboard stays open and hides the results | Medium |
+| 10 | **Long text breaks the layout** | Long queries push the × or Cancel off-screen, or the results title overflows | Low |
+| 11 | **Special characters break it** | Emoji, diacritics, `&`, `%` or `"` cause errors, wrong encoding or no results | Medium |
+
+<Callout type="bug" title="Why #3 is so sneaky">
+On a desktop browser you'll never see it: you type "iphone", the field says "iphone". On a real phone, the keyboard capitalizes the first letter, and if the search is case-sensitive, *every* search from a phone fails. Always test search on a **real device keyboard**, not only by pasting text or using a laptop keyboard with the <Term id="simulator" />.
+</Callout>
+
+## Stress-test it
+
+Search bars get the strangest input of any field: typos, emoji, accents, half-sentences, spaces before and after. Try each preset below, look at the request that gets sent, then switch the field settings to fix the problems.
+
+<Playground client:visible />
+
+<Callout type="info">
+Users often type without accents ("creme brulee") or with different ones. Search should treat letters with <Term id="diacritics" /> as matches, ignore case, and trim extra spaces. Emoji are trickier than they look: character limits and counters can cut an emoji in half.
+
+<DevNote>JavaScript counts "🍕" as **two** characters.</DevNote>
+</Callout>
+
+## Find the bug
+
+This food delivery app has a search bar with **six bugs**, all in the search field and its lists. Test it like a real user, then like a tester:
+
+- Type a dish and press **Enter** (that's the keyboard's Search key).
+- Type in **lowercase**, as most people do on a phone.
+- Search for the same thing **twice**, and use the **recent searches**.
+- Use the **× button**, and try **Cancel** after choosing a category on the home screen.
+- Search for **nothing**: just a few spaces.
+
+<BugHunt
+  title="Food delivery search"
+  bugs={[
+    {
+      title: 'The keyboard\'s Search key does nothing',
+      hint: 'Type "ramen" and press Enter.',
+      detail: 'Nothing happens: no results, the keyboard stays open. The only way to search is to tap a suggestion or the "Search for…" row. Expected: the Search key (Enter) submits the query, shows results and hides the keyboard.',
+    },
+    {
+      title: 'Clear (×) empties the field but keeps the old results',
+      hint: 'Search for something, then tap the × in the field.',
+      detail: 'The field is empty, but the screen still shows <strong>"1 result for “Margherita pizza”"</strong> and the pizza. Users think the results belong to the empty query. Expected: × clears the text <em>and</em> the results, and shows recent searches again while keeping the keyboard open.',
+    },
+    {
+      title: 'Auto-capitalization breaks search',
+      hint: 'Type "pizza" in lowercase and use "Search for…". Then turn off Auto-Capitalization in the device settings and try again.',
+      detail: 'The field leaves the keyboard\'s auto-capitalization on, so "pizza" becomes <strong>"Pizza"</strong>, and the search is case-sensitive: "No results for “Pizza”". With the setting off, "pizza" finds both pizzas. Expected: the field disables auto-capitalization and autocorrect (<code>autocapitalize="none"</code>, <code>autocorrect="off"</code>), and search ignores case.',
+    },
+    {
+      title: 'Recent searches are duplicated',
+      hint: 'Search for the same thing twice, or tap a recent search, then look at the list.',
+      detail: 'Every search adds a new row, so the list fills with "Margherita pizza", "Margherita pizza", "sushi", "sushi"… and variants like "Pizza" and "pizza" are separate entries. Expected: a repeated search moves the existing entry to the top; case and extra spaces are ignored when comparing.',
+    },
+    {
+      title: 'Cancel resets the category on the home screen',
+      hint: 'Choose "Desserts" on the home screen, tap the search field, then tap Cancel.',
+      detail: 'After Cancel the home screen shows <strong>All</strong> instead of Desserts. Expected: Cancel returns the user to the screen exactly as they left it: same category, same list.',
+    },
+    {
+      title: 'A blank query is accepted and saved',
+      hint: 'Type only a few spaces, then tap "Search for…". Open recent searches.',
+      detail: 'The app shows <strong>"11 results for “   ”"</strong> (every dish) and saves an <strong>empty-looking row</strong> in Recent searches. Expected: spaces-only queries are ignored (or the Search key does nothing), and nothing blank is saved.',
+    },
+  ]}
+>
+  <BuggyFoodSearch client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #3?">
+
+**Title:** Search: lowercase queries typed on the phone keyboard return no results because the first letter is auto-capitalized
+
+**Steps:** 1. On iPhone (Auto-Capitalization on, the default) open Delivery. 2. Tap the search field. 3. Type "pizza". 4. Tap "Search for “Pizza”".
+
+**Expected:** The field keeps "pizza" in lowercase, and the search finds "Margherita pizza" and "Pepperoni pizza".
+**Actual:** The field shows "Pizza"; the result is "No results for “Pizza”". With Auto-Capitalization off, the same search finds 2 dishes.
+
+**Severity:** High (search from a phone fails for most queries) · **Reproducible:** 10/10 · **Note:** two causes: auto-capitalization not disabled on the field, and case-sensitive matching
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Search bar test checklist"
+  storageKey="search-bar"
+  items={[
+    'The field has a clear placeholder and an accessible label',
+    'Tapping the field opens the keyboard with a Search key and shows recent searches or suggestions',
+    'Auto-capitalization and autocorrect are off; lowercase queries stay lowercase',
+    'The Search key (Enter) submits the query and hides the keyboard',
+    'Search ignores case, accents and leading/trailing spaces',
+    'Empty and spaces-only queries are ignored, never saved as recents',
+    'The × appears only when there is text, clears text and results, and keeps focus',
+    'Cancel (iOS), Back (Android) and Esc (web) close search and restore the previous screen state',
+    'Recent searches: newest first, no duplicates, removable, private per account and cleared on logout',
+    'Suggestions match the current query, work with arrow keys and can be selected',
+    'Long queries scroll inside the field; ×, Cancel and the layout stay intact',
+    'Emoji, diacritics and special characters (&, %, ", <) are searched safely and shown correctly',
+    'Screen readers announce the field, the number of results and the suggestions',
+    'Works with large text, in dark mode, in landscape and on small screens',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-SRCH-001',
+      title: 'Search key submits the query',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Tap the search field', 'Type "ramen"', 'Press the keyboard\'s Search key'],
+      expected: 'Results for "ramen" are shown (Chicken ramen) and the keyboard closes.',
+    },
+    {
+      id: 'TC-SRCH-002',
+      title: 'Lowercase input stays lowercase on a phone keyboard',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Real iPhone or Android phone, default keyboard settings'],
+      steps: ['Tap the search field', 'Type "pizza"'],
+      expected: 'The field shows "pizza" exactly as typed; no capital letter and no autocorrection.',
+    },
+    {
+      id: 'TC-SRCH-003',
+      title: 'Search ignores case, accents and extra spaces',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Search for "TIRAMISU"', 'Search for "  tiramisu  "', 'Search for "tiramisù"'],
+      expected: 'Each search finds "Tiramisu".',
+    },
+    {
+      id: 'TC-SRCH-004',
+      title: 'Clear button clears text and results',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Search for "sushi"', 'Tap ×'],
+      expected: 'Field is empty, the results are gone, recent searches are shown and the keyboard stays open.',
+    },
+    {
+      id: 'TC-SRCH-005',
+      title: 'Blank query is ignored',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Tap the search field', 'Type three spaces', 'Press Search'],
+      expected: 'Nothing is searched, no results page is shown, and no blank entry appears in recent searches.',
+    },
+    {
+      id: 'TC-SRCH-006',
+      title: 'Repeated search does not duplicate recents',
+      priority: 'low',
+      type: 'edge',
+      steps: ['Search for "pizza"', 'Search for "burger"', 'Search for "Pizza"', 'Clear the field'],
+      expected: 'Recent searches show "Pizza" (or "pizza") at the top and "burger" below it, each once.',
+    },
+    {
+      id: 'TC-SRCH-007',
+      title: 'Cancel restores the previous screen',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Select the "Desserts" category', 'Scroll the list halfway', 'Tap the search field and type "cake"', 'Tap Cancel'],
+      expected: 'Search closes, the keyboard hides, "Desserts" is still selected and the scroll position is unchanged.',
+    },
+    {
+      id: 'TC-SRCH-008',
+      title: 'Recent searches are private to the account',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['User A has searched for "pregnancy test"'],
+      steps: ['Log out', 'Log in as user B', 'Tap the search field'],
+      expected: 'User B sees only their own recent searches (or none). Nothing from user A appears.',
+    },
+    {
+      id: 'TC-SRCH-009',
+      title: 'Long query keeps the field usable',
+      priority: 'low',
+      type: 'edge',
+      data: '150 characters, e.g. a pasted product description',
+      steps: ['Paste the long text into the field', 'Move the cursor to the start', 'Tap ×'],
+      expected: 'The text scrolls inside the field, × and Cancel stay visible and tappable, and × clears everything.',
+    },
+  ]}
+/>
+
+## Accessibility
+
+- **A real label.** The placeholder is not a label: it disappears and is often too light. Give the field an accessible name ("Search dishes and restaurants"), and on the web mark the form as a search landmark so screen reader users can jump to it.
+  <DevNote>The name comes from a visible label or `aria-label`; the landmark is `role="search"` (or `<search>`).</DevNote>
+- **Icon buttons need names.** The × must be announced as "Clear text", the microphone as "Voice search", the filter as "Filters", never just "button".
+- **Announce results.** After searching, screen reader users need to hear "12 results" or "No results".
+  <DevNote>On the web that's a polite `aria-live` region; on mobile an accessibility announcement.</DevNote>
+- **Suggestions** follow the combobox pattern: arrow keys to move, Enter to choose, Esc to close (see [Dropdown](/components/dropdown)).
+  <DevNote>`role="combobox"` on the input, `role="listbox"` and `role="option"` for the list.</DevNote>
+- **Focus management.** Opening a search view moves focus into the field; closing it returns focus to where the user was (the search icon or bar). The <Term id="focus-order" /> must stay logical.
+- **<Term id="touch-target">Touch targets</Term>:** the × and Cancel are small; their tap area should still be at least 44×44 pt (iOS) / 48×48 dp (Android). On the web, WCAG 2.5.8 (AA) asks for at least 24×24 CSS px; 44×44 px (2.5.5, AAA) is the comfortable target.
+- **Contrast:** typed text needs 4.5:1. Light grey placeholders often fail; if the placeholder carries information, it needs enough contrast too (<Term id="wcag" />).
+- **Voice input** is an accessibility feature: dictated text must work like typed text (no trailing period, no capital letter breaking the search).
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- Search sits in the navigation bar, often hidden under the large title until you pull down: check users can find it.
+  <DevNote>`UISearchController` with a `UISearchBar` in the navigation bar, or SwiftUI's `.searchable`.</DevNote>
+- Focus shows **Cancel** and optional **scope buttons**; Cancel must restore the previous state.
+- Test the **Search key**, auto-capitalization and autocorrect on a **real device**, **Dynamic Type** at the largest sizes, and dictation.
+- Check that scrolling the results dismisses the keyboard when the app is designed to.
+
+</Tab>
+<Tab>
+
+- Material 3 **SearchBar** expands into a **SearchView** (full screen on phones, docked on tablets). Older apps use a search icon in the toolbar.
+- The system **Back** gesture should first close the keyboard or the search view, not leave the screen.
+- Check the keyboard's action key says Search and submits.
+  <DevNote>The action key comes from `imeOptions="actionSearch"`.</DevNote>
+- Test with **TalkBack**, **font scale**, different keyboards (Gboard, Samsung Keyboard) and **landscape**, where the keyboard can cover most of the screen.
+
+</Tab>
+<Tab>
+
+- Some browsers add their own × to a search field and clear it on Esc (Chrome and Safari do; behavior and styling differ between browsers), so check it doesn't clash with the site's own ×.
+  <DevNote>Use `<input type="search">` with a `<label>`, inside a form with `role="search"` or a `<search>` element.</DevNote>
+- Watch for **two dropdowns at once**: the browser's autofill history on top of the site's own suggestions.
+  <DevNote>Custom suggestions usually need `autocomplete="off"`.</DevNote>
+- The query normally ends up in the URL (`?q=`), so Back, refresh and sharing should restore it. Encoding of `&`, `%`, `#` and emoji is a classic bug source. More in [Search, filters & sorting](/features/search-filters-and-sorting).
+- Test keyboard-only use, mobile browsers (does the keyboard show "Go" or "Search"?), and narrow widths.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'On a real phone, every search returns "No results", but on a laptop the same search works. What should you check first?',
+      options: ['The Wi-Fi connection', 'Whether the keyboard auto-capitalizes or autocorrects the query', 'The color of the search icon', 'The server\'s time zone'],
+      answer: 1,
+      explain: 'Phone keyboards capitalize the first letter and "correct" words unless the field turns that off. Combined with case-sensitive search, every phone search fails.',
+    },
+    {
+      q: 'You search for "pizza", then tap the × in the field. What is the correct behavior?',
+      options: ['The field empties, but the pizza results stay', 'The field and the results are cleared, focus stays in the field', 'The whole search screen closes', 'The app searches for an empty string'],
+      answer: 1,
+      explain: 'Clear means "start a new query": empty text, no stale results, keyboard still open.',
+    },
+    {
+      q: 'What is the difference between Clear (×) and Cancel on iOS?',
+      options: ['There is none', 'Clear empties the field; Cancel leaves search mode and restores the previous screen', 'Cancel deletes the recent searches', 'Clear submits the search'],
+      answer: 1,
+      explain: 'Clear stays in search; Cancel exits it and should put the screen back exactly as it was.',
+    },
+    {
+      q: 'Which recent searches list is correct after searching "pizza", "burger", then "Pizza"?',
+      options: ['Pizza, burger, pizza', 'Pizza, burger', 'pizza, burger, Pizza, (blank)', 'burger'],
+      answer: 1,
+      explain: 'A repeated search moves to the top instead of adding a duplicate, and case variants count as the same search.',
+    },
+    {
+      q: 'A user types three spaces and presses Search. What should happen?',
+      options: ['Show every product', 'Show "No results for “   ”"', 'Nothing: blank queries are ignored and not saved', 'Show an error page'],
+      answer: 2,
+      explain: 'A spaces-only query is not a search. Ignore it (or keep showing recents) and never save it.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A search bar is a text field for **queries**: it should never auto-capitalize or autocorrect, and it should ignore **case, accents and extra spaces**.
+- Know whether it's **live filtering** or **submit search**; then test the **Search key**, the **×**, **Cancel / Back / Esc** and **focus** carefully.
+- **Recent searches** must be newest first, **de-duplicated**, removable, free of blanks and **private** to each account.
+- Suggestions are a listbox: test them like a [dropdown](/components/dropdown), with the keyboard and with fast typing.
+- Always test on a **real phone keyboard**, with long text, emoji and diacritics, and with a screen reader.
+
+</KeyTakeaways>

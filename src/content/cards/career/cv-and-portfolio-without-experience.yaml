@@ -1,0 +1,45 @@
+teaser: "You can show testing skill on a CV without a single QA job title. The trick is being specific without overstating anything."
+cards:
+  - type: flip
+    front: "Where does a practice project go on a career changer's CV?"
+    back: "Under Projects, clearly labeled as practice, with the deliverables you produced. Put Projects above Experience if they're more relevant."
+  - type: flip
+    front: "What goes in a small QA portfolio?"
+    back: "One good example each: a test plan, a few test cases, two or three bug reports and exploratory session notes."
+  - type: quiz
+    q: "You've used Postman a few times. Which skills line is best?"
+    options: ["API testing expert (Postman)", "Leave APIs out", "Basic API testing with Postman"]
+    answer: 2
+    explain: "'Basic' is honest, still matches keyword searches, and sets the right expectations for the interview."
+  - type: quiz
+    q: "Which never belongs in a public portfolio?"
+    options: ["A company's take-home task", "An issue you filed in open source", "Notes from a practice site"]
+    answer: 0
+    explain: "Take-home assignments and employer material are confidential unless you're explicitly allowed to share them."
+  - type: truefalse
+    statement: "Listing the Bugwise Capstone under Work experience as 'QA Tester' is fine."
+    answer: false
+    explain: "It's a practice project, not a job. Label it honestly under Projects; that's still strong evidence."
+  - type: truefalse
+    statement: "Keywords like 'test cases' and 'Jira' help recruiters and ATS software find your CV."
+    answer: true
+    explain: "Recruiters search by keywords. Use the ones that are true for you; they help you get found, not hired."
+  - type: thisorthat
+    prompt: "Former teacher writing a CV bullet about reviewing exams for mistakes."
+    left: "Quality assurance of education"
+    right: "Reviewed tests for errors"
+    answer: right
+    explain: "Describe what you did in plain words. Borrowing 'quality assurance' to sound like testing makes you look less trustworthy."
+  - type: thisorthat
+    prompt: "You're writing your LinkedIn headline while looking for your first QA job."
+    left: "Junior QA Tester, web/mobile"
+    right: "Looking for opportunities"
+    answer: left
+    explain: "Recruiters search headlines. Name the role and your real skills so you show up in results."
+  - type: spotbug
+    screen: ["Skills: Selenium, Cypress,", "Appium, JMeter, Java, Python", "(watched one Selenium video)"]
+    bug: "Lists tools the candidate can't actually talk about."
+    explain: "The first technical question about Selenium ends the interview. List only tools you could discuss for two minutes."
+  - type: tip
+    title: "Action, tool, result"
+    text: "Write CV bullets as what you did, with which tool or method, and what came of it. Use only real numbers."

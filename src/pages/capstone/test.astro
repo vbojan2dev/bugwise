@@ -1,0 +1,70 @@
+---
+import CapstoneShell from '@/components/capstone/CapstoneShell.astro';
+import ExploreSession from '@/components/capstone/ExploreSession';
+import FinishTesting from '@/components/capstone/FinishTesting';
+import FoodDashApp from '@/components/capstone/app/FoodDashApp';
+import Icon from '@/components/ui/Icon.astro';
+import { SPEC } from '@/lib/capstone';
+import { href } from '@/lib/url';
+
+const heuristics = [
+  ['Follow the money', 'Recalculate every total by hand. Coupons, fees and rounding hide bugs.'],
+  ['Boundaries', 'Just below, at, just above: €19.99 / €20.00, 9 / 10 / 11, the slot right now.'],
+  ['Do it twice', 'Tap twice, apply twice, go Back and do it again.'],
+  ['Interrupt', 'Rotate, go to the background, lose the network or get a notification mid-action.'],
+  ['Change the world', 'Switch language, theme and text size, then redo the main flow.'],
+  ['Think like a user', 'Type like a phone does: capital first letter, no accents, half an address.'],
+];
+---
+
+<CapstoneShell
+  path="/capstone/test"
+  phase="explore"
+  title="Test the FoodDash 2.0 build"
+  description="Capstone phase 4: an exploratory testing session in the FoodDash 2.0 test build, with charters, heuristics, a session timer and in-app bug reporting."
+  lead="The build is installed. Pick a charter, start the timer and explore. When something disagrees with the brief, file a bug report from the app's report panel."
+>
+  <div class="space-y-8">
+    <ExploreSession client:load />
+
+    <details class="card group p-5">
+      <summary class="flex cursor-pointer list-none items-center gap-2 font-semibold">
+        <Icon name="lightbulb" size={18} class="text-brand" /> Heuristics, tours and how to report
+        <span class="ml-auto text-faint transition-transform group-open:rotate-90" aria-hidden="true">›</span>
+      </summary>
+      <div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div class="min-w-0">
+          <h3 class="text-sm font-semibold">Quick heuristics</h3>
+          <ul class="mt-2 space-y-2 text-sm leading-relaxed text-muted">
+            {heuristics.map(([t, d]) => <li><strong class="text-fg">{t}:</strong> {d}</li>)}
+          </ul>
+          <p class="mt-3 text-sm text-muted">
+            More in <a class="text-brand underline" href={href('/tutorials/exploratory-testing')}>Exploratory testing</a> (charters, SFDIPOT, tours, note-taking).
+          </p>
+        </div>
+        <div class="min-w-0">
+          <h3 class="text-sm font-semibold">Filing a good report</h3>
+          <ol class="mt-2 list-decimal space-y-1.5 pl-5 text-sm leading-relaxed text-muted">
+            <li>Reproduce it once more, so you know the exact steps.</li>
+            <li>Open the app's bug report panel <strong class="text-fg">while you are on the screen where it happened</strong>, and pick that screen.</li>
+            <li>Title: what's wrong, where. Not "checkout broken".</li>
+            <li>Expected: quote the brief (e.g. "US-05 AC2"). Actual: what you saw, with values.</li>
+            <li>Severity = impact on users. Priority = how soon to fix. They differ.</li>
+          </ol>
+          <p class="mt-3 text-sm text-muted">
+            Refresher: <a class="text-brand underline" href={href('/tutorials/writing-bug-reports')}>Writing bug reports</a> and
+            <a class="text-brand underline" href={href('/fundamentals/severity-vs-priority')}>Severity vs priority</a>. Test account:
+            <code class="rounded bg-subtle px-1 font-mono text-xs break-all">{SPEC.testAccount.email}</code> /
+            <code class="rounded bg-subtle px-1 font-mono text-xs">{SPEC.testAccount.password}</code>.
+          </p>
+        </div>
+      </div>
+    </details>
+
+    <section aria-label="FoodDash test build" class="min-w-0">
+      <FoodDashApp client:load />
+    </section>
+
+    <FinishTesting client:load />
+  </div>
+</CapstoneShell>

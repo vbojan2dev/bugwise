@@ -1,0 +1,45 @@
+teaser: "The field says Novi Sad, the order says novi with no postcode. Where did the city go?"
+cards:
+  - type: flip
+    front: "What is a combobox?"
+    back: "A text input plus a list of suggestions. You type to filter, then choose an option, which becomes the value."
+  - type: spotbug
+    screen: ["City: novi", "Postcode: (empty)", "Continue to payment ›", "Address saved ✓"]
+    bug: "Typed text was saved without choosing a city."
+    explain: "In a must-pick field the text isn't the value. The form should show an error until a real city is chosen."
+  - type: quiz
+    q: "You type novi fast and the list shows Nova Varoš. Most likely cause?"
+    options: ["Wrong data", "An older response arrived last", "Missing highlight"]
+    answer: 1
+    explain: "Responses can arrive in any order. The app must debounce and ignore answers that don't belong to the latest query."
+  - type: quiz
+    q: "The suggestion list is open. What should Esc do?"
+    options: ["Clear the field", "Submit the form", "Close the list, keep the text"]
+    answer: 2
+    explain: "Esc dismisses the list. Wiping what the user typed is a separate action, like the clear button or a second Esc."
+  - type: truefalse
+    statement: "If search finds Šabac for sabac, the highlight should also mark Šab in bold."
+    answer: true
+    explain: "Highlighting must use the same accent-insensitive matching as the search, or users can't see why an option is listed."
+  - type: thisorthat
+    prompt: "A delivery form needs the user's city, with a postcode from your database."
+    left: "Must pick"
+    right: "Free text"
+    answer: left
+    explain: "The city needs an id and postcode behind it. Free text is fine for search queries or towns that may not be listed."
+  - type: flip
+    front: "What does aria-activedescendant do in an autocomplete?"
+    back: "It points to the highlighted option, so screen readers announce it while focus stays in the input and typing still works."
+  - type: spotbug
+    screen: ["City: kra", "Press ↓ … nothing highlighted", "Press Enter", "Form submitted"]
+    bug: "Arrow keys don't move through the options."
+    explain: "Keyboard users can't choose an option at all. Down and Up should move the active option, Enter should choose it."
+  - type: thisorthat
+    prompt: "You tab away from the city field while suggestions are open."
+    left: "List stays open"
+    right: "List closes"
+    answer: right
+    explain: "A list left open covers the rest of the form. It should close on blur, outside taps, choosing and Esc."
+  - type: tip
+    title: "Type fast on Slow 4G"
+    text: "Throttle the network in DevTools, type a city quickly, and compare the list with the field and the order of responses."

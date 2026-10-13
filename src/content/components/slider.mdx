@@ -1,0 +1,430 @@
+---
+title: Slider
+description: A thumb you drag along a track to pick a value or a range. Learn continuous vs discrete and single vs range sliders, when a slider is the wrong tool, and the boundary, rounding and accessibility bugs testers find in them.
+category: input
+aka: [Range slider, Seek bar, Track bar]
+platforms: [ios, android, web]
+minutes: 30
+order: 8
+---
+
+import { Slider } from '@/components/demos/slider/Slider';
+import Anatomy from '@/components/demos/slider/Anatomy';
+import VariantsGallery from '@/components/demos/slider/VariantsGallery';
+import Playground from '@/components/demos/slider/Playground';
+import { BuggyPriceFilter } from '@/components/demos/slider/BuggyPriceFilter';
+
+Drag the volume in Control Center, set a price range in a hotel app, scrub through a podcast, choose how spicy your curry should be in a food delivery app: all sliders. They feel natural because you *move* to a value instead of typing it.
+
+That's also why they're tricky. A slider turns finger movement into numbers, and every step of that translation (pixels, steps, rounding, limits) is a place for bugs. Here's how to test one properly.
+
+## What is a slider?
+
+A slider is a **control where you drag a thumb along a track to choose a value between a minimum and a maximum**. The position of the thumb *is* the value: far left is the minimum, far right the maximum (mirrored in right-to-left languages).
+
+Sliders come in two pairs of flavors:
+
+- **Continuous vs discrete.** A *continuous* slider allows any value in between (volume, brightness). A *discrete* slider snaps to **steps**: 1 km, €10, 0.5 stars. Discrete sliders often show tick marks (Material calls them *stops*) for each step.
+- **Single vs range.** A *single* slider has one thumb and picks one value. A *range* slider has **two thumbs** and picks a low and a high value, like *€40 – €180* in a price filter.
+
+You'll usually see sliders used for:
+
+- **Settings you judge by feel**: volume, brightness, text size, photo filters.
+- **Filters with a range**: price, distance, flight departure time.
+- **Media playback**: the seek bar in video and audio players.
+- **Small scales**: spice level, tip percentage, rating "4★ and up".
+
+### Anatomy
+
+<Anatomy />
+
+### How it differs from similar components
+
+A slider is fast and visual, but **imprecise**. Knowing the alternatives helps you spot when the wrong one was used.
+
+| Component | Precision | Best for |
+| --- | --- | --- |
+| **Slider** | Rough, by feel | Relative values and ranges: volume, price filter |
+| **[Stepper](/components/stepper)** (− / +) | Exact, small changes | Quantities: 1–10 tickets, guests, servings |
+| **[Text field](/components/text-field)** (number) | Exact, any value | Age, amount to transfer, exact price |
+| **[Segmented control](/components/segmented-control)** | One of 2–5 options | Named levels: *Mild · Medium · Hot* |
+| **Toggle switch** | On / off | One setting that takes effect immediately |
+
+<Callout type="dev" title="Platform names">
+Apple and Google both call it a **slider**. Android's older view is called **SeekBar**, which is also what many people call the timeline in a video player. Material has a separate **RangeSlider**, and on the web you'll see `<input type="range">` or a custom "range slider". In bug reports, use the name your team uses.
+</Callout>
+
+## Designs & variants
+
+Each platform draws sliders differently: a round white thumb on iOS, a thick track with a slim vertical handle in Material 3, whatever the design system decided on the web.
+
+<VariantsGallery client:visible />
+
+<Callout type="tip" title="Ask early: when does the value apply?">
+A slider produces a **stream** of values while you drag. Before testing, find out whether the app should react **live** (volume, brightness: yes) or only **when you let go** (a price filter that asks the server: definitely). This one question uncovers a whole family of performance bugs.
+</Callout>
+
+## When to use it
+
+A slider is a good choice when:
+
+- The **exact value matters less than the rough position**: "louder", "cheaper", "a bit brighter".
+- The range is **bounded** and **known**: 0–100 %, €0–€300, 1–10 km.
+- Users benefit from **immediate visual feedback** while they move (brightness preview, photo filter).
+- For a **range** (low and high value), a two-thumb slider is compact, ideally paired with text fields for exact input.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Relative values you judge by feel">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><p class="mb-1 text-[13px] text-black">Brightness</p><Slider value={65} step={0} label="Brightness" /></div>
+
+Users don't think "65 %"; they drag until the screen looks right.
+
+</Do>
+<Dont title="Exact values like age">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><p class="mb-1 text-[13px] text-black">Age: 34</p><Slider value={34} min={18} max={99} step={1} label="Age" /></div>
+
+82 possible values squeezed into a few centimeters. Hitting "34" takes several tries. Use a number field or a date of birth instead.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Exact amount: type it">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><p class="mb-1 text-[13px] font-semibold text-black">Amount to send</p><div class="flex h-11 items-center rounded-[10px] border border-[#c7c7cc] bg-white px-3 text-[17px] text-black">€ 250.00</div></div>
+
+A text field with a numeric keyboard. Exact, quick, and easy to correct.
+
+</Do>
+<Dont title="Money on a slider">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><p class="mb-1 text-[13px] text-black">Amount to send: €247.31</p><Slider value={247.31} min={0} max={5000} step={0.01} label="Amount to send" /></div>
+
+Half a million possible values on one track. Users will never land on €250.00, and a twitch of the finger sends the wrong amount.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Show the value and the limits">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><div class="mb-1 flex justify-between text-[13px] text-black"><span>Text size</span><span class="font-semibold">120 %</span></div><Slider value={120} min={80} max={200} step={10} ticks label="Text size" /></div>
+
+Label, current value and steps are all visible. Users know where they are.
+
+</Do>
+<Dont title="A mystery track">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><Slider value={120} min={80} max={200} step={10} label="Text size" /></div>
+
+No label, no value, no hint what left and right mean. Users have to experiment to find out what it does.
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Tester mindset">
+"I can't set my age to exactly 34" or "I sent €247.31 instead of €250" are real **usability** findings, not user errors. If a slider controls an exact value, suggest a text field or stepper next to it (or instead of it), ideally during design review.
+</Callout>
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **End value unreachable** | On a €0–€249 slider with €10 steps, the thumb stops at €240; the most expensive product never shows | High |
+| 2 | **Range thumbs cross** | The minimum is dragged past the maximum: "€200 – €90" and zero results | Medium |
+| 3 | **Floating-point noise** | The label says "0.30000000000000004" or "19.999999" instead of "0.3" or "20" | Low–Medium |
+| 4 | **Request flood** | Every pixel of dragging sends an API call; the list flickers and the server gets hammered | Medium |
+| 5 | **No keyboard support** | Tab can't reach the thumb, or arrow keys do nothing | High (for affected users) |
+| 6 | **Screen reader says a bare number** | "40" instead of "€40", "0.35" instead of "35 %", or nothing but "slider" | Medium–High |
+| 7 | **Value and thumb out of sync** | After Reset the label says €0 but the thumb is still in the middle | Medium |
+| 8 | **Tiny thumb** | Hard to grab; you scroll the page or hit the other thumb instead | Medium |
+| 9 | **Gesture conflicts** | Dragging the slider also swipes back, scrolls a carousel or closes a bottom sheet | Medium |
+| 10 | **Not mirrored in RTL** | In Arabic or Hebrew, the minimum is on the left, or arrow keys move the wrong way | Medium |
+
+<Callout type="bug" title="Why #1 and #3 happen">
+**Steps and limits don't always fit.** If (max − min) isn't a multiple of the step, the last step falls short of the max. That's exactly how a native `<input type="range">` behaves: with min 0, max 249 and step 10, the highest value is 240. It's the slider version of an <Term id="off-by-one-error" />, and you find it with <Term id="boundary-value-analysis" />: always drag to **both ends**.
+
+**Computers can't store 0.1 exactly.** In JavaScript, Swift and Kotlin alike, `0.1 + 0.2` gives `0.30000000000000004`. A slider that calculates `3 × 0.1` and shows the raw result displays noise, and worse, a filter "rating ≥ 4.800000000000001" silently hides a 4.8★ product. Always test decimal steps.
+</Callout>
+
+## Stress-test it
+
+Push the slider to its limits: odd steps, decimal steps, a range of exact values, tiny touch areas and right-to-left layout. Drag both thumbs into each other and all the way to both ends.
+
+<Playground client:visible />
+
+<Callout type="info">
+The **Events** counter shows why "when does the value apply?" matters. One drag across the track fires dozens of change events. That's fine for brightness. For a filter that calls the server, the app should wait until you let go, or use a <Term id="debounce" />.
+
+<DevNote>On the web, a native range input fires `input` continuously and `change` when you release.</DevNote>
+</Callout>
+
+## Find the bug
+
+The running shoe shop below has a filter panel with **six bugs**. Explore it like a real tester:
+
+- Drag each thumb **all the way** to both ends, slowly and quickly.
+- Drag the two price thumbs **into and past** each other.
+- Read every **label** and every request in the **network log**.
+- Put the mouse away and use only the **keyboard** (<kbd>Tab</kbd>, arrows, <kbd>Home</kbd>, <kbd>End</kbd>).
+- Turn on the **screen reader** in the device settings and Tab through the filters.
+
+<BugHunt
+  title="Running shoes filter"
+  bugs={[
+    {
+      title: 'The maximum price cannot be reached',
+      hint: 'Drag the right price thumb away from the end, then all the way back. Count the shoes.',
+      detail: 'The range is €0–€249, but the step is €10, so the thumb snaps to the last full step: <strong>€240</strong>. It never touches the end of the track, the €249 Elite Carbon Pro disappears, and the list says "Showing 11 of 12" even with both thumbs at the ends. Expected: both ends are reachable (the max is a valid stop, or the range is 0–250). A classic boundary bug.',
+    },
+    {
+      title: 'Price thumbs can cross (min > max)',
+      hint: 'Move the right price thumb to the middle, then drag the left thumb to the right, past it.',
+      detail: 'The minimum thumb slides past the maximum. The label shows something like <strong>"€200 – €90"</strong>, the request is sent with <code>min=200&max=90</code> and the list is empty. Expected: the thumbs stop at each other (or swap roles), so min is always ≤ max.',
+    },
+    {
+      title: 'Rating label shows floating-point noise',
+      hint: 'Drag Min. rating slowly and read the label and the network log. Then try exactly 4.8.',
+      detail: 'Values are calculated as <code>steps × 0.1</code> and shown unrounded: <strong>"★ 3.5000000000000004+"</strong>, <code>rating=0.30000000000000004</code>. It\'s not only cosmetic: at 4.8 the app filters with 4.800000000000001, so the <strong>4.8★ Tempo Fly</strong> vanishes. Expected: values rounded to one decimal before showing, sending or comparing.',
+    },
+    {
+      title: 'Price thumbs ignore the keyboard',
+      hint: 'Press Tab until a price thumb is focused, then press the arrow keys, Page Up, Home and End.',
+      detail: 'The thumb gets a focus ring, but no key does anything. Keyboard users can\'t change the price at all. The rating slider works, which proves it can be done. Expected (ARIA slider pattern): arrows change by one step, Page Up/Down by a bigger step, Home/End jump to min/max.',
+    },
+    {
+      title: 'Dragging the price sends a request for every pixel',
+      hint: 'Drag a price thumb across the track and watch the network log.',
+      detail: 'One drag sends <strong>dozens of requests</strong> (<code>max=230</code>, <code>max=220</code>, <code>max=210</code>…) and the list keeps flickering. This wastes data and battery and can trip the server\'s rate limit. Expected: apply the price when the user lets go, like the rating slider does (one request), or debounce it.',
+    },
+    {
+      title: 'Screen reader reads the price without the currency',
+      hint: 'Turn on the screen reader, then Tab to a price thumb and to the rating slider.',
+      detail: 'VoiceOver says <strong>"Minimum price, 0, adjustable"</strong>: a bare number with no currency. Compare the rating slider: "Minimum rating, Any rating, adjustable". Expected: each thumb has a meaningful value text (<code>aria-valuetext="€40"</code>, <code>accessibilityValue</code> on iOS, <code>stateDescription</code> on Android).',
+    },
+  ]}
+>
+  <BuggyPriceFilter client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Shoe filter: price slider can't reach €249, most expensive product disappears after touching the max thumb
+
+**Steps:** 1. Open Running shoes. 2. Drag the right price thumb to about €150. 3. Drag it back as far right as possible.
+
+**Expected:** The thumb reaches the end of the track, the label shows "€0 – €249" and all 12 shoes are listed.
+**Actual:** The thumb stops short of the end at "€240". The list shows 11 of 12; "Elite Carbon Pro" (€249) can't be shown again without restarting the app.
+
+**Severity:** High (a product becomes unfindable) · **Reproducible:** 10/10 · **Note:** range 0–249 isn't a multiple of the €10 step
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Slider test checklist"
+  storageKey="slider"
+  items={[
+    'The slider shows a label, the current value (with unit) and, where useful, min and max',
+    'The thumb can reach the exact minimum and the exact maximum, by drag and by keyboard',
+    'Discrete sliders snap to valid steps only, and the value matches the thumb position',
+    'Decimal steps (0.1, 0.25) show clean, rounded values in the label and in requests',
+    'Range slider: the thumbs can\'t cross, and both can be grabbed when they touch',
+    'The value is applied at the right moment: live for previews, on release (or debounced) for server calls',
+    'Reset, back navigation and reopening the screen restore thumb and label consistently',
+    'Dragging the slider doesn\'t scroll the page, swipe back or close a sheet',
+    'The thumb\'s touch area is at least 44×44 pt (iOS) / 48×48 dp (Android)',
+    'Keyboard: arrows, Page Up/Down, Home and End work, with a visible focus ring',
+    'Screen readers announce the name, a meaningful value ("€40", "35 %") and let users adjust it',
+    'Right-to-left languages: the slider is mirrored and arrows follow the visual direction',
+    'Large text, dark mode and small screens: labels fit and the track stays usable',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-SLD-001',
+      title: 'Price range covers the cheapest and the most expensive product',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Category has products from €39 to €249'],
+      steps: ['Open Running shoes', 'Drag the left thumb fully left', 'Drag the right thumb to the middle, then fully right'],
+      expected: 'Label shows "€0 – €249" (or the configured max); all 12 products are listed.',
+    },
+    {
+      id: 'TC-SLD-002',
+      title: 'Range thumbs cannot cross',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Set the price to €60 – €120', 'Drag the left thumb to the right, past the right thumb'],
+      expected: 'The left thumb stops at €120 (or the thumbs swap). The label never shows a minimum higher than the maximum.',
+    },
+    {
+      id: 'TC-SLD-003',
+      title: 'Decimal step values are rounded',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Drag Min. rating through all values from 0 to 5', 'Check the label and the request for each value'],
+      data: 'Values to watch: 0.3, 0.7, 1.2, 3.5, 4.8',
+      expected: 'Every label shows one decimal ("★ 4.8+"). A 4.8★ product is included at 4.8.',
+    },
+    {
+      id: 'TC-SLD-004',
+      title: 'Filter is applied once per drag',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Proxy tool or DevTools network tab is recording'],
+      steps: ['Drag the right price thumb from €249 to €100 in one movement', 'Release'],
+      expected: 'Exactly one request is sent after release (or after a short pause), with max=100.',
+    },
+    {
+      id: 'TC-SLD-005',
+      title: 'Keyboard operation',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Press Tab until the left price thumb is focused', 'Press Arrow Right 3 times', 'Press Page Up', 'Press Home', 'Press End'],
+      expected: 'Focus ring is visible. The value goes up by 3 steps, then a large step, then jumps to the minimum, then to the highest value the thumb may take (the other thumb\'s value).',
+    },
+    {
+      id: 'TC-SLD-006',
+      title: 'VoiceOver announces and adjusts the value',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['VoiceOver is on'],
+      steps: ['Swipe to the minimum price thumb', 'Swipe up once with one finger', 'Swipe down once'],
+      expected: 'VoiceOver says "Minimum price, €0, adjustable", then "€10", then "€0".',
+    },
+    {
+      id: 'TC-SLD-007',
+      title: 'Reset restores thumbs and labels',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Set price to €60 – €120 and rating to 4.0', 'Tap Reset'],
+      expected: 'Both thumbs move back to the ends, labels show "€0 – €249" and "Any", and all products are listed.',
+    },
+    {
+      id: 'TC-SLD-008',
+      title: 'Slider is mirrored in Arabic',
+      priority: 'low',
+      type: 'edge',
+      preconditions: ['Device language set to Arabic'],
+      steps: ['Open the filter', 'Drag the price thumb towards the left edge'],
+      expected: 'The minimum is on the right and the maximum on the left; dragging left increases the price.',
+    },
+  ]}
+/>
+
+## Accessibility
+
+Sliders are drag-only by nature, so everything else has to be added on purpose. Check these:
+
+| Key (web) | What it should do |
+| --- | --- |
+| <kbd>→</kbd> / <kbd>↑</kbd> | Increase by one step |
+| <kbd>←</kbd> / <kbd>↓</kbd> | Decrease by one step |
+| <kbd>Page Up</kbd> / <kbd>Page Down</kbd> | Bigger jump (e.g. 10 %) |
+| <kbd>Home</kbd> / <kbd>End</kbd> | Jump to minimum / maximum |
+
+- **Keyboard (web):** each thumb is reachable with <kbd>Tab</kbd>, has a visible focus ring and supports the keys above (the <Term id="aria" /> slider pattern). In right-to-left layouts, left and right follow the mirrored direction.
+  <DevNote title="Roles and values">`role="slider"` with `aria-valuemin`, `aria-valuemax`, `aria-valuenow` and an accessible name (`aria-label` or a visible `<label>`). A native `<input type="range">` gets all of this for free.</DevNote>
+- **Meaningful value text:** if the raw number isn't enough, announce words: "€40", "35 %", "1 minute 24 seconds of 3 minutes 45 seconds".
+  <DevNote>On the web that's `aria-valuetext`; on iOS the `accessibilityValue`; on Android the state description.</DevNote>
+- **Range sliders:** each thumb needs its **own** name ("Minimum price", "Maximum price"), otherwise users hear "slider, slider".
+- **<Term id="screen-reader">Screen readers</Term>:** VoiceOver users swipe **up/down** to adjust a focused slider. TalkBack users adjust it with the volume keys or TalkBack's adjust gestures, depending on the version. Every step should be announced.
+- **<Term id="touch-target">Touch targets</Term>:** the visible thumb may be small, but its touch area should be at least 44×44 pt (iOS) / 48×48 dp (Android). On the web, WCAG 2.5.8 (AA) asks for at least 24×24 CSS px; 44×44 px (2.5.5, AAA) is the comfortable target.
+- **Contrast:** the active track and thumb need at least 3:1 contrast against the background (<Term id="wcag" />), and the value label 4.5:1.
+- **An alternative to dragging:** WCAG 2.2 criterion 2.5.7 Dragging Movements (Level AA) asks for a way to operate dragging controls with a single tap or click. Tapping a point on the track, +/− buttons or a text field all count.
+
+<Callout type="tip">
+Try the gallery above with only your keyboard, then the bug hunt's price thumbs. The difference is what keyboard and switch users experience every day.
+</Callout>
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- The native slider is **continuous** by default.
+  <DevNote>Native component: `UISlider` (UIKit) or `Slider` (SwiftUI); SwiftUI takes an optional `step`.</DevNote>
+- There's **no native range slider** on iOS, so two-thumb sliders are custom-built. Test them extra carefully.
+- The app can be told about every movement or only when you let go. Ask which one the team uses for filters.
+  <DevNote>`UISlider.isContinuous` decides this.</DevNote>
+- Test with **VoiceOver** (swipe up/down to adjust), **Dynamic Type** and the **swipe-back gesture**: dragging a slider near the left edge must not navigate back.
+
+</Tab>
+<Tab>
+
+<DevNote>Material Components provide `Slider` and `RangeSlider`; Compose has `Slider` and `RangeSlider`; older apps use `SeekBar`. In Compose, `steps` means the number of stops **between** the ends, not the step size. `steps = 9` on 0–100 gives stops every 10. A classic source of off-by-one bugs. Compose's `onValueChangeFinished` is the "user let go" event: the right place to start a server request.</DevNote>
+
+- Test with **TalkBack**, **font scale**, **RTL** (Arabic, Hebrew) and inside **bottom sheets**, where dragging can close the sheet.
+
+</Tab>
+<Tab>
+
+- There's **no native two-thumb version**, so range sliders are custom or built from two inputs.
+  <DevNote>Native: `<input type="range" min max step>`, accessible by default.</DevNote>
+- The `input` event fires continuously while dragging; `change` fires when you release. Check in <Term id="devtools" /> which one triggers requests.
+- If (max − min) isn't a multiple of `step`, the browser silently stops at the last full step.
+- Test **keyboard**, **touch** on real phones, **zoom** and narrow viewports, and Chrome, Safari and Firefox: thumbs and tracks look different in each.
+
+</Tab>
+</Tabs>
+
+Related pages: a slider's limits are a perfect playground for [boundary value analysis](/fundamentals/boundary-value-analysis), price sliders usually live inside a [filter panel](/features/search-filters-and-sorting), and drag conflicts are covered in [Gestures](/mobile/gestures).
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A sign-up form asks for your age with a slider from 18 to 99. What is the main problem?',
+      options: ['Sliders can\'t show numbers', 'Picking an exact value by dragging is slow and error-prone', 'The range is too small', 'Sliders don\'t work on iOS'],
+      answer: 1,
+      explain: 'Age is an exact value. 82 options on a short track means many tries to hit "34". A number field or date picker is better.',
+    },
+    {
+      q: 'A price slider goes from €0 to €249 in €10 steps. What should you test first?',
+      options: ['That the thumb is blue', 'Whether €249 can actually be reached', 'That it works on Wi-Fi', 'The font of the label'],
+      answer: 1,
+      explain: '249 isn\'t a multiple of 10, so many implementations stop at €240. Always test both boundaries.',
+    },
+    {
+      q: 'The rating label shows "★ 3.5000000000000004+". What kind of bug is this?',
+      options: ['A floating-point rounding bug', 'A localization bug', 'A race condition', 'Not a bug, it is more precise'],
+      answer: 0,
+      explain: 'Decimal steps calculated with plain floating-point math need rounding before they are shown, sent or compared.',
+    },
+    {
+      q: 'Dragging a price thumb once sends 40 requests to the server. What is the expected behavior?',
+      options: ['One request per pixel is correct', 'Apply the filter when the user releases the thumb, or debounce', 'Never send requests from filters', 'Send requests only on Wi-Fi'],
+      answer: 1,
+      explain: 'Live updates are fine for local previews. For server calls, wait for the release (or a short pause).',
+    },
+    {
+      q: 'What should a screen reader announce on the minimum thumb of a price range slider?',
+      options: ['"Slider"', '"40"', '"Minimum price, €40, adjustable"', 'Nothing, sliders are visual only'],
+      answer: 2,
+      explain: 'Each thumb needs its own name and a value with a unit, via aria-valuetext or the platform equivalent.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A slider picks a value (one thumb) or a range (two thumbs) by dragging. It's great for **rough, relative values**, poor for **exact values** like age or money.
+- **Continuous** sliders allow any value; **discrete** sliders snap to steps. Steps that don't divide the range make the **max unreachable**.
+- Decimal steps need **rounding**: `0.1 + 0.2` is not `0.3` in floating-point math.
+- Range thumbs must **never cross**, and filters should apply **on release or debounced**, not on every pixel.
+- Always test **both ends**, **keyboard** (arrows, Page Up/Down, Home, End), **screen reader value text with units**, **touch target size** and **RTL**.
+
+</KeyTakeaways>

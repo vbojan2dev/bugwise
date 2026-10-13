@@ -1,0 +1,39 @@
+teaser: "The developer says it's fixed. You test it, and it still fails. Twenty minutes later you find out who was wrong. Can you guess?"
+cards:
+  - type: flip
+    front: "What three things do you check before every retest or report?"
+    back: "Version and build number, like 2.4.0 (318), the environment (dev, staging or production), and how you got the build."
+  - type: flip
+    front: "TestFlight internal vs external testers?"
+    back: "Internal: your App Store Connect team, up to 100, no review. External: anyone with an email, up to 10,000, first build needs Beta App Review."
+  - type: quiz
+    q: "A developer says a bug is fixed, but it still happens on your phone. What do you check first?"
+    options: ["Restart your phone", "Your build vs the fix's build", "Whether the developer tested it"]
+    answer: 1
+    explain: "Compare the build in your About screen with the fix version. Often the fix is in a newer build you haven't installed yet."
+  - type: quiz
+    q: "Your Android QA team needs a build from the Play Store within minutes of upload. Which track?"
+    options: ["Internal testing", "Closed testing", "Open testing"]
+    answer: 0
+    explain: "Internal testing is the fastest Play track, available within minutes, and meant for small teams of up to 100 testers."
+  - type: truefalse
+    statement: "TestFlight builds expire after 90 days and can't be opened anymore."
+    answer: true
+    explain: "A bug reported on an expired build has to be checked on a current one, because nobody can install the old build to reproduce it."
+  - type: truefalse
+    statement: "It's fine to allow Install unknown apps for your browser to open an APK someone emailed you."
+    answer: false
+    explain: "Allow it only for your team's distribution tool, like Firebase App Tester. Builds should never come from random links or attachments."
+  - type: thisorthat
+    prompt: "A staging build shows a TEST PROMO, do not ship banner on the home screen."
+    left: "Report critical bug"
+    right: "Check staging content"
+    answer: right
+    explain: "Staging servers hold test content. Check whether it's server data, not an app bug, and always mention the environment in a report."
+  - type: spotbug
+    screen: ["Release notes · 2.4.0 (318)", "Fixed: BUG-412 expired coupon", "About screen: 2.4.0 (309)", "Tester: BUG-412 reopened"]
+    bug: "The tester retested on the old build 309, not 318."
+    explain: "The fix is in 318, which was never installed. Reopening the bug wastes everyone's time. Install the new build and confirm it in About first."
+  - type: tip
+    title: "Turn off automatic beta updates"
+    text: "Auto-updates can swap your build in the middle of a test session. Many testers install new builds on purpose, after finishing what they were doing."

@@ -1,0 +1,44 @@
+teaser: "Every test passed on the team's three shiny phones. So why are users saying the Confirm button is missing?"
+cards:
+  - type: flip
+    front: "What is device fragmentation?"
+    back: "Your app runs on a huge variety of devices that differ at once: screen sizes, densities, OS versions, maker skins, hardware power and form factors."
+  - type: flip
+    front: "What is a device matrix?"
+    back: "The list of devices and OS versions you test on: popular models from your analytics plus the extremes, like a small screen and a low-end phone."
+  - type: quiz
+    q: "You can test on only six devices. Which set is the best choice?"
+    options: ["Six of the newest flagship phones", "Popular models plus small, low-end and foldable", "Six emulators on one Android version"]
+    answer: 1
+    explain: "A good matrix covers popular devices plus the extremes: small screen, low-end hardware, another maker, the OS range and large screens."
+  - type: quiz
+    q: "Order notifications never arrive on a Xiaomi phone but work on a Pixel. What is a likely cause?"
+    options: ["The maker's battery saver froze the app", "Xiaomi phones can't show notifications", "The Pixel has a bigger screen"]
+    answer: 0
+    explain: "Some makers stop background apps far more aggressively than stock Android. Test background features on those brands with default battery settings."
+  - type: truefalse
+    statement: "The Android Emulator shows you Samsung's and Xiaomi's changes to Android."
+    answer: false
+    explain: "Emulators run stock Android, so maker skins, fonts and battery savers are missing. Confirm important bugs on a real device."
+  - type: truefalse
+    statement: "Your device matrix should include the oldest OS version you still support."
+    answer: true
+    explain: "Old OS versions lack newer APIs, so a feature that works on Android 15 can crash on Android 11. That's where crashes hide."
+  - type: thisorthat
+    prompt: "You need to try your app on 30 real phone models that nobody on the team owns."
+    left: "Cloud device farm"
+    right: "Buy all 30 phones"
+    answer: left
+    explain: "Device farms like BrowserStack or AWS Device Farm give you real devices over the internet, for a subscription or per-minute price."
+  - type: spotbug
+    screen: ["Device: iPhone SE (4.7 inch)", "Margherita pizza · €9.50", "Size, extras, description...", "Add to order: below screen edge", "Scrolling: does nothing"]
+    bug: "The main button is unreachable on a small screen."
+    explain: "The content has a fixed height instead of scrolling, so SE users can't order at all. The screen must scroll or pin the button."
+  - type: spotbug
+    screen: ["BUG-204: App crashes on photos", "Environment: my phone", "Steps: tap See all photos"]
+    question: "What's wrong with this report?"
+    bug: "No device model, OS version, settings or app build."
+    explain: "Device-specific bugs can't be reproduced without details. 'It works on my phone' is where the conversation starts, not where it ends."
+  - type: tip
+    title: "Tier your device testing"
+    text: "Run the full regression on 2–3 main devices, a smoke test on the rest of the matrix, and quick exploratory checks on unusual devices."

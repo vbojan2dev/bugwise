@@ -1,0 +1,45 @@
+teaser: "Some SMS codes fail about one time in ten, even when typed perfectly. Can you guess which ones?"
+cards:
+  - type: quiz
+    q: "Which pair is real two-factor authentication?"
+    options: ["Password + security question", "PIN + password", "Password + authenticator code"]
+    answer: 2
+    explain: "Two factors must be different types: something you know plus something you have or are. The others are two things you know."
+  - type: spotbug
+    screen: ["SMS code: 042917", "Request: {\"code\":42917}", "That code isn't right."]
+    bug: "The leading zero was dropped."
+    explain: "The app treats the code as a number. Codes are text: 042917 must be sent and compared as 042917."
+  - type: flip
+    front: "What is TOTP?"
+    back: "A time-based one-time password. The app and server share a secret and both compute a new code every 30 seconds from the current time."
+  - type: truefalse
+    statement: "A wrong phone clock can make every authenticator code fail."
+    answer: true
+    explain: "TOTP codes depend on time. Many servers accept one 30-second step either side; more drift and the codes no longer match."
+  - type: thisorthat
+    prompt: "You tap Resend code five times in a row. Five SMS arrive at once."
+    left: "Report a bug"
+    right: "Expected"
+    answer: left
+    explain: "Resend needs a cooldown and a server-side rate limit. Otherwise users get spammed and every SMS costs money."
+  - type: quiz
+    q: "You entered 9 wrong codes and can still keep guessing. What's missing?"
+    options: ["A lockout", "A resend button", "Autofill"]
+    answer: 0
+    explain: "A 6-digit code has only a million combinations. Without a server-side lockout, anyone with the password can keep guessing."
+  - type: spotbug
+    screen: ["Code: 318452  [Verify]", "Welcome back, Leo!", "Alert: Code already used"]
+    bug: "Auto-submit sent the code twice."
+    explain: "The first request logged in and used up the code. The duplicate was rejected, so the user sees a scary error after a successful login."
+  - type: thisorthat
+    prompt: "A user pastes '318 452' from the SMS into the code field."
+    left: "Should work"
+    right: "User error"
+    answer: left
+    explain: "People copy codes from SMS, email and password managers. Strip spaces before checking the length."
+  - type: flip
+    front: "Why must turning off 2FA ask for the password?"
+    back: "So a stolen session or an unlocked phone can't quietly remove the second factor. This is called re-authentication."
+  - type: tip
+    title: "Leave the app, then come back"
+    text: "Switch to Messages to read the code and return. The screen, typed digits and timer should still be there, with no new code sent."

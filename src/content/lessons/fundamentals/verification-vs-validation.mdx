@@ -1,0 +1,344 @@
+---
+title: Verification vs Validation
+description: '"Are we building the product right?" vs "Are we building the right product?" Learn the difference, static vs dynamic testing, and how testers help with both.'
+order: 5
+level: beginner
+minutes: { short: 13, long: 20 }
+platform: both
+tags: [fundamentals, verification, validation, static testing, uat]
+---
+
+import SpecVsUsers from '@/components/demos/fundamentals-types/SpecVsUsers';
+import VVSorter from '@/components/demos/fundamentals-types/VVSorter';
+
+A grocery app ships a new checkout. The testers ran every test case, and every one passed. The developers built exactly what the specification said. Two days later, support is flooded: customers' groceries are arriving at their offices on Saturday morning.
+
+Nobody made a coding mistake. The product was **built right**. It just wasn't **the right product**. That gap is what this lesson is about.
+
+## Two questions every product must pass
+
+<div class="not-prose my-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">Verification</p>
+    <p class="mt-1 text-lg font-bold text-fg">"Are we building the product right?"</p>
+    <p class="mt-1 text-sm text-muted">Does it match the specification, the design and the rules we agreed on?</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">Validation</p>
+    <p class="mt-1 text-lg font-bold text-fg">"Are we building the right product?"</p>
+    <p class="mt-1 text-sm text-muted">Does it actually meet the needs of the real people who will use it?</p>
+  </div>
+</div>
+
+- <Term id="verification">Verification</Term> checks the product against **documents**: <Term id="requirement">requirements</Term>, <Term id="user-story">user stories</Term>, <Term id="acceptance-criteria" />, designs.
+- <Term id="validation">Validation</Term> checks the product against **people's real needs**: does it solve their problem in their real situation?
+
+<Callout type="example" title="An everyday analogy">
+
+You hire a builder to build a house from an architect's blueprint.
+
+- **Verification** is the inspector with the blueprint: are the walls where the plan says, are the windows the right size, is the wiring to code?
+- **Validation** is your family moving in: is the kitchen practical, is there somewhere to put the stroller, can grandma get up the stairs?
+
+A house can match the blueprint perfectly and still be awful to live in, if the blueprint was wrong.
+
+</Callout>
+
+<Short>
+
+## The quick version
+
+### How each one is done
+
+| | Verification | Validation |
+| --- | --- | --- |
+| Compared with | Specs, stories, designs | Real user needs |
+| Typical activities | Reviews, walkthroughs, inspections, running test cases against acceptance criteria | <Term id="uat" />, <Term id="usability-testing" />, <Term id="beta-testing" />, demos to real users |
+| Who | Testers, developers, analysts | Real users, customers, business people (with testers) |
+
+### Static vs dynamic testing
+
+- **Static testing** checks things **without running the software**: reading a user story for gaps, reviewing a design, a developer reviewing code. It is a big part of verification, and it is cheap because problems are found before any code exists.
+- **Dynamic testing** **runs the software** and checks what happens. It can serve both: a test case checked against the spec is verification; watching a customer use the app is validation.
+
+### They can disagree
+
+- **Passes verification, fails validation:** a checkout built exactly to spec confuses real users, or the spec simply forgot something users need.
+- **Passes validation, fails verification:** users love a feature, but it breaks a written rule, such as a legal requirement to show fees before payment.
+
+A good product needs both.
+
+<Callout type="tip">
+
+Switch to **Detailed** at the top of the page for review types, more real examples, and how testers contribute to each side.
+
+</Callout>
+
+</Short>
+
+<Long>
+
+## Verification in detail
+
+Verification asks: **did we build what we said we would build?** You need something written to compare against: a requirement, a user story with acceptance criteria, a design file, an API spec, a regulation.
+
+### Static verification: checking without running anything
+
+Static testing means examining a work product **without executing it**. The work product can be a user story, a design, a test plan, or code. Common forms, from most informal to most formal:
+
+<Steps>
+
+1. **Informal review.** A teammate reads your story or test cases and comments. "What happens if the card is declined?"
+2. **Walkthrough.** The author walks a small group through the document or design step by step, to share understanding and collect questions. For example, the designer walks the team through the new checkout screens.
+3. **Technical review.** Peers with the right expertise check a document or a piece of code for problems and agree on fixes. A developer's pull-request code review is a common everyday example.
+4. **Inspection.** The most formal kind: defined roles (moderator, reviewers, scribe), checklists, prepared reviewers and recorded findings. Common in banking, health and other regulated industries.
+
+</Steps>
+
+Developers also use **static analysis** tools that scan code for problems (unused variables, security weaknesses) without running it.
+
+<Callout type="tip" title="The cheapest bug is the one never coded">
+
+A tester who reads a story and asks "what is the maximum transfer amount?" can save days of work. Finding a gap in a document costs a five-minute conversation. Finding the same gap after release can cost a hotfix, app store review and angry customers. That is the early-testing principle from [What is software testing?](/fundamentals/what-is-software-testing#the-seven-testing-principles).
+
+</Callout>
+
+### Dynamic verification: running tests against the spec
+
+Most of your <Term id="test-case">test cases</Term> are verification. Each one has an expected result taken from the spec:
+
+- The password field rejects "abc12" because the acceptance criteria say "at least 8 characters".
+- The coupon SAVE10 reduces the subtotal by exactly 10%.
+- The transfer limit of $1,000 per day is enforced, including at exactly $1,000 (see [Boundary value analysis](/fundamentals/boundary-value-analysis)).
+
+If the result matches the spec, the test passes. Whether the spec itself makes sense is a different question.
+
+## Validation in detail
+
+Validation asks: **did we build something people actually need, that works for them in real life?** The pass/fail judgment comes from users and their goals, not from a document.
+
+Common validation activities:
+
+- **<Term id="uat">User acceptance testing (UAT)</Term>.** Real users or business people try the product with their everyday tasks and decide if it is fit for purpose. For example, a bank's branch staff try the new standing-order feature with real customer cases. See [Levels of testing](/fundamentals/levels-of-testing).
+- **<Term id="usability-testing">Usability testing</Term>.** Watching real people try tasks and noting where they hesitate, misunderstand or give up.
+- **<Term id="beta-testing">Beta testing</Term>.** A pre-release build goes to a group of real users through TestFlight or Google Play testing tracks. See [Beta distribution](/mobile/beta-distribution).
+- **Demos and prototype feedback.** Showing a clickable prototype or a sprint demo to the product owner or customers: "Is this what you need?"
+- **After launch:** app-store reviews, support tickets and analytics show whether the feature really solves the problem.
+
+<Callout type="note" title="Validation starts early too">
+
+Validation is not only "testing at the end". Showing paper sketches or a clickable prototype to five customers **before** development is validation, and it is the cheapest kind. The earlier you learn you're building the wrong thing, the less you throw away.
+
+</Callout>
+
+## Static vs dynamic testing
+
+These two terms describe **how** you test, and they overlap with verification and validation in a way that confuses many beginners.
+
+| | Static testing | Dynamic testing |
+| --- | --- | --- |
+| Runs the software? | No | Yes |
+| Examples | Story reviews, design walkthroughs, code reviews, inspections | Running test cases, exploratory testing, usability sessions, UAT |
+| Finds | Defects in documents and code: gaps, contradictions, ambiguity | Failures in the running product |
+| Mostly serves | Verification | Both verification and validation |
+
+<Callout type="warning" title="A common myth">
+
+"Verification is static, validation is dynamic" is a handy simplification you will see in many articles, but it is not quite right. Running a test case against the acceptance criteria is **dynamic verification**. Reviewing a prototype with a real customer can be **validation without any code**. The real question is always: *what am I comparing against, the spec or the user's need?*
+
+</Callout>
+
+## When they disagree
+
+The interesting cases are the ones where a product passes one check and fails the other.
+
+### Passes verification, fails validation
+
+<Callout type="bug" title="Built exactly to spec, still wrong">
+
+- **The confusing checkout.** The spec says "preselect the first saved address". The app does exactly that, and passes every test. But for many customers the first saved address is their office or their parents' house, and the address is shown in small grey text. Orders go to the wrong place. (You'll try this one below.)
+- **The forgotten requirement.** A banking app's "Send money" spec covers amounts, limits and confirmation. Nobody wrote "show the payee's name before confirming". Every test passes, and customers send money to the wrong person because the screen only shows an account number.
+- **The impossible workflow.** A fitness app lets you log workouts exactly as specified, but only after the workout ends. Runners want to pause mid-run. Nothing in the spec, so nothing in the tests.
+
+</Callout>
+
+### Passes validation, fails verification
+
+Less common, but real:
+
+- **The beloved but non-compliant feature.** Users love the new one-tap "Buy now" button. But the spec (and consumer law in many countries) requires showing the total including fees before payment. Users are happy; the product fails verification and could get the company fined.
+- **The good-enough rounding.** Customers never notice that a currency converter rounds to 1 decimal instead of the specified 2. It "works" for them, but it breaks the agreed rule and adds up to real money across millions of transactions.
+
+In both cases the fix is to bring the product and the spec back in line, either by changing the product or, if the users are right, by updating the spec.
+
+## How testers contribute to both
+
+A manual tester isn't just "the verification person". You help on both sides.
+
+<Tabs labels={["Verification", "Validation"]}>
+<Tab>
+
+- **Review stories and acceptance criteria early.** Ask "what happens if…?" for empty, maximum, invalid and interrupted cases. Use [Equivalence partitioning](/fundamentals/equivalence-partitioning) and [Boundary value analysis](/fundamentals/boundary-value-analysis) to spot missing rules.
+- **Review designs.** Are all states there: loading, empty, error, disabled? See [Button](/components/button) and [Text field](/components/text-field).
+- **Write test cases that trace back to requirements**, so every rule is checked. See [Writing test cases](/tutorials/writing-test-cases).
+- **Run them and report mismatches** with clear [bug reports](/tutorials/writing-bug-reports).
+
+</Tab>
+<Tab>
+
+- **Think like a real user** during exploratory testing: "would my mom understand this screen?"
+- **Report usability concerns** even when the spec is met. Label them clearly as "matches spec, but confusing" so the team can decide.
+- **Bring real-world context**: small phones, bad networks, interruptions, one-handed use, screen readers. See [Interruptions](/mobile/interruptions) and [Accessibility basics](/web/accessibility-basics).
+- **Support UAT and beta**: prepare environments and test data, collect and triage user feedback.
+
+</Tab>
+</Tabs>
+
+<Callout type="tip" title="How to report a 'spec is wrong' problem">
+
+If the app matches the spec but you think users will struggle, it is not a classic defect, but it is still worth raising. Describe the user impact, quote the spec, suggest an alternative, and let the product owner decide. "Works as specified, but the default address is easy to miss: I ordered to my office by accident in 2 of 3 tries."
+
+</Callout>
+
+</Long>
+
+## See it happen: built right, but the right thing?
+
+Run the spec checks on version 1.0 of this grocery checkout, then watch five customers use it. Then switch to version 1.1.
+
+<SpecVsUsers client:visible />
+
+## Practice: verification or validation?
+
+Sort each activity. The trick: look at **what the result is compared with**. A document means verification; real people's needs mean validation.
+
+<VVSorter client:visible />
+
+## Exercise: one feature, both questions
+
+Here is a short user story for a food delivery app. Plan how you would **verify** it and how you would **validate** it, and look for one thing the spec forgot.
+
+<Tabs labels={["The story", "A suggested answer"]}>
+<Tab>
+
+**User story:** As a hungry customer, I want to reorder a previous order with one tap, so that I can get my usual meal quickly.
+
+**Acceptance criteria**
+
+1. Each past order in Order history has a "Reorder" button.
+2. Tapping "Reorder" adds all items from that order to the cart, with the same quantities.
+3. The cart opens after the items are added.
+4. If the restaurant is closed, the button is disabled.
+
+Write down: two verification activities, two validation activities, and at least one gap in the spec.
+
+</Tab>
+<Tab>
+
+**Verification**
+
+- Review the story before development: is "closed" defined (temporarily closed, outside opening hours, no delivery to this address)?
+- Test cases for each criterion: same items and quantities in the cart, cart opens, button disabled for a closed restaurant (positive and negative cases).
+
+**Validation**
+
+- Watch a few real customers reorder their usual meal: do they find the button, and do they notice what is in the cart?
+- After a beta release, check how many people use Reorder and whether support tickets mention wrong items.
+
+**Gaps the spec forgot** (any of these is a great catch)
+
+- What if an item is **no longer on the menu** or sold out? Silently skipped, or a clear message?
+- What if the **price changed** since the last order? Users expect to see the new price before paying.
+- What about **customizations** ("no onions", extra cheese)? Customers expect them to be kept.
+- What if the **cart already has items** from another restaurant?
+
+Finding these during a story review is verification of the spec itself, and it prevents validation failures later.
+
+</Tab>
+</Tabs>
+
+<Checklist
+  title="Verification and validation for a feature"
+  storageKey="verification-vs-validation"
+  items={[
+    'I reviewed the story and acceptance criteria before development and raised questions',
+    'Every acceptance criterion is covered by at least one test case',
+    'I checked the designs include loading, empty, error and disabled states',
+    'I looked at the feature as a real user would, on a real device, in a real situation',
+    'Usability concerns are reported even when the app matches the spec',
+    'Feedback from demos, UAT or beta users has been reviewed and triaged',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "Which question does verification answer?",
+      options: [
+        "Are we building the right product?",
+        "Are we building the product right?",
+        "Will users pay for this?",
+        "Is the app fast enough?",
+      ],
+      answer: 1,
+      explain: "Verification checks the product against its specification: did we build it right? Validation asks whether it is the right product for users.",
+    },
+    {
+      q: "A tester reads a user story and points out that it never says what happens when the card is declined. What is this?",
+      options: [
+        "Dynamic validation",
+        "User acceptance testing",
+        "Static testing, as part of verification",
+        "Beta testing",
+      ],
+      answer: 2,
+      explain: "Nothing is being run, and the story is being checked for gaps. That is static testing, a form of verification.",
+    },
+    {
+      q: "A checkout passes every test case, but real customers keep sending orders to the wrong address. What happened?",
+      options: [
+        "It passed verification but failed validation",
+        "It failed verification but passed validation",
+        "It failed both",
+        "It passed both",
+      ],
+      answer: 0,
+      explain: "It matched the spec (verification passed), but it doesn't meet real users' needs (validation failed). The spec itself was the problem.",
+    },
+    {
+      q: "Which activity is the clearest example of validation?",
+      options: [
+        "A developer's code review",
+        "Running TC-014 against the acceptance criteria",
+        "A design walkthrough comparing screens with requirements",
+        "Bank staff trying the new feature with their everyday cases during UAT",
+      ],
+      answer: 3,
+      explain: "UAT asks the real users whether the product meets their needs. The others compare the product with documents.",
+    },
+    {
+      q: "Is 'verification is static, validation is dynamic' accurate?",
+      options: [
+        "Yes, always",
+        "No: running a test case against the spec is dynamic verification, and reviewing a prototype with users is validation",
+        "No: verification is always dynamic",
+        "Yes, but only for mobile apps",
+      ],
+      answer: 1,
+      explain: "It's a simplification. What matters is what you compare against: the spec (verification) or the user's real need (validation).",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- **Verification:** "Are we building the product right?" It compares the product with specs, stories and designs.
+- **Validation:** "Are we building the right product?" It compares the product with real users' needs.
+- **Static testing** (reviews, walkthroughs, inspections) finds problems without running anything, and it is the cheapest place to catch them.
+- **Dynamic testing** runs the software and can serve both verification and validation.
+- A product can pass one and fail the other: built exactly to a flawed spec, or loved by users while breaking a written rule.
+- Testers help on both sides: question requirements early, and speak up for real users even when the spec is met.
+
+</KeyTakeaways>

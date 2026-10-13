@@ -1,0 +1,26 @@
+---
+const days = Array.from({ length: 14 }, (_, i) => i + 8);
+---
+
+<div class="w-[74%] rounded-[10px] bg-black/[0.04] p-1.5 text-[8px] font-semibold dark:bg-white/10">
+  <div class="mb-1 flex items-center justify-between px-0.5 text-[9px] text-fg">
+    <span>October 2026</span>
+    <span class="text-brand">‹ ›</span>
+  </div>
+  <div class="grid grid-cols-7 gap-y-[2px] text-center text-muted">
+    {
+      days.map((d) => (
+        <span
+          class:list={[
+            'grid h-[13px] place-items-center',
+            d === 12 && 'rounded-full bg-brand text-white',
+            d > 12 && d < 16 && 'bg-brand-soft text-fg',
+            d === 16 && 'rounded-r-full bg-brand-soft text-fg',
+          ]}
+        >
+          {d}
+        </span>
+      ))
+    }
+  </div>
+</div>

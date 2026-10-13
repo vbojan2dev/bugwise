@@ -1,0 +1,88 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import SectionHero from '@/components/ui/SectionHero.astro';
+import ComponentPreview from '@/components/ui/ComponentPreview.astro';
+import Icon from '@/components/ui/Icon.astro';
+import SectionProgress from '@/components/ui/SectionProgress.astro';
+import { componentCategories, getSection, plannedComponents } from '@/data/site';
+import { getComponents } from '@/lib/content';
+import { href } from '@/lib/url';
+
+const section = getSection('components');
+const components = await getComponents();
+const written = new Set(components.map((c) => c.data.title.toLowerCase()));
+const planned = plannedComponents.filter((p) => !written.has(p.title.toLowerCase()));
+const cats = Object.entries(componentCategories) as [keyof typeof componentCategories, (typeof componentCategories)[keyof typeof componentCategories]][];
+---
+
+<BaseLayout title={section.title} description={section.description}>
+  <SectionHero section={section} stats={[`${components.length} guides`, `${planned.length} planned`, 'iOS · Android · Web']}>
+    <div class="mt-8 grid max-w-3xl gap-3 text-sm sm:grid-cols-3">
+      {
+        [
+          ['play', 'Live demos', 'Tap and play with every variant'],
+          ['bug', 'Bug hunts', 'Find bugs in broken versions'],
+          ['list-checks', 'Test checklists', 'Ready-made test ideas'],
+        ].map(([icon, t, d]) => (
+          <div class="flex items-start gap-3 rounded-xl border border-line bg-surface/80 p-3 backdrop-blur">
+            <Icon name={icon} size={18} class="mt-0.5 text-[var(--accent)]" />
+            <div>
+              <p class="font-medium">{t}</p>
+              <p class="text-muted">{d}</p>
+            </div>
+          </div>
+        ))
+      }
+    </div>
+    <SectionProgress class="mt-6" keys={components.map((c) => `components/${c.id}`)} />
+  </SectionHero>
+
+  <div class="container-page space-y-14 py-12" style={`--accent: ${section.accent}`}>
+    {
+      cats.map(([key, cat]) => {
+        const done = components.filter((c) => c.data.category === key);
+        const soon = planned.filter((p) => p.category === key);
+        return (
+          <section>
+            <h2 class="mb-5 flex items-center gap-2.5 text-xl font-semibold tracking-tight">
+              <Icon name={cat.icon} size={20} class="text-faint" />
+              {cat.title}
+              <span class="text-sm font-normal text-faint">{done.length + soon.length}</span>
+            </h2>
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {done.map((c) => (
+                <a
+                  href={href(`/components/${c.id}`)}
+                  data-progress-key={`components/${c.id}`}
+                  class="group card relative overflow-hidden transition-all hover:-translate-y-0.5 hover:border-[var(--accent)] hover:shadow-soft"
+                >
+                  <span class="absolute top-2 right-2 z-10 hidden size-6 place-items-center rounded-full bg-ok text-white shadow-soft group-data-[done=true]:grid" title="Completed">
+                    <Icon name="check" size={14} strokeWidth={3} />
+                  </span>
+                  <div class="h-28 border-b border-line bg-subtle">
+                    <ComponentPreview id={c.id} />
+                  </div>
+                  <div class="p-3.5">
+                    <p class="font-medium group-hover:text-[var(--accent)]">{c.data.title}</p>
+                    <p class="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted">{c.data.description}</p>
+                  </div>
+                </a>
+              ))}
+              {soon.map((p) => (
+                <div class="flex flex-col rounded-2xl border border-dashed border-line">
+                  <div class="grid h-28 place-items-center border-b border-dashed border-line text-faint">
+                    <Icon name="sparkles" size={18} />
+                  </div>
+                  <div class="p-3.5">
+                    <p class="font-medium text-muted">{p.title}</p>
+                    <p class="mt-0.5 text-xs text-faint">Coming soon</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })
+    }
+  </div>
+</BaseLayout>

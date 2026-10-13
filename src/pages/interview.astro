@@ -1,0 +1,217 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import SectionHero from '@/components/ui/SectionHero.astro';
+import Icon from '@/components/ui/Icon.astro';
+import Flashcards from '@/components/islands/Flashcards';
+import NewsletterForm from '@/components/islands/NewsletterForm';
+import { getSection, newsletter } from '@/data/site';
+import { interviewCategories, levelLabel, levelTone } from '@/data/labels';
+import { href } from '@/lib/url';
+
+const section = getSection('interview');
+
+const categories = interviewCategories;
+const catOrder = Object.keys(categories);
+
+const entries = (await getCollection('interview')).sort(
+  (a, b) => catOrder.indexOf(a.data.category) - catOrder.indexOf(b.data.category) || a.data.order - b.data.order,
+);
+const questions = await Promise.all(entries.map(async (e) => ({ entry: e, Content: (await render(e)).Content })));
+const usedCats = catOrder.filter((c) => entries.some((e) => e.data.category === c)) as (keyof typeof categories)[];
+const cards = entries.map((e) => ({ id: e.id, question: e.data.question, short: e.data.short, category: e.data.category }));
+---
+
+<BaseLayout title="Interview Prep" description={section.description}>
+  <SectionHero
+    section={section}
+    stats={[
+      `${entries.length} questions`,
+      `${entries.filter((e) => e.data.level === 'junior').length} junior`,
+      `${entries.filter((e) => e.data.level === 'mid').length} mid-level`,
+      `${entries.filter((e) => e.data.level === 'senior').length} senior`,
+    ]}
+  >
+    <div class="mt-8 inline-flex rounded-xl border border-line bg-surface p-1 text-sm" role="tablist" aria-label="View">
+      <button type="button" role="tab" data-view="list" aria-selected="true" class="iv-tab flex items-center gap-1.5 rounded-lg px-4 py-2 font-medium">
+        <Icon name="list-checks" size={16} /> All questions
+      </button>
+      <button type="button" role="tab" data-view="cards" aria-selected="false" class="iv-tab flex items-center gap-1.5 rounded-lg px-4 py-2 font-medium">
+        <Icon name="layers" size={16} /> Flashcards
+      </button>
+    </div>
+  </SectionHero>
+
+  <div class="container-page py-12" style={`--accent: ${section.accent}`}>
+    <div data-panel="cards" hidden>
+      {cards.length > 0 && <Flashcards client:visible cards={cards} />}
+    </div>
+
+    <div data-panel="list" class="grid gap-10 lg:grid-cols-[13rem_minmax(0,1fr)]">
+      <aside>
+        <div class="sticky top-24 space-y-6">
+          <div>
+            <p class="mb-2 text-xs font-semibold tracking-wider text-faint uppercase">Category</p>
+            <div class="flex flex-wrap gap-1.5 lg:flex-col lg:items-stretch">
+              <button type="button" data-iv-cat="" aria-pressed="true" class="iv-filter">All</button>
+              {
+                usedCats.map((c) => (
+                  <button type="button" data-iv-cat={c} aria-pressed="false" class="iv-filter">
+                    {categories[c]}
+                    <span class="ml-auto text-faint">{entries.filter((e) => e.data.category === c).length}</span>
+                  </button>
+                ))
+              }
+            </div>
+          </div>
+          <div>
+            <p class="mb-2 text-xs font-semibold tracking-wider text-faint uppercase">Level</p>
+            <div class="flex flex-wrap gap-1.5 lg:flex-col lg:items-stretch">
+              <button type="button" data-iv-level="" aria-pressed="true" class="iv-filter">All levels</button>
+              <button type="button" data-iv-level="junior" aria-pressed="false" class="iv-filter">Junior</button>
+              <button type="button" data-iv-level="mid" aria-pressed="false" class="iv-filter">Mid-level</button>
+              <button type="button" data-iv-level="senior" aria-pressed="false" class="iv-filter">Senior</button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="space-y-3" data-pagefind-body>
+        <span hidden data-pagefind-meta="section:Interview"></span>
+        {
+          questions.map(({ entry, Content }, i) => (
+            <details id={entry.id} data-iv-item data-cat={entry.data.category} data-level={entry.data.level} class="iv-item group card scroll-mt-24 open:shadow-soft">
+              <summary class="flex cursor-pointer list-none items-start gap-4 p-5 [&::-webkit-details-marker]:hidden">
+                <span class="mt-0.5 font-mono text-sm text-faint tabular-nums">{String(i + 1).padStart(2, '0')}</span>
+                <div class="min-w-0 flex-1">
+                  <h2 class="font-semibold leading-snug">{entry.data.question}</h2>
+                  <p class="mt-1.5 flex flex-wrap gap-1.5 text-[11px] font-medium">
+                    <span class="rounded-full bg-subtle px-2 py-0.5 text-muted">{categories[entry.data.category]}</span>
+                    <span class:list={['rounded-full px-2 py-0.5', levelTone[entry.data.level]]}>
+                      {levelLabel[entry.data.level]}
+                    </span>
+                  </p>
+                </div>
+                <Icon name="chevron-down" size={18} class="mt-1 shrink-0 text-faint transition-transform group-open:rotate-180" />
+              </summary>
+              <div class="border-t border-line px-5 pt-5 pb-6 sm:pl-14">
+                <p class="mb-4 rounded-xl bg-brand-soft/60 px-4 py-3 text-[0.95rem] font-medium text-fg">
+                  <span class="mr-1.5 text-xs font-bold tracking-wider text-brand uppercase">In short</span>
+                  {entry.data.short}
+                </p>
+                <div class="prose max-w-none text-[1rem]">
+                  <Content />
+                </div>
+                <a href={href(`/interview/${entry.id}`)} class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-brand hover:underline">
+                  Open as a page to share <Icon name="arrow-right" size={14} />
+                </a>
+                <div class="mt-6 grid gap-3 md:grid-cols-2">
+                  <div class="rounded-xl border border-ok/25 bg-ok-soft/40 p-4">
+                    <p class="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-ok">
+                      <Icon name="target" size={15} /> What they're looking for
+                    </p>
+                    <p class="text-sm leading-relaxed text-muted">{entry.data.lookingFor}</p>
+                  </div>
+                  {entry.data.pitfalls.length > 0 && (
+                    <div class="rounded-xl border border-danger/25 bg-danger-soft/40 p-4">
+                      <p class="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-danger">
+                        <Icon name="triangle-alert" size={15} /> Common mistakes
+                      </p>
+                      <ul class="list-disc space-y-1 pl-4 text-sm leading-relaxed text-muted">
+                        {entry.data.pitfalls.map((p) => <li>{p}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </details>
+          ))
+        }
+        <p data-iv-empty hidden class="py-16 text-center text-muted">No questions match these filters.</p>
+      </div>
+    </div>
+    {
+      newsletter.kitFormId && (
+        <section class="card mt-12 grid gap-6 p-6 sm:p-8 md:grid-cols-[1fr_1.1fr] md:items-center" data-pagefind-ignore>
+          <div>
+            <p class="text-xs font-semibold tracking-wider text-brand uppercase">Coming next</p>
+            <h2 class="mt-2 text-xl font-bold tracking-tight">Ready for test automation?</h2>
+            <p class="mt-2 text-muted">
+              We're preparing an Automation track that takes you from manual test cases to automated tests. Join the list for early access and new
+              interview questions.
+            </p>
+          </div>
+          <NewsletterForm client:visible formId={newsletter.kitFormId} button="Join the list" />
+        </section>
+      )
+    }
+  </div>
+</BaseLayout>
+
+<style is:global>
+  .iv-tab { color: var(--muted); transition: all 0.15s; }
+  .iv-tab[aria-selected='true'] { background: var(--fg); color: var(--bg); }
+  .iv-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 0.6rem;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--muted);
+    text-align: left;
+    border: 1px solid var(--line);
+    transition: all 0.15s;
+  }
+  @media (min-width: 1024px) {
+    .iv-filter { border-color: transparent; }
+  }
+  .iv-filter:hover { color: var(--fg); background: var(--subtle); }
+  .iv-filter[aria-pressed='true'] { background: var(--brand-soft); color: var(--brand); border-color: transparent; }
+</style>
+
+<script>
+  // View switch
+  const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-view]')];
+  const panels = [...document.querySelectorAll<HTMLElement>('[data-panel]')];
+  const show = (view: string) => {
+    tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.view === view)));
+    panels.forEach((p) => (p.hidden = p.dataset.panel !== view));
+  };
+  tabs.forEach((t) => t.addEventListener('click', () => show(t.dataset.view!)));
+
+  // Filters
+  const items = [...document.querySelectorAll<HTMLDetailsElement>('[data-iv-item]')];
+  const empty = document.querySelector<HTMLElement>('[data-iv-empty]')!;
+  const state = { cat: '', level: '' };
+  const apply = () => {
+    items.forEach((i) => (i.hidden = !((!state.cat || i.dataset.cat === state.cat) && (!state.level || i.dataset.level === state.level))));
+    empty.hidden = items.some((i) => !i.hidden);
+  };
+  const bind = (attr: 'ivCat' | 'ivLevel', key: 'cat' | 'level') => {
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>(`[data-${attr === 'ivCat' ? 'iv-cat' : 'iv-level'}]`)];
+    buttons.forEach((b) =>
+      b.addEventListener('click', () => {
+        state[key] = b.dataset[attr]!;
+        buttons.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+        apply();
+      }),
+    );
+  };
+  bind('ivCat', 'cat');
+  bind('ivLevel', 'level');
+
+  // Open a question when linked to directly (e.g. from a flashcard or search)
+  const openFromHash = () => {
+    const el = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (el instanceof HTMLDetailsElement) {
+      show('list');
+      el.hidden = false;
+      el.open = true;
+      el.scrollIntoView({ block: 'start' });
+    }
+  };
+  addEventListener('hashchange', openFromHash);
+  openFromHash();
+</script>

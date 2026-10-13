@@ -1,0 +1,460 @@
+---
+title: File Upload
+description: The button, drop zone and file list that send documents to a server. Learn native file inputs, drag and drop, mobile document pickers and per-file progress, and the type, size, file name and partial-failure bugs testers find in every upload.
+category: input
+aka: [File picker, Dropzone, Attachment]
+platforms: [ios, android, web]
+minutes: 35
+order: 14
+---
+
+import Anatomy from '@/components/demos/file-upload/Anatomy';
+import VariantsGallery from '@/components/demos/file-upload/VariantsGallery';
+import Playground from '@/components/demos/file-upload/Playground';
+import { DropArea, Rules, LongName } from '@/components/demos/file-upload/Examples';
+import { BuggyExpenseApp } from '@/components/demos/file-upload/BuggyExpenseApp';
+
+You attach a scanned invoice to an expense claim, upload a signed rental contract, send a CSV of transactions to your accountant, add your CV to a job application. Then you press **Submit** and trust that every file arrived, complete and readable.
+
+Sometimes it didn't. The scanner saved the file as `SCAN_0042.PDF` and the app said "file type not supported". The hotel invoice uploaded for two minutes before the app mentioned a 10 MB limit. One of three receipts failed on the train and quietly vanished from the list. File upload looks like one button, but it's a small system of its own, and testers who know what to feed it find bugs every time.
+
+<Callout type="info" title="Photos have their own page">
+This page is about the **generic upload component** for documents: PDF, DOCX, XLSX, CSV, ZIP. Photos add camera access, HEIC, EXIF rotation and location metadata; those are covered in [Image Upload](/features/image-upload). Everything below applies to photo uploads too.
+</Callout>
+
+## What is a file upload?
+
+A file upload component lets the user **choose one or more files from their device and send them to a server**. It usually has three jobs:
+
+1. **Picking**: a button that opens the system file picker, and on the web often a drop zone for drag and drop.
+2. **Checking**: is the type allowed, is it under the size limit, are there too many files?
+3. **Uploading**: sending each file, showing its progress, and handling cancel, failure and retry.
+
+You'll find it in expense apps (receipts), banking and insurance (statements, claims), job portals (CV), email and chat (attachments), cloud storage, and admin tools (CSV imports).
+
+### Anatomy
+
+<Anatomy />
+
+### The states of one file
+
+Every file in the list goes through its own life cycle, and the whole component is only "done" when **all** files are. A good list shows each file's state separately:
+
+| State | What the user sees | What to check |
+| --- | --- | --- |
+| **Rejected** | "Not added" with the reason | The reason is specific: type, size, count, empty file |
+| **Uploading** | Progress bar, percentage, **Cancel** | The bar moves; Cancel really stops the request |
+| **Processing** | Bar full, "Processing…" | The app doesn't look frozen at 100% |
+| **Uploaded** | Check mark, **Remove** | The server has the right file, complete and openable |
+| **Failed** | Error text, **Retry**, **Remove** | The file stays in the list; Retry works |
+| **Canceled** | "Canceled", **Retry** or gone | Matches the spec; nothing half-uploaded is kept |
+
+## Designs & variants
+
+The same idea appears as a plain browser input, a drop zone, a single "Upload CV" field, a paperclip in a chat, or the system document picker on a phone.
+
+<VariantsGallery client:visible />
+
+### The native file input
+
+On the web, everything starts with `<input type="file">`. Two attributes matter most for testers:
+
+- **`accept`** (for example `accept=".pdf,.docx"` or `accept="application/pdf"`) filters what the picker shows. It's a **hint, not a check**: desktop dialogs offer an "All files" option, and files dropped onto a drop zone ignore `accept` completely.
+- **`multiple`** allows picking several files at once. Without it, the second file **replaces** the first, which surprises users who expected to add more.
+
+Custom-designed upload buttons usually hide the real input and trigger it from a styled button. That's fine, as long as the visible control is a real, focusable button.
+
+### Drag and drop is a shortcut, not the way in
+
+A drop zone is great on a desktop with a file explorer open. It's useless on a phone, for keyboard users, for many screen reader users and for anyone who finds dragging hard. Drag and drop must always come **with** a Browse button that does the same thing. Testers also check what happens when a file is dropped **outside** the zone: the browser shouldn't simply open the PDF and leave the page (with the user's half-filled form).
+
+### Mobile document pickers
+
+Phones don't let apps browse the whole file system. Instead, the app asks the **system picker**, the user chooses, and the app gets access to just those files. No storage <Term id="app-permissions">permission</Term> is needed for this.
+
+| | iOS | Android |
+| --- | --- | --- |
+| **Picker** | Document picker (the Files app UI: Recents, Shared, Browse) | Storage Access Framework picker ("Open from", Recent, Downloads, Drive) |
+| **Sources** | On My iPhone, iCloud Drive and installed providers like Google Drive or Dropbox | Device storage, Downloads, and providers like Google Drive |
+| **Multiple** | Only if the app enables it | Only if the app requests it |
+| **Typical traps** | Cloud files not downloaded yet, file names with emoji, files from other apps that disappear later | Files without a real name or size, Drive files that need a download first, older OS versions |
+
+On a mobile **website**, the same `<input type="file">` opens a system menu instead of a desktop dialog (on iPhone: Photo Library, Take Photo or Video, Choose File). The `accept` list changes which options appear, so test on real phones, not only in a desktop browser.
+
+## Push it to the limits
+
+This is a correct uploader for an expense claim. Change the rules and the network: the **same files** are uploaded again each time, so you can compare. Then add files from the test kit at the bottom (drag them, or tap them).
+
+<Playground client:visible />
+
+A few things to try, and what they teach:
+
+- **Extension, exact case** rejects `SCAN_0042.PDF`. Users don't care about letter case, and many scanners and older systems write uppercase extensions.
+- **MIME type (File.type)** looks smarter, but the browser usually guesses the type **from the extension**. `holiday-photo.pdf` (a PNG renamed to .pdf) still passes. Only the server, looking at the actual bytes, can catch it.
+- **Client-side checks off** shows why the app should check early: the 48 MB ZIP uploads completely before the server says no. The server still protects itself, but the user wasted time and mobile data.
+- **Unstable** network: failed files stay in the list with **Retry**. Nothing silently disappears.
+
+<Callout type="warning" title="Client checks are convenience, the server is the gatekeeper">
+Every check in the app or browser (`accept`, extension, size, count) can be skipped by a curious user with <Term id="devtools" /> or a <Term id="proxy-tool" />. The server must check again: the **real content** (by its first bytes, the "magic number"), the size, the count, and that the user is allowed to upload there at all. In a test environment, try a text file renamed to `.pdf`, a file over the limit sent directly to the API, and a file with a double extension like `invoice.pdf.exe`. Expect a clear rejection (often HTTP **413** for too large, **415** for the wrong type). More in [Security basics](/web/security-basics).
+</Callout>
+
+### File names are test data
+
+The name is the part of a file that developers forget most. Keep these in your <Term id="test-data">test kit</Term>:
+
+| Name | What can go wrong |
+| --- | --- |
+| `SCAN_0042.PDF` | Uppercase extension rejected |
+| `Lease agreement (signed) final.docx` | Spaces and brackets break links or downloads |
+| A 120-character name | Overflows the row, pushes the Remove button off-screen, or is cut by the server |
+| `Mietvertrag_endgültig.pdf`, `Résumé.pdf`, `报告.pdf`, `🧾.pdf` | <Term id="diacritics" />, other scripts and emoji turn into `???` or `Ã¼` |
+| `invoice.pdf.exe`, `report.` and a name without any extension | Wrong type detected, or the app crashes on a missing extension |
+| `Invoice_March.pdf` twice (from two folders) | Duplicate, or the second silently **overwrites** the first on the server |
+
+<Callout type="tip" title="Middle truncation keeps the extension">
+When a name is too long, cut it in the **middle**: `Hotel_invoice_Grand_Ho…_884213.pdf`. The user still sees how it starts **and** what type it is. Cutting at the end hides the extension, and not cutting at all breaks the layout. See <Term id="truncation" />.
+</Callout>
+
+## When to use it
+
+- The user has to provide a **document that already exists** on their device or in the cloud: receipts, contracts, statements, CVs.
+- The content is too big or too structured to type: a CSV import, a ZIP of project files.
+- Several files belong together and should be checked and submitted as **one set** (an insurance claim with photos, invoices and a police report).
+
+## Good and bad uses
+
+<Compare>
+<Do title="Drag and drop plus a Browse button">
+
+<div class="not-prose demo-screen my-3"><DropArea good /></div>
+
+Works with a mouse, a finger, a keyboard and a screen reader.
+
+</Do>
+<Dont title="Drag and drop only">
+
+<div class="not-prose demo-screen my-3"><DropArea /></div>
+
+On a phone or with a keyboard there is simply no way to add a file.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Rules shown before picking">
+
+<div class="not-prose demo-screen my-3"><Rules good /></div>
+
+The user knows the limit up front, and the oversized file is stopped instantly with a specific message.
+
+</Do>
+<Dont title="Rules revealed by the error">
+
+<div class="not-prose demo-screen my-3"><Rules /></div>
+
+No limit mentioned, two minutes of uploading, then a generic failure.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Long names truncate in the middle">
+
+<div class="not-prose demo-screen my-3"><LongName good /></div>
+
+The extension and the Remove button stay visible.
+
+</Do>
+<Dont title="Long names push everything out">
+
+<div class="not-prose demo-screen my-3"><LongName /></div>
+
+The name runs off the card and takes the Remove button with it.
+
+</Dont>
+</Compare>
+
+Also don't ask for a file when a few typed fields would do (an IBAN, a date, a policy number), and don't make users upload something the app could fetch itself.
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Browse not keyboard reachable** | The drop zone works with a mouse, but <kbd>Tab</kbd> never reaches a button | High (for affected users) |
+| 2 | **Case-sensitive type check** | `SCAN_0042.PDF` or `.JPG` rejected | Medium–High |
+| 3 | **Limits hidden** | Size or count limit shown only after a long upload fails | Medium |
+| 4 | **Wrong file removed** | Tapping Remove on one file removes a different one | High (wrong documents submitted) |
+| 5 | **Failure swallowed** | A failed file disappears, or the claim is sent without it | High |
+| 6 | **Long names break the layout** | Name overflows, Remove button off-screen, text overlaps | Medium |
+| 7 | **No progress or cancel** | Spinner forever, no way to stop a wrong 200 MB upload | Medium |
+| 8 | **Duplicates** | Same file attached twice, or a second file with the same name overwrites the first | Medium |
+| 9 | **Server trusts the client** | Renamed or oversized files are accepted when sent directly | High (security) |
+| 10 | **Partial failure hidden** | "Upload complete" while 1 of 3 files failed | High |
+| 11 | **Special characters mangled** | `Mietvertrag_endgültig.pdf` arrives as `Mietvertrag_endgÃ¼ltig.pdf` | Low–Medium |
+| 12 | **Submit during upload** | **Submit** works while files are still uploading; the claim arrives without them | High |
+
+<Callout type="bug" title="Partial failures are the sneaky ones">
+With one file, failure is obvious. With five, the user sees four green ticks and assumes everything worked. The component must make the failed file impossible to miss (color **and** icon **and** text), keep it in the list with **Retry**, and either block Submit or clearly say "1 file was not uploaded". Test it on purpose with <Term id="network-throttling" /> or by switching the network off mid-upload ([Network conditions](/mobile/network-conditions)).
+</Callout>
+
+## Find the bug
+
+This expense claim form has **six upload bugs**. Explore it like a tester:
+
+- Click in **Description**, then use only <kbd>Tab</kbd> and <kbd>Enter</kbd> to add a receipt.
+- Add every file from **Files on your computer**, by dragging and by tapping. Read every message and the network log.
+- Add **two or three** files, then remove the **top** one.
+- Turn on **Unstable network** and add several small files. Count them.
+
+<BugHunt
+  title="Expense claim receipts"
+  bugs={[
+    {
+      title: 'Browse can only be clicked, not reached with the keyboard',
+      hint: 'Click in the Description field, then press Tab. Where does focus go?',
+      detail: 'Focus jumps from Description straight to <strong>Submit claim</strong>. "browse" is a <code>&lt;span&gt;</code> with a click handler, not a button, and the drop zone needs a mouse. Keyboard and many screen reader users cannot attach anything (WCAG 2.1.1 Keyboard, Level A). Expected: a real <code>&lt;button&gt;</code> "Browse files" that opens the picker with Enter or Space.',
+    },
+    {
+      title: 'SCAN_0042.PDF is rejected as "not supported"',
+      hint: 'Add the file from the scanner.',
+      detail: 'The app compares the extension case-sensitively, so <code>.PDF</code> is not <code>.pdf</code>. The error even says PDFs are allowed. Expected: extensions compared case-insensitively, and the content validated on the server.',
+    },
+    {
+      title: 'The 10 MB limit is mentioned only after the upload',
+      hint: 'Read the hint under "Receipts", then add Hotel_folio_scan_600dpi.pdf and watch.',
+      detail: 'The hint lists types but no size. The 14.2 MB scan uploads to 100% and only then shows <strong>"file too large (max 10 MB)"</strong>; the network log shows <code>413</code>. The user wasted time and data. Expected: the limit is shown next to the drop zone, and the app rejects the file instantly, before uploading.',
+    },
+    {
+      title: 'Remove deletes a different file',
+      hint: 'Add Taxi_receipt.pdf, then Flight_LH1234.pdf. Remove the top one.',
+      detail: 'The list shows the newest file first, but Remove uses the position in the original (oldest-first) list. Removing <em>Flight_LH1234.pdf</em> removes <em>Taxi_receipt.pdf</em>. With an odd number of files the middle one works, which makes it look random. Expected: Remove always removes the file in that row (use an id, not the position). Severity is high: users submit the wrong documents.',
+    },
+    {
+      title: 'Failed uploads vanish without an error',
+      hint: 'Turn on Unstable network and add three or four small files one by one.',
+      detail: 'Every second upload fails with <code>ERR connection reset</code> in the network log, and that file simply <strong>disappears</strong> from the list. No message, no Retry; the counter just goes down. The claim can be submitted without it. Expected: the file stays with an error ("Upload failed, connection lost") and a Retry button.',
+    },
+    {
+      title: 'A long file name pushes the Remove button off-screen',
+      hint: 'Add the hotel invoice with the very long name. Try to remove it.',
+      detail: 'The name doesn\'t wrap or truncate, so the row grows wider than the card and the <strong>Remove</strong> button is cut off. The only way to remove the file is to reload the page. Expected: the name truncates (ideally in the middle, keeping <code>.pdf</code>) and the button always stays visible.',
+    },
+  ]}
+>
+  <BuggyExpenseApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #4?">
+
+**Title:** Expense claim: Remove on a receipt removes a different receipt when 2+ files are attached
+
+**Steps:** 1. Open New expense claim. 2. Add Taxi_receipt.pdf. 3. Add Flight_LH1234.pdf (it appears at the top). 4. Click Remove (×) on Flight_LH1234.pdf.
+
+**Expected:** Flight_LH1234.pdf is removed; Taxi_receipt.pdf stays.
+**Actual:** Taxi_receipt.pdf is removed; Flight_LH1234.pdf stays. With 3 files, removing the middle one works correctly.
+
+**Severity:** High (the claim is submitted with the wrong documents) · **Reproducible:** 10/10 with 2 files
+
+</Callout>
+
+## How to test it
+
+Upload limits are perfect for [boundary value analysis](/fundamentals/boundary-value-analysis): with a 10 MB limit, test 9.9 MB, exactly 10 MB and 10.1 MB, plus a 0-byte file. With "max 5 files", try 4, 5 and 6, and also 3 + 3 in two rounds.
+
+### Checklist
+
+<Checklist
+  title="File upload test checklist"
+  storageKey="file-upload"
+  items={[
+    'Allowed types, max size per file, max number of files and any total limit are shown before picking',
+    'Browse is a real button: reachable with Tab, works with Enter and Space, has a clear accessible name',
+    'Drag and drop works, and everything it does can also be done with Browse (and on a phone)',
+    'Dropping a file outside the drop zone does not open it in the browser and lose the page',
+    'Type check ignores letter case (.PDF, .Docx) and the server checks the real content',
+    'Files over the limit, empty files and wrong types are rejected before uploading, with a specific message',
+    'Limits hold at the boundaries: just under, exactly at and just over the size and count limits',
+    'The server rejects renamed, oversized and double-extension files sent directly to the API',
+    'Each file shows its own progress, a processing state after 100%, and can be canceled',
+    'A failed file stays in the list with a reason and Retry; partial failures are clearly reported',
+    'Submit is blocked (or clearly warns) while files are uploading or have failed',
+    'Remove removes exactly the file in that row, also with several files and after reordering',
+    'Duplicates are handled as specified (skipped, renamed or allowed) and never overwrite another file',
+    'Long, unicode, emoji and space-filled names display, truncate and download correctly',
+    'Screen readers announce added, uploaded and failed files (live region) and name each Remove button',
+    'iOS document picker and Android document picker: single, multiple, cloud files and Cancel all work',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-FU-001',
+      title: 'Add a receipt with the keyboard only',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Web, desktop browser, no mouse'],
+      steps: ['Tab to the Browse files button', 'Press Enter', 'Pick Taxi_receipt.pdf in the dialog and confirm'],
+      expected: 'Focus ring is visible on Browse. The picker opens; after picking, focus returns near the upload area and the file appears with progress. A screen reader announces "Taxi_receipt.pdf added".',
+    },
+    {
+      id: 'TC-FU-002',
+      title: 'Uppercase extension is accepted',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Add SCAN_0042.PDF (a valid PDF)'],
+      data: 'Also: report.Pdf, contract.DOCX',
+      expected: 'The file is accepted and uploaded like a lowercase .pdf.',
+    },
+    {
+      id: 'TC-FU-003',
+      title: 'File size at the boundaries',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Limit is 10 MB per file'],
+      steps: ['Add a 9.9 MB PDF', 'Add a PDF of exactly 10 MB', 'Add a 10.1 MB PDF', 'Add a 0-byte PDF'],
+      expected: '9.9 MB and 10 MB upload. 10.1 MB is rejected instantly, before any upload request, with "Larger than 10 MB". The empty file is rejected with "This file is empty".',
+    },
+    {
+      id: 'TC-FU-004',
+      title: 'Server rejects a renamed file',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Test environment', 'Proxy tool or DevTools available'],
+      steps: ['Rename a PNG image to holiday-photo.pdf', 'Upload it through the app', 'Send it again directly to the upload endpoint, bypassing the app'],
+      expected: 'Both attempts are rejected (for example 415) with a clear message. Nothing is stored.',
+    },
+    {
+      id: 'TC-FU-005',
+      title: 'Remove the correct file',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Add A.pdf, B.pdf and C.pdf', 'Remove B.pdf', 'Remove the top file', 'Remove the bottom file'],
+      expected: 'Each time exactly the file in that row disappears. The counter and the submitted claim match the list.',
+    },
+    {
+      id: 'TC-FU-006',
+      title: 'Partial failure with retry',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Add three files', 'Switch the network off while the second one uploads', 'Switch it back on', 'Tap Retry on the failed file'],
+      expected: 'Files 1 and 3 upload (or wait for the network). File 2 shows "Upload failed" with Retry and stays in the list. Submit is blocked or warns. After Retry, all three are uploaded.',
+    },
+    {
+      id: 'TC-FU-007',
+      title: 'Long and unicode file names',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Add a file with a 120-character name', 'Add Mietvertrag_endgültig.pdf and 报告.pdf', 'Submit, then open the claim and download each file'],
+      expected: 'Names truncate in the middle with the extension visible; Remove stays visible. After download, names and contents are unchanged.',
+    },
+    {
+      id: 'TC-FU-008',
+      title: 'Pick several documents on Android',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Android device with a PDF in Downloads and one in Google Drive'],
+      steps: ['Tap Attach', 'In the system picker, long-press to select both files', 'Tap Select'],
+      expected: 'Both files appear with their real names and sizes and upload. The Drive file is downloaded first if needed, with progress.',
+    },
+  ]}
+/>
+
+## Accessibility
+
+- **A real, labelled button.** The control that opens the picker must be a real button with a clear name like "Browse files" or "Attach receipt". An icon-only paperclip needs an accessible name. Test <Term id="keyboard-navigation" />: <kbd>Tab</kbd> reaches it, <kbd>Enter</kbd> and <kbd>Space</kbd> open the picker (WCAG 2.1.1 Keyboard, Level A).
+  <DevNote>A `<button>` (or a native file input).</DevNote>
+- **Drag and drop is optional.** Everything must work without dragging. That's what keyboard, switch, <Term id="screen-reader" /> and most touch users rely on.
+- **Rules are instructions.** Allowed types and limits are visible text near the control (WCAG 3.3.2 Labels or Instructions, Level A).
+  <DevNote>The text is connected with `aria-describedby`.</DevNote>
+- **Announce what happens.** "Invoice.pdf added", "uploaded" and "failed" should reach screen readers without moving focus, through a live region, per WCAG 4.1.3 Status Messages (Level AA). Errors are text, not only a red border (WCAG 3.3.1 Error Identification, Level A).
+  <DevNote>`aria-live="polite"`, or `role="status"`.</DevNote>
+- **Name every row action.** "Remove Invoice_March.pdf", "Retry Flight_LH1234.pdf", not five buttons called "×". Progress bars need a name and value.
+  <DevNote>`role="progressbar"` with `aria-valuenow`, or a native `<progress>`.</DevNote>
+- **Focus after actions.** After picking files, focus returns to the upload area. After removing a file, focus moves to a sensible place (the next row or the Browse button), not to the top of the page.
+- **<Term id="touch-target">Touch targets</Term>:** Browse, Remove and Retry are at least 44×44 pt on iOS and 48×48 dp on Android. On the web, WCAG 2.5.8 (AA) asks for at least 24×24 CSS px; 44×44 px (2.5.5, AAA) is the comfortable target.
+- **Not color alone.** Failed and uploaded states use an icon and text, not just red and green. Text needs 4.5:1 contrast, icons and borders 3:1 (WCAG 1.4.3 / 1.4.11).
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- Apps open the **document picker**. Multiple selection and allowed types are set by the app; check both match the spec.
+  <DevNote>UIKit `UIDocumentPickerViewController`, SwiftUI `fileImporter`.</DevNote>
+- Picked files can live in **iCloud Drive** or another provider and may need to download first. Test with a file that isn't on the device yet, and in airplane mode.
+- Test **Cancel** in the picker: the app should simply return, not show an error or an empty attachment.
+- Uploads should survive locking the phone or switching apps, or fail clearly ([Background and foreground](/mobile/background-and-foreground)).
+- In Safari, the file input offers Photo Library, camera and Files. Choosing a photo there is where [Image Upload](/features/image-upload) topics (HEIC, EXIF) start.
+
+</Tab>
+<Tab>
+
+- Apps use the **Storage Access Framework** picker. It needs **no storage permission**; an app that asks for full storage access just to attach a PDF is worth questioning ([App permissions](/features/app-permissions)).
+  <DevNote>`ACTION_OPEN_DOCUMENT` / `ACTION_GET_CONTENT`, or the Activity Result APIs in modern apps.</DevNote>
+- Name and size come from the provider and can be **missing**; check the list still shows something sensible.
+  <DevNote>The app gets a `content://` link, not a file path.</DevNote>
+- Test files from **Downloads**, **Google Drive** and an SD card or USB drive if the device has one, and selecting several files with a long-press.
+- Rotate the device and switch apps while the picker is open: the app must not lose the files already attached ([Interruptions](/mobile/interruptions)).
+
+</Tab>
+<Tab>
+
+- `<input type="file">` with `accept` and `multiple`. Remember: `accept` only filters the dialog; "All files" and drag and drop bypass it.
+- Drag and drop: one file, several files, a **folder**, a non-allowed type, and a drop **outside** the zone.
+- Use the DevTools **Network** panel: is the request `multipart/form-data`, does the size match, what status comes back? Throttle to "3G" to watch progress and cancel ([DevTools for testers](/web/devtools-for-testers)).
+- Reloading or closing the tab during an upload should warn the user or resume cleanly.
+- Test Chrome, Safari and Firefox: the native input looks and behaves differently in each, and so do drop events.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'An upload form has accept=".pdf" on its file input. Does that guarantee only PDFs reach the server?',
+      options: ['Yes, the browser blocks other files', 'No, it only filters the picker; the server must check the content', 'Yes, if the extension is lowercase', 'No, accept does nothing at all'],
+      answer: 1,
+      explain: 'accept is a hint for the dialog. Users can choose "All files", drop files, or call the API directly. The server is the real gatekeeper.',
+    },
+    {
+      q: 'The drop zone works with a mouse, but Tab never reaches a Browse button. What kind of bug is it?',
+      options: ['Cosmetic', 'An accessibility bug that blocks keyboard users completely', 'Not a bug, drag and drop is enough', 'A performance bug'],
+      answer: 1,
+      explain: 'Keyboard, many screen reader and most phone users cannot drag files. Without a focusable button they cannot upload at all.',
+    },
+    {
+      q: 'The size limit is 10 MB. Which set of files is best for boundary testing?',
+      options: ['1 MB and 50 MB', '9.9 MB, 10 MB, 10.1 MB and 0 bytes', 'Only 10 MB', '5 MB and 15 MB'],
+      answer: 1,
+      explain: 'Just under, exactly at and just over the limit find off-by-one bugs; the empty file is a classic edge case.',
+    },
+    {
+      q: 'Three files are uploaded and one fails. What should the user see?',
+      options: ['"Upload complete"', 'The failed file disappears', 'The failed file stays with an error and Retry; Submit is blocked or warns', 'An error for all three files'],
+      answer: 2,
+      explain: 'Partial failures must be obvious and recoverable. A silent drop means the claim is sent without the document.',
+    },
+    {
+      q: 'Why should a long file name truncate in the middle?',
+      options: ['It looks modern', 'The start and the extension stay visible', 'It saves bandwidth', 'Servers require it'],
+      answer: 1,
+      explain: 'Users recognize files by their start and type. End truncation hides the extension; no truncation breaks the layout.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- File upload is three jobs: **picking**, **checking** and **uploading**. Each file has its own state: rejected, uploading, processing, uploaded, failed, canceled.
+- **Drag and drop is a shortcut.** A real, labelled Browse button must do the same, for keyboard, screen reader and phone users.
+- **Show the rules up front** (types, size, count) and reject bad files **before** uploading, with a specific message.
+- Client checks are convenience. The **server** must check the real content, size and count. Type checks must ignore letter case.
+- File names are test data: **long, unicode, spaces, uppercase extensions, the same name twice**.
+- **Partial failures** must stay visible with Retry; Remove must remove exactly that file; Submit must not run ahead of uploads.
+
+</KeyTakeaways>

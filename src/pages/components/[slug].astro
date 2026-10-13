@@ -1,0 +1,37 @@
+---
+import { render } from 'astro:content';
+import DocsLayout from '@/layouts/DocsLayout.astro';
+import { mdxComponents } from '@/components/mdx';
+import { getComponents, type ComponentPage } from '@/lib/content';
+import { componentCategories } from '@/data/site';
+
+export async function getStaticPaths() {
+  const all = await getComponents();
+  const link = (c?: ComponentPage) => (c ? { title: c.data.title, href: `/components/${c.id}` } : undefined);
+  return all.map((entry, i) => ({
+    params: { slug: entry.id },
+    props: { entry, prev: link(all[i - 1]), next: link(all[i + 1]) },
+  }));
+}
+
+const { entry, prev, next } = Astro.props;
+const { Content, headings } = await render(entry);
+const platformNames = { ios: 'iOS', android: 'Android', web: 'Web' };
+---
+
+<DocsLayout
+  title={entry.data.title}
+  description={entry.data.description}
+  section="components"
+  headings={headings}
+  minutes={{ short: entry.data.minutes }}
+  badges={[
+    { label: componentCategories[entry.data.category].title, icon: componentCategories[entry.data.category].icon },
+    { label: entry.data.platforms.map((p) => platformNames[p]).join(' · '), icon: 'tablet-smartphone' },
+    ...(entry.data.aka.length ? [{ label: `Also called: ${entry.data.aka.join(', ')}` }] : []),
+  ]}
+  prev={prev}
+  next={next}
+>
+  <Content components={mdxComponents} />
+</DocsLayout>

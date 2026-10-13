@@ -1,0 +1,22 @@
+---
+import CapstoneShell from '@/components/capstone/CapstoneShell.astro';
+import ReportForm from '@/components/capstone/ReportForm';
+import { href } from '@/lib/url';
+---
+
+<CapstoneShell
+  path="/capstone/report"
+  phase="report"
+  title="Write the test summary report"
+  description="Capstone phase 5: summarize what you tested, the bugs by severity, open risks and questions, and give a go / no-go recommendation for the FoodDash 2.0 release."
+  lead="It's Thursday afternoon. Product decides tomorrow morning, and your summary is the main input. What did you test, what did you find, and would you ship?"
+>
+  <div class="mb-8 grid max-w-4xl grid-cols-1 gap-4 text-sm leading-relaxed text-muted sm:grid-cols-3">
+    <p><strong class="text-fg">Your reports feed this page.</strong> Bugs by severity come from what you filed in the app.</p>
+    <p><strong class="text-fg">You recommend, Product decides.</strong> Give a clear call and the reasons behind it.</p>
+    <p>
+      <strong class="text-fg">Missed something?</strong> You can go back to <a class="text-brand underline" href={href('/capstone/test')}>the app</a> and file more reports any time.
+    </p>
+  </div>
+  <ReportForm client:load />
+</CapstoneShell>

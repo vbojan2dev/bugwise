@@ -1,0 +1,480 @@
+---
+title: Boundary Value Analysis
+description: Bugs love edges. Learn why mistakes cluster at the limits of a rule, how to pick 2-value and 3-value boundary tests, and how to find off-by-one bugs in ages, passwords, dates, money, lists and prices.
+order: 8
+level: beginner
+minutes: { short: 15, long: 25 }
+platform: both
+tags: [fundamentals, test design, techniques, black-box]
+---
+
+import PartitionStrip from '@/components/demos/fundamentals-ep-bva/PartitionStrip';
+import BoundaryGame from '@/components/demos/fundamentals-ep-bva/BoundaryGame';
+import BuggyRules from '@/components/demos/fundamentals-ep-bva/BuggyRules';
+import BookingExercise from '@/components/demos/fundamentals-ep-bva/BookingExercise';
+
+An online shop launches a summer promotion: **"Free shipping on orders of €50 or more!"** It's tested, it ships, and the first weekend goes well. Then the support inbox fills up. Dozens of customers carefully filled their carts to *exactly* €50.00, and every single one was charged €4.99 for shipping.
+
+The tester had checked a €35 cart (pays shipping) and an €80 cart (free shipping). Both passed. The bug lived in the one place nobody looked: the exact edge, **€50.00**. The developer had written "more than 50" instead of "50 or more".
+
+This is the most common kind of bug in the world, and there's a technique built to catch it: <Term id="boundary-value-analysis">boundary value analysis</Term> (BVA).
+
+## Why bugs cluster at the edges
+
+<Callout type="example" title="An everyday analogy: the height sign at the theme park">
+
+A roller coaster has a sign: "You must be at least 120 cm to ride." The staff never argue about a 150 cm teenager or a 90 cm toddler. The arguments happen with the child who is *exactly* 120 cm, or 119.5 cm. Edges are where rules get tricky, for people and for code.
+
+</Callout>
+
+In [Equivalence Partitioning](/fundamentals/equivalence-partitioning) you learned to split values into groups that behave the same, like ages 17-and-under, 18–60 and 61-and-over in a fitness app's sign-up form. A **boundary** is the edge of one of those groups: the smallest or largest value in a partition.
+
+Developers turn requirements into comparisons like "greater than" or "less than or equal to". Picking the wrong one, or a number that's one too high or too low, is an <Term id="off-by-one-error">off-by-one error</Term>. The code works for almost every value and fails only at the edge:
+
+| Requirement | Bug in the code | Only caught by |
+| --- | --- | --- |
+| Age 18 or older | `age > 18` (should be `>=`) | 18 |
+| Free shipping from €50 | `total > 50` (should be `>=`) | €50.00 |
+| Password max 64 chars | `len <= 63` (should be 64) | 64 chars |
+| Up to 10 items | `qty < 10` (should be `<=`) | 10 items |
+
+In every row, a value from the middle of the partition (35, €80, 20 characters, 5 items) passes perfectly. Only a value **at** the edge reveals the problem. That's the whole case for BVA: test exactly where the behavior changes.
+
+<Short>
+
+## The quick version
+
+### 2-value and 3-value BVA
+
+For the age rule 18–60 there are two boundaries: **18** (the smallest valid age) and **60** (the largest).
+
+**2-value BVA** tests each boundary plus its closest neighbor **on the other side**:
+
+<PartitionStrip
+  title="2-value BVA · age 18–60"
+  segments={[
+    { range: '≤ 17', label: 'Invalid', kind: 'invalid' },
+    { range: '18 – 60', label: 'Valid', kind: 'valid', grow: 1.6 },
+    { range: '≥ 61', label: 'Invalid', kind: 'invalid' },
+  ]}
+  junctions={[['17', '18'], ['60', '61']]}
+  caption="Four tests: 17, 18, 60, 61."
+/>
+
+**3-value BVA** tests each boundary plus its closest neighbors **on both sides**:
+
+<PartitionStrip
+  title="3-value BVA · age 18–60"
+  segments={[
+    { range: '≤ 17', label: 'Invalid', kind: 'invalid' },
+    { range: '18 – 60', label: 'Valid', kind: 'valid', grow: 1.6 },
+    { range: '≥ 61', label: 'Invalid', kind: 'invalid' },
+  ]}
+  junctions={[['17', '18', '19'], ['59', '60', '61']]}
+  caption="Six tests: 17, 18, 19 and 59, 60, 61. The extra inner values catch a few sneakier bugs."
+/>
+
+Most everyday testing uses 2-value BVA. Teams switch to 3-value for risky rules: money, security, legal age limits.
+
+### Boundaries are everywhere
+
+- **Lengths:** password 8–64 characters → 7, 8, 64, 65.
+- **Dates:** first and last day of a month, 29 February, 31 December, yesterday / today / tomorrow.
+- **Money:** €0.00, €0.01, and the maximum (a €1,000 transfer limit → €1,000.00 and €1,000.01).
+- **Lists:** 0 items, 1 item, the maximum, one more than the maximum.
+- **Outputs:** free shipping at €50.00, so test €49.99 and €50.00.
+
+### BVA and EP work together
+
+EP picks one value from the **middle** of each partition (35); BVA tests the **edges** (17, 18, 60, 61). EP also covers partitions that have no edges at all, like an empty field or "abc". Use both, every time.
+
+<Callout type="tip">
+
+Switch to **Detailed** at the top to see why 3-value BVA catches extra bugs, how to find boundaries in dates, money and lists, and how to write test cases from them.
+
+</Callout>
+
+</Short>
+
+<Long>
+
+## Finding the boundaries step by step
+
+<Steps>
+
+1. **Start with your partitions.** BVA builds on EP. For the age field: 17 or less, 18–60, 61 or more.
+2. **Find the step size.** What is the smallest possible change? 1 for whole years, 1 for characters, €0.01 for euros, 1 day for dates.
+3. **Find each boundary.** The smallest and largest value of each ordered partition: 18 and 60.
+4. **Add the neighbors.** One step outside each boundary (17, 61). For 3-value BVA, also one step inside (19, 59).
+5. **Write the expected result for each value.** 17 is rejected, 18 is accepted, and so on. A boundary test without an exact expected result is just a guess.
+
+</Steps>
+
+<Callout type="info" title="Only ordered partitions have boundaries">
+
+BVA works when values have an order: numbers, lengths, dates, amounts, counts. A list of payment methods (Card, PayPal, Pay on delivery) has no "smallest" option, so there's nothing to analyze. EP alone covers it.
+
+</Callout>
+
+## 2-value BVA
+
+For each boundary, test **the boundary value itself** and **the closest value on the other side of the boundary** (in the neighboring partition).
+
+<PartitionStrip
+  title="2-value BVA · age 18–60"
+  segments={[
+    { range: '≤ 17', label: 'Invalid', kind: 'invalid' },
+    { range: '18 – 60', label: 'Valid', kind: 'valid', grow: 1.6 },
+    { range: '≥ 61', label: 'Invalid', kind: 'invalid' },
+  ]}
+  junctions={[['17', '18'], ['60', '61']]}
+/>
+
+| Value | Why | Expected |
+| --- | --- | --- |
+| 17 | Last invalid value below the range | Rejected |
+| 18 | Lower boundary, first valid value | Accepted |
+| 60 | Upper boundary, last valid value | Accepted |
+| 61 | First invalid value above the range | Rejected |
+
+This catches the classic mistakes: `>` instead of `>=` at the lower edge (18 is wrongly rejected), `age <= 61` instead of `age <= 60` (61 is wrongly accepted), or `age < 60` instead of `age <= 60` (60 is wrongly rejected).
+
+## 3-value BVA
+
+For each boundary, test **the boundary value** and **the closest value on both sides**.
+
+<PartitionStrip
+  title="3-value BVA · age 18–60"
+  segments={[
+    { range: '≤ 17', label: 'Invalid', kind: 'invalid' },
+    { range: '18 – 60', label: 'Valid', kind: 'valid', grow: 1.6 },
+    { range: '≥ 61', label: 'Invalid', kind: 'invalid' },
+  ]}
+  junctions={[['17', '18', '19'], ['59', '60', '61']]}
+/>
+
+The extra values (19 and 59) look redundant, but they catch bugs that 2-value BVA misses. Imagine a developer wrote `age == 18` (exactly 18) instead of `age >= 18` for the lower check:
+
+| Value | Correct result | Buggy `age == 18` | Caught? |
+| --- | --- | --- | --- |
+| 17 | Rejected | Rejected | No |
+| 18 | Accepted | Accepted | No |
+| **19** | Accepted | **Rejected** | **Yes** |
+
+2-value BVA (17 and 18) passes and the bug ships. Only 19, the inside neighbor, exposes it.
+
+| Method | Values for 18–60 | Tests | Best for |
+| --- | --- | --- | --- |
+| 2-value | 17, 18, 60, 61 | 4 | Everyday features |
+| 3-value | 17, 18, 19, 59, 60, 61 | 6 | Money, security, legal limits |
+
+<Callout type="note" title="Naming varies">
+
+The ISTQB syllabus calls these "2-value" and "3-value" boundary value analysis. Older books and some teams just say "test the boundary and one either side", which is 3-value. When a colleague says "BVA", ask which one they mean, or simply write the exact values in your test cases so there's no doubt.
+
+</Callout>
+
+## Boundaries are everywhere
+
+### Lengths
+
+A banking app requires passwords of **8 to 64 characters**. The step is one character.
+
+<PartitionStrip
+  title="Password length (8–64 characters)"
+  segments={[
+    { range: '0 – 7', label: 'Too short', kind: 'invalid' },
+    { range: '8 – 64', label: 'Accepted', kind: 'valid', grow: 1.6 },
+    { range: '≥ 65', label: 'Too long', kind: 'invalid' },
+  ]}
+  junctions={[['7', '8', '9'], ['63', '64', '65']]}
+  caption="2-value: 7, 8, 64, 65. 3-value adds 9 and 63. Don't forget 0 (empty), which EP covers."
+/>
+
+Practical tips:
+
+- **Count precisely.** Prepare test strings of exact lengths in a notes file (for example `Abcdef1!` is 8 characters). A character counter tool helps for 64.
+- **Watch for silent truncation.** If the field stops accepting input after 64 characters, typing 65 just gives you 64. That's often fine, but check that a **pasted** 65-character password isn't silently cut to 64 and saved, so the user can never log in with what they typed. See <Term id="truncation" />.
+- **Password managers generate long passwords.** A real-world max-length bug (a limit of 63 instead of 64) hits exactly those careful users. More in [Login and Sign-up](/features/login-and-sign-up).
+
+### Dates
+
+Dates have more boundaries than any other data type. The step is usually one day (sometimes one minute).
+
+| Boundary | Test values | Typical bug |
+| --- | --- | --- |
+| Month end | 31 Jan → 1 Feb, 30 Apr | "31 April" accepted, or a 30-day month gets 31 |
+| Leap day | 29 Feb 2028 (valid), 29 Feb 2027 (invalid) | Leap year rule wrong, or a crash on 29 Feb |
+| Year end | 31 Dec → 1 Jan | Year doesn't roll over in a booking |
+| "Not in the past" | yesterday, today, tomorrow | Today wrongly blocked, or yesterday allowed |
+| Age from birth date | turned 18 today vs. turns 18 tomorrow | Off by a day around the birthday |
+
+Midnight is a boundary too, and <Term id="time-zone">time zones</Term> move it: "today" for a hotel in Tokyo may still be "yesterday" for a user in New York. Daylight saving changes create days with 23 or 25 hours (see <Term id="daylight-saving-time" />). The [Date Picker](/components/date-picker) page has lots of examples.
+
+### Money
+
+The step for euros, dollars and pounds is one cent (0.01). Some currencies, like the Japanese yen, have no cents in everyday use, so the step is 1.
+
+A banking app allows transfers from **€0.01 to €1,000.00** per day:
+
+<PartitionStrip
+  title="Transfer amount (€0.01–€1,000.00)"
+  segments={[
+    { range: '≤ €0.00', label: 'Rejected', kind: 'invalid' },
+    { range: '€0.01 – 1,000', label: 'Sent', kind: 'valid', grow: 1.7 },
+    { range: '≥ €1,000.01', label: 'Over limit', kind: 'invalid', grow: 1.2 },
+  ]}
+  junctions={[['0.00', '0.01'], ['1,000.00', '1,000.01']]}
+  caption="Test €0.00, €0.01, €1,000.00 and €1,000.01. The upper pair is exactly the bug from the banking example in What Is Software Testing?"
+/>
+
+Also try amounts with more decimals than allowed (€10.999), very large numbers (€99,999,999), and think about **rounding**: does €0.005 become €0.01 or €0.00?
+
+### Lists and counts
+
+Anything you can count has boundaries: items in a cart, photos in a review, results on a page, seats on a flight.
+
+| Count | Why it matters |
+| --- | --- |
+| **0** | The <Term id="empty-state" />: empty cart, no search results. Checkout must be disabled, a friendly message shown. |
+| **1** | Singular text ("1 item", not "1 items"), lists that break with only one row. |
+| **Max** | A review allows 5 photos: the 5th must upload. |
+| **Max + 1** | The 6th photo must be blocked with a clear message, not crash or silently vanish. |
+
+<Term id="pagination" /> is a great place to look: with 20 results per page, test 20 results (one page) and 21 results (a second page with a single item).
+
+### Outputs
+
+Just like EP, BVA works on outputs. Find the input values that put you *right* at the edge of a different result.
+
+<PartitionStrip
+  title="Shipping cost (output boundaries)"
+  segments={[
+    { range: 'under €20', label: '€4.99', kind: 'output' },
+    { range: '€20 – 49.99', label: '€2.99', kind: 'output', grow: 1.2 },
+    { range: '≥ €50', label: 'Free', kind: 'output' },
+  ]}
+  junctions={[['19.99', '20.00'], ['49.99', '50.00']]}
+  caption="Build carts worth exactly €19.99, €20.00, €49.99 and €50.00. Also check the message: 'Add €0.01 more for free shipping' should appear at €49.99."
+/>
+
+Remember that outputs depend on the **final** number: a €55 cart with a €5 coupon is exactly €50.00. Does it still get free shipping? See [Shopping Cart and Checkout](/features/shopping-cart-and-checkout).
+
+## Classic boundary bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | `>` instead of `>=` | An 18-year-old can't sign up | High |
+| 2 | Free shipping at "more than" €50 | €50.00 cart pays €4.99 | Medium |
+| 3 | Max length one too short | 64-char password rejected | Medium |
+| 4 | Leap day not handled | Booking for 29 Feb crashes | High |
+| 5 | Limit check on the wrong side | €1,000.01 transfer goes through | Critical |
+| 6 | Count off by one | A 6th photo uploads although the limit is 5 | Low–Medium |
+
+## How BVA complements EP
+
+| | Equivalence partitioning | Boundary value analysis |
+| --- | --- | --- |
+| Picks | One value from **inside** each partition | Values **at and next to** each edge |
+| Age 18–60 | 12, 35, 72 | 17, 18, 60, 61 |
+| Catches | Whole partitions handled wrongly | Off-by-one and wrong comparisons |
+| Also covers | Empty, "abc", 25.5 (no edges) | Only ordered values |
+
+Together, a strong test set for the age field is: **35** (valid, EP), **17, 18, 60, 61** (BVA), plus **empty, abc, 25.5** (EP partitions without edges). That's 8 tests. You could drop 12 and 72, since 17 and 61 already represent those partitions.
+
+<Callout type="tip" title="Ask about hidden boundaries">
+
+"61 or more" has no upper limit in the requirement, but the system does. The field might take only 3 digits (999), the database might store a small number, or the API might reject anything over 150. Ask "what's the largest value the system can actually hold?" and test it. These *technical* boundaries are where crashes hide.
+
+</Callout>
+
+## Writing test cases from BVA
+
+<Steps>
+
+1. **One boundary value per test** when it's invalid, and keep every other field valid, so you know which value caused the error (the same rule as in EP).
+2. **Put the exact value in the title or data.** "Sign-up accepts age 18 (lower boundary)" is far clearer than "Test age boundary".
+3. **Write an exact expected result.** Not "works", but "Account is created and the Goals screen opens".
+4. **Valid boundaries can be combined** when the fields are independent: 1 night, 1 guest and check-in today in one booking. If it fails, split it up.
+5. **Link back to the requirement**, so anyone can see why 64 and 65 matter.
+
+</Steps>
+
+You'll find complete examples below, and more on the format in [How to Write Test Cases](/tutorials/writing-test-cases). When a boundary test fails, report the exact value and what you expected; the bug report almost writes itself (see [How to Write Bug Reports](/tutorials/writing-bug-reports)).
+
+</Long>
+
+See also: [Error Guessing and Checklists](/fundamentals/error-guessing), which picks up where the boundaries stop: zero, negatives, other number formats and time zones.
+
+## Practice: pick the boundary values
+
+Choose a rule and a mode, then tap the values you would test. After checking, the underline shows which values are valid (green) and invalid (red).
+
+<BoundaryGame client:visible />
+
+## Find the off-by-one bugs
+
+Three of these six rules were implemented with an off-by-one bug; the other three are correct. You can't see the code, only the results. Test each rule with boundary values, decide whether it's buggy, then check your verdicts.
+
+<BuggyRules client:visible />
+
+<Callout type="tip" title="What a good tester does next">
+
+Notice that a middle value (35, €80, 20 characters) never reveals any of these bugs. Once you find one, the bug report should name the exact value: "Age **18** is rejected with 'Sorry, you must be 18–60', although 18 is allowed by the requirement."
+
+</Callout>
+
+## Exercise: a hotel booking form
+
+Time to combine both techniques. Derive EP partitions and BVA values for this small travel app spec, type them in, and compare with the model answer.
+
+<BookingExercise client:visible />
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: "TC-BVA-01",
+      title: "Sign-up accepts age 18 (lower boundary)",
+      priority: "high",
+      type: "edge",
+      preconditions: ["Fitness app is on the Create account screen"],
+      steps: ["Enter a valid email and password", "Enter age 18", "Tap Continue"],
+      data: "age: 18",
+      expected: "No error is shown and the Choose your goals screen opens.",
+    },
+    {
+      id: "TC-BVA-02",
+      title: "Sign-up rejects age 17 (just below the lower boundary)",
+      priority: "high",
+      type: "negative",
+      preconditions: ["Fitness app is on the Create account screen"],
+      steps: ["Enter a valid email and password", "Enter age 17", "Tap Continue"],
+      data: "age: 17",
+      expected: "'You must be at least 18 to sign up' appears under Age and the account is not created.",
+    },
+    {
+      id: "TC-BVA-03",
+      title: "Order of exactly €50.00 gets free shipping",
+      priority: "high",
+      type: "edge",
+      preconditions: ["Shop cart is empty", "Free shipping threshold is €50.00"],
+      steps: ["Add products worth exactly €50.00 to the cart", "Open the cart"],
+      data: "cart total: €50.00",
+      expected: "Shipping shows 'Free' and the order total is €50.00.",
+    },
+    {
+      id: "TC-BVA-04",
+      title: "Order of €49.99 pays standard shipping",
+      priority: "medium",
+      type: "edge",
+      preconditions: ["Shop cart is empty", "Free shipping threshold is €50.00"],
+      steps: ["Add products worth €49.99 to the cart", "Open the cart"],
+      data: "cart total: €49.99",
+      expected: "Shipping shows €2.99 and the message 'Add €0.01 more for free shipping' is displayed.",
+    },
+    {
+      id: "TC-BVA-05",
+      title: "Password of exactly 64 characters is accepted (upper boundary)",
+      priority: "medium",
+      type: "edge",
+      preconditions: ["Banking app is on the Set new password screen"],
+      steps: ["Paste a 64-character password into New password and Confirm password", "Tap Save", "Log out and log in with the same password"],
+      data: "password: 64 characters (letters, digits and symbols)",
+      expected: "The password is saved, and logging in with all 64 characters works.",
+    },
+    {
+      id: "TC-BVA-06",
+      title: "Password of 65 characters is rejected (just above the upper boundary)",
+      priority: "medium",
+      type: "negative",
+      preconditions: ["Banking app is on the Set new password screen"],
+      steps: ["Paste a 65-character password into New password", "Tap Save"],
+      data: "password: 65 characters",
+      expected: "'Password must be at most 64 characters' is shown and nothing is saved. If the field cuts pasted text to 64 characters instead, the user is clearly told; a silently shortened password is a bug.",
+    },
+  ]}
+/>
+
+<Checklist
+  title="Boundary value analysis checklist"
+  storageKey="boundary-value-analysis"
+  items={[
+    "I started from the equivalence partitions",
+    "I found the step size (1, 0.01, one day, one character)",
+    "I tested every boundary and its neighbor outside the range",
+    "For risky rules (money, security, legal limits) I used 3-value BVA",
+    "I checked length limits by typing AND pasting",
+    "I checked dates: month end, 29 February, year end, today vs yesterday",
+    "I checked counts: 0, 1, max, max + 1",
+    "I looked for output boundaries (prices, discounts, messages)",
+    "I asked about hidden technical limits (max digits, max value)",
+    "Each test case names the exact boundary value and an exact expected result",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "Age must be 18 to 60. What is the 2-value BVA set?",
+      options: ["18, 60", "17, 18, 60, 61", "17, 18, 19, 59, 60, 61", "0, 18, 60, 100"],
+      answer: 1,
+      explain: "2-value BVA tests each boundary plus its closest neighbor on the other side: 17 and 18 at the lower edge, 60 and 61 at the upper edge.",
+    },
+    {
+      q: "Which extra values does 3-value BVA add for the same 18–60 rule?",
+      options: ["16 and 62", "19 and 59", "0 and 100", "35"],
+      answer: 1,
+      explain: "3-value BVA adds the neighbors inside the range: 19 next to 18, and 59 next to 60. They catch bugs like a check for 'exactly 18' instead of '18 or more'.",
+    },
+    {
+      q: "Free shipping applies to orders of €50.00 or more. Which pair of tests is most likely to find a '>' vs '>=' bug?",
+      options: ["€35.00 and €80.00", "€49.99 and €50.00", "€0.00 and €100.00", "€50.00 and €60.00"],
+      answer: 1,
+      explain: "The step for euros is €0.01. €49.99 and €50.00 sit on either side of the boundary, so a wrong comparison shows up immediately. €35 and €80 both pass even with the bug.",
+    },
+    {
+      q: "A review lets you attach up to 5 photos. Which counts should you test with BVA?",
+      options: ["1 and 5", "0, 1, 5 and 6", "3 only", "5, 10 and 100"],
+      answer: 1,
+      explain: "0 (none attached), 1 (the smallest non-empty list), 5 (the maximum) and 6 (one more than allowed) are the edges where count bugs appear.",
+    },
+    {
+      q: "Why doesn't BVA apply to a list of payment methods (Card, PayPal, Pay on delivery)?",
+      options: [
+        "Because payment is always tested by developers",
+        "Because the options have no natural order, so there are no edges",
+        "Because there are too few options",
+        "It does: test the first and last option",
+      ],
+      answer: 1,
+      explain: "Boundaries only exist for ordered values like numbers, lengths, dates and counts. For unordered options, equivalence partitioning alone is the right tool.",
+    },
+    {
+      q: "A hotel booking says check-in can't be in the past. Which dates are the boundary tests?",
+      options: ["Today only", "Yesterday and today", "Next week and next month", "1 January and 31 December"],
+      answer: 1,
+      explain: "Today is the first valid date and yesterday is the last invalid one. 3-value BVA would add tomorrow.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Bugs cluster at **edges** because developers easily mix up `>` and `>=`, or type a limit one too high or too low (an **off-by-one** error).
+- A **boundary** is the smallest or largest value of an ordered partition. Find the **step size** first (1, €0.01, one day).
+- **2-value BVA**: the boundary and its neighbor outside (17, 18 / 60, 61). **3-value BVA** adds the neighbor inside (17, 18, 19 / 59, 60, 61).
+- Boundaries hide in **lengths, dates, money, counts and outputs**, and in technical limits nobody wrote down.
+- BVA **complements** [Equivalence Partitioning](/fundamentals/equivalence-partitioning): EP covers the middle and edge-less partitions; BVA covers the edges.
+- Write each boundary test with the **exact value** and an **exact expected result**.
+
+</KeyTakeaways>
+
+<Callout type="tip" title="Next step">
+
+Rules with several conditions at once ("free shipping for members OR orders from €50") need another tool. Continue with [Decision Tables](/fundamentals/decision-tables), then [State Transition Testing](/fundamentals/state-transition-testing).
+
+</Callout>

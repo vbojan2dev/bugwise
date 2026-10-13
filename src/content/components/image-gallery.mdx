@@ -1,0 +1,462 @@
+---
+title: Image Gallery
+description: A grid of photo thumbnails that opens a full-screen viewer (lightbox). Learn how thumbnails and full-size images should load, how swiping, zooming and closing should behave, and the focus, counter and data bugs testers find in almost every gallery.
+category: content
+aka: [Photo grid, Lightbox, Photo viewer, Media gallery]
+platforms: [ios, android, web]
+minutes: 40
+order: 7
+---
+
+import Anatomy from '@/components/demos/image-gallery/Anatomy';
+import VariantsGallery from '@/components/demos/image-gallery/VariantsGallery';
+import SrcsetLab from '@/components/demos/image-gallery/SrcsetLab';
+import Playground from '@/components/demos/image-gallery/Playground';
+import { BuggyListingApp } from '@/components/demos/image-gallery/BuggyListingApp';
+
+You're flat hunting. You scroll down to the photos of a promising listing, filter to **Outside** and tap the balcony. The app shows you the living room instead. You close it, and you're back at the very top of the page. You scroll down again, open the bedroom, zoom in on the wardrobe, tap **Next**, and the bathroom appears already zoomed into a corner. Meanwhile your data plan has quietly paid for 40 MB of photos you only saw as tiny squares.
+
+An image gallery looks simple: a grid of small pictures, and a big picture when you tap one. But it combines **image loading**, **gestures**, a **modal** viewer, **focus management** and **state** (which photo, which filter, how far you scrolled). Every one of those can break, and users notice right away.
+
+## What is it?
+
+An image gallery has two parts:
+
+- A **thumbnail grid**: small, usually cropped previews of many photos (and sometimes videos).
+- A **viewer** (often called a **lightbox**): a full-screen layer that shows one photo at a time, **whole and sharp**. You swipe between photos, zoom in, and close it to get back to the grid.
+
+You meet galleries in property and hotel listings, product pages, social profiles, chat apps ("Media, links and docs"), review sections and of course the phone's own Photos app.
+
+### Anatomy
+
+<Anatomy />
+
+### How it differs from a carousel
+
+A [carousel](/components/carousel) shows slides **in the page**, one at a time, often with autoplay. A gallery shows **many thumbnails at once** and opens them in a separate **viewer**. Many product pages combine both: a small swipeable carousel on the page, and a tap on it opens the full-screen viewer described here. Uploading photos is a different story too: see [Image upload](/features/image-upload) for cameras, permissions, HEIC and EXIF rotation.
+
+| | Carousel | Image gallery |
+| --- | --- | --- |
+| Shows | One slide in the page | Many thumbnails, then one photo full screen |
+| Moves by itself | Sometimes (autoplay) | Never |
+| Typical content | Banners, product photos | Listing photos, albums, user media |
+| Main risks | Autoplay, gestures, dots | Loading, zoom, closing, focus |
+
+## Designs & variants
+
+Galleries come in a few common layouts. They all open the same kind of viewer. Try each one: tap a photo, swipe or drag sideways, double-tap to zoom, then close it (X, **Esc** or a swipe down) and check where you land.
+
+<VariantsGallery client:visible />
+
+<Callout type="info" title="Same thing, many names">
+Designers say **lightbox**, iOS developers often say **photo browser** or use **Quick Look** (`QLPreviewController`), Android teams say **image viewer** or **media viewer**, and web libraries are called PhotoSwipe, GLightbox or Fancybox. In a ticket, "the gallery" may mean the grid, the viewer or both. Ask which.
+</Callout>
+
+## When to use it
+
+- Users want to **browse many photos** of the same thing and pick which ones to look at: a flat, a hotel room, a used car, a restaurant's dishes.
+- Photos need to be seen **large and in detail** (zoom into a floor plan, a scratch on a used phone, the fabric of a jacket).
+- Users collect media themselves: albums, chat media, a profile's posts.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Important info as text">
+
+"Ground floor, no lift, 64 m²" written in the listing, and the floor plan photo as an extra.
+
+</Do>
+<Dont title="Important info only in photo 9">
+
+The only mention that there is no lift is a sign in the background of the 9th photo. Most users never open it, and screen reader users can't read it at all.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="One clear photo when one is enough">
+
+A profile picture, a single product shot or an avatar opens in a simple zoomable view (or not at all).
+
+</Do>
+<Dont title="A gallery for one image">
+
+A full grid + viewer with "1 of 1", swipe hints and a share bar around a single logo.
+
+</Dont>
+</Compare>
+
+## How good galleries behave
+
+### Small thumbnails, sharp viewer
+
+A camera photo is often **4000 × 3000 px and 3–5 MB**. A thumbnail on a phone is about 120 CSS px wide. Loading the original for every thumbnail is one of the most common gallery bugs: 12 photos are **40 MB**, slow on a train and expensive on a data plan.
+
+Good galleries load **two versions**:
+
+- **Thumbnails** in the grid: small files (roughly 15–60 KB), sized for the grid cell and the screen's pixel density.
+- **A large version** in the viewer, loaded **when the photo is opened**, plus the next one in advance (preloading) so swiping feels instant. Not the 4000 px original either: around the screen width is enough.
+
+On the web this is done with `srcset` and `sizes`: the page offers several widths of the same photo, says how wide it will be shown, and the browser picks the smallest file that is still sharp. Thumbnails further down use <Term id="lazy-loading" /> (`loading="lazy"`) so they load only when you scroll near them. Apps do the same with image libraries and server-side resizing. Try it:
+
+<DevNote>Kingfisher or SDWebImage on iOS, Coil or Glide on Android.</DevNote>
+
+<SrcsetLab client:visible />
+
+Things to check: count the image requests and **total MB** in the network log when the gallery opens; check that the **viewer** image is sharp on a high-density phone (not the thumbnail stretched up); and that images also have `width`/`height` (or a fixed aspect ratio box), so the page doesn't jump while they load.
+
+### Crop in the grid, whole photo in the viewer
+
+Grid cells are usually all the same shape, so photos are **cropped to fill** them. That's fine for a preview, but it means portraits lose their top and bottom, and a **panorama** loses most of its width. In the variants above, compare the balcony panorama in the square grid (the boat on the right is gone) with the justified rows.
+
+<DevNote>CSS `object-fit: cover`.</DevNote>
+
+The **viewer must show the whole photo**, never cropped: black or blurred bars around it are expected. Also check that photos are **not stretched** (wrong aspect ratio), that **portrait photos aren't sideways** (EXIF orientation, see [Image upload](/features/image-upload)), and that the crop never cuts off what the photo is *about*.
+
+<DevNote>CSS `object-fit: contain`.</DevNote>
+
+### Swiping between photos
+
+- **Swipe** left and right on touch, **drag** or **arrow buttons** with a mouse, **arrow keys** on a keyboard.
+- The **ends are clear**: on the first photo, Previous is disabled; on the last, Next is disabled, and a swipe past the end **bounces back** (rubber band). It never shows an empty slide. Some viewers loop from the last photo to the first: fine, if it's seamless and the counter says so.
+- Only **horizontal** swipes change the photo. A swipe that is mostly vertical belongs to "swipe down to close" (or does nothing), and a small wobble is not a swipe (the <Term id="touch-slop" />).
+- A **video** in the gallery doesn't start playing while you swipe past it, and stops when you swipe away.
+
+### Zoom and pan
+
+- **Pinch** with two fingers, and **double-tap** (double-click on the web) to zoom into that spot; double-tap again to zoom back out. On the web, a viewer should also offer **zoom buttons** and keys.
+- **Limits**: zoom stops at a sensible maximum (often 3–5×) and can't go smaller than "fit to screen". While zoomed, a one-finger drag **pans** the photo, but only **up to its edges**: you should never pan into empty black space.
+- **Zoom resets** when you move to another photo. If photo 4 opens already zoomed into a corner because you zoomed photo 3, that's a bug.
+- While zoomed, a drag pans the photo instead of swiping to the next one. Many apps switch to the next photo only when you're already at the edge of the zoomed photo, so check that at the edges too.
+
+### Closing and coming back
+
+Users close a viewer in many ways, and every one must work and land in the **same place**:
+
+- The **X** button (always visible, at least 44×44 pt on iOS and 48×48 dp on Android. On the web, WCAG 2.5.8 (AA) asks for at least 24×24 CSS px; 44×44 px (2.5.5, AAA) is the comfortable target).
+- **Esc** on a keyboard.
+- **Swipe down** (common on iOS and Android): the photo follows your finger, the background fades, and letting go far enough closes it; a short drag snaps back.
+- The system **Back** (Android Back button or gesture, browser Back on the web) closes the **viewer**, not the whole screen.
+
+After closing, the grid is **exactly where you left it**: same scroll position, same filter, and **focus on the thumbnail of the photo you were last looking at** (photo 7 if you swiped from 3 to 7). On iOS and Android, the viewer often shrinks back into that thumbnail, which only works if the app knows which one it is.
+
+### Counter, captions and alt text
+
+- The **counter** ("3 of 12") is 1-based, matches the photo shown, and its total matches the photos the user can actually swipe through. If the grid was **filtered** to 3 outside photos, the viewer shows those 3 ("1 of 3"), and tapping a thumbnail always opens **that** photo.
+- A **caption** ("Balcony with a view over the river") helps everyone; long captions wrap or expand, they don't run under the buttons.
+- Every photo needs <Term id="alt-text" /> that describes what matters for the task: "Floor plan: living room 24 m², bedroom 14 m²..." is useful; "IMG_4032.jpg" or "photo" is not. The thumbnail button's name is the alt text, plus the position if that helps ("Photo 3 of 12: ...").
+
+### Video items
+
+Galleries often mix in videos (a video tour, a short clip in a chat). Check that the thumbnail shows it's a video (play icon, duration), that it **does not autoplay with sound** in the viewer, that swiping away **stops** it, that it has controls (play, pause, sound) and <Term id="captions" /> when there's speech, and that the network doesn't download the whole video until the user presses Play.
+
+### Sharing and saving
+
+If the viewer offers **Share** or **Save**: it must share **the photo currently shown** (not the first one, not the thumbnail-size version), open the **system share sheet** on mobile, and saving to the photo library must ask for permission the right way (on iOS, the "add photos only" permission; see [App permissions](/features/app-permissions)). Shared links should open the **same photo** in the listing (a <Term id="deep-link" /> like `?photo=7`).
+
+### Slow networks: placeholders and blur-up
+
+On a slow connection the grid must not look broken. Good options:
+
+- **Placeholders** with the right size (a grey box or the photo's dominant color), so nothing jumps.
+- **Blur-up**: show a tiny, blurred version first (a few hundred bytes, sometimes embedded in the page), then fade in the sharp image.
+- In the viewer: show the **thumbnail** (already loaded) scaled up and blurred, plus a loading indicator, until the large version arrives. Never a blank black screen with no feedback.
+
+Test with <Term id="network-throttling" />: DevTools presets "Slow 4G" and "3G", the Network Link Conditioner on iOS, or a proxy (see [Network conditions](/mobile/network-conditions)).
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Lost place after closing** | Grid jumps to the top, filter resets, focus lost | Medium |
+| 2 | **Wrong photo opens** | After filter or sort, a thumbnail opens a different photo | High |
+| 3 | **Empty slide at the end** | Swipe past the last photo shows a black screen | Low–Medium |
+| 4 | **Zoom carries over** | Next photo opens zoomed into a corner | Low |
+| 5 | **Counter off by one** | "0 of 12", or "13 of 12" | Low |
+| 6 | **Originals as thumbnails** | 40 MB on open, slow grid | Medium–High |
+| 7 | **Viewer shows a blurry thumbnail** | Large version never loads | Medium |
+| 8 | **Pan beyond the edges** | You can drag the zoomed photo into black space | Low |
+| 9 | **Back leaves the screen** | Android/browser Back closes the listing, not the viewer | Medium |
+| 10 | **No keyboard or screen reader access** | No focus in the viewer, Esc does nothing, photos unnamed | High |
+
+## Stress-test it
+
+This is a correct gallery inside a listing screen. Switch features on and off and watch the grid, the **network log** and the **screen reader** text. Turn on **Slow network** to see placeholders and blur-up, turn off **Sized thumbnails** to see what originals cost, scroll the grid with **lazy loading** on and off, compare **cropped** and **whole** thumbnails, and in the viewer try zooming, the **Back** button below the phone and **Reduced motion**.
+
+<Playground client:visible />
+
+<Callout type="info" title="Reduced motion in a gallery">
+With **Reduce Motion** (iOS) or **Remove animations** (Android) on, or `prefers-reduced-motion: reduce` on the web, the viewer should open and change photos **without big zoom and slide animations**: an instant change or a short fade. Swiping and zooming still work; only decorative motion goes away. See <Term id="reduced-motion" /> and the [carousel](/components/carousel) page for how to switch it on.
+</Callout>
+
+## Find the bug
+
+This property app's listing has a photo gallery with **six bugs**. Explore it like a tester:
+
+- **Scroll down** to the photos, open one, then close it. Where are you?
+- Swipe (or tap the arrows) to the **last photo**, and then once more.
+- **Double-tap** a photo to zoom, then tap **Next**.
+- Watch the **counter** on the first and last photo.
+- Choose the **Outside** filter and tap the first photo.
+- Read the **Network** log.
+
+<BugHunt
+  title="Nestly listing"
+  bugs={[
+    {
+      title: 'Closing the viewer scrolls the screen back to the top',
+      hint: 'Scroll down to the photos, open one, close it.',
+      detail: 'After closing (X, Esc or swipe down) the listing jumps back to the price at the top, and keyboard focus is not on any thumbnail. Users have to find their place again after every photo. Expected: the scroll position and filter stay the same and focus returns to the thumbnail of the photo you were last viewing.',
+    },
+    {
+      title: 'Swiping past the last photo opens an empty slide',
+      hint: 'Go to the floor plan and hallway at the end, then swipe or tap Next once more.',
+      detail: 'Next is never disabled, and the viewer lets you go one step past the last photo to an empty black slide (the counter even says “12 of 12” there). Expected: Next is disabled on the last photo and a swipe past it bounces back (or the viewer loops seamlessly to photo 1).',
+    },
+    {
+      title: 'Zoom stays applied on the next photo',
+      hint: 'Double-tap (double-click) a photo to zoom, then tap the Next arrow.',
+      detail: 'The zoom level and pan position are kept when the photo changes, so the next photo opens enlarged and off-center. Expected: every photo opens at “fit to screen”; zoom resets when you move to another photo.',
+    },
+    {
+      title: 'The counter is off by one',
+      hint: 'Open the first photo and read the counter. Then the last one.',
+      detail: 'The first photo says <strong>0 of 12</strong> and the last <strong>11 of 12</strong>: the developer showed the 0-based array index instead of index + 1. A classic <em>off-by-one error</em>. Expected: “1 of 12” … “12 of 12”, and the screen reader announcement matches.',
+    },
+    {
+      title: 'After filtering, a thumbnail opens a different photo',
+      hint: 'Choose Outside, then tap the first photo (the balcony).',
+      detail: 'The grid shows the filtered photos, but the viewer receives the tapped position (1st, 2nd, 3rd) and looks it up in the <strong>unfiltered</strong> list: the balcony opens the living room, the courtyard opens the bedroom. It works on “All”, which is why it slips through. Expected: the viewer shows the filtered set (“1 of 3”) and opens exactly the photo that was tapped.',
+    },
+    {
+      title: 'The grid downloads every full-size original (40 MB)',
+      hint: 'Read the Network log when the screen opens.',
+      detail: 'All 12 thumbnails are the 4032×3024 px camera originals, about <strong>40 MB</strong> before you tap anything, for squares about 95 px wide. Expected: small thumbnails (around 20–60 KB each, via <code>srcset</code> or server-resized versions), lazy-loaded further down, and the large version loaded only when a photo is opened.',
+    },
+  ]}
+>
+  <BuggyListingApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #5?">
+
+**Title:** Listing gallery: after filtering photos, tapping a thumbnail opens a different photo
+
+**Steps:** 1. Open listing RF-2231 on a Pixel 8 (Android 16). 2. Scroll to Photos and choose the **Outside** filter. 3. Tap the first thumbnail (balcony).
+
+**Expected:** The viewer opens the balcony photo, counter "1 of 3".
+**Actual:** The viewer opens the living room photo (the first photo of the unfiltered list), counter "0 of 12". The 2nd and 3rd thumbnails also open the wrong photos. With the **All** filter it works.
+
+**Severity:** High (users see the wrong photo of a flat and may decide on it) · **Reproducible:** 10/10 · **Also on:** iPhone 15 (iOS 26)
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Image gallery test checklist"
+  storageKey="image-gallery"
+  items={[
+    'Thumbnails are small files sized for the grid (check MB in the network log), not the originals',
+    'Thumbnails further down lazy-load; the first visible ones load right away',
+    'The viewer shows a sharp large version, loaded on open, with the next photo preloaded',
+    'Grid crop keeps the subject visible; the viewer shows the whole photo, not stretched or sideways',
+    'Tapping each thumbnail opens that exact photo, also after filtering, sorting or loading more',
+    'Swipe, arrow buttons and arrow keys move one photo; ends are clear (or the loop is seamless)',
+    'Counter is 1-based, matches the photo, and its total matches the photos you can swipe through',
+    'Pinch, double-tap and zoom buttons work; zoom has limits; panning stops at the photo edges',
+    'Zoom resets when moving to another photo',
+    'X, Esc, swipe down and system Back all close the viewer (and only the viewer)',
+    'After closing: same scroll position, same filter, focus on the thumbnail of the last viewed photo',
+    'Videos are marked in the grid, never autoplay with sound, stop when swiped away',
+    'Share and save use the photo currently shown',
+    'Slow network: placeholders or blur-up, no layout jumps, a loading indicator in the viewer',
+    'Screen reader: thumbnails named by alt text, viewer announced as a dialog, photo changes announced',
+    'Reduced motion: no big zoom or slide animations',
+    'Works after rotation and coming back from the background (same photo, same zoom or reset)',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-GAL-001',
+      title: 'Tapping a thumbnail after filtering opens the same photo',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Listing with 12 photos, 3 of them in “Outside”'],
+      steps: ['Choose the Outside filter', 'Tap the 2nd thumbnail', 'Swipe through all photos in the viewer'],
+      expected: 'The 2nd outside photo opens with counter “2 of 3”. Swiping only shows the 3 outside photos.',
+    },
+    {
+      id: 'TC-GAL-002',
+      title: 'Closing the viewer returns to the same place',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Scroll down until the last row of thumbnails is visible', 'Open photo 9', 'Swipe to photo 11', 'Close with the X'],
+      expected: 'The grid is at the same scroll position, the filter is unchanged and focus (or the return animation) is on thumbnail 11.',
+    },
+    {
+      id: 'TC-GAL-003',
+      title: 'Last photo: no empty slide',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Open the last photo', 'Swipe left', 'Tap Next (if shown), press the Right arrow key'],
+      expected: 'The last photo stays (with a small bounce), Next is disabled, and the counter stays “12 of 12”. If the viewer loops, photo 1 appears seamlessly with “1 of 12”.',
+    },
+    {
+      id: 'TC-GAL-004',
+      title: 'Zoom limits and reset',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Open the floor plan', 'Pinch to zoom in as far as possible', 'Drag to each edge', 'Go to the next photo'],
+      expected: 'Zoom stops at the maximum, the floor plan text is readable, panning stops at the photo edges, and the next photo opens at fit-to-screen.',
+    },
+    {
+      id: 'TC-GAL-005',
+      title: 'Grid loads thumbnails, not originals',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['DevTools › Network, filter “Img”, cache disabled (or a proxy on mobile)'],
+      steps: ['Open the listing', 'Do not scroll', 'Note the image requests and total size', 'Scroll to the end of the grid'],
+      expected: 'Only visible thumbnails load at first, each a small file (well under 100 KB). The rest load while scrolling. No 3–5 MB originals.',
+    },
+    {
+      id: 'TC-GAL-006',
+      title: 'System Back closes only the viewer',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Android phone, or a browser'],
+      steps: ['Open a photo in the viewer', 'Use the Back gesture / browser Back'],
+      expected: 'The viewer closes and the listing stays open at the same place. A second Back leaves the listing.',
+    },
+    {
+      id: 'TC-GAL-007',
+      title: 'Keyboard-only use of the viewer (web)',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Tab to a thumbnail and press Enter', 'Press Tab repeatedly', 'Use Left/Right arrows', 'Press Esc'],
+      expected: 'Focus moves into the viewer and cycles only through its controls, arrows change the photo, Esc closes it and focus returns to the thumbnail of the photo last shown.',
+    },
+    {
+      id: 'TC-GAL-008',
+      title: 'Viewer on a slow network',
+      priority: 'low',
+      type: 'edge',
+      preconditions: ['DevTools throttling “3G” or Network Link Conditioner “3G”'],
+      steps: ['Open the gallery', 'Open a photo that has not been viewed yet', 'Swipe to the next one'],
+      expected: 'The grid shows placeholders of the right size, the viewer shows a blurred preview with a loading indicator, then the sharp photo. Nothing jumps or stays blank.',
+    },
+  ]}
+/>
+
+### Tools
+
+- **Real devices:** pinch, double-tap, swipe-down and edge gestures only feel right with real fingers. See [Gestures](/mobile/gestures).
+- **DevTools › Network** (filter *Img*, *Disable cache*) to count requests and MB; the *Size* column and the image preview show each file's real pixel size. **Lighthouse** flags "Properly size images" and "Defer offscreen images". See [Performance basics](/web/performance-basics).
+- **Proxy tools** (Charles, Proxyman) to see what a mobile app downloads, and to slow it down. See [Proxy tools](/mobile/proxy-tools).
+- **DevTools › Rendering:** emulate `prefers-reduced-motion`. **Elements / Accessibility pane:** check the dialog role, labels and where focus goes.
+- **Screen readers:** VoiceOver (iOS/macOS), TalkBack (Android), NVDA (Windows).
+
+## Accessibility
+
+- **Thumbnails are buttons or links** with a name from the <Term id="alt-text" /> (and "video, 0:42" for videos). A grid of unlabeled images is a list of "image, image, image" for screen reader users.
+- **The viewer is a modal dialog** with a label ("Photos of Bright 2-room flat"). Focus moves **into** it on open, stays inside it (a <Term id="focus-trap" />), the page behind is hidden from assistive technology, and focus **returns to the right thumbnail** on close (WCAG 2.4.3 Focus Order, Level A).
+  <DevNote>`role="dialog"` with `aria-modal="true"`, or a native `<dialog>` opened with `showModal()`; the page behind gets `inert`.</DevNote>
+- **Keyboard** (WCAG 2.1.1 Keyboard, Level A): Tab reaches Close, Previous, Next, Share and zoom; Left/Right change the photo; Esc closes. Focus is always visible.
+- **Gesture alternatives:** swiping and pinching are path-based and multi-point gestures, so every action needs a simple tap or click alternative: Previous/Next buttons, an X button, zoom buttons or double-tap (WCAG 2.5.1 Pointer Gestures, Level A). Panning a zoomed photo by dragging needs a non-drag alternative too, for example zooming at a tapped point or zoom buttons (WCAG 2.5.7 Dragging Movements, Level AA).
+- **Announce changes:** when the photo changes, screen readers hear its name and position ("Balcony view, photo 8 of 12"), using a polite live region or by moving focus.
+- **Don't block browser zoom.** Blocking it (to make the custom pinch work) stops low-vision users from zooming the rest of the page (WCAG 1.4.4 Resize Text, Level AA).
+  <DevNote>Zoom is blocked by a viewport with `user-scalable=no` or `maximum-scale=1`.</DevNote>
+- **Motion:** respect <Term id="reduced-motion" />. Videos with sound must not start by themselves (WCAG 1.4.2 Audio Control, Level A).
+- **Contrast:** white buttons and captions over photos need a dark background or <Term id="scrim" />: 4.5:1 for normal text, 3:1 for large text and UI parts (WCAG 1.4.3 / 1.4.11).
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- Apps build their own viewer, or show files with **Quick Look**, which brings zoom and the share button.
+  <DevNote>A paging `UIScrollView` / `UICollectionView` (zoom via `minimumZoomScale` and `maximumZoomScale`), SwiftUI, or `QLPreviewController`.</DevNote>
+- Users expect **swipe down to close** and the photo **shrinking back into its thumbnail**. Test that it lands on the right thumbnail after swiping to another photo.
+- Test the **left-edge swipe**: in a viewer it may trigger the navigation Back gesture instead of the previous photo.
+- Saving needs the "add photos" permission text.
+  <DevNote>`NSPhotoLibraryAddUsageDescription`.</DevNote>
+- Test **VoiceOver**, **Reduce Motion** and **rotation** while zoomed.
+
+</Tab>
+<Tab>
+
+- No standard viewer in Material 3: apps use a pager with a zoomable image, often from a library.
+  <DevNote>`ViewPager2`, Compose `HorizontalPager`; Coil or Glide for loading and caching thumbnails.</DevNote>
+- **System Back** (button or gesture) must close the viewer first. With **predictive back** (Android 14 and later), the viewer may shrink while you swipe; cancelling the gesture must leave it open.
+- Test **rotation** and other <Term id="configuration-change">configuration changes</Term>: same photo, same filter after rotating? Also test **process death** (does the app come back on the same photo?) and **TalkBack**.
+
+</Tab>
+<Tab>
+
+- Libraries (PhotoSwipe, GLightbox, Fancybox) or a native `<dialog>`. Check `srcset`/`sizes`, `loading="lazy"` and `width`/`height` on thumbnails in DevTools.
+- **Browser Back** should close the viewer (the page pushes a history entry), and a **URL per photo** (`#photo-7` or `?photo=7`) lets users share and reload the same photo.
+- Test with **mouse only** (drag, double-click, arrows), **keyboard only** and **touch** (phone or DevTools device mode); trackpad pinch on a laptop may zoom the whole page instead.
+- Check the **page scroll is locked** while the viewer is open (<Term id="scroll-lock" />), and that it's restored exactly on close.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'The grid of 12 small thumbnails downloads 40 MB on a phone. What is the most likely cause?',
+      options: ['The server is slow', 'The full-size originals are used as thumbnails', 'The viewer preloads too many photos', 'Lazy loading is on'],
+      answer: 1,
+      explain: 'Camera originals are 3–5 MB each. Thumbnails should be small resized files (via srcset or server resizing), loaded lazily.',
+    },
+    {
+      q: 'You filter the gallery to “Outside” and tap the balcony photo. The living room opens. What is going on?',
+      options: ['The filter is wrong', 'The viewer uses the position in the filtered grid on the unfiltered list', 'The image did not load yet'],
+      answer: 1,
+      explain: 'A classic index mismatch: the tapped position is looked up in a different list. Always test the viewer after filtering, sorting or loading more.',
+    },
+    {
+      q: 'You were viewing photo 7 (opened from thumbnail 3). You close the viewer. Where should focus go?',
+      options: ['To the top of the page', 'To thumbnail 3', 'To thumbnail 7', 'Nowhere, focus is not important'],
+      answer: 2,
+      explain: 'Focus returns to the thumbnail of the photo the user was last looking at, so they continue from there.',
+    },
+    {
+      q: 'Which one is NOT a correct way to close a photo viewer?',
+      options: ['Pressing Esc', 'Android Back closes the whole listing screen', 'Swiping down', 'Tapping the X'],
+      answer: 1,
+      explain: 'System Back should close only the viewer and leave the user on the listing, at the same place.',
+    },
+    {
+      q: 'A viewer only supports pinch to zoom and swipe to change photos. Which WCAG criterion does it fail?',
+      options: ['2.5.1 Pointer Gestures', '1.4.3 Contrast (Minimum)', '2.2.2 Pause, Stop, Hide'],
+      answer: 0,
+      explain: 'Multi-point and path-based gestures need a single-pointer alternative, such as zoom buttons, double-tap and Previous/Next buttons.',
+    },
+    {
+      q: 'You zoom into photo 3 and tap Next. Photo 4 opens zoomed into a corner. Is that OK?',
+      options: ['Yes, it keeps the user’s setting', 'No, zoom should reset for each photo', 'Only on the web'],
+      answer: 1,
+      explain: 'Each photo should open at fit-to-screen. A carried-over zoom shows a random part of the next photo.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A gallery is two parts: a **thumbnail grid** (small, cropped previews) and a **viewer** (whole, sharp photo in a modal dialog).
+- **Load smart:** small sized thumbnails, lazy-loaded; the large version only when opened, with the next one preloaded. Check the **MB** in the network log.
+- **The right photo, every time:** test tapping thumbnails **after filtering or sorting**, the **counter** (1-based, right total) and the **ends** (no empty slide).
+- **Zoom** has limits, **panning** stops at the edges, and zoom **resets** on the next photo.
+- **Closing** (X, Esc, swipe down, Back) returns to the **same scroll position** and the **thumbnail of the last viewed photo**.
+- Accessibility: thumbnails named by **alt text**, viewer as a **dialog** with a **focus trap**, arrow keys, and **button alternatives** to swipe, pinch and drag (WCAG 2.5.1, 2.5.7).
+
+</KeyTakeaways>

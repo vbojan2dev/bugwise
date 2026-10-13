@@ -1,0 +1,45 @@
+teaser: "You tap the × on \"Burgers\" and \"Sushi\" disappears. How can a tiny chip get that wrong?"
+cards:
+  - type: flip
+    front: "Chip vs tag: what's the difference?"
+    back: "A chip is interactive: you tap it to filter, remove or act. A tag only labels something, like \"Vegan\" or \"New\", and isn't tappable."
+  - type: quiz
+    q: "Which Material 3 chip type shows email recipients you typed into a \"To:\" field?"
+    options: ["Input chip", "Assist chip", "Suggestion chip"]
+    answer: 0
+    explain: "Input chips represent information the user entered, and each one can be removed with its own × button."
+  - type: spotbug
+    screen: ["Filters (greyscale mode):", "[Open now] [Vegan] [Offers]", "All three look the same grey", "List shows 4 of 12"]
+    bug: "Selected chips are shown by color only."
+    explain: "In greyscale or with color blindness nobody can tell which filters are on. Selected chips need a checkmark or a fill change."
+  - type: thisorthat
+    prompt: "A delivery app lets users pick Delivery or Pick-up. Exactly one must be chosen."
+    left: "Filter chips"
+    right: "Segmented control"
+    answer: right
+    explain: "Users expect chips to be multi-select. A segmented control makes \"exactly one of a few\" obvious."
+  - type: truefalse
+    statement: "Backspace in an empty token field should remove only the last chip."
+    answer: true
+    explain: "Removing all chips at once loses the user's work. Good fields highlight the last chip first, then remove it on a second press."
+  - type: spotbug
+    screen: ["Dishes: [Pizza ×] [pizza  ×]", "Add dish: ___"]
+    bug: "The same dish was added twice."
+    explain: "Entries should be compared trimmed and case-insensitively, so \"Pizza\" and \"pizza \" count as one."
+  - type: quiz
+    q: "A horizontal chip row ends neatly between two chips on a small phone. What is the risk?"
+    options: ["The chips load slowly", "Users never discover the hidden chips", "The chips become multi-select"]
+    answer: 1
+    explain: "Without a peek or fade hint, the row looks complete. Test several screen widths and scroll to the very end."
+  - type: thisorthat
+    prompt: "What should a screen reader say for the × on a chip called Italian?"
+    left: "\"Remove Italian\""
+    right: "\"Button\""
+    answer: left
+    explain: "With five chips, five buttons called \"button\" are useless. The name must say what gets removed."
+  - type: flip
+    front: "Why does × sometimes remove the wrong chip?"
+    back: "The code removes by position, but the chips are shown in a different order (sorted A–Z). Test removing after the order changed."
+  - type: tip
+    title: "Deselect, then count"
+    text: "Result counts often update when you select a filter but not when you deselect it. Check the count after every change, both ways."

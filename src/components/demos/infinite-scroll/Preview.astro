@@ -1,0 +1,10 @@
+<div class="h-[104px] w-[170px] overflow-hidden rounded-xl bg-black/[0.05] px-2.5 pt-2.5 dark:bg-white/[0.06]" aria-hidden="true">
+  <div class="space-y-1.5">
+    {[24, 28, 20, 26].map((w) => (
+      <div class="flex items-center gap-1.5"><span class="size-4 rounded bg-black/15 dark:bg-white/20"></span><span class="h-1.5 rounded bg-black/10 dark:bg-white/15" style={`width: ${w * 4}px`}></span></div>
+    ))}
+  </div>
+  <div class="mt-2 flex items-center justify-center gap-1.5 border-t border-dashed border-brand/60 pt-1.5 text-[9px] font-semibold text-muted">
+    <span class="size-3 rounded-full border-2 border-brand/25 border-t-brand"></span> Loading more…
+  </div>
+</div>

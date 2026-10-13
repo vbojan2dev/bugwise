@@ -1,0 +1,435 @@
+---
+title: App Permissions
+description: How runtime permissions for camera, location, photos, notifications and more work on iOS and Android, what each answer means (allow, once, deny, don't ask again), what usually breaks, and how to reset and test permissions on every OS version.
+order: 11
+level: beginner
+minutes: { short: 35 }
+platform: mobile
+tags: [permissions, privacy, camera, location, mobile, ios, android, test scenarios]
+---
+
+import PermissionDialogs from '@/components/demos/permissions/PermissionDialogs';
+import { BuggySnapbiteApp } from '@/components/demos/permissions/BuggySnapbiteApp';
+
+You order dinner, and the app wants to send you a photo review prompt. You tap **Add photo**, and the screen goes black. No camera, no message, no way out. What happened? Three weeks ago, on the very first launch, the app showed three permission pop-ups in a row and you tapped **Don't Allow** on all of them, just to get to the menu. The app never recovered from that.
+
+That's what <Term id="app-permissions" /> bugs look like: the feature is fine, the code is fine "on the developer's phone", but one answer in a system dialog, given weeks ago, breaks it. Testers find these bugs because they deliberately try **every answer**, on **every OS version**, and **change their mind** in Settings.
+
+<Callout type="info" title="Related lessons">
+**When** and **how** to ask (permission priming) is covered in [Onboarding](/features/onboarding), and the notification permission in detail in [Push Notifications](/features/push-notifications). The short platform comparison is in [iOS vs Android](/mobile/ios-vs-android). This lesson goes deeper into every permission state and how to test it.
+</Callout>
+
+## How it works
+
+Phones protect sensitive things (camera, microphone, location, photos, contacts) behind **runtime permissions**: the app must ask the user while it runs, through a **system dialog** the app can't change or fake.
+
+<Steps>
+
+1. **The app declares what it may need.** On iOS, each permission needs a **purpose string** in the app's settings file ("We use your location to find your delivery address"); it's shown in the dialog. On Android, the permission is listed in the app's manifest. Without the declaration, the app can't ask at all (on iOS it usually crashes when it tries).
+2. **The app checks the current status.** Not asked yet, allowed, allowed once, denied, or denied for good. It must check **every time** it needs the permission, because the user can change it any time in Settings.
+3. **The app asks (if allowed to).** Ideally right when the user starts the feature, after a short explanation in the app's own UI (<Term id="permission-priming" />). The OS then shows its dialog.
+4. **The user answers.** Allow, allow once, or don't allow. For location also **precise** or **approximate**.
+5. **The app handles every answer.** Allowed: the feature works. Denied: the feature explains what's missing and offers **Open Settings** (a <Term id="deep-link" /> to the app's page in system Settings), and the rest of the app keeps working.
+6. **The user changes their mind later.** In system Settings, or the OS changes it automatically (one-time grants expire, unused apps lose permissions). The app must notice when it comes back.
+
+</Steps>
+
+### The permissions you'll meet
+
+| Permission | iOS | Android |
+| --- | --- | --- |
+| **Camera, microphone** | Allow / Don't Allow | While using / Only this time / Don't allow |
+| **Location** | Allow Once / While Using / Don't Allow, plus Precise on/off. "Always" is a separate, later step. | While using / Only this time / Don't allow, plus Precise or Approximate. Background ("all the time") only via Settings. |
+| **Photos** | Limited (selected photos) or Full access | Android 14+: selected photos or all |
+| **Contacts** | Allow, or limited contacts (iOS 18+) | Allow / Don't allow |
+| **Notifications** | Always needs permission | Needs permission since Android 13 |
+| **Bluetooth** | Permission since iOS 13 | "Nearby devices" since Android 12 |
+| **Tracking** | App Tracking Transparency (iOS 14.5+): "Ask App Not to Track" / "Allow" | No equivalent dialog |
+
+<Callout type="tip" title="No permission needed">
+The system **photo picker** lets users pick photos **without** any permission dialog, because the app only gets the photos the user chose. If an app asks for full photo access just to upload one profile picture, ask the team whether the picker would do. See [Image Upload](/features/image-upload).
+
+<DevNote>iOS `PHPicker`, Android Photo Picker.</DevNote>
+</Callout>
+
+### Try the real dialogs
+
+Pick a platform and a permission, then tap the answers to see what each means for the app and for your testing:
+
+<PermissionDialogs client:visible />
+
+### Every answer is a test case
+
+| Answer | What the app gets | What to test |
+| --- | --- | --- |
+| **Allow / While using** | Access whenever the app is in use | The feature works; still works after restart and update |
+| **Allow once / Only this time** | Access for now; it expires when the app is no longer in use | Next launch: the app checks again and asks again, no silent failure |
+| **Don't allow** (first time) | No access; Android may ask once more | The app explains and keeps working |
+| **Denied for good** | No access, and the dialog will **not** appear again | The app shows an explanation with **Open Settings**, not a dead button |
+| **Approximate location** | An area of a few kilometers | Features that need the street still work (confirm on a map, type the street) |
+| **Limited photos** | Only the photos the user picked | The app shows them and offers a way to pick more |
+
+### "Don't ask again": when the dialog stops appearing
+
+- **iOS** shows each permission dialog **once**. After "Don't Allow", asking again does nothing: the OS silently returns "denied". Only the Settings app can change it.
+- **Android 11+** lets the app ask again after the first denial (usually after showing an explanation). After the **second** denial, Android stops showing the dialog and the request fails instantly. (Older Android versions had a "Don't ask again" checkbox instead.)
+
+So the classic bug is a **"Turn on" button that calls the request again**: on the developer's phone it worked once, in real life it does nothing. Once the denial is final, the only working path is **Open Settings**.
+
+### Timing: ask in context
+
+Asking for everything on the first launch is the fastest way to collect "Don't Allow" answers. Ask when the user starts the feature, and explain the benefit first. The [Onboarding](/features/onboarding) lesson has a priming example, and [Push Notifications](/features/push-notifications) shows why the first moment matters so much for the notification permission.
+
+### When permissions change while the app runs
+
+Users can open Settings, change a permission and switch back to the app. What happens next depends on the OS, and it's a rich source of crashes:
+
+- **Android:** revoking a runtime permission **ends the app's process**. When the user returns, Android recreates the last screen from its saved state (<Term id="state-restoration" />). If that screen uses the camera or location without checking first, it crashes. Granting a permission does not restart the app.
+- **iOS:** for many privacy permissions (camera, microphone, photos, contacts), turning access **off** in Settings ends the app, which then starts fresh. Apple barely documents this, but it's long-standing behavior you'll see in practice. Location changes are usually reported to the running app instead. Either way, the app must re-check the status when it becomes active.
+
+### The OS changes permissions too
+
+- **One-time grants expire:** iOS "Allow Once" and Android "Only this time" are gone soon after the user leaves the app.
+- **Auto-reset for unused apps (Android 11+):** if an app isn't opened for a few months, Android removes its runtime permissions. A user returning after a long break meets the dialogs again, or a denied state.
+- **OS updates** add new permissions: an app that worked on Android 12 may need the notification permission on Android 13, or the new photo permissions on Android 13 and 14. That's why <Term id="os-version" /> coverage matters here.
+
+## Example requirements
+
+<Callout type="example" title="User story: Find my address and add a photo review">
+
+**As a** Snapbite customer, **I want to** use my current location for the delivery address and add photos to my reviews, **so that** ordering is quick, **and** I want to stay in control of what the app can access.
+
+**Acceptance criteria**
+
+1. The app asks for **no permissions on first launch**. Location is requested when the user taps "Use my current location"; the camera when they tap "Add photo"; notifications after the first order.
+2. Before each system dialog, the app shows one sentence explaining why (priming).
+3. If a permission is **denied**, the feature shows an explanation and an **"Open Settings"** button that opens the app's page in system Settings. The rest of the app works.
+4. With **approximate location**, the app shows the area and lets the user confirm or type the street.
+5. The app **checks the real permission status** every time it uses a feature. One-time grants are asked for again when they expire.
+6. Changing permissions in Settings while the app is open **never crashes** the app; returning to it shows the right state.
+7. Address search by typing works with location **denied**.
+8. Supported: iOS 17–18 and Android 10–15, with the dialogs each version shows.
+
+</Callout>
+
+## What usually goes wrong
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Everything asked at launch** | Three dialogs in a row before the app appears | High (business) |
+| 2 | **Blank feature after denial** | Black camera view, empty map, endless spinner | High |
+| 3 | **Dead "Turn on" button** | Button requests again; the OS ignores it once denial is final | High |
+| 4 | **Approximate location breaks it** | "Couldn't find your address" with precise location off | High |
+| 5 | **Crash after revoking** | App crashes when the user returns from Settings | High |
+| 6 | **"Allow once" treated as forever** | Works today, silently fails on the next launch | Medium–High |
+| 7 | **App state out of sync** | In-app switch says "On", but the OS denied the permission | Medium |
+| 8 | **Missing purpose string** | iOS crashes the moment the app asks for the camera | Critical |
+| 9 | **New OS version not handled** | No notification prompt on Android 13+, no photos on Android 14 with partial access | High |
+| 10 | **Whole app blocked** | "This app needs location" screen with no way to continue without it | Medium–High |
+| 11 | **Asks too much** | Full photo library or background location where less would do | Medium (privacy, store review) |
+| 12 | **Wrong or vague purpose text** | "This app needs camera" or text in the wrong language | Low–Medium |
+
+<Callout type="bug" title="Why these bugs survive until production">
+Developers grant every permission once on their test phone and never see the dialogs again. Testers who **reset permissions** often, answer "Don't allow" on purpose, and test on **several OS versions** are the only ones who see what new users see.
+</Callout>
+
+## Find the bug
+
+Snapbite, a food delivery app, has **six permission bugs**. Next to the phone you control the **OS** (iOS 18 or Android 15, each switch installs the app fresh), you can **close and reopen** the app or **reinstall** it, and you can change permissions in a **system Settings** panel while the app is open. The **device log** shows what the app asks the OS.
+
+- Open the app for the first time. What happens before you even see it?
+- Try every answer: Allow, Allow once / Only this time, Don't allow, precise off.
+- After denying, try the feature again, and the button that should help.
+- Close and reopen the app after "Allow once". Change permissions in Settings while you're on the camera screen. Try it on **both** OS versions.
+
+<BugHunt
+  title="Snapbite permissions"
+  bugs={[
+    {
+      title: 'All permissions requested on first launch',
+      hint: 'Tap the app icon on a fresh install and count the dialogs.',
+      detail: 'Notifications, location and camera are requested back to back before the user has seen the app. Users don\'t know why the app needs them and tap "Don\'t Allow", which on iOS is final. Expected: ask for each permission when the user starts the feature, after a short explanation.',
+    },
+    {
+      title: 'Camera denied shows a black screen',
+      hint: 'Deny the camera, then tap Add photo.',
+      detail: 'The app opens the camera screen anyway: a black viewfinder and a shutter button that does nothing. The user can\'t tell what is wrong. Expected: an explanation ("Snapbite needs the camera to add photos") with <strong>Open Settings</strong>, and ideally "Choose from library" via the photo picker.',
+    },
+    {
+      title: '"Turn on location" does nothing',
+      hint: 'On a fresh install deny location (twice on Android), then tap Use my current location and Turn on location.',
+      detail: 'The button calls the permission request again. Once the denial is final (iOS after one "Don\'t Allow", Android after two), the OS ignores the request: the log shows <code>no dialog (denied (final))</code> and nothing changes. Expected: the button opens the app\'s page in system Settings.',
+    },
+    {
+      title: 'Approximate location breaks the address lookup',
+      hint: 'Allow location with Precise turned off (or Approximate on Android), then tap Use my current location.',
+      detail: 'The app gets a position accurate to about 3 km and shows "Couldn\'t find your address". Try again gives the same error. Expected: approximate location still helps (show the area, suggest nearby streets, let the user confirm on a map or type the street), or the app explains why precise location helps.',
+    },
+    {
+      title: 'Crash after revoking the camera in Settings (Android)',
+      hint: 'On Android 15, allow the camera, open Add photo, then set Camera to Don\'t allow in Settings.',
+      detail: 'Android ends the app\'s process when a permission is revoked. When the user returns, Android restores the camera screen, which opens the camera without checking the permission: <code>SecurityException</code>, "Snapbite keeps stopping". On iOS the app is terminated and starts fresh on Home, which is expected. Expected on Android: re-check on return and show the explanation screen.',
+    },
+    {
+      title: '"Allow once" location fails silently on the next launch',
+      hint: 'Choose Allow Once (or Only this time) for location at launch, use your location, then Close & reopen and try again.',
+      detail: 'The app saved "location granted" in its own storage, so it skips the permission check. The one-time grant has expired, the location request never answers, and "Finding your location…" spins forever. Expected: check the real status every time, and ask again when a one-time grant has expired.',
+    },
+  ]}
+>
+  <BuggySnapbiteApp client:visible />
+</BugHunt>
+
+<Callout type="tip" title="Notice what works">
+The **system rules** are right: iOS asks once, Android asks twice; camera "Only this time" is asked for again after a restart; **manual address search** works with location denied; precise location finds the street; and on **iOS** the app restarts cleanly after a camera change in Settings. Comparing the two platforms is often how you prove where a bug lives.
+</Callout>
+
+## Test scenarios
+
+### Functional
+
+- Each feature asks for its permission **at the moment it's needed**, after an explanation.
+- **Allow** (or While using): the feature works now, after a restart, after an app update and after an OS update.
+- **Allow once / Only this time**: works now; next launch the app asks again and still works.
+- **Limited photos** and **approximate location**: the features still work with less access.
+- **Open Settings** buttons land on the app's own page in system Settings.
+- Enabling a permission in Settings and returning: the feature starts working **without** restarting the app.
+
+### Negative
+
+- **Don't allow** every permission on first use: the app still opens and the core flow (browse, order, pay) works.
+- **Denied for good** (iOS once, Android twice): the app shows an explanation with Open Settings, never a dead button or a blank screen.
+- **Revoke** each permission in Settings while the app is open, on the screen that uses it, then return.
+- **Global switches off:** Location Services off for the whole phone (iOS Settings › Privacy & Security), Bluetooth off, iOS "Allow Apps to Request to Track" off.
+
+### Edge cases
+
+- **Fresh install vs update:** a user who updates from an old version that never asked must be asked at the right moment, not all at once.
+- **Auto-reset** of unused apps (Android): permissions disappear without the user doing anything.
+- **OS version boundaries:** Android 12 vs 13 (notifications, photos), 13 vs 14 (partial photo access); iOS versions the app supports.
+- **Manufacturer skins:** Samsung and Xiaomi show their own permission and Settings screens ([Device Fragmentation](/mobile/device-fragmentation)).
+- **Dialog interrupted:** a call or notification arrives while the system dialog is open ([Interruptions](/mobile/interruptions)); rotate the phone during the dialog.
+- **Background location:** if the app needs it (delivery drivers, run tracking), check the separate "Always / Allow all the time" step and the reminders the OS shows later.
+
+### UI & usability
+
+- The priming screen explains the **benefit** in one sentence and appears right before the system dialog.
+- Purpose strings (iOS) are specific, correct and **translated** into every supported language.
+- Denied states say **what** is missing, **why** it helps and **how** to fix it, with a working button.
+- The app never blocks everything because of one optional permission.
+
+### Security & privacy
+
+- The app asks for the **minimum** needed: photo picker instead of full library, approximate instead of precise, foreground instead of background, where possible.
+- Data collected with a permission stops being collected when it's revoked (no cached location sent to the server afterwards).
+- On iOS, **tracking** happens only after "Allow" in the App Tracking Transparency dialog.
+- Permission answers are not tied to the user account: a second user on the same phone shares the OS permissions, so the app must not assume anything from the account.
+
+### Accessibility
+
+- Priming screens and denied states work with a <Term id="screen-reader" />, with clear button labels ("Open Settings", not "Go").
+- The system dialog gets focus when it appears, and focus returns to a sensible place after it closes.
+- Large text doesn't hide the "Open Settings" button or the explanation.
+
+## How to reset and control permissions
+
+You'll reset permissions **constantly**: every time you want to see the first-time dialogs again, or test a denied state from scratch.
+
+<Tabs labels={['iOS', 'Android']}>
+<Tab>
+
+- **Delete and reinstall the app.** The simplest reset: all of the app's permission answers are forgotten. (Keychain data may survive; see [Install, Update, Uninstall](/mobile/install-update-uninstall).)
+- **Settings › [App]:** change camera, photos, location (Never / Ask Next Time Or When I Share / While Using / Always, plus Precise Location) and notifications for one app. "Ask Next Time" lets the app show the location dialog again.
+- **Reset all apps:** Settings › General › Transfer or Reset iPhone › Reset › **Reset Location & Privacy**. Every app asks again. Useful on a shared test phone, annoying on your own.
+- **Simulator:** `xcrun simctl privacy booted reset all com.example.snapbite` resets the app's privacy answers, and `xcrun simctl privacy booted grant location com.example.snapbite` grants one up front. Device › Erase All Content and Settings starts from zero. Use **Features › Location** to set a position.
+- **OS versions:** install older iOS simulator runtimes in Xcode, and keep at least one real device on the oldest supported version.
+
+</Tab>
+<Tab>
+
+- **Settings › Apps › [App] › Permissions:** set each permission to Allow, Ask every time, or Don't allow, and toggle **Use precise location**. Choosing "Ask every time" also clears a final denial.
+- **With <Term id="adb" />:**
+  - `adb shell pm revoke com.example.snapbite android.permission.CAMERA` revokes one permission (the app's process is killed, just like in Settings).
+  - `adb shell pm grant com.example.snapbite android.permission.CAMERA` grants it without a dialog.
+  - `adb shell pm reset-permissions` resets runtime permissions of **all** apps on the device.
+  - `adb shell pm clear com.example.snapbite` wipes the app's data **and** its permissions.
+  - `adb install -g snapbite.apk` installs and grants all runtime permissions (handy for tests that aren't about permissions).
+- **Uninstall and reinstall** also resets everything.
+- **OS versions:** create emulators for the oldest supported Android, Android 12, 13 and the newest version; each changed permissions. More in [ADB basics](/mobile/adb-basics) and [Simulators and Emulators](/mobile/simulators-and-emulators).
+
+</Tab>
+</Tabs>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-PERM-001',
+      title: 'No permission dialogs on first launch',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Fresh install (or permissions reset)'],
+      steps: ['Open the app for the first time', 'Browse restaurants'],
+      expected: 'No system permission dialog appears until the user starts a feature that needs one.',
+    },
+    {
+      id: 'TC-PERM-002',
+      title: 'Location requested in context',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open Delivery address', 'Tap "Use my current location"', 'Read the explanation and continue', 'Choose While Using the App with Precise on'],
+      expected: 'An explanation appears before the system dialog. After allowing, the current street is suggested.',
+    },
+    {
+      id: 'TC-PERM-003',
+      title: 'Final denial leads to Settings (iOS)',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['iOS device, location never asked'],
+      steps: ['Tap "Use my current location" and choose Don\'t Allow', 'Tap the location button again'],
+      expected: 'The app explains that location is off and shows "Open Settings", which opens the app\'s page in Settings.',
+    },
+    {
+      id: 'TC-PERM-004',
+      title: 'Second denial on Android',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Android 11 or newer'],
+      steps: ['Deny the camera permission', 'Tap Add photo again and read the explanation', 'Deny again', 'Tap Add photo a third time'],
+      expected: 'The dialog appears twice. After the second denial, the app shows an explanation with "Open Settings" instead of a blank camera.',
+    },
+    {
+      id: 'TC-PERM-005',
+      title: 'Approximate location still helps',
+      priority: 'high',
+      type: 'edge',
+      steps: ['Allow location with Precise off (iOS) or Approximate (Android)', 'Tap "Use my current location"'],
+      expected: 'The app shows the approximate area and lets the user confirm or type the street. No error.',
+    },
+    {
+      id: 'TC-PERM-006',
+      title: 'One-time permission asked again next launch',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Choose "Allow Once" / "Only this time" for location', 'Use the feature', 'Close the app completely and reopen it', 'Use the feature again'],
+      expected: 'The app asks again (or explains) and the feature works after allowing. No endless spinner.',
+    },
+    {
+      id: 'TC-PERM-007',
+      title: 'Revoke camera while the camera screen is open',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Camera allowed', 'Run on Android and iOS'],
+      steps: ['Open Add photo', 'Switch to Settings and set Camera to Don\'t allow / Off', 'Return to the app'],
+      expected: 'No crash. The app shows the camera-off explanation or a fresh Home screen.',
+    },
+    {
+      id: 'TC-PERM-008',
+      title: 'Permission granted in Settings is picked up',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Camera denied for good'],
+      steps: ['Tap Add photo, then "Open Settings"', 'Allow the camera', 'Return to the app and tap Add photo'],
+      expected: 'The camera opens without reinstalling or restarting the app.',
+    },
+  ]}
+/>
+
+## Mobile vs web
+
+<Tabs labels={['Mobile app', 'Website']}>
+<Tab>
+
+- Permissions are **per app** and live in system Settings; the rules differ between iOS and Android and between OS versions.
+- iOS asks **once**, Android up to **twice**; after that only Settings helps.
+- Revoking can **end the app's process**, so test returning from Settings on every screen that uses a permission.
+- Build a small <Term id="device-matrix" /> for permissions: oldest supported and newest OS on both platforms, plus Android 12/13/14 for location, notifications and photos.
+
+</Tab>
+<Tab>
+
+- Browsers ask too: location, camera, microphone, notifications. The prompt belongs to the **browser**, and the answer is stored **per site**.
+- Users change it in the site settings (the icon next to the address bar). Test allow, block, and "allow this time" where the browser offers it.
+- Browsers may hide or block prompts that appear without a click, and Safari, Chrome and Firefox behave differently. Ask after a user action, never on page load.
+- Camera and location only work on **HTTPS** pages. On a plain HTTP staging site they fail, which is a test environment bug, not a product bug.
+- See [Cross-Browser Testing](/web/cross-browser-testing) for how to cover several browsers.
+
+</Tab>
+</Tabs>
+
+## Checklist
+
+<Checklist
+  title="App permissions checklist"
+  storageKey="app-permissions"
+  items={[
+    'No permission dialogs on first launch; each one is asked in context',
+    'A short explanation appears before each system dialog',
+    'Allow / While using works, also after restart, app update and OS update',
+    'Allow once / Only this time: the app asks again later and never fails silently',
+    'Denied: the feature explains what is missing and the rest of the app works',
+    'Denied for good: "Open Settings" opens the app\'s page in system Settings',
+    'Approximate location and limited photo access still work',
+    'Revoking a permission in Settings while the app is open never crashes it',
+    'Granting a permission in Settings is picked up when the user returns',
+    'In-app switches match the real OS permission',
+    'Purpose strings are specific, correct and translated',
+    'Only the minimum access is requested (photo picker, approximate, foreground)',
+    'Tested on the oldest and newest supported iOS and Android, plus Android 12–14',
+    'Permissions were reset between test runs (reinstall, Settings, adb or simctl)',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'On iOS a user tapped "Don\'t Allow" for the camera. What happens when the app requests the camera again?',
+      options: ['The dialog appears again', 'Nothing: the OS returns "denied" without a dialog', 'The app is uninstalled'],
+      answer: 1,
+      explain: 'iOS shows each permission dialog once. After that, only the Settings app can change the answer, so the app must offer "Open Settings".',
+    },
+    {
+      q: 'On Android 13, when does the system stop showing the permission dialog for a permission?',
+      options: ['After the first denial', 'After the second denial', 'Never'],
+      answer: 1,
+      explain: 'Since Android 11, the app may ask again after one denial. After the second, the dialog no longer appears.',
+    },
+    {
+      q: 'A user chose "Allow Once" for location yesterday. Today the address spinner never stops. What is the most likely cause?',
+      options: ['The GPS is broken', 'The app assumed the one-time grant was permanent and didn\'t check again', 'The server is slow'],
+      answer: 1,
+      explain: 'One-time grants expire. The app must check the real status every time and ask again if needed.',
+    },
+    {
+      q: 'Which is the best way to show the iOS location dialog again on a test phone?',
+      options: ['Restart the phone', 'Delete and reinstall the app, or set location to "Ask Next Time" in Settings', 'Turn on airplane mode'],
+      answer: 1,
+      explain: 'Reinstalling forgets all permission answers. "Ask Next Time Or When I Share" in the app\'s Settings page lets it ask again. Reset Location & Privacy works for all apps.',
+    },
+    {
+      q: 'On Android you revoke the camera in Settings while the camera screen is open. When you return, the app crashes. Why?',
+      options: ['Android killed the process; the restored screen used the camera without checking the permission', 'The camera hardware broke', 'Android never restores screens'],
+      answer: 0,
+      explain: 'Revoking ends the app\'s process. Android recreates the last screen, so every screen must check the permission again before using it.',
+    },
+    {
+      q: 'A photo app asks for full photo library access just to set a profile picture. What should you suggest?',
+      options: ['Nothing, all apps do that', 'Use the system photo picker, which needs no permission', 'Ask for the camera too'],
+      answer: 1,
+      explain: 'The system photo picker gives the app only the photo the user chose, with no permission dialog. Asking for less is better for privacy and for users.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Permissions are asked **at runtime** through system dialogs. Ask **in context**, after a short explanation, never all at once on launch.
+- Test **every answer**: allow, allow once, don't allow, denied for good, approximate location, limited photos.
+- iOS asks **once**, Android up to **twice**. After that only **Open Settings** helps; a "Turn on" button that just asks again is a bug.
+- Permissions **change behind the app's back**: Settings, one-time expiry, auto-reset, OS updates. The app must re-check every time and never crash when the user returns.
+- **Reset permissions** often (reinstall, Settings, `adb shell pm`, `xcrun simctl privacy`) and test on old and new **OS versions** of both platforms.
+
+</KeyTakeaways>

@@ -1,0 +1,23 @@
+---
+import { getEntry } from 'astro:content';
+import { href } from '@/lib/url';
+
+interface Props {
+  id: string;
+}
+const { id } = Astro.props;
+const entry = await getEntry('glossary', id);
+if (!entry) throw new Error(`<Term id="${id}"> does not exist in src/content/glossary.yaml`);
+// Without children, show the term in sentence case ("regression testing"), but keep
+// acronyms and names as written (UAT, DevTools, Jira).
+const properNouns = ['Jira', 'Scrum', 'Agile'];
+const term = entry.data.term;
+const inline = /[A-Z]/.test(term.slice(1)) || properNouns.includes(term) ? term : term[0].toLowerCase() + term.slice(1);
+const label = Astro.slots.has('default') ? await Astro.slots.render('default') : inline;
+---
+
+<a class="term" href={href(`/glossary/${id}`)}
+  ><Fragment set:html={label} /><span class="term-tip" role="tooltip" data-pagefind-ignore
+    ><b>{entry.data.term}</b>{entry.data.short}<small>Open in glossary →</small></span
+  ></a
+>

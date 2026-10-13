@@ -1,0 +1,476 @@
+---
+title: Progress & Spinners
+description: Spinners and progress bars tell people the app is working and how long it will take. Learn determinate vs indeterminate, when to show them (and when not), why long work needs Cancel, and the flashing, lying and never-ending indicators testers find.
+category: feedback
+aka: [Progress bar, Spinner, Activity indicator, Loader]
+platforms: [ios, android, web]
+minutes: 40
+order: 7
+---
+
+import Anatomy from '@/components/demos/progress-indicators/Anatomy';
+import VariantsGallery from '@/components/demos/progress-indicators/VariantsGallery';
+import TimingLab from '@/components/demos/progress-indicators/TimingLab';
+import { BuggyBankApp } from '@/components/demos/progress-indicators/BuggyBankApp';
+
+You're exporting a year of bank statements for your tax advisor. The bar shoots to 99% in ten seconds... and stays there. One minute. Five minutes. There's no Cancel, and the sheet covers the whole app. You force-quit, open the app again and start over. Later you learn the export had failed at the very first second: the bar was just a timer.
+
+Progress indicators are tiny, and they're everywhere: behind every login, upload, payment and export. Their job is to answer two questions honestly: **"Is it still working?"** and **"How long will it take?"** When they lie, flash or never stop, users lose trust in everything else. Let's learn how to test them.
+
+## What is it?
+
+A progress indicator shows that the app is **busy with something the user is waiting for**. It comes in two kinds:
+
+- A **spinner** (also called an activity indicator or loader) says: *"I'm working, I don't know how long it takes."*
+- A **progress bar** says: *"I'm working, and I'm this far."*
+
+It's one form of the <Term id="loading-state" />. Two close relatives have their own pages: the loading state **inside a button** is covered on [Button](/components/button), and **skeletons** for loading whole screens are on [Empty & error states](/components/empty-and-error-states). This page is about the indicators themselves and their timing.
+
+### Anatomy
+
+<Anatomy />
+
+### Determinate vs indeterminate
+
+This is the most important distinction on the page:
+
+| | Determinate | Indeterminate |
+| --- | --- | --- |
+| **Shows** | How much is done (38%, 3 of 8) | Only that something is happening |
+| **Looks like** | A bar or ring that fills up | A spinning wheel or a looping bar |
+| **Use when** | The app can measure progress: uploads, downloads, exports, installs | The app can't: waiting for a server answer, signing in |
+| **Rule** | Must only move forward and match reality | Must end in seconds, not minutes |
+
+An indeterminate indicator can **switch** to determinate once the app knows the size of the work: "Preparing…" with a spinner, then "Uploading 1 of 8" with a bar. The other way round (a bar that turns into an endless spinner at 99%) is a classic bug.
+
+### Linear vs circular
+
+The shape is a layout choice, not a meaning:
+
+- **Linear** (a bar) fits in a row, a card, under a toolbar or at the top of a web page. It has room for a label and "2 min left".
+- **Circular** (a spinner or ring) fits in small, square places: a button, a list row, the middle of an empty screen, a download icon.
+
+Both shapes exist in both kinds: a determinate ring (like a download in an app store) and an indeterminate bar (like the thin moving line under a browser's address bar).
+
+### How it differs from similar components
+
+| Component | What it shows | Example |
+| --- | --- | --- |
+| **Progress bar / spinner** | The app is working right now | "Uploading 3 of 8 photos" |
+| **Skeleton** | Content is coming, in its future layout | Grey rows on a feed while it loads |
+| **Stepper / steps** | Where the **user** is in a multi-step task | "Step 2 of 4: Delivery" |
+| **Meter / gauge** | A measured amount, not work in progress | Storage 80% full, password strength |
+| **[Toast](/components/toast)** | The result, after the work is done | "Album exported" |
+
+<Callout type="dev" title="Platform names">
+On iOS: `UIActivityIndicatorView` (spinner) and `UIProgressView` (bar) in UIKit, and `ProgressView` in SwiftUI, which is a spinner without a value and a bar with one. On Android (Material 3): `LinearProgressIndicator` and `CircularProgressIndicator`, determinate when you pass a progress value; newer Material 3 Expressive versions add a "wavy" style. On the web: the native `<progress>` element, or any element with `role="progressbar"`. Don't confuse `<progress>` with `<meter>`, which is a gauge (disk space, a score), not work in progress.
+</Callout>
+
+## Designs & variants
+
+<VariantsGallery client:visible />
+
+## When to use it
+
+Show a progress indicator when the user **asked for something and is waiting** for it:
+
+- **Waiting for a server:** signing in, placing an order, searching, loading a screen.
+- **Moving data:** uploading photos, downloading a file, syncing, backing up.
+- **Long local work:** exporting a video, applying a filter, installing an update.
+
+How long the wait is decides **what** to show. These limits come from decades of usability research (Jakob Nielsen's classic 0.1 s / 1 s / 10 s response times) and are still the best rule of thumb:
+
+| Expected wait | What to show |
+| --- | --- |
+| **Under ~0.1 s** | Nothing. It feels instant. |
+| **~0.1 to 1 s** | Usually nothing, or a subtle change (the button dims). A spinner would only flash. |
+| **1 to 10 s** | A spinner or a skeleton, with a short label. |
+| **Over ~10 s** | A **determinate** bar, what is happening, ideally time left, and **Cancel**. Let people keep using the app if possible. |
+
+## Good and bad uses
+
+<Compare>
+<Do title="Nothing for fast actions">
+
+Tapping a heart to like a photo updates it immediately (<Term id="optimistic-ui" />). If the request fails, the heart reverts with a message.
+
+</Do>
+<Dont title="A full-screen spinner for every tap">
+
+Every tap on a statement shows a dark overlay with a spinner for 60 ms. Users see the screen flicker, and the app feels slower than it is.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="A real bar for long, measurable work">
+
+"Exporting 7 of 12 statements · 58% · about 1 min left", with **Cancel**.
+
+</Do>
+<Dont title="A spinner for minutes">
+
+A spinner for a two-minute export. After 30 seconds, people can't tell whether it's still working or stuck, so they quit and start again.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Indeterminate when you can't measure">
+
+"Signing in…" with a spinner. The app has no idea whether the server takes 300 ms or 3 s.
+
+</Do>
+<Dont title="Fake determinate">
+
+A bar that fills on a timer, unrelated to the real work. It reaches 99% and waits, and on slow connections it lies every time.
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Tester mindset">
+For every indicator, ask three questions: **"When does it appear?"**, **"Is what it shows true?"** and **"How does it end: success, error, timeout and Cancel?"** Then test with a fast network, a slow one and a broken one.
+</Callout>
+
+## How good progress indicators behave
+
+### They don't flash
+
+An indicator that appears and disappears within a few frames is worse than none: the screen flickers, layouts jump, and the app feels **slower**. Good apps use two timers together:
+
+<Steps>
+
+1. **Delay before showing (about 300–500 ms).** Start the work, but only show the spinner if it isn't finished yet after the delay. Fast answers never show an indicator at all. The action is still blocked during the delay, so a second tap can't send a second request (see <Term id="double-submit" />).
+2. **Minimum display time (about 500 ms or more).** Once the spinner is visible, keep it for at least this long, even if the work finishes right after. People see a calm "it was loading, now it's done" instead of a flicker.
+
+</Steps>
+
+The exact numbers vary by team and design system. What you test is the **behavior**: no flashes on a fast network, an indicator within about a second on a slow one.
+
+### Long work shows real progress, and can be canceled
+
+For anything that can take more than about ten seconds:
+
+- Use a **determinate** bar if the work can be measured, with a label ("Uploading 3 of 8 photos") and, ideally, time left.
+- Offer **Cancel**, and make it real: it stops the upload or export on the device **and** the server, leaves no half-finished files, and says what happened ("Export canceled").
+- Don't block the whole app if you don't have to. Let the export run while the user keeps browsing, and tell them when it's done.
+- Check what happens if the user leaves: the **back** gesture, switching apps, locking the phone. Does the work continue, pause, or silently die? See [Background & foreground](/mobile/background-and-foreground).
+
+### Progress tells the truth
+
+A determinate indicator makes a promise. Test that it keeps it:
+
+- It **only moves forward**. A percentage that jumps from 46% to 31% usually means the app divided "done so far" by a total that changed.
+- It **reaches 100%** when the work is done, and the work is really done then (the file is in the folder, the order exists).
+- It **doesn't race to 99% and wait**. Many apps fake the bar on a timer and only finish when the server answers. If that answer is an error, the bar sits at 99% forever.
+- The **label matches the bar**: "7 of 12" next to 30% is a contradiction.
+- **Time left** is roughly right and goes down, not "about 2 min left" for five minutes.
+
+### It always ends, including on errors
+
+Every indicator needs an exit for each outcome:
+
+| Outcome | What the user should see |
+| --- | --- |
+| **Success** | The indicator goes away, the result appears, and it's announced |
+| **Error** | The indicator **stops**, and an <Term id="error-message" /> explains what happened, with Retry |
+| **No answer** | After a <Term id="timeout" />, the same as an error: "This is taking too long. Try again." |
+| **Canceled** | The indicator goes away immediately, and the app says what was (not) done |
+
+For long work, a good timeout watches for **no progress** rather than total time: a 30-second export that keeps moving is fine, an upload stuck at 35% for 8 seconds is not. Many apps first say "This is taking longer than usual…" and then give up with an error. The pages on [Empty & error states](/components/empty-and-error-states) and [Network conditions](/mobile/network-conditions) cover the error side in depth.
+
+## Try it: timing lab
+
+A correct photo export with knobs for every timing rule. Pick a duration, tap **Export album**, and read the **Last run** timeline after each run. Some things to try:
+
+- **100 ms** with everything off: the timeline says "Flash!". Now turn on the **delay** (no indicator at all), or instead the **minimum display** (it stays 500 ms).
+- **30 s** with the spinner, then with the progress bar. Hide **Cancel** and feel what it's like to be stuck.
+- **Never finishes** and **Fails**: watch how the indicator ends, and what VoiceOver hears.
+
+<TimingLab client:visible />
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Endless spinner** | On an error or no answer, it never stops; no message, no Retry | High |
+| 2 | **Stuck at 99%** | A faked bar waits for the server; on failure it waits forever | High |
+| 3 | **Flashing indicator** | A spinner or overlay blinks for a few frames on every fast action | Low–Medium |
+| 4 | **Progress goes backwards** | 46% then 31%, or "time left" goes up | Medium |
+| 5 | **No Cancel on long work** | A 2-minute export or upload with no way out but force-quitting | Medium–High |
+| 6 | **Cancel doesn't cancel** | The bar disappears, but the upload continues or the order is placed anyway | High |
+| 7 | **Spinner for minutes** | Long, measurable work with no progress, so users quit and retry | Medium |
+| 8 | **Indicator blocks everything** | A full-screen overlay for a small background task | Medium |
+| 9 | **Silent for screen readers** | Spinner has no label; "Done" or "Failed" is never announced | High (for affected users) |
+| 10 | **Layout jump** | The page shifts when the indicator appears or disappears, so taps land on the wrong thing | Low–Medium |
+
+<Callout type="bug" title="Why #2 is so common">
+Real progress is hard to measure when the slow part happens on the server. So developers animate the bar on a timer and stop just short of 100% until the response arrives. That's fine **only** if errors and timeouts are handled. To catch it: start the long action, then make the final request fail with a <Term id="proxy-tool" /> (or airplane mode) and see whether the bar ever ends.
+</Callout>
+
+## Find the bug
+
+This banking app has **six bugs** in its loading and progress indicators. Time runs 8× faster than in the real app, so the "2-minute" export takes about 15 seconds. Explore it like a tester:
+
+- Open a few **statements** and watch the screen closely while you tap.
+- **Export 2025** and watch the percentage and the time left the whole way. Is there a way out?
+- Turn on **server errors**, then export again and refresh the balance.
+- Turn on the **VoiceOver caption panel** and finish an export. Read the panel.
+
+<BugHunt
+  title="Banking app"
+  bugs={[
+    {
+      title: 'A loading overlay flashes on every statement tap',
+      hint: 'Tap a statement and watch the whole screen. Do it a few times.',
+      detail: 'Each tap shows a dark full-screen overlay with a spinner for about <strong>60 ms</strong> (the network log says the request took 58 ms). The screen flickers on every tap. Expected: no indicator for answers faster than ~400 ms (a <em>delay before showing</em>), and once shown, a <em>minimum display time</em>. A small, local indicator would be better than a full-screen overlay anyway.',
+    },
+    {
+      title: 'The export percentage goes backwards',
+      hint: 'Export 2025 and keep your eyes on the number between 40% and 50%.',
+      detail: 'It climbs to <strong>46%</strong>, then drops to <strong>31%</strong>, while “Saving statement 6 of 12” keeps going up. The app divides bytes saved by the bytes it knows about <em>so far</em>; when it discovers the large annual summary PDF, the total grows and the percentage falls. Expected: progress only moves forward (estimate the total up front, or count statements).',
+    },
+    {
+      title: 'A 2-minute export has no Cancel and blocks the app',
+      hint: 'Start the export and try to stop it or to do anything else.',
+      detail: 'The export sheet covers the whole app for about two minutes (15 s in the demo), with no Cancel, no close button and no way to keep using the app. Expected: a Cancel button that really stops the export, and ideally the export runs in the background while the user keeps browsing.',
+    },
+    {
+      title: 'When the export fails, it is stuck at 99% forever',
+      hint: 'Turn on server errors, export, and wait well past the end. Check the network log.',
+      detail: 'The bar is driven by a timer: it reaches <strong>99% · Almost done…</strong> and waits for the server. The final <code>GET /api/exports/88</code> returns <code>500</code>, nothing handles it, and the sheet stays at 99% with no way out (only restarting the app helps). Expected: the bar stops, an error says the export failed, with Retry and Close.',
+    },
+    {
+      title: 'The balance spinner keeps spinning after an error',
+      hint: 'With server errors on, tap the refresh icon next to the balance.',
+      detail: 'The network log shows <code>500</code> after about a second, but the spinner keeps turning forever, “Updated 9:12” stays, and no message appears. Expected: the spinner stops, the last known balance stays with its old time, and a message like “Couldn’t update your balance. Try again” appears.',
+    },
+    {
+      title: 'Screen reader users never hear that the export is done',
+      hint: 'Turn on the VoiceOver caption panel, export with server errors off, and read the last caption after the check mark appears.',
+      detail: 'VoiceOver announces the start and a few percentages, but when the export finishes the last caption is still a percentage: the check mark and “Exported” are never announced. A blind user keeps waiting. Expected: an announcement like “Export complete. 12 statements saved to Files” (an accessibility announcement on iOS, a live region on the web, WCAG 4.1.3 Status Messages, AA).',
+    },
+  ]}
+>
+  <BuggyBankApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #4?">
+
+**Title:** Statements export: progress stays at 99% forever when the export request fails
+
+**Steps:** 1. In Charles/Proxyman, set `GET /api/exports/*` to return HTTP 500. 2. Open Accounts. 3. Tap **Export 2025 (12 PDFs)**. 4. Wait 3 minutes.
+
+**Expected:** When the request fails, the bar stops, an error explains the export failed, and Retry and Close are offered.
+**Actual:** The sheet shows "99% · Almost done…" indefinitely. `GET /api/exports/88` returned 500 at about 2:00. There is no Cancel or Close; the app can only be force-quit.
+
+**Severity:** High (user is stuck, export silently lost) · **Reproducible:** 5/5 · **Evidence:** screen recording, proxy session
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Progress indicator test checklist"
+  storageKey="progress-indicators"
+  items={[
+    'Fast actions (under ~400 ms) show no indicator at all: nothing flashes',
+    'Slow actions show an indicator within about a second, with a clear label',
+    'Once shown, the indicator stays long enough to be read (no blink-and-gone)',
+    'The action is blocked while it runs: repeat taps send no second request',
+    'Long work (over ~10 s) shows determinate progress, what is happening and ideally time left',
+    'Progress only moves forward, reaches 100% when the work is really done, and matches its label',
+    'Long work has a Cancel that really stops it (device and server) and says what happened',
+    'Errors stop the indicator and show a message with Retry; nothing is stuck at 99%',
+    'A request with no answer ends with a timeout message, not an endless spinner',
+    'Leaving the screen, backgrounding the app or rotating does not lose or duplicate the work',
+    'The indicator has an accessible name; start and result are announced to screen readers',
+    'With Reduce Motion on, the state is still clear from text, not only from motion',
+    'The indicator and its track have at least 3:1 contrast, in light and dark mode',
+    'No layout jump when the indicator appears or disappears',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-PRG-001',
+      title: 'No flashing spinner on a fast response',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Fast Wi-Fi', 'Screen recording on (to check frame by frame)'],
+      steps: ['Open the Statements list', 'Tap a statement', 'Repeat 5 times'],
+      expected: 'The statement opens without any spinner or overlay appearing. The recording shows no flicker.',
+    },
+    {
+      id: 'TC-PRG-002',
+      title: 'Slow response shows a labeled indicator',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Network throttled to "3G" or a 3 s delay added with a proxy'],
+      steps: ['Tap a statement', 'Watch the screen until it loads'],
+      expected: 'Within about 0.5–1 s an indicator with a label appears, stays until the data is shown, and then disappears. Tapping again during loading sends no second request.',
+    },
+    {
+      id: 'TC-PRG-003',
+      title: 'Export progress is monotonic and finishes at 100%',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Start the 2025 export', 'Record the screen until it finishes', 'Open the Files app'],
+      expected: 'The percentage never decreases and agrees with "N of 12". It reaches 100% only when all 12 PDFs are in Files.',
+    },
+    {
+      id: 'TC-PRG-004',
+      title: 'Cancel stops a long export',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Start the 2025 export', 'At about 40%, tap Cancel'],
+      expected: 'The bar disappears immediately, "Export canceled" is shown and announced, no further export requests appear in the proxy, and no partial files are left in Files.',
+    },
+    {
+      id: 'TC-PRG-005',
+      title: 'Server error ends the progress',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Proxy returns HTTP 500 for GET /api/exports/*'],
+      steps: ['Start the 2025 export', 'Wait until the request fails'],
+      expected: 'The bar stops (not at a fake 99%), an error explains the export failed, and Retry and Close work.',
+    },
+    {
+      id: 'TC-PRG-006',
+      title: 'No answer at all ends in a timeout',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Proxy breakpoint holds the balance request and never releases it'],
+      steps: ['Tap Refresh balance', 'Wait 60 seconds'],
+      expected: 'After a reasonable time the spinner stops and a message offers to try again. The old balance and its "Updated" time stay visible.',
+    },
+    {
+      id: 'TC-PRG-007',
+      title: 'Screen reader hears progress and the result',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['VoiceOver (iOS) or TalkBack (Android) on'],
+      steps: ['Start the 2025 export', 'Do not touch the screen until it finishes'],
+      expected: 'The start is announced, progress is announced occasionally (not every percent), and "Export complete" (or the error) is announced at the end without moving focus.',
+    },
+    {
+      id: 'TC-PRG-008',
+      title: 'Leaving the screen during an upload',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Start uploading 8 photos', 'Switch to another app for 30 s', 'Come back'],
+      expected: 'The upload continued (or is clearly paused with Resume). Progress is correct, no photo is uploaded twice.',
+    },
+  ]}
+/>
+
+### Tools
+
+- **Slow it down:** <Term id="network-throttling" /> (Network Link Conditioner on iOS, the emulator's network settings on Android, the "Fast 4G", "Slow 4G" and "3G" presets in Chrome DevTools) shows you the indicator at all. Fast office Wi-Fi hides most of these bugs.
+- **Break it on purpose:** a [proxy tool](/mobile/proxy-tools) like Charles or Proxyman can return a `500`, add a long delay, or hold a request with a <Term id="proxy-breakpoint" /> so it never answers. That's how you find endless spinners and the 99% bug.
+- **Catch flashes:** record the screen and step through frame by frame (QuickTime, the iOS screen recorder, `adb shell screenrecord`). A 60 ms flash is three or four frames.
+- **Check it's real:** after "100%", check the result exists (the file in Files, the order in the history). After Cancel, check the proxy log: did requests really stop?
+- **Web:** DevTools › Network shows request timing; the Performance panel's screenshots show flashes and layout shifts.
+
+## Accessibility
+
+- **Give it a name.** A spinner alone means nothing to a <Term id="screen-reader" />. Label it with what's happening: "Loading statements", "Uploading 3 of 8 photos".
+  <DevNote>On the web, the native `<progress>` has the progressbar role built in; a custom bar needs `role="progressbar"`, a label (`aria-label` or `aria-labelledby`), `aria-valuemin`, `aria-valuemax` and `aria-valuenow`. Add `aria-valuetext` when a number isn't the clearest wording ("5 of 8 photos"). For an indeterminate bar, leave out `aria-valuenow`. `aria-busy="true"` on a list or region that's being updated tells assistive technology to wait until it's done.</DevNote>
+- **Announce the result.** Screen readers usually don't read every change of a progress bar unless it has focus, and reading every percent would be unbearable anyway. Announce the **start**, maybe a few **milestones** for long work, and always the **end**: "Export complete", "Upload failed". This is <Term id="wcag" /> 4.1.3 Status Messages (AA).
+  <DevNote>On the web use a live region (`role="status"`), on iOS an accessibility announcement, on Android an announcement or a live region.</DevNote>
+- **Don't steal focus** to announce progress. Focus should stay where the user is.
+- **<Term id="reduced-motion" />.** A small loading spinner is usually considered essential motion and may keep turning, but large or decorative motion (bouncing loaders, shimmering skeletons, confetti at 100%) should calm down. Watch out for the opposite bug: some sites switch off *all* animation with Reduce Motion, which freezes a CSS spinner. That's only OK if a text label still says "Loading…".
+- **Contrast.** The bar and its track are UI parts: at least 3:1 against the background (WCAG 1.4.11 Non-text Contrast, AA). A pale grey bar on white fails. Any percentage text needs 4.5:1 (WCAG 1.4.3 Contrast (Minimum), AA).
+- **Cancel must be reachable** by keyboard, Switch Control and screen readers, not just by tapping a tiny "x". At least 44×44 pt on iOS and 48×48 dp on Android. On the web, WCAG 2.5.8 (AA) asks for at least 24×24 CSS px; 44×44 px (2.5.5, AAA) is the comfortable target.
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+<DevNote>`UIActivityIndicatorView` (medium and large styles) hides itself when stopped by default; `UIProgressView` is the determinate bar. In SwiftUI, `ProgressView()` is a spinner and `ProgressView(value:total:)` a bar.</DevNote>
+
+- There's no built-in determinate **ring** in UIKit; rings like a download button are custom-drawn, so test them carefully (start, 100%, error, Cancel).
+- Long uploads and downloads should survive the app going to the background. Test by switching apps and locking the phone mid-transfer.
+  <DevNote>That's a background `URLSession`.</DevNote>
+- Test with VoiceOver: is the indicator labeled, and is the result announced?
+
+</Tab>
+<Tab>
+
+- Material 3 linear and circular progress indicators: indeterminate by default, determinate when given a progress value. The linear determinate version has a gap and a small **stop indicator** dot at the end.
+  <DevNote>`LinearProgressIndicator` and `CircularProgressIndicator`.</DevNote>
+- Long work is often a **foreground service** with a progress **notification** (for example a download). Check the notification updates, offers Cancel, and ends with success or failure, not a frozen bar.
+- Rotation and process death can restart the work or lose the indicator. Rotate mid-upload; try Developer options › *Don't keep activities*.
+- Old apps may still use the legacy `ProgressBar` widget; check it in dark mode.
+
+</Tab>
+<Tab>
+
+- The native `<progress>` looks different in each browser; check it in Chrome, Safari and Firefox (see [Cross-browser testing](/web/cross-browser-testing)). Custom bars need the ARIA attributes above.
+- Throttle with DevTools' "Fast 4G", "Slow 4G" and "3G" presets to see the indicator, and use the Performance panel to catch flashes and layout shifts (<Term id="core-web-vitals" />: CLS).
+- Check Cancel really aborts the upload request in the Network panel (it shows as "(canceled)").
+  <DevNote>Uploads with `fetch` can be canceled with an `AbortController`.</DevNote>
+- Reloading or closing the tab during an upload: does the browser warn you ("Leave site?"), and is the work resumed or clearly lost?
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'An export takes about two minutes and its progress can be measured. What should the user see?',
+      options: ['A spinner', 'A determinate bar with a label, time left and Cancel', 'Nothing, it runs in the background silently', 'A full-screen overlay with a spinner'],
+      answer: 1,
+      explain: 'Long, measurable work needs real progress, a description of what is happening and a way out. A spinner for minutes leaves users guessing.',
+    },
+    {
+      q: 'Saving a setting takes 80 ms and a spinner blinks briefly every time. What is the best fix?',
+      options: ['Make the spinner bigger', 'Show the spinner only if the work is not done after ~400 ms, and keep it at least ~500 ms once shown', 'Use a progress bar instead', 'Add a sound when it finishes'],
+      answer: 1,
+      explain: 'A delay before showing hides the indicator for fast work; a minimum display time stops it from blinking when it does appear.',
+    },
+    {
+      q: 'A progress bar goes 44%, 46%, 31%, 35%... What kind of bug is this?',
+      options: ['A cosmetic issue only', 'Progress that lies: it must only move forward', 'Correct, the server got slower', 'A localization bug'],
+      answer: 1,
+      explain: 'Usually the app divides by a total that grows during the work. Users read a drop as "it started over" or "something went wrong".',
+    },
+    {
+      q: 'The final request of an upload fails. Which result is correct?',
+      options: ['The bar stays at 99% until the user restarts the app', 'The bar stops, an error explains what happened and offers Retry', 'The bar jumps to 100% anyway', 'The app closes'],
+      answer: 1,
+      explain: 'Every indicator needs an exit for errors. Stuck at 99% is the classic symptom of a faked bar with no error handling.',
+    },
+    {
+      q: 'Which web markup describes a custom determinate progress bar correctly?',
+      options: ['<div role="progressbar" aria-label="Upload" aria-valuemin="0" aria-valuemax="100" aria-valuenow="40">', '<div aria-busy="40%">', '<meter value="40">', '<div role="status">40</div>'],
+      answer: 0,
+      explain: 'A custom bar needs the progressbar role, a label and min/max/now values (plus aria-valuetext if useful). <meter> is a gauge, not progress.',
+    },
+    {
+      q: 'A blind user starts an export. The screen shows a check mark when it is done. What else is needed?',
+      options: ['Nothing, the check mark is enough', 'An announcement like "Export complete" without moving focus', 'Moving focus to the top of the screen', 'A vibration only'],
+      answer: 1,
+      explain: 'Results must be announced as status messages (WCAG 4.1.3), via a live region or an accessibility announcement, so screen reader users know they can continue.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- **Determinate** shows how far (bar or ring); **indeterminate** only says "working" (spinner or looping bar). Linear vs circular is just layout.
+- Match the indicator to the wait: nothing under ~1 s, a spinner for a few seconds, a **determinate bar with Cancel** for anything over ~10 s.
+- Don't flash: a **delay before showing** plus a **minimum display time**.
+- Progress must tell the truth: **only forward**, 100% means done, no faking to 99%.
+- Every indicator **ends**: on success, error, timeout and Cancel. Test with slow and broken networks.
+- Label it, **announce the result** (WCAG 4.1.3), keep 3:1 contrast, and don't rely on motion alone.
+
+</KeyTakeaways>

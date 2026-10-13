@@ -1,0 +1,353 @@
+---
+import { abs, publisher } from '@/lib/seo';
+import { getCollection } from 'astro:content';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/ui/Icon.astro';
+import { sections, site } from '@/data/site';
+import { getComponents, getLessons, getNav } from '@/lib/content';
+import { href } from '@/lib/url';
+
+const [lessons, components, glossary, interview] = await Promise.all([
+  getLessons(),
+  getComponents(),
+  getCollection('glossary'),
+  getCollection('interview'),
+]);
+
+const stats = [
+  { value: lessons.length, label: 'Lessons' },
+  { value: components.length, label: 'Component guides' },
+  { value: glossary.length, label: 'Glossary terms' },
+  { value: interview.length, label: 'Interview questions' },
+];
+
+const path = [
+  { step: 'Learn the basics', text: 'What testing is, the vocabulary, and how teams build software.', href: '/fundamentals', icon: 'graduation-cap' },
+  { step: 'Know the UI', text: 'Every component you will ever test, and how it breaks.', href: '/components', icon: 'component' },
+  { step: 'Test real features', text: 'Login, checkout, notifications and other everyday flows.', href: '/features', icon: 'workflow' },
+  { step: 'Go mobile & web', text: 'Devices, gestures, browsers, DevTools and networks.', href: '/mobile', icon: 'smartphone' },
+  { step: 'Do the work', text: 'Write test cases and bug reports like a pro.', href: '/tutorials', icon: 'notebook-pen' },
+  { step: 'Land the job', text: 'How hiring works, take-home tasks, your CV, and 90+ interview questions.', href: '/career', icon: 'briefcase' },
+];
+
+const nav = await getNav();
+const keysFor = (sectionHref: string) =>
+  nav.find((g) => g.href === sectionHref)?.items.map((i) => i.href.slice(1)) ?? [];
+
+const firstLesson = lessons.find((l) => l.id.startsWith('fundamentals/'));
+const startHref = firstLesson ? `/${firstLesson.id}` : '/fundamentals';
+---
+
+<BaseLayout
+  jsonLd={[
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'Bugwise',
+      description: site.description,
+      url: abs('/', Astro.site),
+      inLanguage: 'en',
+      publisher: publisher(Astro.site),
+    },
+    { '@context': 'https://schema.org', ...publisher(Astro.site) },
+  ]}
+>
+  <!-- Hero -->
+  <section class="relative overflow-hidden">
+    <div class="bg-grid absolute inset-0 -z-10"></div>
+    <div class="absolute -top-48 left-1/2 -z-10 h-[30rem] w-[60rem] -translate-x-1/2 rounded-full opacity-30 blur-3xl" style="background: radial-gradient(closest-side, var(--brand), transparent), radial-gradient(closest-side, var(--brand-2), transparent) 60% 40% / 60% 60% no-repeat"></div>
+
+    <div class="container-page grid items-center gap-14 pt-16 pb-20 lg:grid-cols-[1.15fr_1fr] lg:pt-24 lg:pb-28">
+      <div class="animate-fade-up">
+        <a href={href('/components/segmented-control')} class="group mb-6 inline-flex items-center gap-2 rounded-full border border-line bg-surface/80 py-1 pr-3 pl-1 text-sm backdrop-blur">
+          <span class="rounded-full bg-brand px-2 py-0.5 text-xs font-semibold text-brand-fg">New</span>
+          <span class="text-muted group-hover:text-fg">Interactive bug hunts are here</span>
+          <Icon name="arrow-right" size={14} class="text-faint transition-transform group-hover:translate-x-0.5" />
+        </a>
+        <h1 class="text-[2.6rem] leading-[1.05] font-bold tracking-tight text-balance sm:text-6xl lg:text-[4.2rem]">
+          Become a <span class="text-gradient">manual tester</span> who finds the bugs others miss.
+        </h1>
+        <p class="mt-6 max-w-xl text-lg leading-relaxed text-pretty text-muted sm:text-xl">
+          {site.description}
+        </p>
+        <div class="mt-9 flex flex-wrap gap-3">
+          <a href={href(startHref)} class="inline-flex h-12 items-center gap-2 rounded-xl bg-fg px-6 font-medium text-bg shadow-float transition-transform hover:-translate-y-0.5">
+            Start learning <Icon name="arrow-right" size={18} />
+          </a>
+          <a href={href('/components')} class="inline-flex h-12 items-center gap-2 rounded-xl border border-line bg-surface px-6 font-medium transition-colors hover:border-line-strong">
+            <Icon name="component" size={18} /> Explore components
+          </a>
+        </div>
+        <p class="mt-6 flex items-center gap-2 text-sm text-faint">
+          <Icon name="check" size={15} class="text-ok" /> Free · No sign-up · Made for complete beginners
+        </p>
+        <a
+          href="#"
+          data-continue
+          hidden
+          class="group mt-6 flex max-w-md items-center gap-3 rounded-2xl border border-line bg-surface/90 p-3 pr-4 shadow-soft backdrop-blur transition-colors hover:border-brand"
+        >
+          <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand"><Icon name="play" size={18} /></span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-xs text-faint">Continue where you left off</span>
+            <span class="block truncate font-medium group-hover:text-brand" data-continue-title></span>
+          </span>
+          <Icon name="arrow-right" size={16} class="text-faint" />
+        </a>
+      </div>
+
+      <!-- Hero visual -->
+      <div class="relative mx-auto w-full max-w-md lg:max-w-none" aria-hidden="true">
+        <div class="relative mx-auto w-[270px] animate-float rounded-[46px] bg-[#0c0d12] p-[10px] shadow-float">
+          <div class="relative overflow-hidden rounded-[37px] bg-white text-[#0e1120]" style="aspect-ratio: 9/19.5">
+            <div class="absolute top-2.5 left-1/2 h-6 w-20 -translate-x-1/2 rounded-full bg-black"></div>
+            <div class="px-5 pt-12">
+              <p class="text-[22px] font-bold">Activity</p>
+              <div class="mt-3 flex rounded-[9px] bg-black/[0.06] p-[2px] text-[11px] font-semibold">
+                <span class="flex-1 py-1 text-center text-black/50">Day</span>
+                <span class="flex-1 rounded-[7px] bg-white py-1 text-center shadow-sm">Week</span>
+                <span class="flex-1 py-1 text-center text-black/50">Month</span>
+                <span class="flex-1 py-1 text-center text-black/50">Ye…</span>
+              </div>
+              <p class="mt-5 text-[11px] font-medium text-black/50">Steps this week</p>
+              <p class="text-[26px] font-bold tracking-tight">48,210</p>
+              <div class="mt-4 flex h-28 items-end gap-2">
+                {[40, 65, 52, 80, 58, 92, 70].map((h, i) => <div class="flex-1 rounded-md" style={`height:${h}%; background: ${i === 5 ? '#5b4bff' : '#e3e1ff'}`}></div>)}
+              </div>
+              <div class="mt-5 space-y-2">
+                {['Morning run · 5.2 km', 'Walk · 2.1 km', 'Cycling · 12 km'].map((t) => <div class="rounded-xl bg-black/[0.04] px-3 py-2.5 text-[11px] font-medium">{t}</div>)}
+              </div>
+            </div>
+            <!-- bug marker -->
+            <div class="absolute top-[92px] right-[18px] grid size-6 place-items-center rounded-full bg-[#e5484d] text-[11px] font-bold text-white ring-4 ring-[#e5484d]/25">1</div>
+          </div>
+        </div>
+
+        <div class="absolute top-[18%] -left-2 w-56 rounded-2xl border border-line bg-elevated/95 p-3.5 shadow-float backdrop-blur sm:-left-6">
+          <p class="flex items-center gap-1.5 text-xs font-semibold text-danger"><Icon name="bug" size={14} /> BUG-142 · Medium</p>
+          <p class="mt-1 text-sm font-medium">"Year" label is truncated on small screens</p>
+        </div>
+        <div class="absolute right-0 bottom-[14%] w-52 rounded-2xl border border-line bg-elevated/95 p-3.5 shadow-float backdrop-blur sm:-right-4">
+          <p class="flex items-center gap-1.5 text-xs font-semibold text-ok"><Icon name="circle-check" size={14} /> TC-007 · Passed</p>
+          <p class="mt-1 text-sm font-medium">Selection persists after rotation</p>
+        </div>
+        <div class="absolute -bottom-2 left-[8%] hidden rounded-xl border border-line bg-elevated/95 px-3 py-2 text-xs font-medium shadow-float backdrop-blur sm:block">
+          <span class="text-faint">Severity</span> vs <span class="text-faint">Priority</span>? <span class="text-brand">Learn →</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <section class="border-y border-line bg-subtle/60">
+    <div class="container-page grid grid-cols-2 divide-line md:grid-cols-4 md:divide-x">
+      {
+        stats.map((s) => (
+          <div class="px-4 py-7 text-center">
+            <p class="text-3xl font-bold tracking-tight">{s.value}</p>
+            <p class="mt-1 text-sm text-muted">{s.label}</p>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <!-- Learning path -->
+  <section class="container-page py-20 sm:py-28">
+    <div class="max-w-2xl">
+      <p class="text-sm font-semibold tracking-wider text-brand uppercase">Your roadmap</p>
+      <h2 class="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">From zero to job-ready in six steps</h2>
+      <p class="mt-4 text-lg text-muted">Follow the path in order, or jump straight to what you need. Every lesson builds on plain-English explanations.</p>
+    </div>
+    <ol class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {
+        path.map((p, i) => (
+          <li>
+            <a href={href(p.href)} class="group card relative flex h-full flex-col overflow-hidden p-6 transition-all hover:-translate-y-1 hover:shadow-soft">
+              <span class="absolute -top-4 -right-1 font-mono text-[5.5rem] leading-none font-bold text-line/70 transition-colors group-hover:text-brand/15">{i + 1}</span>
+              <span class="grid size-11 place-items-center rounded-xl bg-brand-soft text-brand">
+                <Icon name={p.icon} size={21} />
+              </span>
+              <h3 class="mt-5 text-lg font-semibold">{p.step}</h3>
+              <p class="mt-1.5 flex-1 leading-relaxed text-muted">{p.text}</p>
+              {keysFor(p.href).length > 0 ? (
+                <div class="mt-5 flex items-center gap-3 text-xs text-faint" data-progress-keys={keysFor(p.href).join(',')}>
+                  <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
+                    <div class="h-full w-0 rounded-full bg-gradient-to-r from-brand to-brand-2 transition-[width] duration-500" data-progress-bar />
+                  </div>
+                  <span class="tabular-nums" data-progress-count>0 of {keysFor(p.href).length}</span>
+                </div>
+              ) : (
+                <span class="mt-5 text-xs text-faint">Coming soon</span>
+              )}
+            </a>
+          </li>
+        ))
+      }
+    </ol>
+    <a
+      href={href('/capstone')}
+      class="group card mt-4 flex flex-col gap-5 overflow-hidden p-6 transition-all hover:-translate-y-1 hover:shadow-soft sm:flex-row sm:items-center"
+    >
+      <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand to-brand-2 text-white">
+        <Icon name="flag" size={21} />
+      </span>
+      <div class="min-w-0 flex-1">
+        <p class="text-xs font-semibold tracking-wider text-brand uppercase">Final step · Capstone project</p>
+        <h3 class="mt-1 text-lg font-semibold">Test a whole release, start to finish</h3>
+        <p class="mt-1.5 leading-relaxed text-muted">
+          Read the brief, write a test plan and test cases, then hunt for 24 hidden bugs in the FoodDash 2.0 app. Finish with a go / no-go report and get a printable certificate. About 2–2½ hours.
+        </p>
+      </div>
+      <span class="shrink-0 text-sm font-semibold text-brand">Start the capstone <span class="inline-block transition-transform group-hover:translate-x-1">→</span></span>
+    </a>
+  </section>
+
+  <!-- Component spotlight -->
+  <section class="relative overflow-hidden border-y border-line bg-subtle/60">
+    <div class="container-page grid items-center gap-12 py-20 lg:grid-cols-2">
+      <div>
+        <p class="text-sm font-semibold tracking-wider uppercase" style="color: #8b5cf6">UI components</p>
+        <h2 class="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Don't just read about components. Break them.</h2>
+        <p class="mt-4 text-lg leading-relaxed text-muted">
+          Each guide shows real iOS, Android and web designs, explains when they make sense, lists the bugs testers find most often, and gives you a
+          deliberately broken version to investigate.
+        </p>
+        <ul class="mt-6 space-y-3">
+          {
+            ['Live, tappable demos of every variant', 'When to use it, and when not to', 'A bug hunt with hidden defects', 'Copy-ready checklists and test cases'].map((t) => (
+              <li class="flex items-center gap-3">
+                <span class="grid size-6 place-items-center rounded-full bg-ok-soft text-ok">
+                  <Icon name="check" size={14} strokeWidth={3} />
+                </span>
+                {t}
+              </li>
+            ))
+          }
+        </ul>
+        <a href={href('/components/segmented-control')} class="mt-8 inline-flex h-11 items-center gap-2 rounded-xl bg-fg px-5 font-medium text-bg">
+          Try: Segmented control <Icon name="arrow-right" size={16} />
+        </a>
+      </div>
+      <div class="grid grid-cols-2 gap-3" aria-hidden="true">
+        <div class="card col-span-2 p-5">
+          <p class="mb-3 text-xs font-medium text-faint">iOS style</p>
+          <div class="flex rounded-[10px] bg-black/[0.06] p-[3px] text-sm font-semibold dark:bg-white/10">
+            <span class="flex-1 py-1.5 text-center text-muted">List</span>
+            <span class="flex-1 rounded-[8px] bg-white py-1.5 text-center text-[#0e1120] shadow-sm">Map</span>
+            <span class="flex-1 py-1.5 text-center text-muted">Saved</span>
+          </div>
+        </div>
+        <div class="card p-5">
+          <p class="mb-3 text-xs font-medium text-faint">Material 3</p>
+          <div class="flex overflow-hidden rounded-full border border-line-strong text-xs font-medium">
+            <span class="flex flex-1 items-center justify-center gap-1 bg-brand-soft py-1.5 text-brand"><Icon name="check" size={12} />Day</span>
+            <span class="flex-1 border-l border-line-strong py-1.5 text-center text-muted">Week</span>
+          </div>
+        </div>
+        <div class="card border-danger/40 p-5">
+          <p class="mb-3 flex items-center gap-1 text-xs font-medium text-danger"><Icon name="bug" size={12} /> Buggy</p>
+          <div class="flex rounded-[10px] bg-black/[0.06] p-[3px] text-xs font-semibold dark:bg-white/10">
+            <span class="flex-1 truncate px-1 py-1.5 text-center text-muted">Überweisungen</span>
+            <span class="flex-1 truncate px-1 py-1.5 text-center text-muted">Lastschriften</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bites -->
+  <section class="container-page pt-20 sm:pt-28">
+    <div class="grid items-center gap-10 overflow-hidden rounded-3xl border border-line bg-surface p-8 sm:p-12 lg:grid-cols-[1.2fr_1fr]">
+      <div>
+        <p class="flex items-center gap-2 text-sm font-semibold tracking-wider text-brand uppercase"><Icon name="zap" size={16} /> Bites</p>
+        <h2 class="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Got 2 minutes? Scroll and learn.</h2>
+        <p class="mt-4 text-lg leading-relaxed text-muted">
+          A feed of 10-second cards: flashcards, quick quizzes, spot-the-bug and this-or-that. It previews what's next on your path and keeps bringing back
+          what you've finished, right when you're about to forget it.
+        </p>
+        <a href={href('/bites')} class="mt-7 inline-flex h-11 items-center gap-2 rounded-xl bg-fg px-5 font-medium text-bg">
+          Open Bites <Icon name="arrow-right" size={16} />
+        </a>
+      </div>
+      <div class="mx-auto w-full max-w-xs" aria-hidden="true">
+        <div class="rotate-2 rounded-[28px] border border-line bg-elevated p-5 shadow-float">
+          <span class="rounded-full bg-[#3b82f6] px-2.5 py-1 text-xs font-semibold text-white">This or that?</span>
+          <p class="mt-4 text-lg leading-snug font-bold">The brand name is misspelled on the homepage. Launch is tomorrow.</p>
+          <div class="mt-4 grid grid-cols-2 gap-2 text-sm font-semibold">
+            <span class="rounded-xl border border-line py-2.5 text-center text-faint">← Low priority</span>
+            <span class="rounded-xl border border-ok bg-ok-soft py-2.5 text-center text-ok">High priority →</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- All sections -->
+  <section class="container-page py-20 sm:py-28">
+    <div class="max-w-2xl">
+      <p class="text-sm font-semibold tracking-wider text-brand uppercase">Everything in one place</p>
+      <h2 class="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Explore the library</h2>
+    </div>
+    <div class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {
+        sections.map((s) => (
+          <a href={href('/' + s.id)} class="group card relative overflow-hidden p-5 transition-all hover:-translate-y-0.5 hover:shadow-soft" style={`--accent: ${s.accent}`}>
+            <div class="absolute -top-12 -right-12 size-32 rounded-full opacity-0 blur-2xl transition-opacity group-hover:opacity-30" style="background: var(--accent)" />
+            <span class="grid size-10 place-items-center rounded-xl text-white" style="background: var(--accent)">
+              <Icon name={s.icon} size={19} />
+            </span>
+            <h3 class="mt-4 font-semibold">{s.title}</h3>
+            <p class="mt-1 text-sm leading-relaxed text-muted">{s.description}</p>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+
+  <!-- Lesson format -->
+  <section class="container-page pb-8">
+    <div class="relative overflow-hidden rounded-3xl border border-line p-8 sm:p-12" style="background: linear-gradient(135deg, var(--brand-soft), var(--surface) 55%)">
+      <div class="grid items-center gap-10 lg:grid-cols-[1.2fr_1fr]">
+        <div>
+          <h2 class="text-3xl font-bold tracking-tight">Ten minutes or thirty? You choose.</h2>
+          <p class="mt-4 text-lg leading-relaxed text-muted">
+            Tutorials come in a <strong class="text-fg">Quick</strong> version for a fast refresher and a <strong class="text-fg">Detailed</strong> version with
+            worked examples, quizzes and checklists. Hover any underlined term to see what it means.
+          </p>
+          <a href={href('/tutorials/writing-test-cases')} class="mt-7 inline-flex h-11 items-center gap-2 rounded-xl bg-brand px-5 font-medium text-brand-fg">
+            Learn to write test cases <Icon name="arrow-right" size={16} />
+          </a>
+        </div>
+        <div class="card p-5" aria-hidden="true">
+          <div class="inline-flex rounded-xl border border-line bg-subtle p-1 text-sm">
+            <span class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium text-muted"><Icon name="sparkles" size={14} /> Quick</span>
+            <span class="flex items-center gap-1.5 rounded-lg bg-surface px-3 py-1.5 font-medium shadow-sm"><Icon name="layers" size={14} /> Detailed</span>
+          </div>
+          <div class="mt-5 space-y-2.5">
+            <div class="h-3 w-4/5 rounded bg-line"></div>
+            <div class="h-3 w-full rounded bg-line"></div>
+            <div class="h-3 w-2/3 rounded bg-line"></div>
+          </div>
+          <div class="mt-5 rounded-xl border border-ok/25 bg-ok-soft/60 p-3 text-sm">
+            <p class="font-semibold text-ok">TC-001 · Login with valid credentials</p>
+            <p class="mt-1 text-muted">Expected: user lands on the Home screen.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { load } from '@/lib/progress';
+  import { href } from '@/lib/url';
+
+  const link = document.querySelector<HTMLAnchorElement>('[data-continue]');
+  const last = load().last;
+  if (link && last) {
+    link.href = href('/' + last.key);
+    link.querySelector('[data-continue-title]')!.textContent = last.title;
+    link.hidden = false;
+  }
+</script>

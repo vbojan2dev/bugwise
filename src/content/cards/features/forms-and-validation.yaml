@@ -1,0 +1,47 @@
+teaser: "Your sign up form says O'Brien isn't a real name. How many customers did it just turn away without anyone noticing?"
+cards:
+  - type: flip
+    front: "Client-side vs server-side validation?"
+    back: "Client-side runs in the app for quick feedback and can be skipped. Server-side runs on the server and is the only check you can trust."
+  - type: flip
+    front: "When should a form show an error?"
+    back: "When the user leaves the field or submits. Once it's showing, re-check live so it disappears as soon as the value is fixed."
+  - type: quiz
+    q: "Which email is valid but often rejected by forms?"
+    options: ["anna@", "anna+food@mail.com", "anna@@mail.com"]
+    answer: 1
+    explain: "Plus addressing is valid and people use it to filter mail. The other two are genuinely invalid."
+  - type: quiz
+    q: "18+ rule, today is 14 May 2026. Which birth date must be accepted?"
+    options: ["14 May 2008", "15 May 2008", "1 June 2008"]
+    answer: 0
+    explain: "Someone born on 14 May 2008 turns 18 today. Rejecting them is a classic off-by-one bug at the boundary."
+  - type: quiz
+    q: "The app limits names to 50 characters. How do you check the server enforces it too?"
+    options: ["Type 51 characters in the app", "Send a long name with Postman", "Ask the designer"]
+    answer: 1
+    explain: "The app's own check stops you from typing more. Going around the app with Postman or DevTools shows whether the server checks."
+  - type: truefalse
+    statement: "A red border is enough to show a field has an error."
+    answer: false
+    explain: "Color alone fails people who can't see red and screen reader users. Add a text message and an icon next to the field."
+  - type: truefalse
+    statement: "After a server error, the form should keep everything the user typed."
+    answer: true
+    explain: "Servers fail sometimes. If the form wipes the input, most users won't type it all again. Teams may clear only the password."
+  - type: thisorthat
+    prompt: "The email field turns red with 'Invalid email' as soon as you type the first letter."
+    left: "Correct behavior"
+    right: "Bug to report"
+    answer: right
+    explain: "Nobody has finished an email after one letter. Validate on blur or submit, not while the user is still typing."
+  - type: thisorthat
+    prompt: "Country is United Kingdom. Postcode 'SW1A 1AA' gets 'Enter a 5-digit postcode'."
+    left: "Bug to report"
+    right: "User error"
+    answer: left
+    explain: "Postcode formats differ by country. The rule must follow the selected country, or UK customers can't sign up."
+  - type: spotbug
+    screen: ["Postcode field", "autocomplete=\"address-level2\"", "After AutoFill: Berlin"]
+    bug: "The postcode field has the city's autocomplete token."
+    explain: "AutoFill fills fields by their token. With the wrong one, the city lands in the postcode field. It should be postal-code."

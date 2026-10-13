@@ -1,0 +1,365 @@
+---
+title: Cross-browser Testing
+description: The same website can look and behave differently in Chrome, Safari, Firefox and Samsung Internet. Learn why, which browsers to test, what usually breaks, and how to hunt down browser-specific bugs.
+order: 1
+level: beginner
+minutes: { short: 30 }
+platform: web
+tags: [cross-browser, compatibility, browsers, safari, webkit]
+---
+
+import BrowserComparator from '@/components/demos/web-browsers/BrowserComparator';
+import { BuggyCrossBrowserCheckout } from '@/components/demos/web-browsers/BuggyCrossBrowserCheckout';
+
+It's Friday evening and a food delivery website launches its brand-new checkout. The team tested it all week: on their laptops, in Chrome, it was perfect. By 9 pm the support inbox is on fire. *"I can't find the Order button."* *"The time picker does nothing."* Almost every complaint comes from an **iPhone**. In Safari, the **Place order** button sits hidden under the browser's toolbar, and the delivery time picker throws a JavaScript error. Nobody had opened the page on an iPhone before release.
+
+That's what <Term id="cross-browser-testing" /> is for: making sure your website works for people using **other browsers than the one on your desk**.
+
+## Why it matters
+
+- **Your users don't all use Chrome.** On phones, Safari has a huge share in many countries (every iPhone user has it), and Samsung Internet comes preinstalled on millions of Galaxy phones.
+- **Browser bugs hit whole groups of people.** If checkout fails in Safari, it fails for *every* iPhone user, which can be a third or more of your customers.
+- **Developers usually work in one browser.** Most front-end code is written and checked in Chrome. Testers are often the first people to open it anywhere else.
+- **The bugs are invisible in "your" browser.** You can't find a Safari-only bug by testing harder in Chrome.
+
+Cross-browser testing is one part of <Term id="compatibility-testing" />, which also covers devices, OS versions and screen sizes. (Screen sizes get their own lesson: [Responsive Design Testing](/web/responsive-design-testing).)
+
+## Browsers vs rendering engines
+
+A **browser** is the app you open: Chrome, Safari, Edge. Inside every browser is a **rendering engine** that turns HTML and CSS into pixels, plus a **JavaScript engine** that runs the scripts. There are many browsers, but only **three engines** that matter today:
+
+| Engine | Made by | Browsers that use it | JavaScript engine |
+| --- | --- | --- | --- |
+| **Blink** (Chromium) | Google + others | Chrome, Edge, Opera, Samsung Internet, Brave, Vivaldi | V8 |
+| **WebKit** | Apple | Safari on Mac, iPhone and iPad, **plus every other browser on iOS** | JavaScriptCore |
+| **Gecko** | Mozilla | Firefox (on desktop and Android) | SpiderMonkey |
+
+<Callout type="warning" title="Chrome on an iPhone is really Safari inside">
+Apple's rules require browsers on iOS and iPadOS to use WebKit. (Since iOS 17.4 in 2024, browsers in the EU may use other engines, and Japan followed with iOS 26.2. At the time of writing, Chrome, Firefox and Edge on iPhone still run on WebKit in practice.) So **"Chrome on iPhone" behaves like Safari, not like Chrome on Android**. If a bug appears in Safari on iOS, expect it in every iOS browser.
+</Callout>
+
+What this means for your testing:
+
+- Browsers that share an engine **mostly** behave the same. If it works in Chrome, it very likely works in Edge and Opera.
+- "Mostly" isn't "always". Samsung Internet is based on Chromium, but it is **often several versions behind** Chrome, and it adds its own features (like a content blocker and its own dark mode).
+- The real differences are **between engines**. A good minimum set covers all three: a Chromium browser, Safari (WebKit) and Firefox (Gecko).
+
+## Why the same page looks different
+
+All browsers follow the same web standards, so why do they disagree? Because standards leave room for interpretation, new features ship at different times, and every browser adds its own touches.
+
+| Area | What differs | Example |
+| --- | --- | --- |
+| **CSS support** | New features arrive in each engine at different times | A layout uses a CSS feature that an older Samsung Internet or iOS version doesn't know, so it falls apart |
+| **Form controls** | Selects, checkboxes, sliders and file pickers are drawn by the browser or the OS | Safari on macOS draws a native pop-up button; Chrome follows the site's styling more closely |
+| **Date and time inputs** | Each browser has its own picker and format | A calendar popup in Chrome, a wheel picker on iPhone |
+| **Fonts** | Different system fonts and text rendering | Segoe UI on Windows is wider than San Francisco on Mac, so a label wraps onto two lines |
+| **Autofill** | Browsers paint autofilled fields in their own colors | Light blue in Chrome, yellow in Safari |
+| **Default styles** | Each browser has a built-in stylesheet for margins, buttons, focus rings | Buttons and focus outlines look different unless the site resets them |
+| **JavaScript APIs** | Not every API exists everywhere | The Payment Request API exists in Chrome and Safari, not in Firefox |
+| **Extensions** | Ad blockers and password managers change the page | An ad blocker hides a newsletter box whose class name contains "banner" |
+| **Privacy features** | Tracking protection blocks cookies and scripts | Safari's Intelligent Tracking Prevention (ITP) and Firefox's Enhanced Tracking Protection block or isolate third-party <Term id="cookie">cookies</Term> (see [Cookies, Sessions and Storage](/web/cookies-sessions-and-storage)), so a login or payment widget inside an iframe stops working |
+
+Try it yourself. Here's one delivery form as three browsers would draw it:
+
+<BrowserComparator client:visible />
+
+<Callout type="tip" title="Different is fine. Broken is not.">
+Pages don't need to look **pixel-identical** in every browser. A native date picker that looks different in Safari is expected. It becomes a **bug** when something is **unreadable, unusable, cut off, missing, or breaks the requirements**. Ask yourself: *Can the user still see it, understand it and complete the task?*
+</Callout>
+
+## Choosing a browser matrix
+
+You can't test every browser, version and device. Instead, teams agree on a **browser matrix** (also called a support matrix): the list of browsers that must work, and how deeply each one is tested.
+
+<Steps>
+
+1. **Start from analytics.** Ask for real usage data from Google Analytics or a similar tool: browser, browser version, operating system and device type. Look at desktop and mobile **separately**, because the lists are very different.
+2. **Cover the big ones.** Typically: Chrome (Windows, Mac, Android), Safari (iPhone and Mac), Edge, Firefox, and Samsung Internet if you have many Android users.
+3. **Pick versions.** Chrome, Edge and Firefox update themselves every few weeks, so "latest + previous version" is usually enough. **Safari is tied to the operating system**: people on older iPhones are stuck on older Safari, so include the **current and previous major iOS version**.
+4. **Sort into tiers.** Not every browser needs the full treatment.
+5. **Write it down and review it** every few months, because usage changes.
+
+</Steps>
+
+An example matrix for an online shop:
+
+| Tier | What it means | Browsers |
+| --- | --- | --- |
+| **Tier 1** | Full testing of every feature before each release | Chrome latest (Windows, Android), Safari on iOS (latest + previous major), Safari on macOS latest |
+| **Tier 2** | Main user flows (smoke test: login, search, checkout) | Edge latest, Firefox latest, Samsung Internet latest, Chrome previous version |
+| **Tier 3** | "It works, but may look a bit different." Fix only serious bugs | Older versions, Opera, other browsers with small usage |
+
+<Callout type="info" title="A useful rule of thumb">
+Many teams fully support any browser with **more than 1–2% of their traffic**, plus anything a key customer requires (for example, a company that only allows Edge).
+</Callout>
+
+## What usually breaks
+
+These bugs show up again and again. Learn the patterns and you'll know where to look first.
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Layout gaps and grids** | In an older browser, cards and form fields stick together or the grid collapses into one long column | Medium |
+| 2 | **Sticky and fixed elements** | A sticky header stops sticking, or a fixed button jumps when the keyboard opens on iOS | Medium–High |
+| 3 | **`100vh` on mobile Safari** | A full-height screen is taller than the visible area, so a bottom button hides under the browser toolbar | High |
+| 4 | **Date and number inputs** | The custom date picker doesn't open; a number field accepts "e" or changes value when you scroll | High |
+| 5 | **Unsupported JavaScript API** | A button does nothing and the console shows `is not defined` or `is not a function` | High |
+| 6 | **Video autoplay** | The hero video doesn't play on iPhone (autoplay needs `muted` and `playsinline`) | Low–Medium |
+| 7 | **Clipboard** | "Copy code" fails silently because the page isn't on <Term id="https">HTTPS</Term> or the browser asks for permission | Medium |
+| 8 | **File uploads** | An iPhone photo (HEIC format) is rejected, or the camera option is missing | Medium–High |
+| 9 | **Fonts** | Fallback fonts make text wider, so buttons wrap or text is cut off | Low–Medium |
+| 10 | **Autofill styling** | Autofilled fields turn light blue or yellow and the text becomes unreadable | Medium |
+| 11 | **Third-party cookies blocked** | "Sign in with…" popups, chat widgets or payment iframes fail in Safari and Firefox | High |
+| 12 | **Naive browser detection** | "Your browser is not supported" in a browser that works perfectly well | Medium |
+
+<Callout type="bug" title="Why bug #12 happens: user agent sniffing">
+Every browser sends a <Term id="user-agent" /> string, and it's a mess. Chrome's says "Safari", Edge's says "Chrome", Samsung Internet's says both. A check like "show a warning unless the text contains *Chrome* or *Safari*" blocks Firefox, even though Firefox works fine. The better approach is **feature detection**: check whether the feature exists (`'PaymentRequest' in window`) and offer a fallback if it doesn't.
+</Callout>
+
+## Find the bug
+
+Here's a checkout for a running-shoe shop. It works in Chrome on desktop, but it has **six browser-specific bugs**. Test it like a pro:
+
+- Open the page in **each browser** with the buttons at the top.
+- In each one, fill the form with **Autofill saved address**, pick a date, try **Express pay** and try to **place the order**.
+- Keep an eye on the **Console**, just like in real <Term id="devtools">DevTools</Term> (see [DevTools for Testers](/web/devtools-for-testers)).
+- Compare carefully: spacing, banners, what's visible at the bottom of the screen.
+
+<BugHunt
+  title="Running shoe checkout"
+  bugs={[
+    {
+      title: 'Safari on iOS 15: the delivery date picker does nothing',
+      hint: 'Open the page in Safari on the iPhone and choose a delivery date. Watch the console.',
+      detail: 'Tapping <strong>Choose date</strong> throws <code>TypeError: dateInput.showPicker is not a function</code>. The <code>showPicker()</code> method only exists from Safari 16, so on iOS 15 the field is unusable and the order can\'t be completed. Expected: check that the method exists, and fall back to the native date input.',
+    },
+    {
+      title: 'Safari on iOS: "Place order" is hidden under the browser toolbar',
+      hint: 'In Safari on the iPhone, look at the very bottom of the screen. Can you place the order?',
+      detail: 'The bottom bar is positioned at the bottom of a <code>100vh</code> container. On iOS Safari, <code>100vh</code> is the screen height <em>as if the toolbar were hidden</em>, so the box is taller than the visible area and the bar ends up behind Safari\'s address bar and only a thin strip shows. Expected: the button is fully visible and tappable (fix with <code>100dvh</code> or <code>env(safe-area-inset-bottom)</code>). Severity: blocker for iPhone users.',
+    },
+    {
+      title: 'Firefox: Express pay does nothing (Chromium-only assumption)',
+      hint: 'Try Express pay in each browser and compare the console.',
+      detail: 'In Firefox the button silently fails with <code>ReferenceError: PaymentRequest is not defined</code>. The Payment Request API is supported in Chrome, Edge, Samsung Internet and Safari, but not in Firefox. Expected: use feature detection and hide the button or offer normal card payment when the API is missing.',
+    },
+    {
+      title: 'Samsung Internet 12: fields, sections and cards stick together',
+      hint: 'Compare the spacing between sections in Samsung Internet and in Chrome.',
+      detail: 'The layout uses the flexbox <code>gap</code> property, which arrived in Chromium 84. Samsung Internet 12 is based on Chromium 79, so all the spacing disappears: inputs touch each other and the shipping cards merge. Expected: correct spacing in every browser in the matrix (or a fallback using margins).',
+    },
+    {
+      title: 'Autofilled fields become unreadable',
+      hint: 'Use "Autofill saved address" in Chrome, Safari and Firefox and compare the fields.',
+      detail: 'The site forces white text with <code>-webkit-text-fill-color</code>, but the browser paints autofilled fields with its own background: <strong>light blue</strong> in Chromium browsers and <strong>yellow</strong> in Safari. White on light blue or yellow is unreadable. Firefox only tints the field, so it looks fine there. Expected: readable text in every browser (style <code>:autofill</code> properly).',
+    },
+    {
+      title: 'Firefox: "Your browser is not supported" banner',
+      hint: 'Open the page in Firefox. Is the warning true?',
+      detail: 'The page shows a warning if the <strong>user agent</strong> doesn\'t contain "Chrome" or "Safari". Firefox\'s user agent contains neither, so it gets blocked, even though the rest of the checkout works. Expected: no warning in supported browsers. Detect features, not browser names.',
+    },
+  ]}
+>
+  <BuggyCrossBrowserCheckout client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #2?">
+
+**Title:** Checkout: "Place order" button hidden under Safari toolbar on iOS 15, so the order can't be placed
+
+**Environment:** iPhone 7, iOS 15.8, Safari · Staging build 2.14.0
+
+**Steps:** 1. Open nightrun.example.com/checkout in Safari. 2. Fill in the form. 3. Look for the Place order button.
+
+**Expected:** The bottom bar with the total and **Place order** is fully visible above Safari's toolbar.
+**Actual:** Only a thin strip of the bar is visible; the button is behind the toolbar and can't be tapped. Works in Chrome on Android and desktop.
+
+**Severity:** Blocker for iOS Safari users · **Reproducible:** 10/10 · Screenshot attached
+
+</Callout>
+
+Notice the **Environment** line. For browser bugs, the browser name, **version**, operating system and device are not optional: without them, a developer can't reproduce the bug. See [Writing Bug Reports](/tutorials/writing-bug-reports) for the full format.
+
+## Tools & how-to
+
+### Real browsers first
+
+- **Install the main desktop browsers:** Chrome, Firefox and Edge on your computer. Safari only runs on macOS, so you need a Mac (or a cloud service) to test it.
+- **Test on real phones:** at least one iPhone and one Android phone, ideally a Samsung. A <Term id="real-device" /> shows you the real toolbar, keyboard, date pickers and autofill.
+- **Debug Safari on an iPhone:** on the iPhone, turn on **Settings › Apps › Safari › Advanced › Web Inspector** (on older iOS versions: Settings › Safari › Advanced). On the Mac, turn on **Safari › Settings › Advanced › Show features for web developers**, connect the phone with a cable, then pick it in the **Develop** menu. You get the full Web Inspector, console included, for the page on the phone.
+- **Debug Chrome on Android:** turn on USB debugging on the phone, connect it, then open `chrome://inspect` in desktop Chrome.
+
+### Cloud device labs
+
+Services like **BrowserStack**, **LambdaTest** and **Sauce Labs** let you open your site in hundreds of real browsers and devices from your own browser. They're great for browsers you don't own: old iOS versions, Samsung phones, Windows-only browsers from a Mac. Most offer a **local testing tunnel**, so you can test a staging site that isn't public.
+
+### Preview versions
+
+**Safari Technology Preview** is a free app from Apple for macOS that ships upcoming Safari features early. Together with **Chrome Beta/Canary** and **Firefox Developer Edition/Nightly**, it lets you catch problems *before* a new browser version reaches your users.
+
+### Responsive mode is not a real browser
+
+The device toolbar in Chrome DevTools (and "Responsive Design Mode" in Firefox and Safari) changes the **size** of the page and sends a different user agent. It's still the **same engine** underneath. Choosing "iPhone 15" in Chrome gives you a narrow Chrome window, not Safari. It **cannot** show you:
+
+- Safari's toolbar and the `100vh` problem
+- iOS date pickers, keyboards and autofill
+- WebKit-only CSS or JavaScript bugs
+- Real fonts, real touch behavior and real performance
+
+Use it to check layouts quickly, then confirm on real browsers.
+
+### User agent spoofing
+
+You can make a browser *pretend* to be another one. In Chrome DevTools open the **⋮ menu › More tools › Network conditions**, untick "Use browser default" and pick a user agent. Safari has **Develop › User Agent**. This only changes **what the browser says it is**. It's useful for testing **user agent checks** (like the banner bug above) and server redirects to a mobile site, but the page still renders with your real engine, so it can't find rendering bugs.
+
+<Callout type="tip" title="Check support before you test">
+Wondering if a feature works in Safari 15? Look it up on **caniuse.com** or in the "Browser compatibility" table at the bottom of every MDN page. Developers can tell you which newer features a page uses, and you can focus your testing on the browsers that don't support them.
+</Callout>
+
+## How to run a cross-browser pass
+
+<Steps>
+
+1. **Get the matrix and the build.** Know which browsers are Tier 1, 2 and 3, and which version of the site you're testing.
+2. **Test fully in one main browser first.** Find the "normal" bugs in Chrome before you multiply your effort.
+3. **Run the key flows in every Tier 1 and Tier 2 browser.** Login, search, cart, checkout, forms, anything with payments or uploads.
+4. **Compare side by side.** Put two browsers next to each other and look for layout, spacing, font and color differences.
+5. **Keep the console open.** A JavaScript error in one browser is a huge clue.
+6. **Report with the full environment.** Browser, version, OS, device, and whether it also happens in other browsers.
+
+</Steps>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-XB-001',
+      title: 'Checkout can be completed in every Tier 1 browser',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Browser matrix agreed', 'Test account with items in the cart'],
+      steps: ['Open the cart in Chrome (Windows)', 'Complete checkout with a test card', 'Repeat in Safari on iOS (latest and previous major) and Safari on macOS'],
+      expected: 'The order is placed in every browser, with the same total and a confirmation screen.',
+    },
+    {
+      id: 'TC-XB-002',
+      title: 'Bottom action button is visible on iOS Safari',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Real iPhone with Safari'],
+      steps: ['Open the checkout page', 'Scroll up and down so the toolbar collapses and expands', 'Rotate to landscape and back'],
+      expected: 'The Place order button is always fully visible and tappable, never covered by the Safari toolbar or the home indicator.',
+    },
+    {
+      id: 'TC-XB-003',
+      title: 'Date field works with the native picker in each browser',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open the delivery form in Chrome, Safari (iOS and macOS), Firefox and Samsung Internet', 'Open the date field', 'Pick a date', 'Submit the form'],
+      expected: 'The picker opens in every browser and the chosen date is saved correctly (same date in the order confirmation).',
+    },
+    {
+      id: 'TC-XB-004',
+      title: 'Features with limited support have a fallback',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Firefox (no Payment Request API)'],
+      steps: ['Open the checkout page in Firefox', 'Look for the Express pay button', 'Complete checkout'],
+      expected: 'Either Express pay is hidden, or it falls back to normal card payment. No JavaScript errors in the console.',
+    },
+    {
+      id: 'TC-XB-005',
+      title: 'Autofilled fields stay readable',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['A saved address in the browser'],
+      steps: ['Open the checkout form in Chrome, Safari and Firefox', 'Autofill the name and address fields', 'Check the text in light and dark mode'],
+      expected: 'Autofilled values are readable in every browser (at least 4.5:1 contrast).',
+    },
+    {
+      id: 'TC-XB-006',
+      title: 'No unsupported-browser warning in supported browsers',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Open the home page in each browser in the matrix', 'Repeat with a spoofed user agent (DevTools › Network conditions)'],
+      expected: 'No "browser not supported" message appears in any supported browser.',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="Cross-browser testing checklist"
+  storageKey="cross-browser-testing"
+  items={[
+    'I know the browser matrix (browsers, versions, tiers) and where it came from',
+    'Tier 1 flows were tested in at least one Chromium browser, Safari and Firefox',
+    'iPhone testing was done on a real device, not only in DevTools responsive mode',
+    'Layouts compared side by side: spacing, alignment, grids and gaps look right',
+    'Sticky and fixed elements (headers, bottom buttons) stay visible on mobile Safari',
+    'Date, number and select fields work with each browser’s native controls',
+    'Autofilled fields are readable in every browser',
+    'Fonts load (or fall back) without text wrapping or being cut off',
+    'No JavaScript errors in the console in any browser',
+    'Features with limited support have a working fallback',
+    'Login, payment and chat widgets work with third-party cookies blocked (Safari, Firefox)',
+    'Every bug report includes browser, version, OS and device',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A page works in Chrome on Android but a button is broken in Chrome on iPhone. Which browser should you also check first?',
+      options: ['Firefox on Windows', 'Safari on iPhone', 'Edge on Windows', 'Samsung Internet'],
+      answer: 1,
+      explain: 'Browsers on iOS use WebKit, the same engine as Safari. A bug in Chrome on iPhone is very likely also in Safari on iPhone.',
+    },
+    {
+      q: 'Which pair of browsers shares the same rendering engine?',
+      options: ['Firefox and Safari', 'Chrome and Edge', 'Safari and Edge', 'Firefox and Chrome'],
+      answer: 1,
+      explain: 'Chrome and Edge are both built on Chromium (Blink). Safari uses WebKit and Firefox uses Gecko.',
+    },
+    {
+      q: 'The date picker looks completely different in Safari than in Chrome, but it works and saves the right date. What is it?',
+      options: ['A critical bug', 'An acceptable browser difference', 'A security issue', 'A performance problem'],
+      answer: 1,
+      explain: 'Native controls are drawn by each browser. Different is fine; it only becomes a bug if it is unusable, unreadable or breaks the requirements.',
+    },
+    {
+      q: 'Why can\'t DevTools device mode replace testing on a real iPhone?',
+      options: ['It is too slow', 'It only changes the screen size and user agent; the engine is still Chrome\'s', 'It doesn\'t support touch at all', 'It needs a paid license'],
+      answer: 1,
+      explain: 'Device mode still renders with Blink, so WebKit bugs, the Safari toolbar, iOS pickers and autofill never show up.',
+    },
+    {
+      q: 'Firefox users see "Your browser is not supported", but the site works for them once they dismiss it. What is the most likely cause?',
+      options: ['Firefox has no JavaScript engine', 'A naive user agent check instead of feature detection', 'The site is not on HTTPS', 'Third-party cookies are blocked'],
+      answer: 1,
+      explain: 'The check looks for words like "Chrome" or "Safari" in the user agent. Detecting the actual feature is the reliable approach.',
+    },
+    {
+      q: 'How should you decide which browsers to test?',
+      options: ['Test only the browser the developers use', 'Test every browser ever made', 'Use real analytics data to build a tiered browser matrix', 'Test whatever is installed on your laptop'],
+      answer: 2,
+      explain: 'Analytics show what your users really use. A tiered matrix balances coverage with the time you have.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- There are three engines that matter: **Blink** (Chrome, Edge, Opera, Samsung Internet), **WebKit** (Safari and **every browser on iOS**) and **Gecko** (Firefox). Cover all three.
+- Pages differ because of **CSS support, native form controls, fonts, autofill, default styles, JavaScript APIs, extensions and privacy features**.
+- **Different is fine, broken is not.** Report what is unreadable, unusable, missing or against the requirements.
+- Build a **browser matrix from analytics**, with desktop and mobile, latest and previous versions, and tiers.
+- Classic bugs: **gaps and sticky elements, `100vh` on mobile Safari, date inputs, unsupported APIs, autofill colors, blocked third-party cookies and user agent sniffing**.
+- **Responsive mode and user agent spoofing are not real browsers.** Confirm on real devices or a cloud device lab, and always report the browser, version, OS and device.
+
+</KeyTakeaways>

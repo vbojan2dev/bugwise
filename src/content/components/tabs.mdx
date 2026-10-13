@@ -1,0 +1,433 @@
+---
+title: Tabs
+description: A row of labels that switches between sibling sections of one screen. Learn the Android, iOS and web variants, how swiping, badges, deep links and Back should behave, and the state bugs testers find every sprint.
+category: navigation
+aka: [Tab bar (top), Tab strip, Navigation tabs]
+platforms: [ios, android, web]
+minutes: 35
+order: 2
+---
+
+import Anatomy from '@/components/demos/tabs/Anatomy';
+import VariantsGallery from '@/components/demos/tabs/VariantsGallery';
+import Playground from '@/components/demos/tabs/Playground';
+import { BuggyOrdersApp } from '@/components/demos/tabs/BuggyOrdersApp';
+import { M3Tabs } from '@/components/demos/tabs/Tabs';
+
+Open your orders in a shopping app: **Active · Delivered · Returns**. Tap *Delivered*, scroll down to last month's parcel, peek at *Returns*, come back... and you're at the top of the list again. Annoying? It's also a bug, and one of the most common ones in apps with tabs.
+
+Tabs look like nothing more than three words and a line. But they decide **what the user sees**, they must **remember where the user was**, and they have to agree with swipes, links, badges, the Back button and the keyboard. Let's learn them properly.
+
+## What are tabs?
+
+Tabs are a **row of labels where each label shows a different section of the same screen**. Exactly one tab is selected at a time, and the selected tab is marked by an **active indicator** (usually a line under it). The sections are siblings: equally important, at the same level, and the user can jump between them in any order.
+
+You'll usually see tabs used to:
+
+- **Split a screen into sections**: *Overview / Specs / Reviews* on a product page.
+- **Group the same kind of items by status**: *Active / Delivered / Returns* in orders, *Upcoming / Past* in a travel app.
+- **Browse categories**: *Popular / Pizza / Sushi / Burgers…* on a restaurant menu (often scrollable).
+- **Switch between the main areas of an app**: the **tab bar** at the bottom of an iPhone app (*Home, Search, Orders, Account*).
+
+### Anatomy
+
+<Anatomy />
+
+### How it differs from similar components
+
+Tabs, segmented controls and bottom navigation all show "pick one of a few". The difference is **what changes when you pick**. Using the wrong one is a valid design finding.
+
+| Component | Where | What it switches | Typical use |
+| --- | --- | --- | --- |
+| **Tabs (top)** | Under the app bar | Sibling *sections* of one screen | Overview / Specs / Reviews |
+| **<Term id="segmented-control">Segmented control</Term>** | Inside the content | *Views* or filters of the same data | List / Map, Day / Week / Month |
+| **Bottom navigation / iOS tab bar** | Bottom of the screen | The app's *main areas*, each with its own history | Home / Search / Orders / Account |
+| **Stepper / wizard** | Top or inline | Steps that must happen *in order* | Address → Delivery → Payment |
+
+<Callout type="info" title="iOS vs Android: different habits">
+Android (Material Design) uses **top tabs** under the app bar for sections of a screen. iOS has no real equivalent: Apple's guidelines use a **tab bar at the bottom** for the app's main areas, and a [segmented control](/components/segmented-control) where Android would put top tabs (Calendar's *Day · Week · Month*, App Store's *Free · Paid*). Cross-platform apps that copy Android tabs to iPhone, or the other way round, often feel "off". Mention it, especially when it confuses users.
+</Callout>
+
+## Designs & variants
+
+Each platform styles tabs differently, and each variant has its own weak spots.
+
+<VariantsGallery client:visible />
+
+### Fixed or scrollable?
+
+- **Fixed tabs** share the width equally. They work for **2–4 short labels** and let users see all options at once. The risk: long labels and translations get **cut off**.
+- **Scrollable tabs** keep each tab at its natural width and let the row scroll sideways. They suit **many** or **long** labels. The risks: users don't notice there's more, and the selected tab can end up **hidden off-screen**.
+
+## When to use it
+
+Tabs are a good choice when:
+
+- The content splits into **2–6 sibling sections** that the user may visit in any order.
+- Each section is **substantial** (a list, a page of details), not just a different filter of the same list.
+- Labels are **short and clear** (one or two words) and still fit when translated.
+- Users switch between the sections **often**, and want to see at a glance what exists.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Sibling sections">
+
+<div class="not-prose demo-screen my-3"><div class="overflow-hidden rounded-xl bg-[#fef7ff] text-[#1d1b20]"><M3Tabs id="cmp-t1" tabs={[{ label: 'Overview' }, { label: 'Specs' }, { label: 'Reviews' }]} value={0} /></div></div>
+
+Three parts of one product page. Any order makes sense.
+
+</Do>
+<Dont title="Steps that must happen in order">
+
+<div class="not-prose demo-screen my-3"><div class="overflow-hidden rounded-xl bg-[#fef7ff] text-[#1d1b20]"><M3Tabs id="cmp-t2" tabs={[{ label: 'Address' }, { label: 'Delivery' }, { label: 'Payment' }]} value={2} /></div></div>
+
+Users can jump to *Payment* before entering an address. A checkout needs a stepper with validation between steps.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Short labels, or scrollable for many">
+
+<div class="not-prose demo-screen my-3"><div class="overflow-hidden rounded-xl bg-[#fef7ff] text-[#1d1b20]"><M3Tabs id="cmp-t3" tabs={[{ label: 'Popular' }, { label: 'Pizza' }, { label: 'Sushi' }, { label: 'Burgers' }, { label: 'Vegan' }, { label: 'Desserts' }]} value={1} scrollable /></div></div>
+
+The cut-off tab at the edge hints that the row scrolls.
+
+</Do>
+<Dont title="Too many fixed tabs">
+
+<div class="not-prose demo-screen my-3"><div class="overflow-hidden rounded-xl bg-[#fef7ff] text-[#1d1b20]"><M3Tabs id="cmp-t4" tabs={[{ label: 'Übersicht' }, { label: 'Technische Daten' }, { label: 'Bewertungen' }, { label: 'Fragen' }]} value={0} /></div></div>
+
+In German every label is truncated. Nobody can guess what "Techn…" means.
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Tester mindset">
+Ask "what changes when I switch?" If it's the **same list, filtered** (All / Unread), a [segmented control](/components/segmented-control) or chips fit better. If the screens are **steps**, it should be a stepper. If it's the **whole app**, it's bottom navigation. Raise mismatches early, while the design is still cheap to change.
+</Callout>
+
+## How good tabs behave
+
+Most tab bugs aren't about colors. They're about **staying in sync** and **remembering things**. These are the rules to test against.
+
+### The indicator always tells the truth
+
+Whatever changes the content (a tap, a **swipe**, a **<Term id="deep-link">deep link</Term>**, a push notification, the Back button, a rotation), the selected tab, its indicator and the content below must **agree**. On Android, top tabs usually let you **swipe the content** sideways to reach the next tab; the indicator should follow your finger and land on the new tab. A swipe that changes the page but leaves the indicator behind is a classic bug.
+
+### Each tab keeps its own state
+
+Scroll *Delivered* halfway down, switch to *Returns*, come back: you should be exactly where you were. The same goes for filters, expanded rows, text typed in a search field and the screen you opened *inside* a tab. This is <Term id="state-persistence" />. Test it when switching tabs, after opening a detail screen and coming back, after **rotating** the device, and after the app returns from the background.
+
+<Callout type="info" title="Bottom tab bars have their own history">
+In an iPhone tab bar (and Android bottom navigation), each tab keeps its **own navigation stack**. Open an order in *Orders*, switch to *Home*, come back: the order should still be open. Tapping the **already selected** tab goes back to that tab's first screen or scrolls it to the top, which is a long-standing iOS convention.
+</Callout>
+
+### Badges stay current
+
+A badge (*Orders* **2**) is a promise: "there are two things waiting here". When the number changes (an order is delivered, a message is read) the badge must update **immediately**, and disappear at zero. Test it while the app is open, after a <Term id="push-notification" />, and after coming back from the background.
+
+### Deep links open the right tab
+
+Emails, push notifications and web links often point to a specific tab: `shop://orders/returns`, or `shop.example.com/product/42?tab=reviews` on the web. The link must open **that** tab, with the indicator on it, both when the app is closed and when it's already open on another tab. On the web, the selected tab often lives in the URL (a <Term id="query-parameter" /> or `#reviews`), so **refreshing** the page or **sharing** the link keeps the tab.
+
+### Back behaves the same way every time
+
+Teams decide this, and the decision must be **consistent**:
+
+- On Android, switching **top tabs** usually doesn't create history: Back leaves the screen rather than visiting the previous tab.
+- With **bottom navigation**, Back usually returns to the start tab first, then exits the app.
+- Back from a **detail screen** opened inside a tab returns to **that tab**, exactly where the user was, whether they used the app's back arrow, the system Back button or the Back gesture.
+- On the web, decide whether each tab click adds a browser history entry. Either way, browser Back must never land on a broken or empty tab.
+
+### Labels fit in every language
+
+German and Finnish labels are often 30–50% longer than English. Fixed tabs then <Term id="truncation">truncate</Term> or clip labels. Good apps switch to **scrollable tabs**, shorten the copy, or wrap to two lines. Check with every supported language, a narrow phone, and the largest text size (<Term id="dynamic-type" /> on iOS, Font size on Android).
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Indicator out of sync** | After a swipe or deep link, the line is on *Active* but the content is *Delivered* | High |
+| 2 | **Scroll or state reset** | Every tab switch jumps back to the top; filters and typed text are lost | Medium |
+| 3 | **Deep link opens the wrong tab** | The "Track your return" email opens *Active* instead of *Returns* | Medium–High |
+| 4 | **Truncated labels** | "Rücksendun" or "Techn…" in other languages or with large text | Medium |
+| 5 | **Stale badge** | *Orders* **2** after both orders were delivered, or a badge that never clears | Medium |
+| 6 | **Inconsistent Back** | The arrow returns to the right tab, System Back to the first one | Medium |
+| 7 | **No keyboard support (web)** | Arrow keys do nothing, every tab is a Tab stop, focus is invisible | Medium–High |
+| 8 | **Screen reader silence** | VoiceOver / TalkBack reads "button" with no "tab", "selected" or "2 of 3" | High (for affected users) |
+| 9 | **Double loading** | Tapping the selected tab, or swiping back and forth, refetches everything | Low–Medium |
+| 10 | **Selected tab off-screen** | In scrollable tabs, the selected tab is hidden past the edge | Low–Medium |
+
+<Callout type="bug" title="Why #2 happens">
+To save memory, developers sometimes **destroy and rebuild** a tab's content every time it's hidden. The list is created fresh, so it starts at the top. The fix is to keep each tab alive or save and restore its scroll position and state. To catch it, always **scroll down before switching**, then come back.
+</Callout>
+
+## Stress-test it
+
+This is a correct web tablist. Change the settings and use only your keyboard: <kbd>Tab</kbd> into the row, then <kbd>←</kbd> <kbd>→</kbd> <kbd>Home</kbd> <kbd>End</kbd>. Try **Deutsch + Fixed + Phone** and compare **Automatic** with **Manual** activation.
+
+<Playground client:visible />
+
+<Callout type="info" title="Automatic or manual activation?">
+With **automatic** activation, the arrow keys move focus *and* show the tab's panel. That's best when panels appear instantly. With **manual** activation, arrows only move focus, and <kbd>Enter</kbd> or <kbd>Space</kbd> opens the tab. That's better when each tab loads data from the server, so keyboard users don't trigger a request on every arrow press. Both are correct; mixing them up within one product isn't.
+</Callout>
+
+## Find the bug
+
+This Android shopping app has an orders screen with three tabs and **six bugs**. Explore it like a tester:
+
+- Tap the tabs, then **swipe the list sideways** (drag with the mouse or your finger).
+- Scroll *Delivered* down, switch tabs and come back.
+- Open an order and leave it in **both** ways: the back arrow and **System Back**.
+- Use the device panel: deliver an order, open the links, switch to **Deutsch**.
+
+<BugHunt
+  title="My orders"
+  bugs={[
+    {
+      title: 'Swiping changes the content but not the indicator',
+      hint: 'Swipe the list sideways and look at the tab row.',
+      detail: 'After a swipe, the <strong>Delivered</strong> list is shown but the indicator (and <code>aria-selected</code>) stays on <strong>Active</strong>. The indicator only updates on tap. Expected: every way of changing tabs moves the indicator too.',
+    },
+    {
+      title: 'Scroll position is lost when switching tabs',
+      hint: 'Scroll Delivered down, tap Returns, then tap Delivered again.',
+      detail: 'The list is rebuilt on every switch and jumps back to the top. The same happens after opening an order. Expected: each tab keeps its own scroll position (<em>state persistence</em>).',
+    },
+    {
+      title: 'The returns link opens the Active tab',
+      hint: 'Use the shop://orders/returns link in the device panel.',
+      detail: 'The app’s route table expects <code>return</code>, so <code>returns</code> is not recognized and the app silently falls back to the first tab. <code>shop://orders/delivered</code> works. Expected: each documented link opens its own tab (or shows a clear error), from any screen.',
+    },
+    {
+      title: 'German tab label is clipped',
+      hint: 'Switch the device to Deutsch.',
+      detail: '“Rücksendungen” is cut off mid-word with no ellipsis, because the fixed tabs hide overflow. Expected: labels fit, the row becomes scrollable, or the copy is shortened. This is a <em>localization</em> / <em>truncation</em> bug.',
+    },
+    {
+      title: 'Badge count does not update',
+      hint: 'Tap “Simulate: next order delivered” twice.',
+      detail: 'Both orders move to <strong>Delivered</strong> and Active says “No active orders”, but the badge still shows <strong>2</strong>. The count was stored once instead of being derived from the list. Expected: the badge shows 1, then disappears.',
+    },
+    {
+      title: 'System Back returns to a different tab than the back arrow',
+      hint: 'Open an order from Delivered, then go back with System Back. Compare with the arrow.',
+      detail: 'The app bar’s arrow returns to <strong>Delivered</strong>, but <strong>System Back</strong> lands on <strong>Active</strong>. Expected: both Back paths return to the tab the user came from.',
+    },
+  ]}
+>
+  <BuggyOrdersApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #3?">
+
+**Title:** Deep link shop://orders/returns opens the "Active" tab instead of "Returns"
+
+**Steps:** 1. Open the app on any screen. 2. Open the link `shop://orders/returns` (e.g. from the "Your return is on its way" email).
+
+**Expected:** My orders opens with the **Returns** tab selected and its list shown.
+**Actual:** My orders opens on **Active**. `shop://orders/delivered` works correctly.
+
+**Severity:** Medium (users can't reach their return from the email) · **Reproducible:** 10/10 · **Tested with:** `adb shell am start -a android.intent.action.VIEW -d "shop://orders/returns"`
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Tabs test checklist"
+  storageKey="tabs"
+  items={[
+    'Exactly one tab is selected on first load, and it matches the content shown',
+    'Tapping each tab selects it, moves the indicator and shows the right content',
+    'Swiping the content (Android) changes tab and the indicator follows',
+    'Each tab keeps its scroll position, filters and typed text when you switch away and back',
+    'State survives opening a detail screen, rotation, and returning from the background',
+    'Back (arrow, System Back, gesture, browser Back) behaves consistently and returns to the right tab',
+    'Every deep link opens the correct tab, from a cold start and while the app is open',
+    'Badges show the right count, update immediately and disappear at zero',
+    'Labels fit in every language and at the largest text size (or the row scrolls)',
+    'In scrollable tabs, the selected tab is scrolled into view',
+    'Tapping the selected tab does not reload everything (iOS tab bar: scrolls to top)',
+    'Screen reader announces “tab”, the label, “selected” and the position (2 of 3)',
+    'Web: one Tab stop for the row, arrow keys move between tabs, visible focus, panels have role tabpanel',
+    'Tabs are at least 48 dp (Android) / 44 pt (iOS) tall and easy to hit',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-TAB-001',
+      title: 'Default tab on first load',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['User has 2 active and 14 delivered orders'],
+      steps: ['Open the app', 'Go to My orders'],
+      expected: '"Active" is selected, the indicator is under it and the 2 active orders are listed.',
+    },
+    {
+      id: 'TC-TAB-002',
+      title: 'Swipe between tabs keeps the indicator in sync',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open My orders on "Active"', 'Swipe the list from right to left', 'Swipe again', 'Swipe back from left to right'],
+      expected: 'After each swipe the content, the indicator and the screen reader\'s selected tab all match: Delivered, Returns, Delivered.',
+    },
+    {
+      id: 'TC-TAB-003',
+      title: 'Scroll position is kept per tab',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Open "Delivered" and scroll to the 10th order', 'Tap "Returns"', 'Tap "Delivered"'],
+      expected: 'The Delivered list is still scrolled to the 10th order. Nothing reloads.',
+    },
+    {
+      id: 'TC-TAB-004',
+      title: 'Deep link opens the Returns tab',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['App is open on the Home screen'],
+      steps: ['Run: adb shell am start -a android.intent.action.VIEW -d "shop://orders/returns"', 'Repeat with the app fully closed'],
+      expected: 'In both cases My orders opens with "Returns" selected and its list visible.',
+    },
+    {
+      id: 'TC-TAB-005',
+      title: 'Back from an order detail returns to the same tab',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Open "Delivered", scroll down and open an order', 'Press System Back', 'Repeat using the app bar back arrow'],
+      expected: 'Both times the user is back on "Delivered" at the same scroll position.',
+    },
+    {
+      id: 'TC-TAB-006',
+      title: 'Badge updates when an order is delivered',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['2 active orders, badge shows 2'],
+      steps: ['Keep My orders open', 'Mark one order as delivered on the backend (or receive the delivery push)', 'Mark the second one as delivered'],
+      expected: 'The badge changes to 1, then disappears. The orders move to "Delivered".',
+    },
+    {
+      id: 'TC-TAB-007',
+      title: 'Long labels in German',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Device language: Deutsch', 'Smallest supported phone'],
+      steps: ['Open My orders', 'Increase the font size to the maximum and reopen'],
+      expected: 'All labels ("Aktiv", "Zugestellt", "Rücksendungen") are fully readable, or the tab row scrolls. No label is clipped mid-word.',
+    },
+    {
+      id: 'TC-TAB-008',
+      title: 'Keyboard navigation in a web tablist',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Press Tab until focus reaches the tab row', 'Press → twice, then Home, then End', 'Press Tab'],
+      expected: 'Focus and selection move Overview → Specs → Reviews → Overview → Q&A with a visible focus ring. The next Tab moves focus into the panel, not to the next tab.',
+    },
+  ]}
+/>
+
+### Tools
+
+- **Deep links on Android:** `adb shell am start -a android.intent.action.VIEW -d "shop://orders/returns"` (see [ADB basics](/mobile/adb-basics)).
+- **Deep links on the iOS Simulator:** `xcrun simctl openurl booted "shop://orders/returns"`.
+- **State after process death (Android):** turn on *Developer options › Don't keep activities*, switch tabs, leave the app and come back.
+- **Web:** check roles and `aria-selected` in the Elements and Accessibility panes of [DevTools](/web/devtools-for-testers), and test the URL: refresh, Back and a shared link should all keep the tab.
+
+## Accessibility
+
+- **Roles and state.** Each tab must be announced as a *tab*, with its label, its **selected** state and its **position** ("Reviews, tab, 2 of 3"). Native iOS and Android tabs do this; custom ones often read "button".
+  <DevNote>On the web, use `role="tablist"`, `role="tab"` with `aria-selected` and `aria-controls`, and `role="tabpanel"` with `aria-labelledby` (this is the <Term id="aria" /> tabs pattern).</DevNote>
+- **Keyboard (web).** <Term id="keyboard-navigation" /> works like this: <kbd>Tab</kbd> enters the row on the **selected** tab, <kbd>←</kbd> <kbd>→</kbd> move between tabs (wrapping at the ends), <kbd>Home</kbd> / <kbd>End</kbd> jump to the first / last, and the next <kbd>Tab</kbd> goes into the panel. Every tab being a separate Tab stop is a bug.
+- **Badges need words.** A red "2" means nothing to a <Term id="screen-reader" />. The tab should be read as "Orders, 2 new" (or similar).
+- **Don't rely on color alone.** The selected tab needs an indicator line or weight change, not just a slightly different text color. The indicator needs 3:1 contrast with its background, labels 4.5:1.
+- **<Term id="touch-target">Touch targets</Term>:** at least 44×44 pt on iOS and 48×48 dp on Android, including small icon-only tabs. On the web, WCAG 2.5.8 (AA) asks for at least 24×24 CSS px; 44×44 px (2.5.5, AAA) is the comfortable target.
+- **Swiping is optional.** Every tab must also be reachable by a tap or a key, because some users can't swipe.
+
+<Callout type="tip">
+Try the web demo in the gallery and the lab above with only your keyboard. Then turn on VoiceOver (<kbd>Cmd</kbd>+<kbd>F5</kbd> on a Mac) and listen to how each tab is announced.
+</Callout>
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- The **tab bar** sits at the bottom and switches the app's main areas. On iPhone, keep it to **5 tabs or fewer**; extra ones go into a "More" tab.
+  <DevNote>`UITabBarController` / SwiftUI `TabView`.</DevNote>
+- Each tab keeps **its own navigation stack**. Tapping the active tab again pops to its root or scrolls to the top.
+- There are no Material-style top tabs. Within a screen, iOS apps use a [segmented control](/components/segmented-control) instead.
+- Badges are red with a white number. Test with **VoiceOver**, the largest **Dynamic Type** size, and on iPad, where tab bars can look different.
+
+</Tab>
+<Tab>
+
+- Material 3 **primary tabs** (under the top app bar) and **secondary tabs** (inside a content area), each **fixed** or **scrollable**. Bottom navigation (navigation bar) is a separate component for the app's main areas.
+- Content can usually be **swiped** sideways between tabs. Test the swipe, the indicator, and that horizontal carousels inside a tab still work.
+- Check **Back** (button and gesture), **rotation** and **process death**: tabs must come back with the same selection and scroll position.
+- Test with **TalkBack**, maximum **font size** and **display size**, and long translations.
+
+</Tab>
+<Tab>
+
+- Usually built with HTML buttons and CSS, or a UI library, so quality varies. Inspect the **ARIA tablist pattern** in DevTools.
+- Check **keyboard**: one Tab stop, arrows, Home/End, a visible focus ring.
+- Check the **URL**: does `?tab=reviews` or `#reviews` open the right tab? Do refresh and browser Back keep it?
+- Check **responsive** widths: on a 360 px screen, do tabs wrap, scroll or overflow the page?
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'You swipe the Orders list to the left. The Delivered orders appear, but the line is still under "Active". What is this?',
+      options: ['A truncation bug', 'An indicator / content sync bug', 'Correct behavior, swipes don\'t select tabs', 'A performance issue'],
+      answer: 1,
+      explain: 'Every way of changing tabs (tap, swipe, link, Back) must update the selected tab and its indicator too.',
+    },
+    {
+      q: 'Which design is the best fit for tabs?',
+      options: ['Address, Delivery, Payment in a checkout', 'Overview, Specs, Reviews on a product page', 'Save, Share, Delete buttons', 'All / Unread filter on one inbox list'],
+      answer: 1,
+      explain: 'Sibling sections that can be visited in any order. Checkout steps need a stepper, actions need buttons, and a filter of one list fits a segmented control or chips.',
+    },
+    {
+      q: 'On iPhone, where do you usually find what Android shows as top tabs inside a screen?',
+      options: ['A bottom tab bar', 'A segmented control', 'A dropdown', 'A side drawer'],
+      answer: 1,
+      explain: 'iOS uses a segmented control for switching views within a screen. The bottom tab bar is for the app\'s main areas.',
+    },
+    {
+      q: 'In a web tablist, focus is on "Specs". What should the Right arrow key do?',
+      options: ['Scroll the page', 'Move focus to the next tab (and, with automatic activation, show it)', 'Move focus into the panel', 'Nothing, only Tab works'],
+      answer: 1,
+      explain: 'Arrow keys move between tabs. Tab moves out of the row into the panel.',
+    },
+    {
+      q: 'Which test is MOST likely to catch a lost-state bug?',
+      options: ['Tapping each tab once', 'Scrolling a tab down, switching away and coming back', 'Checking the app icon', 'Testing on Wi-Fi'],
+      answer: 1,
+      explain: 'If the tab is rebuilt when hidden, its scroll position and filters reset. You only see it if you change something before switching.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Tabs switch between **sibling sections** of one screen. Use something else for steps, actions, or filters of one list.
+- iOS puts main areas in a **bottom tab bar** and uses **segmented controls** where Android uses top tabs.
+- The indicator must **always match the content**: after taps, swipes, deep links, Back and rotation.
+- Each tab **keeps its own state**: scroll position, filters, typed text and opened screens.
+- Always test **swipe**, **deep links**, **badges**, **Back**, **long translations**, the **keyboard** (web) and the **screen reader**.
+
+</KeyTakeaways>

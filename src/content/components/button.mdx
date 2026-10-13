@@ -1,0 +1,463 @@
+---
+title: Button
+description: The most-tapped component in any app. Learn the emphasis levels, the six states every button has, and the bugs that create double orders and endless spinners.
+category: input
+aka: [CTA, Action button, Call to action]
+platforms: [ios, android, web]
+minutes: 30
+order: 1
+---
+
+import Anatomy from '@/components/demos/button/Anatomy';
+import VariantsGallery from '@/components/demos/button/VariantsGallery';
+import StatesExplorer from '@/components/demos/button/StatesExplorer';
+import TouchTarget from '@/components/demos/button/TouchTarget';
+import { Button } from '@/components/demos/button/Button';
+import { BuggyCheckout } from '@/components/demos/button/BuggyCheckout';
+
+You tap **Place order** in a food delivery app. Nothing seems to happen, so you tap again. Ten minutes later two pizzas arrive and your card was charged twice. That's a <Term id="button">button</Term> bug, and it's one of the most expensive bugs a team can ship.
+
+Buttons look like the simplest thing on the screen. But every button has several **states**, talks to a **server**, and has to work with **touch, mouse, keyboard and screen readers**. That's a lot of places for bugs to hide.
+
+## What is a button?
+
+A button is a control that **starts an action when you tap or click it**: pay, send, save, delete, add to basket. The label tells you what will happen, and the look tells you how important the action is.
+
+You'll see buttons used to:
+
+- **Commit an action**: *Place order*, *Send money*, *Book flight*.
+- **Move forward in a flow**: *Continue*, *Next*, *Sign up*.
+- **Do something small in place**: *Like*, *Share*, *Add another item*.
+- **Destroy something**: *Delete account*, *Remove card*, *Cancel subscription*.
+
+### Anatomy
+
+<Anatomy />
+
+### How it differs from similar components
+
+A common finding is a button that should have been something else, or something else pretending to be a button.
+
+| Component | What happens on tap | Keeps a state? | Typical use |
+| --- | --- | --- | --- |
+| **Button** | Runs an action | No (it doesn't stay "on") | Pay, Save, Send, Delete |
+| **Link** | Navigates to another page or screen | No | "View order details", "Terms of service" |
+| **Toggle switch** | Turns a setting on or off immediately | Yes, on/off | Notifications, Wi-Fi |
+| **Segmented control** | Picks one of a few views | Yes, one selected | List / Map |
+| **Chip** | Filters or adds a tag | Often | "Vegan", "Under €20" |
+| **Menu item** | Runs an action from a list | No | Overflow menu: Rename, Duplicate |
+
+<Callout type="info" title="Button or link?">
+A simple rule: **if it does something, it's a button. If it goes somewhere, it's a link.** On the web this really matters: links open in a new tab with Ctrl/Cmd-click and show their URL, buttons submit forms and react to the Space key. A "button" built from a `div` or a link that runs JavaScript breaks keyboard and screen reader users.
+</Callout>
+
+## Designs & variants
+
+Buttons come in **emphasis levels**. The more important the action, the louder the button. Each platform has its own names for them.
+
+<VariantsGallery client:visible />
+
+| Emphasis | iOS | Android (Material 3) | Web (typical) | Use it for |
+| --- | --- | --- | --- | --- |
+| **High** | Filled (`.borderedProminent`) | Filled | Primary | The main action. One per screen. |
+| **Medium** | Tinted / Gray (`.bordered`) | Filled tonal, Outlined | Secondary | Alternatives: Save for later, Cancel |
+| **Low** | Plain (`.borderless`) | Text | Tertiary, link-style | Skip, Learn more, Forgot password? |
+| **Destructive** | `role: .destructive` (red) | Error color (custom) | Danger | Delete, Remove, Cancel subscription |
+| **Floating** | Not used | FAB, extended FAB | Rare | The screen's main creation action |
+
+### Six states, every time
+
+A button is not one picture. It's **six**. Designers often deliver only the default look, so developers invent the rest, and that's where bugs appear. Explore them here:
+
+<StatesExplorer client:visible />
+
+<Callout type="tip" title="The loading state is a promise">
+When a button shows a spinner, it promises two things: **"I heard you, don't tap again"** and **"I will finish"**. A spinner that still accepts taps causes <Term id="double-submit">double submits</Term>. A spinner that never stops after an error leaves the user stuck. Always test the <Term id="loading-state">loading state</Term> with a slow network *and* with a failing one.
+</Callout>
+
+## When to use it
+
+A button is the right choice when:
+
+- Tapping it **performs an action** (saves, sends, pays, deletes) rather than just showing another page.
+- The action has a clear **verb** you can put on the label.
+- There is a clear **hierarchy**: one primary action, maybe a secondary one, and the rest as low-emphasis buttons.
+- The action needs **feedback**: a loading state, a success message or an error.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Button for an action, link for navigation">
+
+<div class="not-prose demo-screen my-3 flex flex-col items-start gap-3">
+<Button label="Place order · €24.90" fullWidth />
+<span class="text-[15px] font-medium text-[#007aff] underline underline-offset-2">View delivery terms</span>
+</div>
+
+Placing an order *does* something. Reading the terms *goes* somewhere.
+
+</Do>
+<Dont title="Buttons that only navigate">
+
+<div class="not-prose demo-screen my-3 flex flex-col gap-2">
+<Button label="Click here" emphasis="tonal" fullWidth />
+<Button label="Read our terms" emphasis="tonal" fullWidth />
+</div>
+
+"Click here" says nothing, and navigation dressed up as a button confuses screen reader users and breaks Ctrl/Cmd-click on the web.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="One clear primary action">
+
+<div class="not-prose demo-screen my-3 flex flex-wrap justify-center gap-2">
+<Button label="Cancel" emphasis="outlined" platform="web" />
+<Button label="Send €50" platform="web" />
+</div>
+
+The eye goes straight to the main action.
+
+</Do>
+<Dont title="Everything shouts">
+
+<div class="not-prose demo-screen my-3 flex flex-wrap justify-center gap-2">
+<Button label="Cancel" platform="web" />
+<Button label="Edit" platform="web" />
+<Button label="Send €50" platform="web" />
+</div>
+
+Three primary buttons compete. Users hesitate or tap the wrong one.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Specific verb labels">
+
+<div class="not-prose demo-screen my-3 flex flex-wrap justify-center gap-2">
+<Button label="Keep card" emphasis="tonal" />
+<Button label="Remove card" emphasis="destructive" />
+</div>
+
+You know exactly what each button does, even without reading the dialog text.
+
+</Do>
+<Dont title="Vague labels">
+
+<div class="not-prose demo-screen my-3 flex flex-wrap justify-center gap-2">
+<Button label="Cancel" emphasis="tonal" />
+<Button label="OK" />
+</div>
+
+"Remove this card? Cancel / OK". Does *Cancel* cancel the removal or remove the card? Users have to guess.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Big enough to hit">
+
+<div class="not-prose demo-screen my-3"><TouchTarget /></div>
+
+The visible icon can be small, but the touch area must be at least 44×44 pt (iOS) or 48×48 dp (Android).
+
+</Do>
+<Dont title="Tiny tap area">
+
+<div class="not-prose demo-screen my-3"><TouchTarget good={false} /></div>
+
+Users tap next to it, nothing happens, and they think the app is frozen.
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Writing good labels">
+Labels should start with a **verb** and name the **thing**: *Save changes*, *Add to basket*, *Send €50 to Anna*. Avoid *OK*, *Yes*, *Submit* and *Click here*. Check the label still fits in German and at the largest text size, and that it matches the action (a button labeled *Save* that also sends an email is a bug).
+</Callout>
+
+## Common bugs
+
+These are the button bugs testers report again and again. Many of them cost real money.
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Double submit** | Two quick taps create two orders, two payments or two messages | Critical |
+| 2 | **Endless spinner** | After a network error the button keeps loading forever, with no message and no retry | High |
+| 3 | **Disabled button still works** | A greyed-out button can still be tapped, clicked or triggered with Enter | High |
+| 4 | **Never enabled** | The button stays disabled even after the form is valid, often after autofill or paste | High |
+| 5 | **Label truncated** | "Place ord…" or the price cut off in other languages or with large text | Medium |
+| 6 | **Hidden CTA** | The sticky button sits under the keyboard, the home indicator or a cookie banner | High |
+| 7 | **No confirmation for destructive actions** | "Delete account" or "Clear basket" happens instantly with no confirm or undo | High |
+| 8 | **Tap area too small** | Only the icon reacts, not the whole visible button. Users miss it | Medium |
+| 9 | **No pressed or focus feedback** | Nothing changes on tap, or keyboard users can't see which button is focused | Medium |
+| 10 | **Layout jump on loading** | The button shrinks to the spinner's size, so the layout jumps and the next tap lands on something else | Low–Medium |
+
+<Callout type="bug" title="Why double submits happen">
+The app sends a request on every tap and only disables the button when the response comes back. On a fast office Wi-Fi the gap is a few milliseconds, so developers never see it. On a train with a weak signal, the gap is seconds. The fix is twofold: the app **blocks repeat taps** while loading, and the server uses <Term id="idempotency" /> keys so the same order can never be created twice.
+</Callout>
+
+## Find the bug
+
+Here's a food delivery checkout with **six bugs**. Test it like a real user on a bad day:
+
+- Tap buttons once, then tap them twice quickly.
+- Turn on **Server errors** and try to order.
+- Try buttons that look disabled.
+- Change the device settings, including the developer option.
+- Watch the network log and the order counter.
+
+<BugHunt
+  title="Checkout screen"
+  bugs={[
+    {
+      title: 'Double tap creates two orders',
+      hint: 'Tap Place order twice quickly and watch the order counter.',
+      detail: 'The button shows a spinner but still accepts taps, so each tap sends <code>POST /api/orders</code>. The database ends up with <strong>two orders</strong> and the card would be charged twice. Expected: the button ignores taps while the request is running (and the server rejects duplicates).',
+    },
+    {
+      title: 'Spinner never stops after a server error',
+      hint: 'Turn on Server errors, then place an order.',
+      detail: 'The request fails with <code>500</code>, but the button keeps spinning forever and no message appears. Expected: the loading state ends, an error like "Payment failed. Please try again." is shown, and the user can retry.',
+    },
+    {
+      title: 'The greyed-out Apply button still sends a request',
+      hint: 'Leave the promo code empty and tap Apply.',
+      detail: 'Apply <em>looks</em> disabled, but it is only styled grey. Tapping it sends <code>code=""</code>, gets a <code>400</code> and shows a confusing "Something went wrong". Expected: a disabled button does nothing at all.',
+    },
+    {
+      title: 'Price is cut off with large text',
+      hint: 'Turn on Large text and read the main button.',
+      detail: 'The label is truncated to "Place order · €…", so the user can no longer see what they will pay. Expected: the label wraps, the price moves out of the button, or the layout adapts. Key information must never be truncated.',
+    },
+    {
+      title: 'Clear empties the basket with no confirmation',
+      hint: 'Imagine your thumb slips onto Clear.',
+      detail: 'One tap on the red <strong>Clear</strong> button deletes every item instantly, with no confirmation and no Undo. Expected: a confirmation dialog ("Remove all 3 items?") or an Undo snackbar.',
+    },
+    {
+      title: 'The + and − buttons only react on the tiny icon',
+      hint: 'Tap the edge of a + circle, then turn on Show layout bounds.',
+      detail: 'The grey circles are 28 px, but only the 12 px icon inside is tappable (the pink outline in layout bounds shows it). Tapping the edge does nothing. Expected: the whole circle reacts, and the touch target is at least 44×44 pt.',
+    },
+  ]}
+>
+  <BuggyCheckout client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Checkout: double-tapping "Place order" creates two orders and two charges
+
+**Steps:** 1. Add items to the basket. 2. Open Checkout. 3. Tap **Place order** twice within 1 second.
+
+**Expected:** One order is created. Repeat taps are ignored while the order is processing.
+**Actual:** Two `POST /api/orders` requests are sent and two orders (#1042, #1043) are created.
+
+**Severity:** Critical (customers are charged twice) · **Reproducible:** 10/10 with two quick taps
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Button test checklist"
+  storageKey="button"
+  items={[
+    'The label is a clear verb that matches what actually happens',
+    'There is only one primary (filled) button per screen or dialog',
+    'Pressed state gives instant feedback on touch-down',
+    'Hover (web, iPad pointer) and focus states are visible; Tab reaches every button',
+    'Disabled buttons look disabled AND do nothing on tap, click, Enter or Space',
+    'The button becomes enabled as soon as the form is valid (also after paste and autofill)',
+    'Loading state blocks repeat taps; double tap sends only one request',
+    'Loading always ends: success, error message, or timeout with retry',
+    'Destructive actions ask for confirmation or offer Undo',
+    'Touch target is at least 44×44 pt (iOS) / 48×48 dp (Android), including icon buttons',
+    'Label fits in every language and at the largest text size, without hiding key info',
+    'Sticky buttons are never covered by the keyboard, home indicator or banners',
+    'Contrast: label 4.5:1, button shape 3:1, in light mode, dark mode and high contrast',
+    'Screen reader announces the label, the "button" role and disabled/busy state',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-BTN-001',
+      title: 'Placing an order creates exactly one order',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['User is logged in', 'Basket contains at least one item', 'Valid payment method is saved'],
+      steps: ['Open Checkout', 'Tap "Place order"'],
+      expected: 'The button shows a loading state, then the "Order placed" screen appears. Exactly one order is visible in Order history.',
+    },
+    {
+      id: 'TC-BTN-002',
+      title: 'Rapid double tap does not create a duplicate order',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Network throttled to a slow 3G profile', 'Proxy tool (e.g. Charles) is recording traffic'],
+      steps: ['Open Checkout', 'Tap "Place order" twice within 1 second'],
+      expected: 'Only one POST /api/orders request is sent. One order is created and the card is charged once.',
+    },
+    {
+      id: 'TC-BTN-003',
+      title: 'Server error ends the loading state with a message',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Backend returns 500 for POST /api/orders (mock or test environment)'],
+      steps: ['Open Checkout', 'Tap "Place order"', 'Wait for the response'],
+      expected: 'The spinner stops, an error message explains the problem, and "Place order" can be tapped again. No order is created.',
+    },
+    {
+      id: 'TC-BTN-004',
+      title: 'Disabled button cannot be triggered',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Promo code field is empty'],
+      steps: ['Tap "Apply"', 'Web: Tab to "Apply" and press Enter and Space'],
+      expected: 'Nothing happens: no request is sent and no message appears. Screen reader announces "Apply, dimmed" (iOS) or "disabled".',
+    },
+    {
+      id: 'TC-BTN-005',
+      title: 'Destructive action asks for confirmation',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Add 3 items to the basket', 'Tap "Clear"'],
+      expected: 'A confirmation ("Remove all 3 items?") with a clearly labeled destructive option appears, or an Undo snackbar is shown. Items are not lost by one accidental tap.',
+    },
+    {
+      id: 'TC-BTN-006',
+      title: 'Label is readable at the largest text size',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['iOS: Settings › Accessibility › Larger Text at maximum / Android: Font size at maximum'],
+      steps: ['Open Checkout', 'Read the "Place order" button'],
+      expected: 'The full label, including the price, is readable. The button may grow taller or wrap the text.',
+    },
+    {
+      id: 'TC-BTN-007',
+      title: 'Sticky CTA stays reachable with the keyboard open',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Open Checkout', 'Tap the promo code field so the keyboard appears'],
+      expected: '"Place order" moves above the keyboard or the screen can be scrolled to reach it. It is never hidden under the keyboard.',
+    },
+    {
+      id: 'TC-BTN-008',
+      title: 'Icon buttons have an accessible name',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['VoiceOver / TalkBack is on'],
+      steps: ['Swipe to the Share icon button', 'Swipe to the Close (×) icon button'],
+      expected: 'They are announced as "Share, button" and "Close, button", not just "button".',
+    },
+  ]}
+/>
+
+## Accessibility
+
+Buttons are where many users first get stuck. Check these:
+
+- **Role and name:** <Term id="screen-reader">Screen readers</Term> must announce the label and the word "button". A clickable `div` has no role, can't be focused with Tab, and ignores Enter and Space.
+  <DevNote>On the web, use a real `<button>` element.</DevNote>
+- **Icon-only buttons** need an accessible name.
+  <DevNote>`accessibilityLabel` on iOS, `contentDescription` on Android, `aria-label` on the web.</DevNote>
+- **Disabled and busy states** must be announced: "dimmed" on iOS, "disabled" on Android and the web. While loading, a live message ("Processing payment") tells the user something is happening.
+  <DevNote>Or `aria-busy="true"`.</DevNote>
+- **<Term id="touch-target">Touch targets</Term>:** at least 44×44 pt on iOS and 48×48 dp on Android. On the web, WCAG 2.2 asks for at least 24×24 CSS px (2.5.8, level AA); 44×44 CSS px (2.5.5, level AAA) is the comfortable target.
+- **Contrast:** label text at least **4.5:1** against the button, and the button's shape at least **3:1** against the background. Disabled buttons are exempt, but they must still be recognizable.
+- **Focus:** on the web, every button is reachable with <kbd>Tab</kbd>, has a visible focus ring, and works with both <kbd>Enter</kbd> and <kbd>Space</kbd>.
+- **Don't rely on color alone** for destructive actions. Red plus a clear label ("Delete account") works for color-blind users too.
+
+<Callout type="tip">
+Try the states explorer above with your keyboard: press <kbd>Tab</kbd> until you reach "Pay €24.90" and press <kbd>Space</kbd>.
+</Callout>
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+<DevNote>Native: `UIButton` with `UIButton.Configuration` (filled, tinted, gray, plain) or SwiftUI `Button` with `.borderedProminent`, `.bordered`, `.borderless`.</DevNote>
+
+- Pressed state is a quick **dim/highlight**, not a ripple.
+- Destructive actions are red, often inside an **action sheet** or alert.
+  <DevNote>They use `role: .destructive`.</DevNote>
+- No FAB: the main action usually lives in the navigation bar or a bottom toolbar.
+- Test with **Dynamic Type**, VoiceOver, and on small screens like iPhone SE where sticky buttons get tight.
+
+</Tab>
+<Tab>
+
+- Material 3 buttons: **filled, filled tonal, outlined, text, elevated**, plus **icon buttons** and the **FAB**.
+- Pressed state shows a **ripple** and a state layer. Disabled = 38% opacity content on a 12% container.
+- Watch for the **system back gesture** during loading: does going back cancel the request or leave a ghost order?
+- Device <Term id="fragmentation" /> matters: test small and large screens, font scale, display size and TalkBack.
+- Developer options › **Show layout bounds** reveals the real tap areas.
+
+</Tab>
+<Tab>
+
+- Use `<button>` for actions and `<a href>` for navigation. Inspect the element in <Term id="devtools">DevTools</Term> to check.
+- A button inside a form submits it by default, which causes surprise submits.
+  <DevNote>`type="submit"` vs `type="button"` matters.</DevNote>
+- Test **hover, focus and active** styles, and pressing <kbd>Enter</kbd> in a text field (does it submit twice?).
+- Check the button on mobile browsers too: sticky bars vs the browser's own toolbar and the on-screen keyboard.
+- Use DevTools network throttling to test the loading state and double clicks.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A user double-taps "Send €50" on a slow connection and Anna receives €100. What should the tester report?',
+      options: ['A cosmetic issue with the button color', 'A double-submit bug: the button accepts taps while the request is in progress', 'A localization bug', 'Nothing, the user tapped twice'],
+      answer: 1,
+      explain: 'The app must block repeat taps while loading, and ideally the server should reject duplicate requests. Users tapping twice is normal behavior, not user error.',
+    },
+    {
+      q: 'Which label is best for the confirm button in a "Remove this card?" dialog?',
+      options: ['OK', 'Yes', 'Remove card', 'Submit'],
+      answer: 2,
+      explain: 'A specific verb plus object tells the user exactly what will happen without reading the dialog text.',
+    },
+    {
+      q: 'A "Terms of service" control opens a new page. What should it be?',
+      options: ['A filled primary button', 'A link', 'A toggle switch', 'A FAB'],
+      answer: 1,
+      explain: 'It goes somewhere rather than doing something, so it should be a link.',
+    },
+    {
+      q: 'After a server error, the "Pay" button keeps spinning forever. Which state was not handled?',
+      options: ['Hover', 'Focused', 'The error outcome of the loading state', 'Disabled'],
+      answer: 2,
+      explain: 'Every loading state needs an exit for success and for failure. Testers check both by simulating errors and timeouts.',
+    },
+    {
+      q: 'What is the minimum touch target for a button on Android?',
+      options: ['24×24 dp', '32×32 dp', '44×44 dp', '48×48 dp'],
+      answer: 3,
+      explain: 'Material Design asks for 48×48 dp. On iOS the minimum is 44×44 pt.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A button **does something**; a link **goes somewhere**. Pick the right one, and use one primary button per screen.
+- Every button has **six states**: default, hover, pressed, focused, disabled and loading. Test all of them, in light and dark mode.
+- The costliest bugs are **double submits**, **endless spinners** and **disabled buttons that still work**. Test with slow and failing networks.
+- Labels should be **specific verbs** that fit at every text size and in every language.
+- Check **touch targets** (44 pt / 48 dp), **confirmation for destructive actions**, and **screen reader** announcements.
+
+</KeyTakeaways>

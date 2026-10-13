@@ -1,0 +1,43 @@
+teaser: "Search works perfectly on your laptop and finds nothing on a phone. One tiny keyboard setting is to blame. Which one?"
+cards:
+  - type: flip
+    front: "Live filtering vs submit search?"
+    back: "Live filtering updates the list as you type. Submit search waits for the Search key, then asks the server for results."
+  - type: spotbug
+    screen: ["🔍 Pizza            ⓧ  Cancel", "User typed: pizza", "No results for \"Pizza\""]
+    bug: "The keyboard capitalized the query and search is case-sensitive."
+    explain: "Search fields must turn off auto-capitalization and autocorrect, and matching should ignore case. Otherwise every phone search can fail."
+  - type: quiz
+    q: "You search for pizza, then tap the × in the field. What should happen?"
+    options: ["Text clears, pizza results stay", "Text and results clear, focus stays", "The search screen closes"]
+    answer: 1
+    explain: "Clear means start a new query: empty field, no stale results, keyboard still open."
+  - type: thisorthat
+    prompt: "On iOS, the user taps Cancel after browsing the Desserts category and searching."
+    left: "Show Desserts again"
+    right: "Reset to All"
+    answer: left
+    explain: "Cancel should return the user to the screen exactly as they left it, including the selected category and scroll position."
+  - type: spotbug
+    screen: ["RECENT SEARCHES", "pizza", "Pizza", "pizza", "sushi"]
+    bug: "Recent searches are duplicated."
+    explain: "A repeated search should move to the top, not add a row. Case and extra spaces should count as the same search."
+  - type: truefalse
+    statement: "A spaces-only query should show every product."
+    answer: false
+    explain: "Three spaces aren't a search. The app should ignore it and never save it as a recent search."
+  - type: quiz
+    q: "Which test is MOST likely to find an auto-capitalization bug?"
+    options: ["Typing on a real phone keyboard", "Pasting text on a laptop", "Checking the search icon"]
+    answer: 0
+    explain: "Desktop keyboards don't auto-capitalize. Only a real phone keyboard shows what users actually send."
+  - type: truefalse
+    statement: "After logging out, the next user must not see the previous user's recent searches."
+    answer: true
+    explain: "Recent searches can be very private. They belong to one account and should be cleared on logout or account switch."
+  - type: flip
+    front: "What should the × in a search field be called for screen readers?"
+    back: "Something like \"Clear text\". An unlabelled icon button is announced as just \"button\"."
+  - type: tip
+    title: "Test the keyboard's Search key"
+    text: "Type a query and press Search or Enter. If only tapping a suggestion works, that's a high-severity bug many testers miss."

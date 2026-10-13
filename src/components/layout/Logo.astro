@@ -1,0 +1,15 @@
+---
+import Icon from '@/components/ui/Icon.astro';
+import { site } from '@/data/site';
+import { href } from '@/lib/url';
+---
+
+<a href={href('/')} class="group flex items-center gap-2.5 font-semibold tracking-tight" aria-label={`${site.name} home`}>
+  <span
+    class="grid size-8 place-items-center rounded-[10px] text-white shadow-soft transition-transform group-hover:-rotate-6"
+    style="background: linear-gradient(135deg, var(--brand), var(--brand-2));"
+  >
+    <Icon name="bug" size={18} strokeWidth={2.2} />
+  </span>
+  <span class="text-[1.05rem]">{site.name}</span>
+</a>

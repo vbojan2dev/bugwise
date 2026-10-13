@@ -1,0 +1,45 @@
+teaser: "You open a website in Chrome on an iPhone. Which browser engine is actually drawing the page? It's probably not the one you think."
+cards:
+  - type: flip
+    front: "What are the three browser engines that matter today?"
+    back: "Blink (Chrome, Edge, Opera, Samsung Internet), WebKit (Safari and every browser on iOS) and Gecko (Firefox)."
+  - type: quiz
+    q: "A button is broken in Chrome on iPhone but works in Chrome on Android. Which browser should you check next?"
+    options: ["Safari on iPhone", "Firefox on Windows", "Edge on Windows"]
+    answer: 0
+    explain: "Browsers on iOS run on WebKit, the same engine as Safari. A bug in Chrome on iPhone is very likely in Safari too."
+  - type: thisorthat
+    prompt: "The date picker looks totally different in Safari than in Chrome, but it opens and saves the right date."
+    left: "Bug"
+    right: "Acceptable difference"
+    answer: right
+    explain: "Native controls are drawn by each browser. Different is fine; it only becomes a bug when it's unusable, unreadable or breaks the requirements."
+  - type: truefalse
+    statement: "Choosing \"iPhone 15\" in Chrome DevTools device mode shows you Safari bugs."
+    answer: false
+    explain: "Device mode only changes the size and user agent. It still renders with Chrome's engine, so WebKit bugs, the Safari toolbar and iOS pickers never appear."
+  - type: spotbug
+    screen: ["Firefox 131 · Checkout", "Your browser is not supported!", "[ Place order ] works fine"]
+    bug: "A naive user agent check blocks a working browser."
+    explain: "The check looks for 'Chrome' or 'Safari' in the user agent, and Firefox has neither. Detect features, not browser names."
+  - type: spotbug
+    screen: ["iPhone · Safari · Checkout", "Total: €89.00", "[ Place o", "───── Safari toolbar ─────"]
+    bug: "The Place order button hides under Safari's toolbar."
+    explain: "On iOS Safari, 100vh is taller than the visible area, so a bottom bar slips behind the toolbar. Users can't place the order."
+  - type: quiz
+    q: "How should a team decide which browsers to test?"
+    options: ["Whatever developers use", "Every browser ever made", "Analytics data and a tiered matrix"]
+    answer: 2
+    explain: "Analytics show what your real users use. Sorting browsers into tiers balances coverage with the time you have."
+  - type: thisorthat
+    prompt: "You're picking Safari versions for the browser matrix. Users can't update Safari without updating iOS."
+    left: "Latest Safari only"
+    right: "Current + previous iOS"
+    answer: right
+    explain: "Safari is tied to the operating system. People on older iPhones are stuck on older Safari, so cover the previous major iOS too."
+  - type: flip
+    front: "Why can Samsung Internet break when Chrome works fine?"
+    back: "It's based on Chromium but often several versions behind Chrome, so newer CSS or JavaScript features may be missing."
+  - type: tip
+    title: "Always report the environment"
+    text: "For browser bugs, write the browser name, version, operating system and device. Without them, a developer can't reproduce it."

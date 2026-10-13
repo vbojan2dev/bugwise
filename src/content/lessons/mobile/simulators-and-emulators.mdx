@@ -1,0 +1,390 @@
+---
+title: Simulators and Emulators
+description: What the iOS Simulator and Android Emulator can and can't do, how to set them up for testing, and how to decide when only a real device will do.
+order: 9
+level: beginner
+minutes: { short: 25 }
+platform: mobile
+tags: [mobile, simulator, emulator, real device, xcode, android studio, tools]
+---
+
+import HowTheyWork from '@/components/demos/mobile-tools/HowTheyWork';
+import EnvironmentPicker from '@/components/demos/mobile-tools/EnvironmentPicker';
+import ExtendedControls from '@/components/demos/mobile-tools/ExtendedControls';
+import SortingExercise from '@/components/demos/mobile-tools/SortingExercise';
+
+The team behind a running app shipped version 3.0 with a shiny new live-run tracker. It passed every test case. The map followed the route perfectly, the distance was right, the summary screen looked great. Every single test had been run on the **iOS Simulator** using its built-in "City Run" location.
+
+Launch day: hundreds of one-star reviews. "Stopped recording after 10 minutes." On real iPhones, once the screen locked, the app lost its location updates, because the background location setup was wrong. The simulator never locked, never got hot, never lost GPS signal under a bridge. It just kept feeding perfect coordinates.
+
+The simulator wasn't the problem. Testing **only** on the simulator was.
+
+## Why it matters
+
+Nobody can own every phone. There are dozens of iPhone and iPad models and thousands of Android devices (that's <Term id="fragmentation" />). Virtual devices let you test many screen sizes and OS versions for free, in seconds. But they are imitations, and you need to know **exactly where the imitation ends**, so the right tests happen on a <Term id="real-device">real device</Term>.
+
+By the end of this lesson you'll know:
+
+- the difference between a <Term id="simulator" />, an <Term id="emulator" /> and a real device,
+- how to set up and use the iOS Simulator and the Android Emulator like a tester,
+- which tests you can trust on a virtual device, and which ones you can't.
+
+## Simulator vs emulator vs real device
+
+People use the words loosely, but there is a real difference:
+
+- The **iOS Simulator** (part of Xcode, Mac only) runs your app **compiled for the Mac**. It imitates how iOS *behaves*, but it does not pretend to be iPhone hardware. That's why it's fast.
+- The **Android Emulator** (part of Android Studio, on Mac, Windows and Linux) runs a **complete Android system image** on a *virtual phone*: virtual CPU, sensors, modem, battery. It runs the same APK you ship.
+- A **real device** is a physical phone, with the real camera, GPS, radio, battery and the manufacturer's own changes to the OS.
+
+<HowTheyWork />
+
+### What each is good for
+
+| | iOS Simulator | Android Emulator | Real device |
+| --- | --- | --- | --- |
+| **Cost and speed** | Free, starts in seconds | Free, starts in under a minute | Costs money, has to be charged, updated, shared |
+| **Screen sizes and OS versions** | Every current iPhone/iPad, several iOS versions | Any size, foldables, tablets, many API levels | Only the phones you own |
+| **Layout, text, translations, dark mode** | Great | Great | Great |
+| **Fake location, battery, network** | Location yes; battery no; network via Mac tools | Location, battery, cellular, signal: all built in | Only by really going places |
+| **Deep links, push payloads, permissions** | Yes | Yes | Yes |
+| **Real performance** | No (runs on the Mac's CPU) | No (uses your computer's CPU/GPU) | Yes |
+| **Camera** | None | Virtual scene or webcam | Yes |
+| **Bluetooth, NFC, real cellular** | No | Very limited | Yes |
+| **Phone calls and SMS** | No | Simulated incoming call / SMS | Yes |
+| **Face ID / fingerprint** | Simulated match / no match | Simulated fingerprint touch | Real sensor |
+| **Battery drain, heat, memory pressure** | No | No | Yes |
+
+<Callout type="info" title="Push notifications on the Simulator">
+
+Older guides say the iOS Simulator can't receive push notifications. That's outdated: you can drag an `.apns` payload file onto it (or use `xcrun simctl push`), and on Macs with Apple silicon or a T2 chip running macOS 13 or later it can receive real remote pushes too. On older setups, only the drag-and-drop route works. Delivery timing, Focus modes and lock-screen behavior still need a real iPhone.
+
+</Callout>
+
+## Simulator, emulator or real device?
+
+The honest answer is often "start virtual, finish real". Pick a scenario to see why:
+
+<EnvironmentPicker client:visible />
+
+<Callout type="tip" title="The rule of thumb">
+
+**Virtual devices** are for layout, flows, logic and anything you can fake (sizes, languages, location, battery level, dark mode). **Real devices** are for hardware, performance, the physical world and the final sign-off before a <Term id="release" />.
+
+</Callout>
+
+## Setting up the iOS Simulator
+
+The Simulator comes with **Xcode**, which is free on the Mac App Store. You don't need to be a developer to use it.
+
+<Steps>
+
+1. **Install Xcode** from the Mac App Store and open it once so it can install its extra components. iOS runtimes for older versions can be added later in **Xcode › Settings › Components** (called *Platforms* in older Xcode versions).
+2. **Open the Simulator.** In Xcode choose **Xcode › Open Developer Tool › Simulator**. You can also keep it in your Dock and open it like any app.
+3. **Choose a device.** Use **File › Open Simulator** and pick a model and iOS version, for example a small iPhone SE and a large Pro Max. To add more models, go to **Window › Devices and Simulators** in Xcode, open the **Simulators** tab and click **+**.
+4. **Install the app.** If a developer runs the app from Xcode, it installs automatically. If they give you a **simulator build** (a `.app` folder), drag it onto the Simulator window.
+5. **Start testing**, using the menus below to fake the world around the app.
+
+</Steps>
+
+### The menus testers use most
+
+| Menu | Item | What it's for |
+| --- | --- | --- |
+| **Features** | **Face ID** › Enrolled, then Matching Face / Non-matching Face | Test <Term id="biometric-authentication">biometric login</Term> success, failure and fallback |
+| **Features** | **Location** › Custom Location…, Apple, City Run, Freeway Drive | Teleport to an address or play a moving route |
+| **Features** | **Toggle Appearance** (⇧⌘A) | Switch between light and <Term id="dark-mode" /> |
+| **Features** | **Toggle Increased Contrast** | Check the high-contrast accessibility setting |
+| **Device** | **Rotate Left / Right** (⌘← / ⌘→) | Test <Term id="orientation" /> changes and lost state |
+| **Device** | **Shake** (⌃⌘Z) | Trigger "shake to report a bug" or "shake to undo" |
+| **Device** | **Home** (⇧⌘H), **Lock** (⌘L) | Send the app to the background: an <Term id="app-lifecycle">app lifecycle</Term> test |
+| **Device** | **Erase All Content and Settings…** | A clean phone, like a fresh install |
+| **I/O** | **Keyboard › Toggle Software Keyboard** (⌘K) | Show the on-screen keyboard (see the warning below) |
+| **File** | **Save Screen** (⌘S), **Record Screen** (⌘R) | Screenshots and videos for your <Term id="bug-report" /> |
+| **Debug** | **Slow Animations** | Catch glitches that happen too fast to see |
+
+You can also **drag files** onto the Simulator window: photos and videos go to the Photos app (handy for testing an avatar upload), a `.app` installs, and an `.apns` file delivers a test <Term id="push-notification" />.
+
+<Callout type="warning" title="The hidden keyboard trap">
+
+When your Mac keyboard is connected to the Simulator, the on-screen keyboard often stays hidden. Everything looks fine, but on a real iPhone the keyboard covers the **Pay** button. Press **⌘K** to show the software keyboard whenever you test forms.
+
+</Callout>
+
+### Useful command-line tricks
+
+Xcode includes `simctl`, which is great for repeatable setups. `booted` means "the simulator that is currently running".
+
+```bash
+xcrun simctl list devices                                   # all simulators and their state
+xcrun simctl install booted ShopApp.app                     # install a simulator build
+xcrun simctl openurl booted "shopapp://product/42"          # open a deep link
+xcrun simctl location booted set 52.5219,13.4132            # set GPS to Berlin
+xcrun simctl push booted com.example.shopapp payload.apns   # send a test push
+xcrun simctl ui booted appearance dark                      # dark mode
+xcrun simctl ui booted content_size accessibility-extra-large  # very large text
+xcrun simctl io booted screenshot bug.png                   # screenshot
+xcrun simctl io booted recordVideo bug.mp4                  # record (Ctrl+C to stop)
+```
+
+## Setting up the Android Emulator
+
+The emulator comes with **Android Studio**, free for Mac, Windows and Linux.
+
+<Steps>
+
+1. **Install Android Studio** from developer.android.com and finish the setup wizard. It downloads the SDK, the emulator and a first system image.
+2. **Open the Device Manager.** Use the Device Manager icon in the right-hand toolbar, or **View › Tool Windows › Device Manager**.
+3. **Create a virtual device.** Click **+** › **Create Virtual Device**, then pick a hardware profile: a phone such as *Pixel* or *Medium Phone*, a small phone, a tablet or a foldable.
+4. **Choose a system image (API level).** Each Android version has an API level (Android 15 is API 35, for example). Pick images marked **Google Play** if the app needs Google services like maps or push. On Apple silicon Macs choose **arm64** images; on Intel/AMD PCs choose **x86_64**.
+5. **Name it and adjust settings.** You can set the startup orientation, RAM, storage and which camera to use (virtual scene or webcam). Click **Finish**.
+6. **Start it** with the ▶ button. By default it opens inside Android Studio's **Running Devices** window; it can also run as a separate window.
+
+</Steps>
+
+<Callout type="tip" title="Build a small device zoo">
+
+Create at least three emulators: a **small phone on the oldest Android version the app supports**, a **large phone on the newest version**, and a **tablet or foldable**. That covers most layout and <Term id="os-version">OS version</Term> bugs before you touch a real device.
+
+</Callout>
+
+### Extended controls
+
+Click the **⋮ / … (More)** button on the emulator's toolbar to open **Extended controls**. This is where you fake the outside world:
+
+| Panel | What you can do | Example test |
+| --- | --- | --- |
+| **Location** | Set a single point, save places, play a route, import GPX/KML | Delivery zone ends at the city border |
+| **Cellular** | Network type (e.g. LTE, 5G), signal strength, data and voice status, roaming | App on a weak signal or while roaming |
+| **Battery** | Charge level, charger connection, battery health and status | Low-battery banner, Battery Saver behavior |
+| **Phone** | Call the device from a number, send an SMS | Incoming call in the middle of checkout; SMS one-time codes |
+| **Fingerprint** | "Touch" the sensor with an enrolled finger | Fingerprint login, and a non-enrolled finger failing |
+| **Camera** | Use a virtual 3D room or your webcam | Camera screen opens, permission prompts |
+| **Virtual sensors** | Rotate the device, change accelerometer, proximity, light | Rotation, shake, auto-brightness logic |
+| **Record and Playback** | Record the screen as a video | Attach a video to a bug report |
+
+Try it yourself. Change the location, battery, network and theme and watch the delivery app react:
+
+<ExtendedControls client:visible />
+
+<Callout type="info" title="Simulate slow networks">
+
+The emulator's cellular settings change what the phone *thinks* its connection is. For real <Term id="network-throttling" /> (slow 3G, high latency, packet loss) on either platform, testers also use Apple's **Network Link Conditioner** on the Mac or a <Term id="proxy-tool" /> like Charles or Proxyman.
+
+</Callout>
+
+## Installing builds
+
+<Tabs labels={['iOS Simulator', 'Android Emulator']}>
+<Tab>
+
+- Drag a **`.app`** onto the Simulator window, or run `xcrun simctl install booted ShopApp.app`.
+- The build must be made **for the simulator**. An `.ipa` file or a <Term id="testflight">TestFlight</Term> build is made for real iPhones and **won't install** on the Simulator. Ask the developers for a simulator build (or run it from Xcode).
+- To start fresh, delete the app (long-press its icon, like on a phone) or use **Device › Erase All Content and Settings…**
+
+</Tab>
+<Tab>
+
+- Drag an **`.apk`** onto the emulator window, or run `adb install app.apk` (see [adb basics](/mobile/adb-basics)).
+- The same APK works on emulators and real phones, as long as it includes code for the emulator's processor type. Most apps do.
+- An **`.aab`** (Android App Bundle) is meant for Google Play and can't be dragged in directly. Ask for an APK, or install through Google Play internal testing or <Term id="firebase-app-distribution" />.
+- To start fresh: Settings › Apps › the app › **Storage › Clear storage**, or **Wipe Data** for the whole virtual device in the Device Manager.
+
+</Tab>
+</Tabs>
+
+## Useful toggles for testers
+
+These settings find a surprising number of bugs. All of them work on virtual devices:
+
+| What | iOS Simulator | Android Emulator |
+| --- | --- | --- |
+| **Dark mode** | Features › Toggle Appearance (⇧⌘A) | Quick Settings tile, or Settings › Display (Display & touch on newer versions) › Dark theme |
+| **Large text** | Settings › Accessibility › Display & Text Size › Larger Text, or Xcode's Environment Overrides while running | Settings › Display › Display size and text (font size) |
+| **Language and region** | Settings › General › Language & Region, or the scheme's App Language in Xcode | Settings › System › Languages |
+| **Rotation** | Device › Rotate Left / Right | Rotate buttons on the emulator toolbar |
+| **Location** | Features › Location | Extended controls › Location |
+
+<Term id="dynamic-type">Large text</Term> and long languages (German, Finnish) are the fastest way to find <Term id="truncation" /> bugs. Changing the <Term id="locale" /> also changes date, number and currency formats, so check prices and dates while you're at it.
+
+## What to test where
+
+### Safe to test on simulators and emulators
+
+- **Layout** on every screen size, including the smallest supported phone, tablets and foldables, and the <Term id="safe-area" /> around notches.
+- **Flows and logic**: sign-up, search, cart, settings, error messages.
+- **System settings**: dark mode, large text, languages, rotation.
+- **Fake-able conditions**: GPS location and routes, battery level (Android), network type, permissions granted or denied.
+- **Entry points**: <Term id="deep-link">deep links</Term>, push payloads, opening the app from a share sheet.
+
+### Needs a real device
+
+- **Hardware**: camera, Bluetooth accessories, NFC payments, real biometrics, haptics.
+- **Performance**: start-up time, scrolling, animations, memory on low-end phones.
+- **The physical world**: real GPS outdoors, weak signal, switching between Wi-Fi and mobile data, battery drain and heat.
+- **Real <Term id="interruption">interruptions</Term>**: phone calls (always on iPhone), alarms, low-power mode, the OS killing the app in the background.
+- **Manufacturer quirks**: Samsung, Xiaomi and others change Android, especially battery savers that kill background work and notifications.
+
+### Bugs that slip through when you only test virtually
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Background tracking stops** | Run or delivery tracking freezes when the screen locks on real phones | High |
+| 2 | **Keyboard covers the button** | On the Simulator the hardware keyboard hid the on-screen one; on a phone you can't reach **Pay** | High |
+| 3 | **Janky scrolling** | Smooth on the emulator, stuttering on a budget phone with 3 GB RAM | Medium |
+| 4 | **Camera screen crashes or stays black** | The scanner was never exercised because the Simulator has no camera | High |
+| 5 | **Push never arrives** | Works with drag-and-drop payloads, but the real server uses the wrong APNs environment | High |
+| 6 | **Killed by battery saver** | Reminders or uploads silently stop on some Android brands | Medium |
+| 7 | **State lost after background kill** | Real phones with little memory kill the app; the cart or form is empty on return | Medium |
+| 8 | **Breaks on network switch** | Upload fails when walking out of Wi-Fi onto mobile data | Medium |
+
+## Practice: where would you test it?
+
+You're planning testing for a shopping and fitness app with three emulators, two simulators and two real phones. Sort each idea into the right place:
+
+<SortingExercise client:visible />
+
+## Cloud device farms
+
+When you need a phone you don't own (a specific Samsung model, an old iPhone, a tablet), a **cloud device farm** rents you real devices through the browser. You install the build, tap around remotely, and record videos and logs.
+
+Common options are **BrowserStack**, **Sauce Labs**, **LambdaTest**, **AWS Device Farm** and **Firebase Test Lab** (the last two are aimed mostly at automated tests). They're great for reproducing a bug a user reported on "Galaxy A14, Android 14", but there is some lag, and you can't hold the device, walk outside or plug in a Bluetooth gadget.
+
+<Callout type="note">
+
+A good test lab for a small team is often: many emulators and simulators, **2–4 real phones** (one old and cheap, one popular Android, one recent iPhone, one older iPhone), plus a device farm subscription for everything else.
+
+</Callout>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-ENV-001',
+      title: 'Checkout layout on the smallest supported iPhone',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['iOS Simulator with iPhone SE (3rd generation)', 'Software keyboard shown (⌘K)'],
+      steps: ['Add an item to the cart', 'Open Checkout', 'Tap the card number field', 'Scroll to the bottom'],
+      expected: 'All fields and the Pay button are reachable with the keyboard open. Nothing is cut off or hidden behind the keyboard.',
+    },
+    {
+      id: 'TC-ENV-002',
+      title: 'Restaurant list updates when location changes',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Android Emulator, location permission granted'],
+      steps: ['Extended controls › Location: set Berlin, Alexanderplatz', 'Open the app', 'Set location to Munich, Marienplatz', 'Pull to refresh'],
+      expected: 'The delivery address changes to Marienplatz and only Munich restaurants are listed.',
+    },
+    {
+      id: 'TC-ENV-003',
+      title: 'Outside the delivery zone shows an empty state',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Android Emulator'],
+      steps: ['Set a location outside the delivery area', 'Open the app'],
+      expected: 'A friendly "We don\'t deliver here yet" message is shown, with an option to change the address. No endless spinner.',
+    },
+    {
+      id: 'TC-ENV-004',
+      title: 'Low battery banner at 10%',
+      priority: 'low',
+      type: 'edge',
+      preconditions: ['Android Emulator', 'Active order with live tracking'],
+      steps: ['Extended controls › Battery: Charger connection None', 'Set charge level to 10%'],
+      expected: 'The app shows that live tracking updates less often. Order details remain usable.',
+    },
+    {
+      id: 'TC-ENV-005',
+      title: 'Face ID failure falls back to password',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['iOS Simulator', 'Features › Face ID › Enrolled is checked', 'Face ID login enabled in the app'],
+      steps: ['Lock and reopen the app', 'When Face ID is requested, choose Features › Face ID › Non-matching Face', 'Repeat'],
+      expected: 'The app shows a clear error and offers login with password. It never logs the user in.',
+    },
+    {
+      id: 'TC-ENV-006',
+      title: 'Run tracking continues with the screen locked',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Real iPhone and real Android phone', 'Location permission: Always / Allow all the time'],
+      steps: ['Start a run outdoors', 'Lock the phone', 'Walk for 15 minutes', 'Unlock and stop the run'],
+      expected: 'The route has no gaps and the distance matches the walk (within a few percent).',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="Simulator and emulator testing checklist"
+  storageKey="simulators-and-emulators"
+  items={[
+    'I know which build I need: a simulator build (.app) for iOS, an APK for Android',
+    'Layout is checked on the smallest and largest supported screens, plus a tablet',
+    'The oldest and newest supported OS versions are covered',
+    'Forms are tested with the software keyboard visible',
+    'Dark mode, the largest text size and a long language are checked',
+    'Rotation and background/foreground do not lose data',
+    'Location-based features are tested with several places and "location off"',
+    'Battery and network conditions are faked on the emulator',
+    'Hardware features (camera, Bluetooth, NFC, biometrics) are signed off on real devices',
+    'Performance is checked on a real low-end phone',
+    'Push notifications and calls are verified on real devices before release',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'What is the main technical difference between the iOS Simulator and the Android Emulator?',
+      options: [
+        'The Simulator is paid, the Emulator is free',
+        'The Simulator runs the app compiled for the Mac; the Emulator runs a full Android system image on virtual hardware',
+        'The Simulator only supports iPads',
+        'There is no difference',
+      ],
+      answer: 1,
+      explain: 'The iOS Simulator imitates iOS behavior on macOS without emulating phone hardware. The Android Emulator emulates a whole device.',
+    },
+    {
+      q: 'You must test how a budget Android phone handles a long product feed. Where should you test?',
+      options: ['Android Emulator with less RAM', 'iOS Simulator', 'A real low-end Android phone', 'Any of them, results are the same'],
+      answer: 2,
+      explain: 'Virtual devices borrow your computer\'s CPU and GPU, so performance results are misleading.',
+    },
+    {
+      q: 'Which test can the Android Emulator do but the iOS Simulator cannot?',
+      options: ['Dark mode', 'Simulate an incoming phone call', 'Change the screen size', 'Open a deep link'],
+      answer: 1,
+      explain: 'Extended controls › Phone can call the emulator. The iOS Simulator has no phone.',
+    },
+    {
+      q: 'A developer sends you a TestFlight link. Can you test that build on the iOS Simulator?',
+      options: ['Yes, drag it in', 'No, TestFlight builds are for real devices; you need a simulator build', 'Only with Face ID enabled', 'Only on iPad simulators'],
+      answer: 1,
+      explain: 'Simulator builds are compiled for the Mac. TestFlight and .ipa builds only run on real iPhones and iPads.',
+    },
+    {
+      q: 'Forms look perfect on the Simulator, but users say the keyboard hides the Pay button. What probably went wrong in testing?',
+      options: ['The tester used dark mode', 'The software keyboard was hidden because the Mac keyboard was connected', 'The app was not installed', 'The location was wrong'],
+      answer: 1,
+      explain: 'Press ⌘K to show the software keyboard on the Simulator, and verify forms on a real device.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- The **iOS Simulator** imitates iOS on your Mac; the **Android Emulator** emulates a full virtual phone. Neither is a real device.
+- Use virtual devices for **layout, flows, settings and fake-able conditions**: screen sizes, OS versions, dark mode, large text, languages, location, battery, network.
+- Use **real devices** for **hardware, performance, the physical world, real interruptions** and the final sign-off.
+- Know the menus: **Features** and **Device** on the Simulator, **Extended controls** on the Emulator.
+- Fill the gaps with a small real-device lab and a **cloud device farm**.
+
+</KeyTakeaways>

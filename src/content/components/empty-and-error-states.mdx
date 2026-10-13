@@ -1,0 +1,471 @@
+---
+title: Empty & Error States
+description: What a screen shows when there's nothing to show, or when something failed. Learn the six types, what a good one says, how testers force them with fresh accounts, airplane mode and proxy tools, and the spinner, flash and Retry bugs they find.
+category: feedback
+aka: [Empty state, Zero state, Error screen, Blank slate]
+platforms: [ios, android, web]
+minutes: 35
+order: 4
+---
+
+import Anatomy from '@/components/demos/empty-and-error-states/Anatomy';
+import TypesGallery from '@/components/demos/empty-and-error-states/TypesGallery';
+import StateExplorer from '@/components/demos/empty-and-error-states/StateExplorer';
+import { BuggyOrdersApp } from '@/components/demos/empty-and-error-states/BuggyOrdersApp';
+import { EmptyState, SkeletonList, OrderList, orders } from '@/components/demos/empty-and-error-states/States';
+import { CloudOff, WifiOff } from 'lucide-react';
+
+Designers spend weeks on the screen full of beautiful data. Then a real user signs up, opens **Orders** for the first time and sees… a white screen. Or a spinner that never stops. Or `Error 500`. The "nothing here" and "something broke" screens are often designed last, built in a hurry, and tested by nobody.
+
+That makes them a gift for testers. Every list, feed, search and dashboard in an app has these states, and you can trigger most of them in a minute if you know how.
+
+## What are empty and error states?
+
+An <Term id="empty-state" /> is what a screen shows when it has **no content to display**. An **error state** is what it shows when it **couldn't get or show the content**. Together with the <Term id="loading-state" /> and the normal data state, they make up the <Term id="ui-state">UI states</Term> that every data screen must handle.
+
+The key idea: **"empty" and "failed" are different situations** and need different messages. "You have no orders" and "We couldn't load your orders" might both show an empty list, but they mean opposite things to the user.
+
+### The six types
+
+<TypesGallery />
+
+### Loading vs empty vs error
+
+A screen that loads data goes through a few states. It should show **exactly one** at a time:
+
+| State | What it means | What the user should see |
+| --- | --- | --- |
+| **Loading** | Request on its way | Skeleton or spinner, ideally in the same layout as the content |
+| **Data** | Request OK, items returned | The content |
+| **Empty** | Request OK, **zero** items | An empty state with a next step |
+| **Error** | Request failed (offline, timeout, 500, 403) | An error state with a way to recover |
+
+Most bugs on these screens are **mix-ups between these four**: an empty list treated as "still loading" (endless spinner), an error treated as "empty" (the user thinks their data is gone), or "empty" shown for a moment before the data arrives.
+
+<Callout type="info" title="Where do toasts fit?">
+A [toast](/components/toast) is for a **small, temporary** problem with an action the user just took ("Couldn't send. Retry"). When a **whole screen** can't load its content, the user needs an error state in the screen itself, because a toast disappears and leaves them looking at nothing. For how bad networks cause these states, see [Network conditions](/mobile/network-conditions).
+</Callout>
+
+### Anatomy of a good one
+
+A good empty or error state answers three questions: **what happened, why, and what can I do now?**
+
+<Anatomy />
+
+## Designs & variants
+
+### Full-screen vs inline
+
+Not every problem deserves a whole screen. Match the size of the message to the size of the problem.
+
+<Compare>
+<Do title="Inline: only one part failed">
+
+<div class="not-prose demo-screen my-3" style={{ colorScheme: 'light' }}>
+  <div class="mx-auto max-w-[17rem] space-y-2 text-[#000]">
+    <div class="rounded-xl bg-white p-3 text-[12px]"><p class="font-semibold">Sakura Sushi Bar</p><p class="text-[#6c6c70]">On the way · arrives 19:35</p></div>
+    <div class="flex items-center gap-2 rounded-xl bg-white p-3 text-[12px]">
+      <span class="min-w-0 flex-1 text-[#6c6c70]">Couldn't load recommendations.</span>
+      <span class="font-semibold text-[#007aff]">Retry</span>
+    </div>
+  </div>
+</div>
+
+The order still shows. Only the failed section has a small message and its own Retry.
+
+</Do>
+<Dont title="Full-screen error for a small failure">
+
+<div class="not-prose demo-screen my-3" style={{ colorScheme: 'light' }}>
+  <div class="mx-auto max-w-[17rem] rounded-xl bg-white text-[#000]">
+    <EmptyState compact icon={CloudOff} tone="error" title="Something went wrong" body="Please try again later." primary="Try again" />
+  </div>
+</div>
+
+The order tracking worked, but one failed widget wiped out the whole screen.
+
+</Dont>
+</Compare>
+
+Use a **full-screen** state when the screen's main content is missing (the whole list failed, no permission, offline with no cached data). Use **inline** messages for one section, one card or one form field, and a **banner** for ongoing conditions like "You're offline" while cached content stays visible.
+
+### Wording: say it like a human
+
+The words matter as much as the picture. A good <Term id="error-message" /> is **specific, calm and useful**:
+
+<Compare>
+<Do title="Plain, specific, actionable">
+
+**We couldn't load your orders**
+This is a problem on our side, not yours. Please try again in a moment.
+**[Try again]**
+
+</Do>
+<Dont title="Codes, blame or dead ends">
+
+**Error 500**
+`TypeError: Cannot read properties of undefined (reading 'map')`
+*Invalid request. You did something wrong.*
+
+</Dont>
+</Compare>
+
+Rules to test against:
+
+- **No raw codes or <Term id="stack-trace">stack traces</Term>.** "500", "-1009" or "TypeError" mean nothing to users and can leak technical details to attackers. A short reference ID for support ("Ref: 8F3K") is fine.
+- **No blame.** "Invalid input" or "You did something wrong" for a server problem is both rude and false.
+- **Say whose problem it is.** "Check your connection" (user can fix it) vs "This is on our side" (user should wait).
+- **Always a next step.** Retry, Clear filters, Go to Home, Contact support. Never a dead end.
+- **Don't lie.** An error shown as "No orders yet" makes users think their data is gone.
+
+### Skeletons vs spinners
+
+While data loads, a **skeleton** (grey shapes in the layout of the real content) feels faster and avoids layout jumps. A **spinner** is fine for short waits or small areas. Either way, test that the loading state **ends**: with data, with an empty state, or with an error. A loader that can spin forever is a bug.
+
+<div class="not-prose demo-screen my-6" style={{ colorScheme: 'light' }}>
+  <div class="mx-auto grid max-w-[34rem] grid-cols-1 gap-3 sm:grid-cols-2">
+    <div class="min-w-0"><p class="mb-1.5 text-center text-[11px] font-semibold text-[#6c6c70]">Loading (skeleton)</p><SkeletonList rows={3} /></div>
+    <div class="min-w-0"><p class="mb-1.5 text-center text-[11px] font-semibold text-[#6c6c70]">Loaded</p><OrderList list={orders.slice(0, 3)} /></div>
+  </div>
+</div>
+
+## Try it: state explorer
+
+Here's one Orders screen in seven states. Switch between them and compare the **bad** version (things testers report every week) with the **good** one. In the good version, **Retry** and **Show all orders** really work.
+
+<StateExplorer client:visible />
+
+## When to use it
+
+Every screen that shows data needs an empty and an error state. Ask for them in reviews if the design only shows the "happy" screen. In particular:
+
+- **Lists, feeds and grids**: orders, messages, favorites, notifications, search results.
+- **Screens behind an account or role**: team data, admin pages, shared documents.
+- **Anything that needs the network**: which is almost everything.
+- **Features that need a permission**: camera, photos, location, contacts. If the user said no, explain why the feature needs it and how to turn it on in Settings.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Banner while cached content stays">
+
+<div class="not-prose demo-screen my-3" style={{ colorScheme: 'light' }}>
+  <div class="mx-auto max-w-[17rem] space-y-2 text-[#000]">
+    <div class="flex items-center gap-2 rounded-xl bg-[#fff4e0] px-3 py-2 text-[11px] text-[#7a3e00]"><WifiOff size={14} /> You're offline. Showing saved orders.</div>
+    <OrderList list={orders.slice(0, 2)} dim />
+  </div>
+</div>
+
+The user can still read their orders.
+
+</Do>
+<Dont title="Full-screen offline over good data">
+
+<div class="not-prose demo-screen my-3" style={{ colorScheme: 'light' }}>
+  <div class="mx-auto max-w-[17rem] rounded-xl bg-white text-[#000]">
+    <EmptyState compact icon={WifiOff} tone="warn" title="No connection" body="Connect to the internet to continue." />
+  </div>
+</div>
+
+The orders were already loaded, but the app hides them the moment the signal drops.
+
+</Dont>
+</Compare>
+
+Also don't use a big empty-state illustration for **tiny areas** (an empty "Notes" field just needs placeholder text), and don't use an error state for **validation problems in a form**: those belong next to the field (see [Text field](/components/text-field)).
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Endless spinner** | Empty list or failed request, but the loader never stops | High |
+| 2 | **Dead-end error** | "Something went wrong" with no Retry, no explanation, no way back | Medium–High |
+| 3 | **Retry is broken** | Retry does nothing, or sends 2+ requests per tap (duplicate orders on POST!) | Medium–High |
+| 4 | **Raw technical error** | `TypeError`, `500`, `null`, `undefined` or a stack trace on screen | Medium |
+| 5 | **Empty flash** | "No orders yet" appears for a moment before the data loads | Low–Medium |
+| 6 | **Error shown as empty** | Offline, 403 or 500 shows "No orders yet", so users think data was lost | High |
+| 7 | **Wrong empty message** | Filtered list says "Place your first order" instead of "No results for this filter" | Low–Medium |
+| 8 | **Stale error** | "You're offline" stays after reconnecting, or the error stays after a successful retry | Medium |
+| 9 | **Two states at once** | Data and the empty message both visible, or spinner on top of an error | Low–Medium |
+| 10 | **Silent for screen readers** | Error appears but VoiceOver / TalkBack says nothing; focus stays on a removed button | High (for affected users) |
+
+<Callout type="bug" title="Why #1 happens: the code only expects data">
+A common pattern is "stop loading when items arrive". If the server answers with an empty list `[]`, there are no items, so loading never stops. Developers rarely see it, because their test accounts are full of data. That's why testers should always try a **brand-new account** and an **API that returns `[]`**.
+</Callout>
+
+## Find the bug
+
+This food delivery app's Orders screen has **six bugs**. Use the device and proxy panel like a real tester:
+
+- Watch the screen closely while it loads, then tap **Refresh**.
+- Try each filter chip.
+- Set **Map Local** to an empty list, then to a 500 error, and tap Refresh each time.
+- Turn on **Airplane mode**, tap Refresh, turn it off again and tap **Retry**. Watch the network log.
+
+<BugHunt
+  title="Orders screen"
+  bugs={[
+    {
+      title: 'Endless spinner when there are no orders',
+      hint: 'Set Map Local to "200 · empty list []" and tap Refresh.',
+      detail: 'The API answers <code>200</code> with <code>[]</code>, but the screen shows "Loading…" forever. The app only stops loading when items arrive. Expected: the first-use empty state ("No orders yet" with Browse restaurants).',
+    },
+    {
+      title: 'Server error is a dead end',
+      hint: 'Set Map Local to "500 server error" and tap Refresh.',
+      detail: 'The screen says only "Something went wrong." No explanation, no <strong>Retry</strong>, no support link. Expected: a clear message ("We couldn\'t load your orders. This is on our side.") with a Retry button.',
+    },
+    {
+      title: 'Retry sends two requests per tap',
+      hint: 'Go offline, Refresh, then tap Retry once and count the requests in the network log.',
+      detail: 'Every tap on <strong>Retry</strong> sends <strong>two</strong> <code>GET /api/orders</code> requests. Harmless-looking for a GET, but the same mistake on a POST (pay, order, send) creates duplicates. Expected: one request per tap, and the button is disabled while it runs.',
+    },
+    {
+      title: 'Empty state flashes before the data loads',
+      hint: 'Tap Refresh (or Restart app) and watch the first half second.',
+      detail: '“No orders yet” with Browse restaurants appears briefly, then a spinner, then the orders. A user with 4 orders sees a message saying they have none. Expected: loading state first, then the data; the empty state only when the API really returns no orders.',
+    },
+    {
+      title: 'Offline banner stays after reconnecting',
+      hint: 'Turn Airplane mode on, then off, then load the orders again.',
+      detail: 'The “No internet connection” banner stays on screen even after the orders load successfully. Expected: the banner disappears as soon as the connection is back (and ideally the app reloads by itself).',
+    },
+    {
+      title: 'Raw TypeError on the Canceled filter',
+      hint: 'Tap each filter chip.',
+      detail: 'There are no canceled orders, and instead of a friendly message the screen shows <code>TypeError: Cannot read properties of undefined (reading \'map\')</code>. Expected: a filtered empty state like “No canceled orders” with a way back to All.',
+    },
+  ]}
+>
+  <BuggyOrdersApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Orders: endless loading spinner when the user has no orders (API returns empty list)
+
+**Precondition:** Account with no orders (here simulated with Map Local: `GET /api/orders` → `200`, body `[]`).
+
+**Steps:** 1. Open Orders. 2. Wait 30 seconds.
+
+**Expected:** Empty state "No orders yet" with a Browse restaurants button.
+**Actual:** "Loading…" spinner never stops. The network log shows the request finished with 200 after ~1 s.
+
+**Severity:** High (every new user sees a broken screen) · **Reproducible:** 10/10
+
+</Callout>
+
+## How to test it
+
+### How to create each state
+
+You can't wait for a real outage. Testers **force** these states on purpose:
+
+<Steps>
+
+1. **First use.** Create a fresh test account (or clear the app's data / reinstall) and visit every list screen before doing anything else.
+2. **User cleared.** Delete, archive or complete every item: empty the cart, read all notifications, remove all favorites.
+3. **No results.** Search for nonsense ("zzqx"), combine filters that exclude everything, or filter a date range with no data.
+4. **No permission.** Log in with a role that has fewer rights, open a link to someone else's data, or deny an OS permission (camera, photos, location) when asked. See <Term id="authorization" />.
+5. **Offline.** Turn on <Term id="airplane-mode" /> before opening a screen, and also **while** it loads. Then reconnect and see what recovers by itself. More in [Network conditions](/mobile/network-conditions).
+6. **Server errors and edge responses.** With a <Term id="proxy-tool" /> like Charles or Proxyman, use <Term id="map-local" /> to return `[]`, a `500`, a `403`, an empty body or broken JSON, or a breakpoint to delay a response by 30 s to trigger a <Term id="timeout" />. Step by step in [Proxy tools](/mobile/proxy-tools).
+
+</Steps>
+
+<Callout type="tip" title="Go back to 'normal' too">
+The recovery is where many bugs hide. After every error, **fix the cause** (reconnect, turn Map Local off) and check the screen **returns to normal** without restarting the app: data appears, banners disappear, nothing is duplicated.
+</Callout>
+
+### Checklist
+
+<Checklist
+  title="Empty & error state checklist"
+  storageKey="empty-and-error-states"
+  items={[
+    'Every list screen has a designed first-use empty state with a clear next step',
+    'An empty API response ([]) ends loading and shows the empty state, never an endless spinner',
+    'The empty state never flashes before the real data loads',
+    'Filtered / search "no results" says so and offers a way to clear the filter',
+    'Offline shows a plain message (and cached data if available), and recovers by itself when back online',
+    'Server errors (500, timeout, broken JSON) show a friendly message with a working Retry',
+    'Retry sends exactly one request per tap and is disabled while it runs',
+    'No permission (403 or a denied OS permission) is explained, not shown as "empty"',
+    'No raw codes, stack traces, null or undefined on any screen',
+    'Only one state is visible at a time (no data + empty message, no spinner over an error)',
+    'Navigation stays usable on every empty and error screen',
+    'Screen reader announces loading, empty and error states, and focus moves sensibly after Retry',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-EES-001',
+      title: 'First-use empty state for a new account',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Brand-new account with no orders'],
+      steps: ['Log in', 'Open the Orders tab'],
+      expected: 'After a short loading state, "No orders yet" is shown with an explanation and a "Browse restaurants" button that opens the restaurant list.',
+    },
+    {
+      id: 'TC-EES-002',
+      title: 'Empty API response ends the loading state',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Proxy Map Local: GET /api/orders returns 200 with body []'],
+      steps: ['Open the Orders tab', 'Wait 10 seconds'],
+      expected: 'The spinner stops within the normal response time and the empty state is shown.',
+    },
+    {
+      id: 'TC-EES-003',
+      title: 'Server error shows a recoverable error state',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Proxy Map Local: GET /api/orders returns 500'],
+      steps: ['Open the Orders tab', 'Read the message', 'Turn off Map Local', 'Tap Try again'],
+      expected: 'A friendly message with no codes or technical text and a Try again button. After Try again, exactly one request is sent and the orders appear.',
+    },
+    {
+      id: 'TC-EES-004',
+      title: 'Offline and back online',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Orders were loaded at least once'],
+      steps: ['Turn on airplane mode', 'Pull to refresh on Orders', 'Turn off airplane mode', 'Wait 5 seconds'],
+      expected: 'While offline, a "You\'re offline" banner is shown and the saved orders stay visible. After reconnecting, the banner disappears and the list refreshes without user action.',
+    },
+    {
+      id: 'TC-EES-005',
+      title: 'Filter with no results',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Account has orders, none of them canceled'],
+      steps: ['Open Orders', 'Tap the "Canceled" filter'],
+      expected: '"No canceled orders" is shown with a "Show all orders" action. Tapping it shows all orders again.',
+    },
+    {
+      id: 'TC-EES-006',
+      title: 'No permission is not shown as empty',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Logged in as a team member without the admin role', 'Team has orders'],
+      steps: ['Open Team orders'],
+      expected: 'The screen explains that only admins can see team orders and offers "Request access". It does not say "No orders yet".',
+    },
+    {
+      id: 'TC-EES-007',
+      title: 'No empty-state flash on a normal load',
+      priority: 'low',
+      type: 'edge',
+      preconditions: ['Account with orders', 'Screen recording on (to slow-motion review)'],
+      steps: ['Force-close the app', 'Open it and go to Orders', 'Review the recording frame by frame'],
+      expected: 'Only the loading state and then the orders appear. The empty state is never visible, not even for one frame.',
+    },
+    {
+      id: 'TC-EES-008',
+      title: 'Error state is announced by the screen reader',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['VoiceOver or TalkBack is on', 'Map Local returns 500'],
+      steps: ['Open the Orders tab', 'Wait for the error'],
+      expected: 'The screen reader announces the error message, and swiping reaches the Try again button. After Try again succeeds, focus lands on the list or its heading, not on nothing.',
+    },
+  ]}
+/>
+
+## Accessibility
+
+- **Announce state changes.** When loading ends in an empty or error state, screen reader users must hear it. On iOS and Android, the app should post an accessibility announcement or move focus to the message.
+  <DevNote>On the web, put the message in a live region (`role="status"` for empty, `role="alert"` for errors that need attention).</DevNote>
+- **Manage focus after Retry.** The Retry button disappears when content loads. Focus should move to the content (or its heading), not get lost at the top of the page.
+- **The illustration is decorative.** It should be hidden from screen readers. The **text** carries the meaning.
+- **Loading needs words too.** A spinner should have an accessible label like "Loading orders", and the skeleton itself should be hidden from screen readers.
+- **Don't rely on color or icons alone.** A red cloud icon without text tells a color-blind or blind user nothing.
+- **Contrast and text size.** Grey "helper" text in empty states is often too light: it still needs 4.5:1, and must not be cut off at large text sizes.
+- **Buttons are real buttons** with at least 44×44 pt / 48×48 dp touch targets and visible keyboard focus on the web.
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- Many apps follow the system layout for empty and "no results" states: icon, title, description, optional action.
+  <DevNote>SwiftUI has a built-in `ContentUnavailableView` for them (iOS 17+).</DevNote>
+- Test with **airplane mode** from Control Center, and with **Low Data Mode** and **Wi-Fi with no internet**.
+- Check that denied permissions (Photos, Location) explain how to re-enable them in **Settings**, ideally with a button that opens the app's settings page.
+- Use the **Network Link Conditioner** (developer setting) for "100% Loss" and very slow profiles.
+
+</Tab>
+<Tab>
+
+- Material guidance: keep empty states simple, with a short message and, where it helps, one action. Pull-to-refresh is a common recovery path, so test it on error screens too.
+- Test with **airplane mode**, **mobile data off for this app** (per-app data restriction), and **Data Saver**.
+- On the emulator, use the extended controls (**Cellular** settings) to simulate no signal or slow networks.
+- Rotate the device and resize on tablets and foldables: the empty state should stay centered and readable.
+
+</Tab>
+<Tab>
+
+- Use <Term id="devtools" /> → Network: **Offline** and throttling presets, **Block request URL**, and local overrides to return `[]` or a 500.
+- Check the **Console** for errors while empty or error states show, and make sure nothing technical leaks into the page.
+- Web apps can also show **error pages** (404, 500). Test a broken URL: is there a friendly page with a way back home, and the right <Term id="http-status-code" />?
+- Check the browser **back button** after an error: does it go somewhere sensible?
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'The API returns 200 with an empty list [], but the Orders screen keeps spinning. What kind of bug is this?',
+      options: ['A server error', 'The empty state is not handled: the loading state never ends', 'A slow network', 'A localization bug'],
+      answer: 1,
+      explain: 'The request succeeded with zero items. The app should switch to the empty state, but it only stops loading when items arrive.',
+    },
+    {
+      q: 'Which error message is best?',
+      options: ['"Error 500"', '"We couldn\'t load your orders. This is on our side. [Try again]"', '"Invalid request. You did something wrong."', '"TypeError: undefined"'],
+      answer: 1,
+      explain: 'It says what happened, whose problem it is, and offers a way to recover. No codes, no blame.',
+    },
+    {
+      q: 'A team member without admin rights opens Team orders and sees "No orders yet", but the team has 40 orders. What is wrong?',
+      options: ['Nothing, they can\'t see them anyway', 'A permission error is shown as an empty state, so the user thinks data is missing', 'The list needs a skeleton'],
+      answer: 1,
+      explain: 'No permission and no data are different. The user should be told they need access, and how to get it.',
+    },
+    {
+      q: 'How can a tester make the Orders API return a 500 error on demand?',
+      options: ['Wait for the server to crash', 'Use a proxy tool (Map Local or a breakpoint) to replace the response', 'Turn the phone off and on', 'Ask the user'],
+      answer: 1,
+      explain: 'Proxy tools like Charles or Proxyman can return any status code or body, so you can test error states any time.',
+    },
+    {
+      q: 'You reconnect after being offline, but the "You\'re offline" banner stays. What should you check next?',
+      options: ['Whether the app recovers by itself or only after a restart', 'The app icon', 'The font size', 'Nothing, it\'s cosmetic'],
+      answer: 0,
+      explain: 'Recovery is part of the feature. Note whether data reloads, whether the banner clears, and whether only a restart fixes it.',
+    },
+    {
+      q: 'For a loading list, what is usually better than a blank screen?',
+      options: ['A full-screen error', 'A skeleton in the shape of the list', 'An empty state that says "No orders yet"'],
+      answer: 1,
+      explain: 'A skeleton shows that something is coming, in the layout of the real content, without jumping when data arrives.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Every data screen has four states: **loading, data, empty and error**. Exactly one should be visible at a time.
+- Empty comes in types (**first use, user cleared, no results, no permission**), and errors in kinds (**offline, server error, timeout**). Each needs its own message.
+- A good state says **what happened, why, and what to do next**, with a **Retry or action that really works**, and never shows raw codes or blames the user.
+- Force the states yourself: **fresh accounts, deleting everything, airplane mode, and proxy tools returning `[]`, 500 or slow responses**.
+- Always test the **way back**: reconnect, retry, clear the filter, and check the screen fully recovers.
+
+</KeyTakeaways>

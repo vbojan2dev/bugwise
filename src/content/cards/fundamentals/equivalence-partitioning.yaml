@@ -1,0 +1,48 @@
+teaser: "You can't type every possible age into an Age field. So which handful of values actually finds the bugs?"
+cards:
+  - type: flip
+    front: "What is an equivalence partition?"
+    back: "A group of values the app should treat exactly the same way. Test one value from it and you've covered the whole group."
+  - type: quiz
+    q: "Cart quantity must be 1 to 10. Which set is a minimal EP set for the number line?"
+    options: ["1, 5, 10", "-3, 5, 15", "5, 6, 7"]
+    answer: 1
+    explain: "There are three partitions: 0 or less, 1 to 10, and 11 or more. -3, 5 and 15 pick one from each. The others only test the valid range."
+  - type: quiz
+    q: "Age must be 18 to 60, whole years. Which partitions live off the number line?"
+    options: ["Empty, text like 'abc', decimals", "19, 30 and 59", "Only negative numbers"]
+    answer: 0
+    explain: "Empty, 'abc' and 25.5 can't be drawn on the line, but users and bugs send them all the time. Empty fields are a favorite crash."
+  - type: flip
+    front: "Ages 18–60 are valid. Why is testing 20, 30, 40 and 50 wasteful?"
+    back: "They're all in the same partition, so they behave the same. Only split where the rule behaves differently."
+  - type: thisorthat
+    prompt: "A sign-up form has age, email and country. You want to check that age 12 is rejected."
+    left: "Age 12 + broken email"
+    right: "Age 12, rest valid"
+    answer: right
+    explain: "Test invalid partitions one at a time. The email error could hide the age check, so you'd never know whether 12 was rejected."
+  - type: thisorthat
+    prompt: "A promo code field is optional. If filled in, the code must be 6 to 10 characters. Leaving it empty is…"
+    left: "A valid partition"
+    right: "An invalid partition"
+    answer: left
+    explain: "The field is optional, so empty is allowed. In a required field, the same empty value would be invalid. The rule decides the partition, not habit."
+  - type: truefalse
+    statement: "If the Age field opens a number keyboard, you can skip the 'not a number' partition."
+    answer: false
+    explain: "Users can paste, autofill can insert odd values, and anyone can call the API directly. The keyboard is a convenience, not validation."
+  - type: truefalse
+    statement: "Valid partitions from different fields can share one test."
+    answer: true
+    explain: "Age 35, a valid email and a valid country in one sign-up covers three valid partitions. If it fails, split it up and investigate."
+  - type: spotbug
+    screen: ["Shipping by order total:", "Under €20: €4.99", "€20–49.99: €2.99 · €50+: free", "Tested carts: €35 and €80"]
+    question: "What's missing from this test set?"
+    bug: "The 'under €20' output partition is never tested."
+    explain: "Each shipping price is its own output partition. €35 and €80 cover two of three, so a cart worth about €12 is still needed."
+  - type: spotbug
+    screen: ["Age partitions:", "A: 0–18 · rejected", "B: 18–60 · accepted", "C: 61+ · rejected"]
+    question: "What's wrong with these partitions?"
+    bug: "A and B overlap, so 18 is in both."
+    explain: "Partitions must not overlap or leave gaps. Otherwise nobody knows whether 18 should be accepted, and your expected results contradict each other."

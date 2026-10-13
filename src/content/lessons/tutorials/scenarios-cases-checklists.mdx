@@ -1,0 +1,417 @@
+---
+title: Test Scenarios vs Test Cases vs Checklists
+description: Learn the difference between test scenarios, test cases and checklists, when each one fits, and how to turn a user story into all three, with a hands-on sorting exercise for a food delivery app.
+order: 3
+level: beginner
+minutes: { short: 12, long: 20 }
+platform: both
+tags: [test design, documentation, test cases, checklists, test scenarios]
+---
+
+import ArtifactZoom from '@/components/demos/tutorial-planning/ArtifactZoom';
+import ArtifactSorter from '@/components/demos/tutorial-planning/ArtifactSorter';
+import StoryTree from '@/components/demos/tutorial-planning/StoryTree';
+
+It's Monday at a food delivery startup. Your lead drops a message in the team chat: *"Reorder ships next sprint. Can you put the testing together? Scenarios first, then whatever else you think we need."*
+
+Scenarios? Test cases? Someone else on the team keeps talking about "the regression checklist". Are those three names for the same thing? (They're not.) This lesson sorts them out, so you know which one to write, how much detail to put in, and why.
+
+## Three artifacts, three questions
+
+Each artifact answers a different question:
+
+| Artifact | Answers | Looks like |
+| --- | --- | --- |
+| <Term id="test-scenario">Test scenario</Term> | **What** should we test? | One line: "Reorder when the restaurant is closed" |
+| <Term id="test-case">Test case</Term> | **How** exactly, and what counts as a pass? | Preconditions, steps, data, expected result |
+| <Term id="checklist">Checklist</Term> | What must I **remember** to check? | A list of short checks to tick, no steps |
+
+<Callout type="example" title="Think of a trip">
+
+A **scenario** is "visit Rome". A **test case** is the turn-by-turn route with the exact address and what the hotel looks like when you arrive. A **checklist** is the packing list you glance at before leaving: passport, charger, tickets. You need all three, just not for the same job.
+
+</Callout>
+
+Use the zoom below to see one idea (reordering a past order when some items are sold out) at all three levels of detail.
+
+<ArtifactZoom client:visible />
+
+<Short>
+
+## The essentials
+
+### When to use which
+
+- **Scenarios** to plan and agree on coverage with your team, fast. Always start here.
+- **Test cases** where mistakes are costly or proof is needed: payments, banking, health, anything regulated. Also when **new people** will run the tests.
+- **Checklists** for quick, repeated checks by people who know the app: a <Term id="smoke-testing">smoke</Term> round on each build, a quick <Term id="sanity-testing">sanity</Term> check after a small fix, a light regression pass, or reminders during <Term id="exploratory-testing" />.
+
+### How they relate
+
+**One scenario → several test cases.** "Reorder when some items are sold out" becomes: 1 of 3 items sold out, every item sold out, a sold-out item with extras. Checklists don't sit in that chain. They cut across it as quick reminders.
+
+### From user story to tests in one line
+
+Read the <Term id="user-story" /> and its <Term id="acceptance-criteria" /> ([how they work](/tutorials/user-stories-and-acceptance-criteria)) → list the scenarios (happy path, problems, limits) → turn the risky ones into test cases → collect quick checks into a checklist.
+
+### How much detail?
+
+Write enough that **someone who has never seen the app** gets the same Pass or Fail as you, and no more. For the full guide to writing a single case, see [How to Write Test Cases](/tutorials/writing-test-cases).
+
+<Callout type="tip">
+
+Most real teams **mix** the three. A typical pack: one page of scenarios, detailed cases for the risky 20%, and a checklist for everything you run on every build.
+
+</Callout>
+
+Switch to **Detailed** at the top for each artifact in depth, a full worked example from user story to test cases, and how to keep them maintainable.
+
+</Short>
+
+<Long>
+
+## Test scenarios in depth
+
+A <Term id="test-scenario" /> is a **one-line description of a situation worth testing**. It names the user, the action and the twist, and stops there.
+
+Good scenarios share three traits:
+
+- **They describe a situation, not a click path.** "Reorder when the cart already has items from another restaurant", not "Tap Orders, tap Reorder".
+- **They can be read by anyone.** Product owners, designers and developers can review a list of scenarios in five minutes and say "you forgot the closed-restaurant case".
+- **They cover the unhappy paths too.** For every happy scenario, ask: what if something is missing, wrong, late, or at its limit?
+
+<Compare>
+<Do title="Clear scenarios">
+
+- Reorder a delivered order with all items available
+- Reorder when some items are sold out
+- Reorder when prices have changed since the original order
+- Reorder from a closed restaurant
+
+</Do>
+<Dont title="Too vague or too detailed">
+
+- Test Reorder *(what about it?)*
+- Reorder works *(that's a hope, not a scenario)*
+- Tap Orders, tap Reorder on #1042, check 1 × Margherita *(that's already a test case)*
+
+</Dont>
+</Compare>
+
+## Test cases in depth
+
+A <Term id="test-case" /> turns one slice of a scenario into **exact instructions**: <Term id="precondition">preconditions</Term>, numbered steps, <Term id="test-data" /> and an <Term id="expected-result" /> that can only pass or fail. Everything about writing one well is in [How to Write Test Cases](/tutorials/writing-test-cases). Here we focus on one question that lesson leaves open: **how detailed should a case be?**
+
+### How detailed should a test case be?
+
+There's no single right answer, but there is a good rule: **detail should follow risk and the reader.**
+
+| Situation | Detail level | Example step |
+| --- | --- | --- |
+| Regulated or money flow, new testers | High | "Tap **Reorder** on order #1042 (Luigi's, 3 May)" |
+| Normal feature, team knows the app | Medium | "Reorder order #1042" |
+| Low risk, experienced team | Low (maybe a checklist) | "Reorder works for a past order" |
+
+Two tests for "enough detail":
+
+1. **The new-tester test.** Could someone on their first day run it without asking you a question?
+2. **The two-tester test.** Would two testers running it independently agree on Pass or Fail?
+
+If either answer is no, add detail. If the case describes every pixel and breaks whenever a button moves, you've gone too far.
+
+<Compare>
+<Do title="Right amount of detail">
+
+**Steps:** 1. Open the Orders tab. 2. Tap **Reorder** on order #1042.
+
+**Expected:** Cart shows 1 × Margherita (no olives) at today's price, with the message "2 items are no longer available".
+
+</Do>
+<Dont title="Over-specified">
+
+**Steps:** 1. Tap the third icon from the left in the bottom bar (grey clock). 2. Scroll down 240 px. 3. Tap the green button in the top-right of the second card.
+
+**Expected:** Total is exactly 11.90 €.
+
+</Dont>
+</Compare>
+
+The bad example breaks the moment the designer changes a color or the restaurant changes a price, even though nothing is wrong with Reorder.
+
+## Checklists in depth
+
+A <Term id="checklist" /> is a list of short checks **without steps or detailed expected results**. It trusts the tester to know how to get there and what "right" looks like. That's what makes it fast to write, fast to run and cheap to update.
+
+Checklists come in two main flavors:
+
+- **Smoke and regression checklists.** The 10 to 30 things you check on every build or before every release (see [Regression and Smoke Suites](/tutorials/regression-and-smoke-suites)), such as "Reorder button shows on delivered orders" or "Cart badge updates".
+- **Heuristics checklists.** Reminders of *kinds* of things that often break, used while [exploring](/tutorials/exploratory-testing): rotate the phone, interrupt with a call, go offline, switch to <Term id="dark-mode" />, turn on large text, try a <Term id="screen-reader" />.
+
+<Compare>
+<Do title="Checkable items">
+
+- Sold-out items are skipped, not added at 0 €
+- Extras such as "no onions" are kept
+- Reorder button is at least 44 × 44 pt
+
+</Do>
+<Dont title="Not checkable">
+
+- Reorder is good
+- Check everything about the cart
+- Make sure there are no bugs
+
+</Dont>
+</Compare>
+
+<Callout type="warning" title="The checklist trap">
+
+A checklist only works if the person running it knows the app. "Extras are kept" means nothing to someone who has never added an extra. When you hand a checklist to someone new, pair them up for the first run or link each item to a test case.
+
+</Callout>
+
+## How they fit together
+
+<StoryTree />
+
+- A **user story** gives you a handful of **scenarios**.
+- Each scenario produces **two or more test cases**: the happy one, the negative ones, the limits.
+- **Checklists** run alongside: a smoke checklist for every build, a heuristics checklist for exploratory sessions.
+
+Linking each test case back to its scenario and story is what makes a <Term id="traceability-matrix" /> possible: you can show which requirement is covered by which tests.
+
+## When to use which
+
+| Context | Lean towards | Why |
+| --- | --- | --- |
+| Banking, health, regulated | Detailed test cases | Auditors want evidence; mistakes are costly |
+| Fast startup, frequent releases | Scenarios + checklists | Cheap to write and update as the app changes |
+| New testers on the team | Detailed test cases | They teach the product and keep results consistent |
+| Experienced testers | Checklists | They know the "how"; save time for exploring |
+| Regression pack run often | Cases for risky flows, checklist for the rest | Balance repeatability and upkeep |
+| Exploratory session | A short goal + heuristics checklist | Freedom to follow your curiosity |
+
+<Callout type="note" title="Honest note">
+
+Teams use these words loosely. Some call a list of scenarios a "checklist"; some call any spreadsheet row a "test case". Don't argue about the label. Ask: *does this have steps and an expected result?* That tells you what you're really looking at.
+
+</Callout>
+
+## Worked example: from user story to scenarios to cases
+
+Here's the full journey for FoodDash's **Reorder** feature.
+
+<Callout type="info" title="User story: FoodDash Reorder">
+
+*As a returning customer, I want to reorder a previous order from my order history so I can get my usual meal in two taps.*
+
+**Acceptance criteria**
+
+1. Delivered orders from the **last 90 days** show a **Reorder** button.
+2. Tapping Reorder adds all available items, **with the same extras**, to the cart and opens the cart.
+3. Items that are no longer available are skipped, and the app shows "N items are no longer available".
+4. **Today's prices** are used. If the total differs from the original order, a note says so.
+5. If the restaurant is closed, Reorder is disabled and shows "Closed · opens at 11:00".
+6. If the cart already has items from another restaurant, the app asks "Start a new cart?" before replacing it.
+
+</Callout>
+
+<Steps>
+
+1. **Read the story and mark every rule.** Six criteria, three numbers or limits (90 days, N items, opening time) and three messages. Write down questions: does "last 90 days" include day 90? What happens if *every* item is sold out?
+2. **List the scenarios.** One per rule at least, plus the unhappy and edge situations you can think of:
+   - SC-RO-01 Reorder a delivered order with all items available
+   - SC-RO-02 Reorder when some items are sold out
+   - SC-RO-03 Reorder when prices changed since the original order
+   - SC-RO-04 Reorder from a closed restaurant
+   - SC-RO-05 Reorder when the cart has items from another restaurant
+   - SC-RO-06 Reorder button visibility (age of order, canceled orders)
+3. **Review the scenarios with the team.** Share the list in refinement. The product owner answers: day 90 is included; canceled orders never show Reorder; if every item is sold out, the cart doesn't open and the message reads "None of these items are available right now".
+4. **Turn the risky scenarios into test cases.** Money, data and confusing states get full cases. Below are four of them.
+5. **Collect the quick checks into a checklist.** UI and platform details that an experienced tester can check in seconds.
+
+</Steps>
+
+### Four of the test cases
+
+<TestCases
+  cases={[
+    {
+      id: "TC-RO-002",
+      title: "Reorder keeps all items and their extras",
+      priority: "high",
+      type: "positive",
+      preconditions: ["Signed in as tom@test.com", "Order #1038 from Luigi's delivered yesterday: 2 × Margherita (no olives), 1 × Coke", "Luigi's is open and all items are available", "Cart is empty"],
+      steps: ["Open the Orders tab", "Tap 'Reorder' on order #1038"],
+      expected: "The cart opens with 2 × Margherita showing the extra 'no olives' and 1 × Coke. No 'not available' message appears.",
+    },
+    {
+      id: "TC-RO-007",
+      title: "Sold-out items are skipped and counted in a message",
+      priority: "high",
+      type: "negative",
+      preconditions: ["Signed in as tom@test.com", "Order #1042 from Luigi's delivered 3 days ago: Margherita (no olives), Garlic bread, Tiramisu", "Garlic bread and Tiramisu are marked sold out", "Cart is empty"],
+      steps: ["Open the Orders tab", "Tap 'Reorder' on order #1042"],
+      expected: "The cart opens with 1 × Margherita (no olives) only. The message '2 items are no longer available' is shown. The total equals today's Margherita price plus the delivery fee.",
+    },
+    {
+      id: "TC-RO-013",
+      title: "Reorder shows on a 90-day-old order but not on a 91-day-old one",
+      priority: "medium",
+      type: "edge",
+      preconditions: ["Signed in as tom@test.com", "Order #2210 delivered exactly 90 days ago", "Order #2211 delivered exactly 91 days ago"],
+      steps: ["Open the Orders tab", "Scroll to orders #2210 and #2211"],
+      data: "Order dates set in the test database relative to today",
+      expected: "Order #2210 shows an enabled 'Reorder' button. Order #2211 shows no 'Reorder' button.",
+    },
+    {
+      id: "TC-RO-011",
+      title: "Cancel on 'Start a new cart?' keeps the existing cart",
+      priority: "high",
+      type: "negative",
+      preconditions: ["Signed in as tom@test.com", "Cart contains 1 × Classic burger from Burger Bros", "A delivered order #1050 from Sushi Go exists"],
+      steps: ["Open the Orders tab", "Tap 'Reorder' on order #1050", "In the 'Start a new cart?' dialog, tap 'Cancel'"],
+      expected: "The dialog closes. The cart still contains only 1 × Classic burger from Burger Bros. No Sushi Go items were added.",
+    },
+  ]}
+/>
+
+### The Reorder checklist
+
+- Reorder button visible on delivered orders only
+- Button readable in light and dark mode
+- Button is at least 44 × 44 pt (iOS) / 48 × 48 dp (Android)
+- Screen reader announces "Reorder, order from Luigi's, 3 May"
+- Cart badge shows the new item count
+- Price-change note appears when the total differs
+- Double-tapping Reorder doesn't add the items twice
+- Works after rotating and after returning from the background
+- Offline: a clear "No connection" message, nothing half-added
+
+<Callout type="tip" title="Notice the split">
+
+The four cases cover money, data and confusing states, where a wrong guess costs real customers. The checklist covers things an experienced tester can see at a glance. Same feature, two artifacts, each doing what it's best at.
+
+</Callout>
+
+## Keeping them maintainable
+
+Tests that nobody updates turn into noise: they fail for the wrong reasons, so people stop trusting them. A few habits keep your tests useful:
+
+- **Name things by label, not by position or color.** "Tap **Reorder**", not "tap the green button on the right".
+- **Don't hard-code values that change.** Prefer "today's price for Margherita" over "11.90 €", unless the exact number *is* what you're testing.
+- **Keep data in preconditions or test data, not buried in steps.** It's easier to update one line than to hunt through ten steps.
+- **Link every case to its scenario and story.** When the story changes, you instantly know which cases to review.
+- **Prune.** When a feature is removed or redesigned, archive the old cases. A pack of 300 cases where 80 are outdated is worse than a pack of 220 that are all correct.
+- **Promote and demote.** A checklist item that keeps finding bugs deserves a full case. A case that has passed unchanged for a year in a low-risk area can shrink to a checklist line.
+
+## Common mistakes
+
+<Callout type="bug" title="Watch out for these">
+
+- **Jumping straight to test cases.** Without a scenario list you can't see gaps, and nobody can review your coverage quickly.
+- **Writing scenarios that are really test cases.** If a scenario has steps or exact data, it's a case in disguise.
+- **Checklists with uncheckable items.** "Reorder is good" can't be ticked. Every item should have an obvious yes or no.
+- **Same detail everywhere.** Full cases for a tooltip text, a vague checklist line for the payment total. Match detail to risk.
+- **Handing a checklist to a newcomer** without explaining the app first.
+- **Never updating.** Outdated tests cause false failures and slowly destroy trust in the whole pack.
+
+</Callout>
+
+</Long>
+
+## Practice: sort the Reorder pile
+
+A teammate pasted everything for Reorder into one document. Sort each item into the right artifact, then pick the artifact that fits each workplace situation.
+
+<ArtifactSorter client:visible />
+
+## Before you hand over your test pack
+
+<Checklist
+  title="Test pack checklist"
+  storageKey="scenarios-cases-checklists"
+  items={[
+    "I listed scenarios first and reviewed them with the team",
+    "Every acceptance criterion is covered by at least one scenario",
+    "Each scenario includes unhappy and edge situations, not just the happy path",
+    "Risky flows (money, data, confusing states) have detailed test cases",
+    "Each test case links back to its scenario or user story",
+    "Checklist items are short and have an obvious yes or no answer",
+    "Detail matches the reader: newcomers get cases, experienced testers can use checklists",
+    "Steps use labels, not positions or colors, and avoid hard-coded values that change",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "Which of these is a test scenario?",
+      options: [
+        "Steps: open Orders, tap Reorder on #1042. Expected: 1 × Margherita in the cart",
+        "Reorder when the restaurant is closed",
+        "Reorder button is at least 44 × 44 pt",
+      ],
+      answer: 1,
+      explain: "A scenario is a one-line situation that says what to test. The first option is a test case, the third is a checklist item.",
+    },
+    {
+      q: "What does a checklist usually leave out compared with a test case?",
+      options: [
+        "The feature name",
+        "Detailed steps and expected results",
+        "Anything to check at all",
+      ],
+      answer: 1,
+      explain: "A checklist is a list of short checks. It trusts the tester to know how to get there and what right looks like.",
+    },
+    {
+      q: "A banking app must prove to auditors exactly what was tested for a new transfer limit. What fits best?",
+      options: ["A checklist", "A list of scenarios", "Detailed test cases with recorded results"],
+      answer: 2,
+      explain: "Regulated, risky work needs repeatable steps, exact data and a recorded result for each check.",
+    },
+    {
+      q: "How do scenarios and test cases usually relate?",
+      options: [
+        "One test case contains several scenarios",
+        "One scenario leads to several test cases",
+        "They are two names for the same thing",
+      ],
+      answer: 1,
+      explain: "A scenario is the high-level 'what'. It is broken down into several cases: the happy one, the negative ones and the limits.",
+    },
+    {
+      q: "Which step makes a test case harder to maintain?",
+      options: [
+        "Tap 'Reorder' on order #1042",
+        "Tap the green button in the top-right of the second card",
+        "Open the Orders tab",
+      ],
+      answer: 1,
+      explain: "Position and color change with every redesign. Naming the control by its label keeps the case valid.",
+    },
+    {
+      q: "You have 60 minutes to explore a new feature. What helps most?",
+      options: [
+        "A heuristics checklist (rotate, interrupt, offline, dark mode)",
+        "50 fully scripted test cases",
+        "No preparation at all",
+      ],
+      answer: 0,
+      explain: "A heuristics checklist reminds you what often breaks, without scripting your exploration.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A **scenario** says what to test in one line, a **test case** says exactly how and what counts as a pass, and a **checklist** is a list of quick checks without steps.
+- Start with scenarios: they're fast to write and easy for the whole team to review.
+- One scenario becomes several test cases. Checklists run alongside, for smoke, regression and exploratory reminders.
+- Match detail to risk and reader: detailed cases for money, regulated flows and newcomers; checklists for experienced testers and frequent checks.
+- Keep tests maintainable: use labels not positions, avoid hard-coded values, link to stories, and prune old ones.
+
+</KeyTakeaways>

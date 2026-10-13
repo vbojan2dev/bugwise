@@ -1,0 +1,76 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/ui/Icon.astro';
+import PhaseStepper from './PhaseStepper';
+import { CAPSTONE_PAGES, PHASES } from './phases';
+import type { PhaseId } from '@/lib/capstone';
+import { href } from '@/lib/url';
+
+interface Props {
+  /** Page path without base, e.g. "/capstone/plan". */
+  path: string;
+  title: string;
+  description: string;
+  lead?: string;
+  phase?: PhaseId | 'results';
+  /** Show the stepper (default true). */
+  stepper?: boolean;
+}
+
+const { path, title, description, lead, phase, stepper = true } = Astro.props;
+const meta = PHASES.find((p) => p.id === phase);
+const i = CAPSTONE_PAGES.findIndex((p) => p.path === path);
+const prev = i > 0 ? CAPSTONE_PAGES[i - 1] : undefined;
+const next = i >= 0 && i < CAPSTONE_PAGES.length - 1 ? CAPSTONE_PAGES[i + 1] : undefined;
+---
+
+<BaseLayout title={title.includes('Capstone') ? title : `${title} · Capstone`} description={description}>
+  <section class="relative overflow-hidden border-b border-line print:hidden">
+    <div class="bg-grid absolute inset-0 -z-10 opacity-60"></div>
+    <div class="container-page py-10 sm:py-12">
+      <a href={href('/capstone')} class="inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:underline">
+        <Icon name="flag" size={15} /> Capstone · FoodDash 2.0
+      </a>
+      {meta && (
+        <p class="mt-4 text-xs font-semibold tracking-wider text-faint uppercase">
+          Phase {meta.n} of {PHASES.length} · about {meta.minutes}
+        </p>
+      )}
+      <h1 class:list={['text-3xl font-bold tracking-tight text-balance sm:text-4xl', meta ? 'mt-1' : 'mt-4']}>{title}</h1>
+      {lead && <p class="mt-3 max-w-3xl text-lg leading-relaxed text-pretty text-muted">{lead}</p>}
+      {stepper && (
+        <div class="mt-7 max-w-4xl">
+          <PhaseStepper client:load current={phase} />
+        </div>
+      )}
+    </div>
+  </section>
+
+  <div class="container-page py-10" data-pagefind-body>
+    <span hidden data-pagefind-meta="section:Capstone"></span>
+    <slot />
+  </div>
+
+  <nav aria-label="Capstone pages" class="container-page pb-14 print:hidden">
+    <div class="grid grid-cols-1 gap-3 border-t border-line pt-6 sm:grid-cols-2">
+      {
+        prev ? (
+          <a href={href(prev.path)} class="card group min-w-0 p-4 hover:border-line-strong">
+            <span class="text-xs text-faint">← Previous</span>
+            <span class="block truncate font-semibold group-hover:text-brand">{prev.title}</span>
+          </a>
+        ) : (
+          <span />
+        )
+      }
+      {
+        next && (
+          <a href={href(next.path)} class="card group min-w-0 p-4 text-right hover:border-line-strong">
+            <span class="text-xs text-faint">Next →</span>
+            <span class="block truncate font-semibold group-hover:text-brand">{next.title}</span>
+          </a>
+        )
+      }
+    </div>
+  </nav>
+</BaseLayout>

@@ -1,0 +1,45 @@
+teaser: "Most QA hiring processes have about six stages, and each one checks something different. Do you know what the recruiter call is really testing?"
+cards:
+  - type: flip
+    front: "What is an ATS?"
+    back: "An applicant tracking system: software that stores job applications and lets recruiters search and filter them, often by keywords."
+  - type: flip
+    front: "What does the recruiter screen mainly check?"
+    back: "Motivation, clear communication and logistics like start date, location and salary range. Recruiters usually aren't testers."
+  - type: quiz
+    q: "In a live task you're told: 'Test this login page.' What do you do first?"
+    options: ["Start typing random passwords", "Ask a few questions and say your plan", "Write 30 test cases silently"]
+    answer: 1
+    explain: "Questions show you think before testing, and interviewers often hide key details until asked. A spoken plan makes your thinking visible."
+  - type: quiz
+    q: "Which question is best to ask a QA lead at the end of a technical interview?"
+    options: ["How many vacation days do I get?", "What does your company do?", "When does QA first see a feature?"]
+    answer: 2
+    explain: "It shows interest in the work and tells you how the team operates. Perks fit the recruiter or offer stage."
+  - type: truefalse
+    statement: "Every company uses the same six interview rounds in the same order."
+    answer: false
+    explain: "The six stages are a common pattern. Startups may have one chat; large companies may have more rounds. It varies by company and country."
+  - type: truefalse
+    statement: "In a practical task, clear priorities usually matter more than the number of bugs found."
+    answer: true
+    explain: "Five important bugs explained well beat fifty typos. Practical tasks check prioritization and communication."
+  - type: thisorthat
+    prompt: "You're sharing your screen and testing a search box. The interviewer is silent."
+    left: "Think aloud"
+    right: "Test quietly"
+    answer: left
+    explain: "Silence makes interviewers guess. Saying why you try each input shows your structure and risk thinking."
+  - type: thisorthat
+    prompt: "Your CV says 'quality checks'. The job ad asks for 'test cases' and 'bug reports', which you've written."
+    left: "Keep my wording"
+    right: "Use the ad's words"
+    answer: right
+    explain: "Recruiters and ATS software search for specific keywords. Use the ad's words wherever they are honestly true for you."
+  - type: spotbug
+    screen: ["Interviewer: Any questions for us?", "Candidate: No, I think you", "covered everything. Thanks!"]
+    bug: "No questions for the interviewer."
+    explain: "It can look like low interest, and you miss the chance to learn how the team really works. Prepare two or three questions."
+  - type: tip
+    title: "Wrap up every live task"
+    text: "End with: 'In 20 minutes I covered A and B. With more time I'd test C and D.' It shows you know testing is never complete."

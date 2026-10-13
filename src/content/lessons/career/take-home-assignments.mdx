@@ -1,0 +1,463 @@
+---
+title: Take-Home Assignments
+description: How to handle the classic "test this app and send us bug reports in 48 hours" task, from scoping and a short test approach to prioritized bug reports, a clear summary and the ethics of testing someone else's system, with a worked example on FoodDash.
+order: 2
+level: beginner
+minutes: { short: 10, long: 20 }
+platform: both
+tags: [career, interviews, take-home, bug reports, test approach]
+---
+
+import TakeHomeTriage from '@/components/demos/career/TakeHomeTriage';
+
+The email arrives on Wednesday afternoon:
+
+> *"Thanks for your time on the call! As a next step, please test the ordering flow of our web shop (link below) and send us your bug reports and any test cases you think are useful. You have 48 hours. It shouldn't take more than about four hours of work."*
+
+This is a **take-home assignment**, one of the most common practical tasks in junior QA hiring. It is also one of the best chances you will get, because it is the closest thing to real work in the whole process. Nobody is watching you think live, there's time to do it properly, and what you send is exactly the kind of work you would do on the job.
+
+It is also where many candidates fail, and usually not for lack of bugs found. They fail because of **how** they send them.
+
+## What reviewers actually look for
+
+A tester or QA lead will usually spend 15 to 30 minutes reading your submission. In that time they want to see:
+
+| They look for | Because on the job you'll need to |
+| --- | --- |
+| Did you follow the instructions? | Work from requirements and tickets |
+| Did you test the risky parts first? | Prioritize when time is short |
+| Can a developer reproduce each bug? | Write reports the team can act on |
+| Is there a clear summary? | Tell people what matters in one minute |
+| Did you say what you didn't test? | Be honest about coverage and risk |
+
+Notice what is **not** on the list: "found the most bugs".
+
+<Short>
+
+## The essentials
+
+### Plan before you click
+
+<Steps>
+
+1. **Read the instructions twice.** Note the scope (which pages or features), the deliverables (bug reports? test cases? which format?), the deadline and the expected effort.
+2. **Ask if something is unclear.** One short email with two or three questions is a good sign, not a weakness.
+3. **Write a five-line test approach:** what you'll test, in what order, on which devices or browsers, and what's out of scope.
+4. **Time-box it.** If they say "about four hours", plan for four to six, not twenty.
+
+</Steps>
+
+### Test the risky parts first
+
+Start with the main flow (search, add to cart, pay) and anything involving **money, data or login**. Then negative and edge cases. Visual details and typos come last.
+
+### Report like a professional
+
+Each important bug gets a full [bug report](/tutorials/writing-bug-reports): a clear title, steps to reproduce, expected and actual result, environment, severity and evidence. Sort them **by severity**, most serious first. Group trivial issues in a short "other observations" list.
+
+### Send a summary on top
+
+Half a page: what you tested, on what, the top three findings, what you didn't test and why, and any questions or assumptions.
+
+### Mistakes that fail candidates
+
+- **50 trivial bugs and no summary.** The one important bug drowns.
+- **No steps to reproduce.** "Checkout is broken" can't be fixed.
+- **Scope creep.** Testing the blog and the careers page when they asked for checkout.
+- **Ignoring the instructions:** wrong format, late, missing test cases they asked for.
+
+### Ethics
+
+Test **only** what you were given. Never run load tests, security attacks or password guessing on their systems, and never on <Term id="production" />. Use test data, never real cards or someone else's personal data. Don't publish the assignment.
+
+Switch to **Detailed** at the top for a full time plan, an approach template, how to choose and order bugs, a worked example submission built on FoodDash and the complete self-check.
+
+</Short>
+
+<Long>
+
+## Step 1: understand the assignment
+
+Read the email and any attached brief **twice**, and write down:
+
+- **Scope:** which product, which features or pages? "The ordering flow" means search, menu, cart, checkout and confirmation, not the blog.
+- **Deliverables:** bug reports only, or test cases too? A test plan? A summary?
+- **Format:** a document, a spreadsheet, a Jira project they invite you to, a specific template? Use it exactly.
+- **Environment:** a <Term id="staging" /> link, a test build through <Term id="testflight" />, an APK? Any test accounts or <Term id="test-card">test cards</Term>?
+- **Deadline and effort:** "48 hours" is the deadline; "about four hours" is the effort they expect. These are different.
+
+<Callout type="tip" title="Ask one good email of questions">
+
+If something important is unclear, ask early, in one email: *"Should I focus on the website, the mobile app or both? Are test cases expected for every bug or only for the main flows? Is there a test card I should use for payments?"* Reviewers often see good questions as a plus, because asking is a big part of the job. Then don't wait idle for the answer: state an assumption and start.
+
+</Callout>
+
+## Step 2: plan your time
+
+A realistic plan for "about four hours of work":
+
+| Time | What |
+| --- | --- |
+| 30 min | Read the brief, explore the product like a user, send questions |
+| 15 min | Write the test approach (below) |
+| 2 h | Test, risk first; take notes and screenshots as you go |
+| 1 h | Write the bug reports and any test cases they asked for |
+| 30 min | Write the summary, re-read everything, check the format |
+
+Two things people forget: **writing takes as long as testing**, and a short break before the final read-through catches embarrassing mistakes.
+
+Should you work longer than they ask? A little extra polish is fine. Spending thirty hours on a four-hour task can backfire: it sets an expectation you can't keep on the job, and reviewers may wonder whether you can scope work. If you do more, say so honestly in the summary ("I spent about six hours").
+
+## Step 3: write a short test approach
+
+Half a page, before you start testing. It keeps you focused and becomes part of your submission. It's a mini [test plan](/tutorials/writing-a-test-plan).
+
+```markdown
+## Test approach
+Scope (in): search, restaurant menu, cart, coupon, checkout, order confirmation.
+Scope (out): account settings, blog, careers page (not in the brief);
+  load and security testing (not allowed on a shared environment).
+Priorities (by risk): 1. paying and placing an order  2. cart totals and coupons
+  3. search and menu  4. mobile layout  5. visual details.
+Environment: Chrome 130 and Safari 18 on macOS; iPhone 15 Safari; Android Chrome
+  (Pixel emulator); viewport 360 px.
+Techniques: main happy paths first, then negative and boundary cases on inputs
+  (quantity, coupon, address); a 45-minute exploratory session on checkout.
+Data: test account from the brief, test card 4242 4242 4242 4242 (from the brief).
+```
+
+The test card number above stands in for whatever the brief gives you. Never use a real card.
+
+## Step 4: test, risk first
+
+Start with the **main flow** a customer takes from start to finish. If that breaks, nothing else matters. Then go deeper on the riskiest areas:
+
+- **Money:** totals, discounts, taxes, delivery fees, double submissions, refunds.
+- **Data:** forms that save addresses or profiles, what happens on refresh or Back.
+- **Access:** login, logout, sessions, other users' data.
+- **Inputs:** empty, too long, special characters, <Term id="boundary-value-analysis">boundaries</Term> like 0, 1, max and max + 1.
+- **Mobile and responsive:** small screens, rotation, slow network.
+
+Use the techniques you know: <Term id="equivalence-partitioning" />, boundary values, <Term id="exploratory-testing" /> with a charter, <Term id="error-guessing" />. Take notes as you go; screenshots and short screen recordings save you from "how did I get here?" later.
+
+## Step 5: choose and order your bugs
+
+You'll usually find more than you have time to write up. Decide what goes in and how:
+
+- **Full report** for anything Critical, Major or Minor that a developer needs to act on. Rate <Term id="severity" /> honestly; see [Severity vs Priority](/fundamentals/severity-vs-priority).
+- **One-liners** in an "Other observations" list for trivial issues: typos, small alignment problems, inconsistent colors.
+- **Questions** for things that might be intended: "Coupons don't combine. Is that by design?"
+- **Leave out** anything you got by stepping outside the rules (see Ethics below).
+
+Then **sort by severity**, most serious first. The reviewer should see your best finding in the first ten seconds.
+
+<Compare>
+<Do title="Ordered and grouped">
+
+1. **Critical:** Retrying a failed payment charges the card twice
+2. **Major:** Search finds nothing for lowercase "pizza"
+3. **Major:** Cookie banner hides Place order at 360 px
+4. **Minor:** Dates use US format in German
+
+Other observations (trivial): 4 typos, 2 color inconsistencies (list attached)
+
+</Do>
+<Dont title="In the order found">
+
+1. Typo in footer
+2. Logo is 2 px off
+3. Typo on About page
+4. Link color slightly different
+5. ...
+23. Card charged twice when retrying
+
+</Dont>
+</Compare>
+
+## Step 6: write clean bug reports
+
+Each full report follows the format from [How to Write a Bug Report](/tutorials/writing-bug-reports). For a take-home, make sure every one has:
+
+- **A title that says where, what and when:** *"Checkout: retrying after 'Payment failed' charges the card twice"*.
+- **Environment:** browser or device, OS, viewport, build or URL, test account.
+- **Numbered steps** someone else can follow without you.
+- **Expected and actual result**, separately.
+- **Severity** (and priority if they ask), with one line of reasoning for anything Critical.
+- **Evidence:** a screenshot or short recording; console errors or network responses from <Term id="devtools" /> if relevant.
+- **How often:** "3 of 3 tries" or "1 of 5".
+
+If they asked for **test cases**, write a handful of strong ones for the main flows, in the format from [How to Write Test Cases](/tutorials/writing-test-cases), rather than a hundred thin ones.
+
+## Step 7: present the results
+
+Put a short summary **at the top** of your submission. A reviewer who reads only this should know what you did and what you found.
+
+```markdown
+## Summary
+I tested the ordering flow (search to order confirmation) for about 4.5 hours
+on desktop Chrome/Safari, iPhone Safari and Android Chrome.
+
+Most important findings:
+1. CRITICAL: retrying after "Payment failed" charges the card twice (3/3 tries).
+2. MAJOR: search is case-sensitive; "pizza" finds 0 results, "Pizza" finds 6.
+3. MAJOR: on phones (360 px) the cookie banner hides "Place order" and can't be closed.
+
+In total: 1 critical, 3 major, 4 minor bugs (full reports below),
+plus 6 trivial observations (list at the end).
+
+Not tested, and why:
+- Account settings, blog, careers page: outside the scope of the brief.
+- Load and security testing: not appropriate on a shared environment.
+- Older browsers and tablets: no devices available; would be next.
+
+Questions and assumptions:
+- I assumed coupons are not meant to combine. Is that correct?
+- The brief didn't mention German, but the site offers it, so I did a short check.
+```
+
+The **"Not tested, and why"** section is what separates a professional from a beginner. It shows you know testing is never complete and that you made choices on purpose.
+
+## Mistakes that fail candidates
+
+<Callout type="bug" title="Common reasons a take-home gets a no">
+
+- **50 trivial bugs and no summary.** Volume without priority suggests you can't tell what matters.
+- **No steps to reproduce,** or steps that skip a precondition ("log in" with which account?).
+- **Expected and actual mixed together,** or no expected result at all.
+- **Scope creep:** a beautiful report on the careers page when they asked for checkout.
+- **Ignoring the instructions:** wrong format, missing test cases, a spreadsheet when they asked for a document, late without a word.
+- **Opinions as bugs:** "I don't like the blue" is feedback, not a defect. Mark suggestions as suggestions.
+- **Duplicates:** the same root cause reported five times on five pages. Report once and list where else it happens.
+- **Unchecked writing:** typos in a tester's submission are noticed.
+
+</Callout>
+
+## Ethics: what you must not do
+
+You've been given access to someone else's system. Behave as you would on the job, where breaking these rules could get you fired or worse.
+
+<Compare>
+<Do title="Fair play">
+
+- Test only the product, pages and environment you were given.
+- Use the test accounts and test cards from the brief.
+- Report a suspected security issue you noticed during normal use, calmly and privately, in your submission.
+- Keep the assignment and its links private.
+
+</Do>
+<Dont title="Out of bounds">
+
+- Load or stress tests: scripts that send thousands of requests.
+- Security attacks: guessing passwords, <Term id="sql-injection" /> payloads, scanning tools, trying to reach admin areas.
+- Real payment cards, real orders to real restaurants, other people's personal data.
+- Posting the task or the company's product online.
+
+</Dont>
+</Compare>
+
+If the assignment points you at a **live** website (<Term id="production" />), be extra careful: real customers and real businesses use it. Don't place real orders or send messages to real people; describe what you would test instead. If you're unsure whether something is allowed, ask before you do it.
+
+<Callout type="note" title="About AI tools">
+
+Some companies allow AI assistants for take-homes, some don't, and many say nothing. Follow the instructions, ask if unclear, and never send anything you couldn't explain line by line in the next interview, because they will often ask you to walk through your submission.
+
+</Callout>
+
+## Worked example: a FoodDash take-home
+
+Imagine the [Capstone](/capstone) brief arrived as a take-home: *"Here's FoodDash 2.0, build 412. Please test the release and send bug reports, a few test cases for checkout, and your recommendation. About four hours."* The Capstone is built exactly like this, so it's the best practice you can get. Here's what a strong submission could look like.
+
+<Callout type="warning" title="No spoilers">
+
+The example bugs below are **invented for this lesson** and are not the Capstone's hidden bugs. Find those yourself.
+
+</Callout>
+
+<div class="not-prose my-6 rounded-2xl border border-line bg-surface p-5 text-sm leading-relaxed text-fg">
+  <p class="text-xs font-semibold tracking-wide text-faint uppercase">Take-home submission · FoodDash 2.0.0 (build 412) · Candidate: Alex Kim</p>
+  <p class="mt-1 text-lg font-semibold">Test summary and findings</p>
+  <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div class="min-w-0">
+      <p class="font-semibold">1. Summary</p>
+      <p class="mt-1 text-muted">About 4.5 hours in the test build, focused on ordering: login, search, menu, cart, checkout, tracking. 1 critical, 2 major, 3 minor bugs, 5 trivial observations. <strong class="text-fg">Recommendation: no-go</strong> until the critical bug is fixed and retested.</p>
+    </div>
+    <div class="min-w-0">
+      <p class="font-semibold">2. Scope and approach</p>
+      <p class="mt-1 text-muted">In: the ordering flow, coupon, checkout form, tracking. Out: restaurant partner tools, load and security testing. Risk order: paying, totals, address, search, layout. Techniques: happy paths, boundaries on quantity and coupon, one 45-min exploratory session on checkout.</p>
+    </div>
+    <div class="min-w-0">
+      <p class="font-semibold">3. Environment and data</p>
+      <p class="mt-1 text-muted">The provided test build; test account from the brief; light and dark mode; English and German; small and large phone sizes; offline via airplane mode.</p>
+    </div>
+    <div class="min-w-0">
+      <p class="font-semibold">4. Findings, by severity (invented examples)</p>
+      <ol class="mt-1 list-decimal pl-5 text-muted">
+        <li><strong class="text-fg">Critical:</strong> Order confirmed but missing from Orders after app restart (3/3)</li>
+        <li><strong class="text-fg">Major:</strong> Delivery note over 200 characters makes checkout fail silently</li>
+        <li><strong class="text-fg">Major:</strong> Restaurant shows "Open" after closing time in another time zone</li>
+        <li><strong class="text-fg">Minor:</strong> Cart badge shows 0 after removing and re-adding an item</li>
+        <li>…each with steps, expected, actual, environment, evidence</li>
+      </ol>
+    </div>
+    <div class="min-w-0">
+      <p class="font-semibold">5. Test cases (checkout)</p>
+      <p class="mt-1 text-muted">6 cases: valid order, invalid coupon code, required fields left empty, changing the delivery slot, order history after placing an order, logout and login again. Each with preconditions, steps and expected result.</p>
+    </div>
+    <div class="min-w-0">
+      <p class="font-semibold">6. Not tested, and why</p>
+      <p class="mt-1 text-muted">Push notifications on real devices (none available); Serbian beyond a quick look (time); performance under load (not appropriate). Would be next with more time.</p>
+    </div>
+    <div class="min-w-0">
+      <p class="font-semibold">7. Questions and assumptions</p>
+      <p class="mt-1 text-muted">Can a customer edit or cancel an order after placing it? The brief doesn't say, so I didn't report the missing option as a bug.</p>
+    </div>
+    <div class="min-w-0">
+      <p class="font-semibold">8. Other observations (trivial)</p>
+      <p class="mt-1 text-muted">5 one-liners: two typos, one icon misaligned, two inconsistent button labels.</p>
+    </div>
+  </div>
+</div>
+
+<Callout type="tip" title="Notice the patterns">
+
+- The **recommendation** and the most serious bug are visible in the first paragraph.
+- Scope says what's in **and** out, and the "not tested" list explains why.
+- Bugs are **sorted by severity**; trivial ones are a short list at the end.
+- Test cases cover the riskiest checkout rules instead of every screen.
+- A genuine question is asked instead of guessing.
+
+</Callout>
+
+After you finish the Capstone, you'll have your own version of this: plan, test cases, bug reports and a summary you can show (in your own words) in a [portfolio](/career/cv-and-portfolio-without-experience).
+
+### A template you can copy
+
+```markdown
+# <Company> take-home: <product>, <build or URL>
+Candidate: <name> · Time spent: <hours> · Date: <date>
+
+## 1. Summary
+<What you tested, on what, for how long. Top 3 findings. Recommendation if asked.>
+
+## 2. Scope and approach
+In: <...>   Out: <...> (why)
+Priorities: <risk order>
+Techniques: <happy paths, boundaries, exploratory charter...>
+
+## 3. Environment and data
+<devices, OS, browsers, viewport, build, accounts, test cards>
+
+## 4. Bug reports (most severe first)
+### BUG-1 <Area>: <what happens> when <condition>
+Severity: <Critical/Major/Minor> · Reproducible: <3/3>
+Environment: <...>
+Steps: 1. ... 2. ... 3. ...
+Expected: <...>
+Actual: <...>
+Evidence: <screenshot/video link>
+
+## 5. Test cases (if requested)
+
+## 6. Not tested, and why
+
+## 7. Questions and assumptions
+
+## 8. Other observations (trivial, one line each)
+```
+
+</Long>
+
+## Practice: triage your notes
+
+Here are a candidate's raw notes from a FoodDash web take-home. Decide how each one goes into the submission. Severity is partly a judgment call, so "close" answers count as defensible.
+
+<TakeHomeTriage client:visible />
+
+## Self-check before you hit Send
+
+<Checklist
+  title="Take-home self-check"
+  storageKey="take-home-assignments"
+  items={[
+    "I re-read the instructions and delivered every item they asked for, in their format",
+    "The summary at the top says what I tested, for how long, and my top findings",
+    "Bugs are sorted by severity, most serious first",
+    "Every full bug report has a clear title, steps, expected, actual, environment and evidence",
+    "Someone else could reproduce each bug without asking me",
+    "Trivial issues are grouped in a short list, not 30 separate reports",
+    "There is a 'Not tested, and why' section",
+    "Questions and assumptions are written down",
+    "I stayed in scope and did no load, security or password testing",
+    "I used only test accounts and test cards, and kept the task private",
+    "I spell-checked everything and opened every link and attachment once more",
+    "I'm sending it before the deadline, with a short, polite email",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "The email says: '48 hours, about four hours of work.' How should you plan?",
+      options: [
+        "Use all 48 hours; more effort always wins",
+        "Plan roughly four to six hours of work, and send it before the deadline",
+        "Do it in one hour to show you are fast",
+      ],
+      answer: 1,
+      explain: "48 hours is the deadline; four hours is the expected effort. Respecting it shows you can scope work. Mention honestly if you spent more.",
+    },
+    {
+      q: "You found 1 critical bug, 3 major ones and 25 typos. How do you present them?",
+      options: [
+        "All 29 as full reports in the order you found them",
+        "The critical and major bugs as full reports, most severe first, and the typos as a short list",
+        "Only the typos, because they are easy to prove",
+      ],
+      answer: 1,
+      explain: "Reviewers should see your most important finding in seconds. Trivial issues still count, but as one-liners at the end.",
+    },
+    {
+      q: "Why include a 'Not tested, and why' section?",
+      options: [
+        "It shows you made deliberate choices and know testing is never complete",
+        "It is a polite way to say the task was too long",
+        "Reviewers don't read it, but it looks professional",
+      ],
+      answer: 0,
+      explain: "Saying what you didn't cover, and why, is exactly what testers do in a test summary report at work.",
+    },
+    {
+      q: "During a take-home you find /admin. What should you do?",
+      options: [
+        "Try a few common passwords to show security skills",
+        "Run a scanner to check for other hidden pages",
+        "Don't try to get in; at most mention it neutrally as a question",
+      ],
+      answer: 2,
+      explain: "Guessing passwords or scanning is an attack, even on a test site, and was not in scope. Mentioning an exposed page you saw during normal use is fine.",
+    },
+    {
+      q: "The brief asks for 'bug reports in the attached spreadsheet template'. You prefer documents. What do you do?",
+      options: [
+        "Use the spreadsheet template",
+        "Send a document; the content is what matters",
+        "Send both, so they can pick",
+      ],
+      answer: 0,
+      explain: "Following instructions is part of the test. On the job you'll use the team's tools and templates too.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A take-home is your best chance to show real work. Reviewers look at instructions, priorities, reproducibility and communication, not bug count.
+- Read the brief twice, ask early, write a short approach, and respect the expected effort.
+- Test the risky parts first: money, data, login, then edge cases, then cosmetics.
+- Sort bugs by severity; full reports for real problems, one-liners for trivial ones.
+- Put a summary on top, including what you didn't test and why, plus your questions and assumptions.
+- Stay in scope: no load tests, no security attacks, no real cards or real people's data, and keep the task private.
+
+</KeyTakeaways>

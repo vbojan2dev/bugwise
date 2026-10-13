@@ -1,0 +1,40 @@
+teaser: "Developers blame the server, the backend team blames the app. One tool settles it in two minutes. Do you know which?"
+cards:
+  - type: flip
+    front: "What does a proxy tool like Charles or Proxyman do?"
+    back: "It sits between the app and the server, records every request and response, and can pause, edit, slow down or replace them."
+  - type: flip
+    front: "What is certificate pinning?"
+    back: "The app only accepts the server's real certificate, so a proxy's requests fail with SSL errors. It's a security feature, not a bug."
+  - type: quiz
+    q: "Which proxy feature lets you edit a server response before the app receives it?"
+    options: ["Throttle", "Repeat", "Breakpoint"]
+    answer: 2
+    explain: "A breakpoint pauses the request or response so you can edit it, for example change a status to 500, then lets it continue."
+  - type: quiz
+    q: "You installed the proxy certificate on an iPhone, but HTTPS still fails. What did you most likely forget?"
+    options: ["Full trust in Certificate Trust Settings", "Restarting the computer", "Switching to mobile data"]
+    answer: 0
+    explain: "Installing the profile isn't enough on iOS. Settings › General › About › Certificate Trust Settings must fully trust the root certificate."
+  - type: truefalse
+    statement: "Since Android 7, apps ignore user-installed certificates by default."
+    answer: true
+    explain: "Ask developers for a debug build whose network security config trusts user certificates, otherwise the proxy can't decrypt anything."
+  - type: thisorthat
+    prompt: "You change the order total to 0.01 in the request. The server charges 0.01."
+    left: "App bug, minor"
+    right: "Server bug, critical"
+    answer: right
+    explain: "Anyone can edit their own traffic. The server must calculate the total from its own prices and never trust values sent by the app."
+  - type: spotbug
+    screen: ["GET /v1/login", "?email=anna%40example.com", "&password=Summer2024!", "200 OK"]
+    question: "What's wrong with this request?"
+    bug: "The password is sent in the URL query string."
+    explain: "URLs end up in server logs, proxy logs and analytics. Credentials belong in the body of a POST request over HTTPS."
+  - type: spotbug
+    screen: ["App: Visa •••• 4242", "GET /v1/me response:", "\"number\": \"4242 4242 4242 4242\"", "\"cvv\": \"737\""]
+    bug: "The API returns the full card number and CVV."
+    explain: "The screen only needs the brand and last 4 digits. Anyone intercepting traffic could read the rest, and storing CVVs breaks card industry rules."
+  - type: tip
+    title: "Turn the proxy off afterwards"
+    text: "Remove the phone's Wi-Fi proxy when you're done. If your computer sleeps, the phone loses internet and you'll waste an hour debugging it."

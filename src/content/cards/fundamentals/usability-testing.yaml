@@ -1,0 +1,39 @@
+teaser: "Every test passed, yet users deleted their accounts by accident. How do you report a problem that isn't technically a bug?"
+cards:
+  - type: flip
+    front: "Usability vs accessibility?"
+    back: "Usability: how easily people reach their goals. Accessibility: whether people with disabilities can use the product at all."
+  - type: flip
+    front: "What is think-aloud?"
+    back: "Participants say what they're thinking while trying tasks, so you hear why they struggle, not just where."
+  - type: quiz
+    q: "Tapping Save shows no feedback at all. Which heuristic is broken?"
+    options: ["Help and documentation", "Visibility of system status", "Aesthetic and minimalist design"]
+    answer: 1
+    explain: "Users should always know what's going on. Without feedback they can't tell whether their changes were saved."
+  - type: quiz
+    q: "An error says only ERR_VALIDATION_422. Which heuristic fits best?"
+    options: ["Error prevention", "User control and freedom", "Help users recognize, diagnose, and recover from errors"]
+    answer: 2
+    explain: "Good error messages say in plain words what went wrong and how to fix it. A code does neither."
+  - type: truefalse
+    statement: "Testing with 5 users always finds every usability problem."
+    answer: false
+    explain: "About 5 users per round is Nielsen's guideline for small, repeated qualitative tests. Rare problems can still be missed."
+  - type: spotbug
+    screen: ["Account settings", "[ Delete account ]  (big blue button)", "Tap: account deleted instantly"]
+    bug: "A destructive action has no confirmation or undo."
+    explain: "This breaks error prevention. One accidental tap permanently loses the account, so it's a usability catastrophe."
+  - type: thisorthat
+    prompt: "You find a confusing settings screen. Which report gets fixed?"
+    left: "3 of 5 got stuck"
+    right: "I don't like it"
+    answer: left
+    explain: "Evidence and impact turn an opinion into an actionable finding. Add the heuristic it breaks and a severity."
+  - type: truefalse
+    statement: "A SUS score of 68 means 68% of tasks were completed."
+    answer: false
+    explain: "SUS is a 0 to 100 score from a 10-question questionnaire, not a percentage. Around 68 is often quoted as average."
+  - type: tip
+    title: "Try a five-minute hallway test"
+    text: "Ask a colleague new to the feature to do one task while you watch quietly. Note where they hesitate, then report with that evidence."

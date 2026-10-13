@@ -1,0 +1,48 @@
+---
+import Icon from '@/components/ui/Icon.astro';
+import DevNote from './DevNote.astro';
+
+interface Props {
+  /** `dev`: developer background (framework and API names). Collapsed by default and marked as optional. */
+  type?: 'tip' | 'info' | 'warning' | 'bug' | 'example' | 'note' | 'dev';
+  title?: string;
+}
+const { type = 'info', title } = Astro.props;
+
+const styles = {
+  tip: { icon: 'lightbulb', label: 'Tip', color: 'var(--ok)', soft: 'var(--ok-soft)' },
+  info: { icon: 'info', label: 'Good to know', color: 'var(--info)', soft: 'var(--info-soft)' },
+  warning: { icon: 'triangle-alert', label: 'Watch out', color: 'var(--warn)', soft: 'var(--warn-soft)' },
+  bug: { icon: 'bug', label: 'Common bug', color: 'var(--danger)', soft: 'var(--danger-soft)' },
+  example: { icon: 'flask-conical', label: 'Example', color: 'var(--brand)', soft: 'var(--brand-soft)' },
+  note: { icon: 'sticky-note', label: 'Note', color: 'var(--muted)', soft: 'var(--subtle)' },
+  dev: { icon: 'code', label: 'Dev note', color: 'var(--muted)', soft: 'var(--subtle)' },
+}[type];
+---
+
+{
+  type === 'dev' ? (
+    <DevNote title={title && title !== 'Platform names' ? title : undefined}><slot /></DevNote>
+  ) : (
+    <aside class="callout my-7 rounded-2xl border p-4 sm:p-5" style={`--c: ${styles.color}; --cs: ${styles.soft}`}>
+      <p class="flex items-center gap-2 text-sm font-semibold" style="color: var(--c)">
+        <Icon name={styles.icon} size={17} />
+        {title ?? styles.label}
+      </p>
+      <div class="callout-body mt-2 text-[0.98rem] leading-relaxed"><slot /></div>
+    </aside>
+  )
+}
+
+<style>
+  .callout {
+    background: color-mix(in oklab, var(--cs) 70%, var(--surface));
+    border-color: color-mix(in oklab, var(--c) 22%, transparent);
+  }
+  .callout-body > :global(* + *) {
+    margin-top: 0.7em;
+  }
+  .callout-body > :global(:first-child) {
+    margin-top: 0;
+  }
+</style>

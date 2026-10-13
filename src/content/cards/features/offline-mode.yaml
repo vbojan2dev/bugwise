@@ -1,0 +1,43 @@
+teaser: "You add Oat milk to the shared list in a basement with no signal. Upstairs it syncs, twice. How does that even happen?"
+cards:
+  - type: flip
+    front: "What is an offline queue?"
+    back: "A waiting list of changes saved on the device while offline, sent to the server once the connection returns."
+  - type: flip
+    front: "What is a sync conflict?"
+    back: "The same item was changed on two devices before they synced, so the app must decide which change, or which mix of both, to keep."
+  - type: quiz
+    q: "Items added offline vanish after restarting the app, before reconnecting. Most likely cause?"
+    options: ["The server deleted them", "The banner was hidden", "The queue was only in memory"]
+    answer: 2
+    explain: "Anything not written to the device's storage is lost when the app process ends. The queue must be saved on disk."
+  - type: quiz
+    q: "After reconnecting, every item added offline appears twice. What was missing?"
+    options: ["Idempotency keys", "A bigger cache", "An offline banner"]
+    answer: 0
+    explain: "A unique ID per change lets the server recognize a repeated request and ignore it, so reconnects and retries can't create duplicates."
+  - type: truefalse
+    statement: "Last write wins can silently throw away another person's change."
+    answer: true
+    explain: "Whoever syncs last replaces the item. The earlier change disappears without anyone being told, which is risky for shared data."
+  - type: truefalse
+    statement: "Sorting items by the phone's own clock is safe."
+    answer: false
+    explain: "A phone with the wrong time scrambles the order. The server should decide order and time."
+  - type: thisorthat
+    prompt: "The user taps Pay while the phone is offline."
+    left: "Queue it for later"
+    right: "Block with a message"
+    answer: right
+    explain: "Payments need a confirmed answer from the server right now. Queuing them silently could charge the user later by surprise."
+  - type: spotbug
+    screen: ["Wi-Fi: connected", "Banner: You're offline", "List synced 1 min ago"]
+    bug: "The offline banner never hides after reconnecting."
+    explain: "Users think they're still offline and stop trusting the app. The indicator must disappear as soon as the connection is back."
+  - type: spotbug
+    screen: ["Offline: deleted Bread", "Back online, sync done", "List: Bread, Eggs, Milk"]
+    bug: "The offline delete was never synced, so Bread came back."
+    explain: "Deletes must be queued like adds and edits. Otherwise the next refresh from the server restores the item."
+  - type: tip
+    title: "Test sync with two devices"
+    text: "Log in on two devices, put one offline, edit the same item on both, then reconnect. Check both screens without refreshing."

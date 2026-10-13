@@ -1,0 +1,74 @@
+---
+import Icon from '@/components/ui/Icon.astro';
+import { href } from '@/lib/url';
+
+interface Props {
+  pageKey: string;
+  title: string;
+}
+const { pageKey, title } = Astro.props;
+---
+
+<section
+  class="complete-card not-prose mt-14 flex max-w-[46rem] flex-wrap items-center gap-4 rounded-2xl border border-line bg-surface p-5"
+  data-complete-card
+  data-key={pageKey}
+  data-title={title}
+  data-progress-key={pageKey}
+  data-pagefind-ignore
+>
+  <span class="complete-icon grid size-11 shrink-0 place-items-center rounded-xl bg-subtle text-faint">
+    <Icon name="trophy" size={20} />
+  </span>
+  <div class="min-w-0 flex-1">
+    <p class="font-semibold">
+      <span class="when-todo">Finished this page?</span>
+      <span class="when-done">Nice work, this page is complete!</span>
+    </p>
+    <p class="text-sm text-muted" data-complete-meta>Mark it as done to track your progress. It's saved in this browser, no account needed.</p>
+    <a href={href('/bites')} class="when-done mt-1 text-sm font-medium text-brand hover:underline">Its review cards are now in Bites ⚡</a>
+  </div>
+  <button type="button" data-complete-toggle class="complete-btn flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-medium transition-colors">
+    <Icon name="circle-check-big" size={16} />
+    <span class="when-todo">Mark as complete</span>
+    <span class="when-done">Completed · Undo</span>
+  </button>
+</section>
+
+<style>
+  .complete-card .when-done { display: none; }
+  .complete-card[data-done='true'] .when-done { display: inline; }
+  .complete-card[data-done='true'] .when-todo { display: none; }
+  .complete-btn { background: var(--fg); color: var(--bg); }
+  .complete-card[data-done='true'] {
+    border-color: color-mix(in oklab, var(--ok) 35%, transparent);
+    background: color-mix(in oklab, var(--ok-soft) 55%, var(--surface));
+  }
+  .complete-card[data-done='true'] .complete-icon { background: var(--ok); color: white; }
+  .complete-card[data-done='true'] .complete-btn { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+</style>
+
+<script>
+  import { bugsForPage, load, setComplete, setLastVisited } from '@/lib/progress';
+
+  document.querySelectorAll<HTMLElement>('[data-complete-card]').forEach((card) => {
+    const key = card.dataset.key!;
+    setLastVisited(key, card.dataset.title!);
+
+    const meta = card.querySelector<HTMLElement>('[data-complete-meta]')!;
+    const defaultMeta = meta.textContent;
+    const render = () => {
+      const p = load();
+      const parts: string[] = [];
+      const quiz = p.quizzes[key];
+      if (quiz) parts.push(`Best quiz score: ${quiz.best}/${quiz.total}`);
+      const bugs = bugsForPage(p, key);
+      if (bugs.total) parts.push(`Bugs found: ${bugs.found}/${bugs.total}`);
+      if (p.completed[key]) parts.unshift(`Completed ${new Date(p.completed[key]).toLocaleDateString()}`);
+      meta.textContent = parts.length ? parts.join(' · ') : defaultMeta;
+    };
+    card.querySelector('[data-complete-toggle]')!.addEventListener('click', () => setComplete(key, !load().completed[key]));
+    render();
+    addEventListener('progress-change', render);
+  });
+</script>

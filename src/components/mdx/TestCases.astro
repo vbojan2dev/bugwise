@@ -1,0 +1,74 @@
+---
+import Icon from '@/components/ui/Icon.astro';
+
+interface TestCase {
+  id: string;
+  title: string;
+  priority?: 'high' | 'medium' | 'low';
+  type?: 'positive' | 'negative' | 'edge';
+  preconditions?: string[];
+  steps: string[];
+  data?: string;
+  expected: string;
+}
+interface Props {
+  cases: TestCase[];
+}
+const { cases } = Astro.props;
+
+const priority = {
+  high: 'bg-danger-soft text-danger',
+  medium: 'bg-warn-soft text-warn',
+  low: 'bg-subtle text-muted',
+};
+const type = {
+  positive: 'bg-ok-soft text-ok',
+  negative: 'bg-danger-soft text-danger',
+  edge: 'bg-info-soft text-info',
+};
+---
+
+<div class="not-prose my-7 space-y-3">
+  {
+    cases.map((c) => (
+      <details class="tc group rounded-2xl border border-line bg-surface open:shadow-soft">
+        <summary class="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
+          <span class="shrink-0 rounded-md bg-subtle px-2 py-0.5 font-mono text-xs font-semibold text-muted">{c.id}</span>
+          <span class="min-w-0 flex-1 font-medium">{c.title}</span>
+          <span class="hidden items-center gap-1.5 sm:flex">
+            {c.type && <span class={`rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${type[c.type]}`}>{c.type}</span>}
+            {c.priority && <span class={`rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${priority[c.priority]}`}>{c.priority}</span>}
+          </span>
+          <Icon name="chevron-down" size={18} class="shrink-0 text-faint transition-transform group-open:rotate-180" />
+        </summary>
+        <div class="grid grid-cols-1 gap-4 border-t border-line px-4 pt-4 pb-5 text-sm leading-relaxed [overflow-wrap:anywhere] md:grid-cols-2">
+          <div class="space-y-4">
+            {c.preconditions && c.preconditions.length > 0 && (
+              <div>
+                <p class="mb-1 text-xs font-semibold tracking-wide text-faint uppercase">Preconditions</p>
+                <ul class="list-disc space-y-0.5 pl-4 text-muted">{c.preconditions.map((p) => <li>{p}</li>)}</ul>
+              </div>
+            )}
+            <div>
+              <p class="mb-1 text-xs font-semibold tracking-wide text-faint uppercase">Steps</p>
+              <ol class="list-decimal space-y-0.5 pl-4 text-muted marker:text-faint">{c.steps.map((s) => <li>{s}</li>)}</ol>
+            </div>
+          </div>
+          <div class="space-y-4">
+            {c.data && (
+              <div>
+                <p class="mb-1 text-xs font-semibold tracking-wide text-faint uppercase">Test data</p>
+                <p class="rounded-lg bg-subtle px-2.5 py-1.5 font-mono text-xs text-muted [overflow-wrap:anywhere]">{c.data}</p>
+              </div>
+            )}
+            <div>
+              <p class="mb-1 text-xs font-semibold tracking-wide text-faint uppercase">Expected result</p>
+              <p class="rounded-xl border border-ok/25 bg-ok-soft/60 px-3 py-2 text-fg">{c.expected}</p>
+            </div>
+          </div>
+        </div>
+      </details>
+    ))
+  }
+  {cases.length > 1 && <p class="text-xs text-faint">Tip: click a test case to expand it.</p>}
+</div>

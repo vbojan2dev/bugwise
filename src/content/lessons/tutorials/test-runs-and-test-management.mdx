@@ -1,0 +1,410 @@
+---
+title: Test Runs and Test Management Tools
+description: Learn how teams organize test cases in a repository, run them against a build, use execution statuses like Passed, Failed and Blocked, link failures to bugs and track progress, with a hands-on test run for the FoodDash 2.0 release.
+order: 8.5
+level: beginner
+minutes: { short: 15, long: 25 }
+platform: both
+tags: [test execution, test management, test runs, testrail, xray, zephyr]
+---
+
+import TestRunSimulator from '@/components/demos/test-management/TestRunSimulator';
+
+Monday, 9:40. Your lead writes in the team channel: *"FoodDash 2.0 build 412 is on staging. Please create the regression run for iPhone, start with the P1 cases and keep the run updated so I can see where we are at stand-up. Link every failure to a bug."*
+
+You already know how to [write test cases](/tutorials/writing-test-cases) and a [test plan](/tutorials/writing-a-test-plan). This lesson is about what happens next: how a team stores hundreds of cases, picks the right ones for a build, runs them, records the results and shows progress, usually in a tool like TestRail, Xray or Zephyr. These words show up in almost every QA job ad, and by the end of this lesson they won't scare you.
+
+## From written cases to executed results
+
+Writing a case and running it are two different things, and tools keep them apart on purpose.
+
+<Callout type="example" title="Think of a cookbook and a kitchen log">
+
+The **cookbook** holds every recipe the restaurant knows. It changes slowly. Each evening the kitchen keeps a **log**: which recipes were cooked tonight, by whom, with which oven, and how each one turned out ("soup too salty, sent back"). The cookbook is your <Term id="test-case-repository">test case repository</Term>. Tonight's log is a <Term id="test-run">test run</Term>.
+
+</Callout>
+
+<div class="not-prose my-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">1 · Repository</p>
+    <p class="mt-1 font-semibold">All test cases</p>
+    <p class="mt-1 text-sm text-muted">Sections like Login, Cart, Checkout. Written once, reused every release.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">2 · Test run</p>
+    <p class="mt-1 font-semibold">A selection for one build</p>
+    <p class="mt-1 text-sm text-muted">"2.0.0 regression, build 412, iPhone 15". Assigned to testers.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">3 · Execution</p>
+    <p class="mt-1 font-semibold">A status per case</p>
+    <p class="mt-1 text-sm text-muted">Passed, Failed, Blocked… plus the actual result and evidence.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">4 · Bugs and report</p>
+    <p class="mt-1 font-semibold">Links and progress</p>
+    <p class="mt-1 text-sm text-muted">Each failure links to a bug. The run's numbers feed the summary report.</p>
+  </div>
+</div>
+
+<Short>
+
+## The essentials
+
+### The repository
+
+The <Term id="test-case-repository">repository</Term> is the library of all your cases, grouped into sections or <Term id="test-suite">suites</Term> (Login, Cart, Checkout). Each case has fields that make it easy to pick later: **priority** (P1 to P3), **type** (functional, UI, accessibility…) and **automation status** (manual, automated, to automate). You write a case once and reuse it in every release; when the product changes, you update the case.
+
+### The test run
+
+A <Term id="test-run">test run</Term> (some tools say *test cycle* or *test execution*) is a selection of cases for **one build on one environment or device**. You pick cases by priority or section, choose the <Term id="build" /> and device, and assign testers. The run is the proof of what was actually tested.
+
+### Execution statuses
+
+| Status | Use it when |
+| --- | --- |
+| **Passed** | The actual result matches the expected result. |
+| **Failed** | It doesn't, because of a defect in the product. Link a bug. |
+| **Blocked** | You can't run the case to the end: environment down, data missing, an earlier bug in the way. Write the reason. |
+| **Retest** | A linked bug was fixed; the case must be run again. |
+| **Skipped / N/A** | Deliberately not run, or doesn't apply (an iOS-only case on Android). |
+| **Untested** | Nobody has run it yet. |
+
+Tools use slightly different names, but the ideas are the same.
+
+### Blocked vs Failed
+
+**Failed** means you ran the case and the product did the wrong thing. **Blocked** means you couldn't find out, because something outside the case stopped you. The payment sandbox is down? Blocked. An expired coupon is accepted? Failed. See <Term id="blocked-test" />.
+
+### Evidence and bugs
+
+For anything that isn't a clean pass, write the **actual result** in one or two concrete sentences and attach a screenshot, recording or log. Every Failed case links to a bug key (for example `FD-241`), new or existing. When that bug is fixed, the case goes to **Retest**, you run it on the new build, and it becomes Passed (or Failed again). That's <Term id="retesting" />.
+
+### Progress
+
+The run shows how many cases are done and how they went. Leads watch the **untested** count go down day by day (a burndown), and the **failed and blocked** cases in P1. Those are the ones that decide a release.
+
+### Tools
+
+**TestRail** is a standalone tool that connects to Jira. **Xray** lives inside Jira, where tests, test plans and test executions are Jira issues. **Zephyr** is a family of Jira apps with test cycles. Small teams often use a **spreadsheet**, and that's fine.
+
+### Good habits
+
+One run per build and environment. Don't edit cases in the middle of a run without noting it. Keep cases atomic, so one status means one thing.
+
+Switch to **Detailed** at the top for the full walkthrough: fields, statuses in depth, evidence, bug links, retests, burndowns, the tools compared and a spreadsheet template.
+
+</Short>
+
+<Long>
+
+## The test case repository
+
+A <Term id="test-case-repository">test case repository</Term> is where the team keeps the **master copy** of every test case. Whether it's a tool or a spreadsheet, a healthy repository has three things: a clear structure, useful fields and a way to change cases safely.
+
+### Structure: sections and suites
+
+Group cases the way people think about the product, usually by feature or screen:
+
+- **FoodDash 2.0** → Login · Cart · Checkout · Tracking · Profile
+- inside Checkout → Payment · Delivery time · Address
+
+Tools call these groups sections, folders, suites or test sets. A <Term id="test-suite" /> can also be a **cross-cutting selection**, like "Smoke" or "Accessibility", built from cases in many sections. You'll meet those in [Regression and Smoke Suites](/tutorials/regression-and-smoke-suites).
+
+### The fields that make cases easy to pick
+
+Beyond the fields you already write (steps, data, expected result), a few **metadata** fields let you build runs in seconds:
+
+| Field | Example values | Why it matters |
+| --- | --- | --- |
+| **Priority** | P1, P2, P3 | "Run all P1 first" is the most common release filter. |
+| **Type** | Functional, UI, Accessibility, Security | Lets you build a focused run, e.g. an accessibility pass. |
+| **Automation status** | Manual, Automated, To automate | Shows what CI already covers and what's a candidate for automation. |
+| **Platform** | iOS, Android, Web, All | Keeps iOS-only cases out of Android runs. |
+| **Requirement link** | FD-104 | Powers the <Term id="traceability-matrix" />. |
+
+Keep the values few and agreed. A priority field where half the cases are "High" helps nobody.
+
+### Versioning and reuse
+
+The big win of a repository is **reuse**: the case "An expired coupon code is rejected" is written for 2.0 and runs again in 2.1, 2.2 and 3.0. That only works if cases stay up to date.
+
+- When a requirement changes, **update the case** in the repository, not just in your head. Mention the change in the case history or in a comment ("Expected result updated for FD-104 v2: minimum order €15").
+- Many tools keep a **version history** per case, and a run remembers which version of the case it used. That way an old run still shows what was actually checked back then.
+- **Archive**, don't delete, cases for removed features. You may need them for the old app version that's still in the stores.
+
+## Creating a test run
+
+A <Term id="test-run" /> answers: *which cases, on which build, where, by whom?*
+
+<Steps>
+
+1. **Decide the scope.** Use the test plan and what changed: all P1 plus the P2 cases for touched areas, or the full regression suite before a major release. <Term id="impact-analysis">Impact analysis</Term> tells you which areas were touched ([Regression and Smoke Suites](/tutorials/regression-and-smoke-suites) shows how).
+2. **Pick the cases.** Filter the repository by priority, section, type or platform, then add or remove single cases by hand.
+3. **Set the build and environment.** Name the exact <Term id="build" /> (2.0.0 build 412, not "latest") and the <Term id="environment" /> or device (staging, iPhone 15 on iOS 18). If a case is run on two devices, those are two results, so most teams create one run per device or use the tool's "configurations".
+4. **Assign testers.** Split by section or by device. Each case has one owner, so nothing is run twice or not at all.
+5. **Name it clearly.** "FoodDash 2.0.0 regression · build 412 · iPhone 15" is searchable months later. "Run 3" isn't.
+
+</Steps>
+
+<Callout type="tip" title="One run per build and environment">
+
+If build 413 arrives halfway through, don't keep marking results in the build 412 run. Either finish 412 or start a new run for 413 (usually with the failed, blocked and untested cases). A result is only meaningful if you know which build and device it came from.
+
+</Callout>
+
+## Execution statuses, and when to use each
+
+During <Term id="test-execution" />, every case in the run gets an <Term id="execution-status" />. These are the common ones. TestRail's defaults are close to this list, other tools use different names (Xray, for example, uses TODO and EXECUTING), and many teams add their own.
+
+| Status | Meaning | FoodDash example |
+| --- | --- | --- |
+| **Untested** | Not run yet. Every case starts here. | The run was created this morning. |
+| **Passed** | Actual result = expected result. | Home opens with "Hi, Mia" after sign-in. |
+| **Failed** | Actual ≠ expected, because of a product defect. | The expired code SPRING5 is accepted: −€0.60 instead of "This code has expired". |
+| **Blocked** | You can't run the case to the end, for a reason outside it. | The payment sandbox returns 503 errors until 15:00. |
+| **Retest** | A linked bug is fixed; run the case again. | FD-118 ("Remove" deleted the wrong dish) is fixed in build 412. |
+| **Skipped / N/A** | Deliberately not run, or doesn't apply here. | A Face ID case in an Android run. |
+
+### Blocked vs Failed: the classic confusion
+
+<div class="not-prose my-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+  <div class="min-w-0 rounded-2xl border border-warn/40 bg-surface p-5">
+    <p class="flex items-center gap-2 font-semibold"><span class="size-2.5 rounded-full bg-warn"></span> Blocked</p>
+    <p class="mt-2 text-sm text-muted">You <strong class="text-fg">couldn't reach or finish</strong> what the case checks, so you don't know yet whether it works.</p>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
+      <li>The test environment or a third-party sandbox is down.</li>
+      <li>Test data or an account you need doesn't exist.</li>
+      <li>An earlier bug stops you getting there: sign-in is broken, so you can't reach checkout.</li>
+    </ul>
+    <p class="mt-2 text-sm text-muted">Write the reason, link the blocking issue if there is one, and re-run when it's cleared.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-danger/40 bg-surface p-5">
+    <p class="flex items-center gap-2 font-semibold"><span class="size-2.5 rounded-full bg-danger"></span> Failed</p>
+    <p class="mt-2 text-sm text-muted">You <strong class="text-fg">ran the case</strong> and the product <strong class="text-fg">did the wrong thing</strong> compared with the expected result.</p>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
+      <li>A wrong total, a missing message, a crash on this screen.</li>
+      <li>The feature is there but behaves differently from the requirement.</li>
+    </ul>
+    <p class="mt-2 text-sm text-muted">Link a bug. The case is retested when the bug is fixed.</p>
+  </div>
+</div>
+
+Why it matters: a Failed case sends a developer looking for a bug in FoodDash. If the real cause was a sandbox outage, that's an afternoon wasted, and your next failures are trusted a bit less. In the other direction, marking a real defect as Blocked hides it from the bug count.
+
+<Callout type="note" title="What about a case blocked by a bug?">
+
+If bug FD-241 stops you signing in, the sign-in case **fails** (and links FD-241), and the checkout cases behind it are **blocked by FD-241**. One bug, one failure, several blocked cases. Many tools let you link the blocking bug to the blocked cases too, so they all move to Retest when it's fixed.
+
+</Callout>
+
+### Skipped, N/A and Untested
+
+- **Skipped / N/A** is a decision: "doesn't apply" or "we chose not to run it this time". Say why in a comment. Better still, don't put platform-specific cases into the wrong run in the first place.
+- **Untested** at the end of a run is not a status you choose, it's what's left. That's fine if you say so in the report ("12 P3 cases not run, low risk"). It's not fine if it's hidden.
+
+## Recording actual results and evidence
+
+A status alone is not enough for anything other than a clean pass. Write the <Term id="actual-result" /> and attach proof.
+
+<Compare>
+<Do title="Useful">
+
+**Actual:** "Code applied" appears, the discount line shows −€0.60 and the total €11.40. Expected "This code has expired" and a total of €12.00. Screenshot attached. Bug FD-242.
+
+</Do>
+<Dont title="Useless">
+
+**Actual:** Doesn't work.
+
+</Dont>
+</Compare>
+
+Good evidence, depending on the problem:
+
+- a **screenshot** of the wrong state (with the important part visible, not just the top of the screen);
+- a short **screen recording** for anything that happens in steps or over time;
+- **logs**: a HAR file from DevTools, device logs, a network trace from a <Term id="proxy-tool" /> ([DevTools for Testers](/web/devtools-for-testers), [ADB Basics](/mobile/adb-basics));
+- the **build, device and OS** (the run usually records these for you).
+
+For passed cases, most teams don't attach anything. Some regulated projects (finance, health) do want evidence for passes too; your test plan should say.
+
+## Linking a failure to a bug
+
+<Steps>
+
+1. **Search first.** Is there already a bug for this? If FD-241 already describes it, link the existing bug instead of filing a <Term id="duplicate-bug" />.
+2. **File the bug if it's new.** Many tools have a "create bug" button that opens a Jira form pre-filled with the case's steps and your actual result. Clean it up the way you learned in [Writing Bug Reports](/tutorials/writing-bug-reports).
+3. **Link it to the result.** The case result now shows `FD-242`, and the bug shows which case found it. That two-way link is what [traceability](/tutorials/traceability-and-test-reports) is built on.
+4. **Link the story too.** In [Jira](/tutorials/working-with-jira), link the bug to the user story, so the story can't be closed with a known bug.
+
+</Steps>
+
+One bug can fail several cases (a broken API can fail three checkout cases), and one case can have several bugs over its life. The links keep that history.
+
+## Retests and re-runs
+
+When a developer fixes a bug, the fix lands in a new build. Two things happen:
+
+- **<Term id="retesting">Retesting</Term>**: the case that found the bug is run again, with the same steps and data, on the new build. Depending on the tool and setup, the case is set to **Retest** when its linked bug is resolved, or you do it yourself. If it passes, the bug can be closed. If it fails again, the bug is reopened.
+- **<Term id="regression-testing">Regression testing</Term>**: checking that the fix didn't break anything else. That's a different job with a different selection of cases. Don't call it "retesting".
+
+For a new build, most teams create a **new run** containing the failed, blocked and untested cases from the previous run, plus a regression subset around the fixes. The old run stays as it was: it's the record of build 412.
+
+## Tracking progress
+
+A run is also a live dashboard. Three numbers matter most:
+
+- **Executed**: how many cases have a final status. "64 of 120 executed (53%)".
+- **Results**: passed, failed, blocked. Watch **failed and blocked P1 cases** closely; they decide the release.
+- **Remaining**: untested and retest. This is what a **burndown** tracks.
+
+A burndown is a simple chart: remaining cases per day, going down towards zero by the deadline. Here's the FoodDash 2.0 regression run:
+
+<div class="not-prose my-6 rounded-2xl border border-line bg-surface p-4">
+  <p class="text-sm font-semibold">Remaining cases (untested + retest), 120-case run</p>
+  <div class="mt-3 space-y-1.5 text-sm">
+    <div class="grid grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-2"><span class="text-muted">Mon</span><div class="h-3 rounded-full bg-brand" style="width:100%"></div><span class="text-right tabular-nums">120</span></div>
+    <div class="grid grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-2"><span class="text-muted">Tue</span><div class="h-3 rounded-full bg-brand" style="width:75%"></div><span class="text-right tabular-nums">90</span></div>
+    <div class="grid grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-2"><span class="text-muted">Wed</span><div class="h-3 rounded-full bg-warn" style="width:63%"></div><span class="text-right tabular-nums">76</span></div>
+    <div class="grid grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-2"><span class="text-muted">Thu</span><div class="h-3 rounded-full bg-brand" style="width:30%"></div><span class="text-right tabular-nums">36</span></div>
+    <div class="grid grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-2"><span class="text-muted">Fri</span><div class="h-3 rounded-full bg-brand" style="width:7%"></div><span class="text-right tabular-nums">8</span></div>
+  </div>
+  <p class="mt-3 text-sm text-muted">Wednesday barely moved: the payment sandbox was down and 14 checkout cases were blocked. A flat line in a burndown is a question to ask at stand-up, not a number to hide.</p>
+</div>
+
+Progress numbers are for steering, not for judging people. "Ana executed 40 cases, Ben 15" says nothing if Ben's were the hard payment cases. More on numbers that help and numbers that mislead in [Traceability and Test Summary Reports](/tutorials/traceability-and-test-reports).
+
+## TestRail, Xray and Zephyr
+
+Job ads name these three most often. They share the ideas from this lesson but organize them differently. This is a high-level picture; editions, names and screens change often, so check the vendor's current documentation when you start using one.
+
+| | Where it lives | How tests and runs are stored |
+| --- | --- | --- |
+| **TestRail** | A standalone web app (cloud or self-hosted) with a Jira integration. | Projects contain suites and sections of cases. You execute in **test runs**; a **test plan** groups several runs, e.g. one per device. |
+| **Xray** | An app inside Jira. | Tests are Jira issues of type **Test**. A **Test Execution** issue holds the results for a build; a **Test Plan** issue groups executions for a release. |
+| **Zephyr** | A family of Jira apps from SmartBear (you may see the names Zephyr Scale and Zephyr Squad). | Cases are organized in a test library or as Jira issues, depending on the edition. Executions are grouped into **test cycles**. |
+
+Other tools exist (qTest, PractiTest, Azure Test Plans and more). Once you understand repository → run → status → bug link, switching tools takes a day, not a month. In interviews, say what you did with a tool ("I built runs per device and linked failures to Jira"), not just its name.
+
+## Spreadsheets are a legitimate option
+
+A small team with one app and one tester doesn't need a paid tool. A shared spreadsheet works well if you keep it disciplined:
+
+- **One tab for the repository**: ID, Section, Title, Priority, Type, Platform, Steps, Expected result, Requirement.
+- **One tab per run**, named after the build and device: ID, Title, Status, Actual result, Evidence link, Bug key, Tester, Date.
+- Use a **dropdown** (data validation) for Status so nobody types "pass", "OK" and "✓" in the same column.
+- Add a small summary at the top with `COUNTIF` per status.
+
+You'll outgrow it when you have several testers editing at once, many devices per release, or need history and reports across releases. That's when a tool pays for itself.
+
+## Good practices
+
+- **One run per build and environment.** Results from different builds don't mix.
+- **Don't edit cases mid-run without noting it.** If you discover the expected result is outdated, add a comment on the result, finish the run with what you know, and update the case in the repository afterwards (or tell the lead right away if it changes the verdict). Silent edits make old results meaningless.
+- **Keep cases atomic.** One case checks one thing, so one status means one thing. A case with five checks that "half passed" can't be marked honestly.
+- **Never pass a case you didn't run.** If you ran out of time, it's Untested. That's honest; a fake pass is the worst thing a tester can do.
+- **Report unrelated bugs separately.** If you notice a stretched logo in the Orders list while running a tracking case, file it (and suggest a new case), but don't fail the tracking case.
+- **Update the run as you go**, not at the end of the day. The lead is looking at it.
+
+## Common mistakes
+
+<Callout type="bug" title="Watch out for these">
+
+- **Marking a sandbox outage as Failed.** Developers chase a bug that isn't theirs. Use Blocked with a reason.
+- **Failed with no bug link.** Nobody fixes it, and nobody knows when to retest.
+- **Re-running in the same run on a new build.** The old result is overwritten and you lose the history.
+- **Leaving Retest cases unrun.** A fixed bug nobody verified is not fixed.
+- **One giant run for every device.** "Passed", but on which phone?
+- **Repository rot.** Cases for removed features stay active and fail every run. Archive them.
+
+</Callout>
+
+</Long>
+
+## Practice: run the FoodDash 2.0 release
+
+Your turn. Create a run from the FoodDash repository, execute it on build 412 and close it. Some cases pass, some fail, one is blocked and one starts on Retest. Read what you see on the build carefully before you choose. Try it once on the iPhone and once on the Pixel: one case behaves differently.
+
+<TestRunSimulator client:visible />
+
+## Before you close a run
+
+<Checklist
+  title="Before you close a run"
+  storageKey="test-runs-and-test-management"
+  items={[
+    "The run names the exact build and the environment or device",
+    "Every Failed case has an actual result, evidence and a linked bug",
+    "Every Blocked case says what blocks it, and what it's waiting for",
+    "Retest cases were run on the build with the fix",
+    "Skipped / N/A cases say why",
+    "Untested cases are listed, not hidden",
+    "Cases you edited during the run are noted, and the repository is updated",
+    "Bugs found outside a case were reported separately",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "You run 'Place an order with a saved card'. The payment provider's sandbox is down for maintenance. What status do you set?",
+      options: ["Failed, with a bug for the developers", "Blocked, with the reason", "Passed, because it's not FoodDash's fault", "Skipped, and forget about it"],
+      answer: 1,
+      explain: "You couldn't reach what the case checks, and the cause is outside the product. Blocked, with the reason, and re-run when the sandbox is back.",
+    },
+    {
+      q: "You apply the expired code SPRING5 and the app accepts it with a 5% discount. The case expects 'This code has expired'. What do you do?",
+      options: ["Mark it Blocked", "Mark it Failed and link a bug", "Mark it Passed with a comment", "Edit the expected result so it passes"],
+      answer: 1,
+      explain: "The product did the wrong thing compared with the expected result. That's a failure, and every failure links to a bug.",
+    },
+    {
+      q: "Bug FD-118 is fixed in build 412. The case that found it was Failed in the build 405 run. What happens next?",
+      options: [
+        "Nothing, the developer has confirmed the fix",
+        "The case is retested on build 412; if it passes, the bug can be closed",
+        "The whole regression suite is run, and that's called retesting",
+      ],
+      answer: 1,
+      explain: "Retesting confirms a specific fix by running the same case on the new build. Checking that nothing else broke is regression testing.",
+    },
+    {
+      q: "An Android run contains a 'Sign in with Face ID' case. What's the best status?",
+      options: ["Blocked", "Failed", "Skipped / N/A, and leave it out of Android runs next time"],
+      answer: 2,
+      explain: "It doesn't apply to the device. Nothing is broken and nothing was checked. Better still, filter platform-specific cases when you build the run.",
+    },
+    {
+      q: "Build 413 arrives on Wednesday while the build 412 run is half done. What's the usual approach?",
+      options: [
+        "Keep marking results in the 412 run",
+        "Start a new run for 413 with the failed, blocked and untested cases, plus a regression subset",
+        "Delete the 412 run",
+      ],
+      answer: 1,
+      explain: "One run per build keeps results meaningful. The 412 run stays as the record of that build.",
+    },
+    {
+      q: "In Xray, what is a Test Execution?",
+      options: ["A Jira issue that holds test results for a build", "A spreadsheet export", "A kind of automated test script"],
+      answer: 0,
+      explain: "Xray stores tests, test plans and test executions as Jira issue types. A Test Execution holds the results of a set of tests, usually for one build or environment.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- The **repository** holds all cases, organized by section and tagged with priority, type, platform and automation status. Cases are reused release after release, so keep them current.
+- A **test run** is a selection of cases for one build on one environment or device, assigned to testers. One run per build and environment.
+- **Failed** = the product did the wrong thing; link a bug. **Blocked** = you couldn't find out; write the reason.
+- Record the **actual result and evidence** for every non-pass. A status alone isn't enough.
+- When a bug is fixed, the case goes to **Retest** and is run again on the new build. Retesting is not regression testing.
+- TestRail, Xray and Zephyr organize the same ideas differently. A disciplined spreadsheet is fine for small teams.
+
+</KeyTakeaways>
+
+**Next:** connect requirements, runs and bugs, and write the end-of-cycle report in [Traceability and Test Summary Reports](/tutorials/traceability-and-test-reports).

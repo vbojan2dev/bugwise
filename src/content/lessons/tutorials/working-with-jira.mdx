@@ -1,0 +1,373 @@
+---
+title: Working with Jira
+description: Learn how testers use Jira every day — projects, issue types, boards, sprints and workflows, the fields that matter, linking bugs to stories, comments and mentions, and finding anything with JQL filters and dashboards — with a hands-on mock board and a working JQL builder.
+order: 8
+level: beginner
+minutes: { short: 13, long: 20 }
+platform: both
+tags: [jira, tools, agile, bug tracking, jql]
+---
+
+import SprintBoard from '@/components/demos/tutorial-workflow/SprintBoard';
+import JqlBuilder from '@/components/demos/tutorial-workflow/JqlBuilder';
+
+It's your first week as a tester at a food delivery company. Your lead sends you a link and a message: *"Here's our Jira board. SHOP-142 is in testing, that one's yours. Log any bugs against it, and set up a filter so you can see your open tickets. Ping me if you get lost."*
+
+You open the link and see columns, colorful icons, dozens of tickets and a search box that wants something called "JQL". Don't panic. Jira looks busy, but testers use a small, predictable part of it every day. This lesson covers exactly that part.
+
+<Callout type="info" title="Jira's screens change, the ideas don't">
+
+<Term id="jira" /> (made by Atlassian) is updated constantly, and every company configures it differently: their own statuses, fields and screens. Since 2025, Jira Cloud even calls issues **"work items"** (and issue types "work types"), though JQL and most teams still say "issue". So this lesson teaches the **concepts** and avoids exact click paths. If a button is somewhere else on your screen, the idea behind it is still the same.
+
+</Callout>
+
+## Jira in one picture
+
+Jira is a tool for **tracking work**. Every piece of work, from "build the tipping feature" to "the total is wrong on Android", is an **issue** (a ticket) with a unique key like `SHOP-142`: the project key plus a number.
+
+| Concept | What it is | Example |
+| --- | --- | --- |
+| **Project** | A container for one product or team's work | SHOP (customer app), COUR (courier app) |
+| **Issue** | One piece of work with a key, fields and history | SHOP-142 |
+| **Board** | A visual view of issues as cards in columns | SHOP board |
+| **Sprint** | A fixed time box (often 2 weeks) of planned work | Sprint 14 |
+| **Workflow** | The statuses an issue moves through | To Do → In Progress → … → Done |
+
+<Short>
+
+## The essentials
+
+### Issue types
+
+- **Epic**: a big piece of work split into smaller items. *Courier tipping.*
+- **Story**: a feature from the user's point of view, usually a <Term id="user-story" /> with <Term id="acceptance-criteria" />. *Add a tip for the courier at checkout.*
+- **Task**: technical work that isn't a user feature. *Update the regression suite.*
+- **Bug**: something that doesn't work as expected. *Order total ignores custom tip on Android.*
+- **Sub-task**: a small step inside any of the above. *Tip selector UI.*
+
+### Boards, sprints and workflows
+
+A **Scrum board** shows the current <Term id="sprint" />; a **Kanban board** shows a continuous flow of work without sprints. Each column is one or more **statuses**, and the statuses come from the team's **workflow**, which is different in every team. Common ones: *To Do, In Progress, In Review, In Testing (or QA), Done.*
+
+### Fields testers use most
+
+**Summary** (the title), **Description** (steps, expected, actual), **Environment**, **Component**, **Labels**, **Affects version** (where you found it), **Fix version** (where it will be fixed, usually set by the lead), **Priority**, **Attachments**, and **Links** like *blocks*, *relates to* and *duplicates*. For what goes inside a great bug ticket, see [How to Write a Bug Report](/tutorials/writing-bug-reports).
+
+### Daily habits
+
+- **Link every bug to the story** it was found in, so nobody closes the story with an open bug.
+- **@mention** people only when you need them; **watch** issues you care about to get updates.
+- Keep comments **factual and short**: what you did, on which build, what happened.
+
+### JQL: Jira's search language
+
+```sql
+project = SHOP AND type = Bug AND status != Done ORDER BY priority DESC
+```
+
+Read it like a sentence: *"In project SHOP, bugs that aren't Done, most important first."* Save it as a **filter**, and put filters on a **dashboard**. Other handy pieces: `assignee = currentUser()`, `created >= -7d`, `fixVersion = "3.8.0"`, `labels = regression`.
+
+Switch to **Detailed** for each concept in depth: workflows and who moves what, every tester field explained, links, comment etiquette, JQL step by step, dashboards and test management add-ons.
+
+</Short>
+
+<Long>
+
+## Issue types
+
+Jira organizes work in a small hierarchy. Your team may add custom types, but these five are nearly universal:
+
+| Type | What it means | QuickBite example |
+| --- | --- | --- |
+| **Epic** | A large goal, split into stories and tasks, often spanning several sprints | SHOP-120 Courier tipping |
+| **Story** | A user-facing feature, usually written as a <Term id="user-story" /> | SHOP-142 Add a tip for the courier at checkout |
+| **Task** | Work that isn't a user feature: setup, tech work, test prep | SHOP-158 Update the regression suite for tipping |
+| **Bug** | Behavior that doesn't match what's expected | SHOP-150 Order total ignores custom tip on Android |
+| **Sub-task** | A smaller step inside a story, task or bug | SHOP-143 Tip selector UI |
+
+<Callout type="tip" title="Bug, not Task">
+
+When you report a bug, choose the **Bug** type. Bug filters, reports, dashboards and release notes depend on it. A bug filed as a Task simply disappears from all of them.
+
+</Callout>
+
+## Boards and sprints
+
+A **board** shows issues as cards in columns, one column per status (or group of statuses). Teams usually use one of two kinds:
+
+- **Scrum board**: work is planned into a <Term id="sprint" />, a time box of usually one to four weeks. The board shows only the current sprint; everything else waits in the **backlog**. At the end of the sprint the team reviews what got done. See <Term id="scrum" /> for the bigger picture.
+- **Kanban board**: no sprints. Work flows continuously from left to right, and teams often limit how many cards can sit in a column at once (a "WIP limit") to avoid bottlenecks. Common for support and maintenance teams.
+
+As a tester, the board is your daily to-do list: the cards in **In Testing** (or **QA**, **Ready for test**, whatever your team calls it) are waiting for you.
+
+## Workflows and statuses
+
+A **workflow** is the set of statuses an issue can be in and the allowed moves between them. **Every team's workflow is different**, so learn yours in your first week. A typical one:
+
+<Steps>
+
+1. **To Do**: planned, nobody working on it yet.
+2. **In Progress**: a developer is building or fixing it.
+3. **In Review**: the code is written and another developer is reviewing it.
+4. **In Testing**: the change is on a test <Term id="environment" /> such as <Term id="staging" />, and a tester is checking it.
+5. **Done**: finished. For a bug, the **<Term id="resolution" />** field says *how* it ended, for example Done or Fixed, Duplicate, Won't Do, Cannot Reproduce (each team can change the list).
+
+</Steps>
+
+Bugs often have their own workflow with extra statuses like *Reopened*. If a fixed bug fails your retest, you move it back (reopen it) with a comment explaining what still happens. How often that happens is tracked as the <Term id="reopen-rate" />. For the full journey of a bug, see the [Bug Life Cycle](/fundamentals/bug-life-cycle) lesson.
+
+<Callout type="note" title="Who moves what?">
+
+Usually developers move issues up to *In Review* or *In Testing*, and testers move them to *Done* or back. Some teams let anyone move anything, others lock transitions with permissions. Ask your lead what's expected, and never close someone else's ticket without telling them.
+
+</Callout>
+
+## The fields testers use
+
+| Field | What to put in it | Tip |
+| --- | --- | --- |
+| **Summary** | Where + what + when | "Checkout: order total ignores custom tip on Android" |
+| **Description** | Preconditions, steps, expected, actual, notes | Use numbered lists; paste errors as code |
+| **Environment** | Device, OS, app version + <Term id="build" />, server | "Pixel 8, Android 15, 3.8.0 (409), Staging" |
+| **Component** | The part of the product | Routes the bug to the right team |
+| **Labels** | Free tags for filtering | `android`, `regression`, `checkout` |
+| **Affects version** | The version where you found it | 3.8.0 |
+| **Fix version** | The release that will contain the fix | Usually set in <Term id="triage" />, not by you |
+| **Priority** | How soon it should be fixed | Your proposal; the team may change it |
+| **Attachments** | Screenshots, videos, logs | Name them clearly: `tip-total-wrong.mp4` |
+
+<Callout type="info" title="Severity is often missing">
+
+Default Jira has a **Priority** field but no **Severity** field. Many teams add one as a custom field; others write severity in the description, or only use priority. Learn the difference in [Severity vs Priority](/fundamentals/severity-vs-priority), then follow your team's convention.
+
+</Callout>
+
+### Links between issues
+
+Links connect tickets so the whole team sees how work relates. The three you'll use most:
+
+- **blocks / is blocked by**: SHOP-150 *blocks* SHOP-142 means the story can't be finished until the bug is fixed.
+- **relates to**: connected, but not blocking. A similar bug on iOS, a related story.
+- **duplicates / is duplicated by**: the same problem was already reported. Close the newer one as a <Term id="duplicate-bug">duplicate</Term> and link it to the original.
+
+Bugs found while testing a story are linked to that story (or created as a sub-task of it, if that's your team's habit). That's what stops a story from being closed with known bugs, and it's what lets a lead see at a glance which features are healthy.
+
+## Creating a good bug ticket
+
+Everything from [How to Write a Bug Report](/tutorials/writing-bug-reports) applies. The Jira-specific checklist:
+
+<Steps>
+
+1. **Search first.** Someone may have reported it already. A quick filter like `project = SHOP AND type = Bug AND text ~ "tip" AND statusCategory != Done` saves a duplicate.
+2. **Choose the right project and the Bug type.**
+3. **Write the summary**: where, what, when. No "broken", no "!!!".
+4. **Fill the description** using your team's template: Preconditions, Steps, Expected, Actual, Notes.
+5. **Set the fields** your team uses: environment, component, labels, affects version, a proposed priority.
+6. **Attach evidence** and **link** the bug to the story or related issues.
+7. **Create it, then watch it.** Answer questions quickly; you're the expert on this bug.
+
+</Steps>
+
+<Compare>
+<Do title="Ready to work on">
+
+**Summary:** Checkout: order total ignores custom tip on Android
+**Environment:** Pixel 8, Android 15, QuickBite 3.8.0 (409), Staging
+**Links:** blocks SHOP-142 · **Labels:** android, checkout
+**Attachment:** tip-total-wrong.mp4
+
+</Do>
+<Dont title="Needs three rounds of questions">
+
+**Summary:** Tip broken!!
+**Environment:** my phone
+**Description:** Tip does not work. Please fix.
+**Links:** none
+
+</Dont>
+</Compare>
+
+## Comments, mentions and watching
+
+The comment thread is where the real conversation about an issue happens. A few habits make you easy to work with:
+
+- **@mention** a person when you need *them* to act or answer: "@Luka can you check if this also affects the web checkout?" Don't mention the whole team for information.
+- **Watch** issues you care about (your bugs, stories you test). You'll get notified about changes and comments, without anyone mentioning you.
+- **Be factual and specific.** "Retested on build 412, Pixel 8: fixed. Also checked preset tips and no tip." beats "works now".
+- **Keep decisions in the ticket**, not only in chat. If a product owner says "won't fix, by design" in a call, add a comment so the next person knows why.
+- **One topic per comment**, newest information first if you edit. Use the description for the reproducible facts and comments for the conversation.
+- **No blame, no sarcasm.** The ticket is permanent and widely read.
+
+## Finding things: filters and JQL
+
+The search box in Jira understands two modes: a simple one with dropdowns, and **JQL** (Jira Query Language) for precise queries. JQL looks like code, but it's really just sentences made of **field, operator, value**, joined with `AND` / `OR`, plus an optional `ORDER BY`.
+
+```sql
+project = SHOP AND type = Bug AND status != Done ORDER BY priority DESC
+```
+
+| Piece | Meaning |
+| --- | --- |
+| `project = SHOP` | Only issues in the SHOP project |
+| `type = Bug` | Only bugs (`type` is short for `issuetype`) |
+| `status != Done` | Everything not in the Done status |
+| `ORDER BY priority DESC` | Highest priority first |
+
+A few more you'll use constantly:
+
+| Query | Finds |
+| --- | --- |
+| `assignee = currentUser() AND statusCategory != Done` | My open work |
+| `project = SHOP AND type = Bug AND created >= -7d` | Bugs from the last 7 days |
+| `fixVersion = "3.8.0" AND status != Done` | What's left for the release |
+| `labels = regression AND type = Bug` | Bugs tagged as regressions |
+| `assignee is EMPTY AND type = Bug` | Bugs nobody picked up |
+| `reporter = currentUser() ORDER BY updated DESC` | Issues I reported, latest activity first |
+
+<Callout type="tip" title="Small JQL habits that pay off">
+
+- Text values with spaces need quotes: `status = "In Testing"`, `fixVersion = "3.8.0"`.
+- `currentUser()` makes a filter work for everyone who opens it.
+- Relative dates (`-7d`, `-2w`) keep a filter up to date by itself.
+- `statusCategory != Done` works even if your team has several "done-like" statuses (Done, Closed, Released). `resolution = Unresolved` is another common way to say "still open".
+- `text ~ "tip"` searches summary, description and comments. Great for checking for duplicates.
+- Jira's search box autocompletes field names and values as you type, so you don't need to memorize everything.
+
+</Callout>
+
+### Saved filters and dashboards
+
+When a query is useful, **save it as a filter** with a clear name ("SHOP open bugs by priority"). Saved filters can be shared with the team, used as the source of a board, and **subscribed to**, so Jira emails you the results on a schedule.
+
+A **dashboard** is a page of small panels (gadgets), each fed by a filter: a list of your open bugs, a pie chart of bugs by component, a "created vs resolved" chart for the release. A simple tester dashboard might show:
+
+- My open work (`assignee = currentUser() AND statusCategory != Done`)
+- Bugs waiting for retest (`status = "In Testing" AND type = Bug`)
+- New bugs this week, by priority
+- Open bugs for the next release (`fixVersion = "3.8.0" AND type = Bug AND statusCategory != Done`)
+
+## Test management add-ons
+
+Jira on its own tracks stories, tasks and bugs, but not test cases or test runs. Teams add that with apps from Atlassian's marketplace, such as **Xray** or **Zephyr**, or connect an external tool like **TestRail**. With these, test cases can be linked to stories (for <Term id="test-coverage" /> and a <Term id="traceability-matrix" />), test runs record results per build, and a failed test can create a linked bug in one click. You'll learn the specific tool on the job; the ideas are covered in [Regression and Smoke Suites](/tutorials/regression-and-smoke-suites).
+
+## Common mistakes
+
+<Callout type="bug" title="Watch out for these">
+
+- **Filing a bug as a Task**, or in the wrong project. It vanishes from every bug report.
+- **Not searching first** and creating a duplicate.
+- **Closing a story with open bugs** linked to it, or not linking them at all.
+- **Setting Fix version yourself** when your team expects the lead to do it in triage.
+- **Moving a bug to Done without retesting** it on a build that contains the fix.
+- **@mentioning everyone** on every comment. People start muting you.
+- **Important decisions only in chat.** Six weeks later, nobody remembers why a bug was closed.
+- **Relying on exact screens from a tutorial.** Your Jira is configured differently; learn your team's workflow and fields.
+
+</Callout>
+
+</Long>
+
+## Practice: run a story through the sprint
+
+This is a **simplified mock** of a Jira-like board, not the real product. Story SHOP-142 is in *In Testing* and assigned to you. Read what you found, create the bug (the form gives hints as you go), then move both tickets through the workflow. You'll play the developer too. Use the status dropdown on each card to move it, and watch the activity log.
+
+<SprintBoard client:visible />
+
+## Practice: build JQL queries
+
+Compose a query from the dropdowns and watch the JQL and the results update. The filter really runs on the mock issues below. Try to solve all five challenges.
+
+<JqlBuilder client:visible />
+
+## Your first-week Jira checklist
+
+<Checklist
+  title="Your first-week Jira checklist"
+  storageKey="working-with-jira"
+  items={[
+    "I know our project keys and which board my team uses",
+    "I know our workflow: every status, and who moves issues between them",
+    "I know which fields our team expects on a bug (and whether we use severity)",
+    "I have our bug description template",
+    "I search for duplicates before creating a bug",
+    "I link every bug to the story or issue it belongs to",
+    "I watch the issues I report and test",
+    "I have a saved filter for my open work using currentUser()",
+    "I have a filter for bugs waiting for my retest",
+    "I put decisions from calls and chats into ticket comments",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "You find that the order total is wrong when a custom tip is entered. Which issue type should you use?",
+      options: ["Story", "Task", "Bug", "Epic"],
+      answer: 2,
+      explain: "It's behavior that doesn't match what's expected, so it's a Bug. Bug filters, dashboards and reports rely on the type.",
+    },
+    {
+      q: "Your bug means the story can't be released until it's fixed. Which link fits best?",
+      options: ["The bug duplicates the story", "The bug blocks the story", "The bug clones the story", "No link is needed"],
+      answer: 1,
+      explain: "'Blocks' tells everyone the story can't be finished while the bug is open. 'Duplicates' is for the same bug reported twice.",
+    },
+    {
+      q: "What does this JQL return? project = SHOP AND type = Bug AND status != Done ORDER BY priority DESC",
+      options: [
+        "All SHOP issues, newest first",
+        "SHOP bugs that aren't Done, highest priority first",
+        "Done bugs in SHOP, lowest priority first",
+        "Bugs assigned to me in every project",
+      ],
+      answer: 1,
+      explain: "Read it like a sentence: project SHOP, type Bug, status not Done, sorted by priority from highest to lowest.",
+    },
+    {
+      q: "Which query shows your own open work and keeps working when a teammate uses the same filter?",
+      options: [
+        "assignee = \"Mia Novak\"",
+        "assignee = currentUser() AND statusCategory != Done",
+        "reporter = currentUser()",
+        "status = \"In Progress\"",
+      ],
+      answer: 1,
+      explain: "currentUser() is whoever runs the filter, and statusCategory != Done excludes everything finished, whatever your team calls its done statuses.",
+    },
+    {
+      q: "A developer moved your bug to In Testing. What should you do before moving it to Done?",
+      options: [
+        "Nothing, the developer said it's fixed",
+        "Retest it on a build that contains the fix and comment what you checked",
+        "Close the linked story first",
+        "Change the fix version",
+      ],
+      answer: 1,
+      explain: "A bug is only Done after it's been retested on the fixed build. A short comment with the build and device makes the result traceable.",
+    },
+    {
+      q: "Why does this lesson avoid exact click paths for Jira?",
+      options: [
+        "Jira has no menus",
+        "Jira's interface changes often and every company configures it differently",
+        "Testers don't use Jira",
+        "Click paths are the same in every company",
+      ],
+      answer: 1,
+      explain: "Screens, statuses and fields vary by version and team. The concepts (issue types, workflows, links, JQL) stay the same.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Jira tracks work as **issues** (Epic, Story, Task, Bug, Sub-task) inside **projects**, shown on **Scrum** or **Kanban boards**.
+- **Workflows and fields differ per team**: learn yours, and treat any tutorial's screens as examples.
+- A good bug ticket uses the **Bug** type, a specific summary, steps/expected/actual, environment, evidence, and a **link** to its story.
+- **Link, watch and comment factually**; @mention only when you need someone.
+- **JQL** is field-operator-value sentences: `project = SHOP AND type = Bug AND status != Done ORDER BY priority DESC`. Save useful queries as **filters** and put them on a **dashboard**.
+- Never move a bug to Done without **retesting** it on a build with the fix.
+
+</KeyTakeaways>

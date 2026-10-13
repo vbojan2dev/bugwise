@@ -1,0 +1,453 @@
+---
+title: Estimating Testing Effort
+description: Learn what goes into a testing estimate, how to use work breakdown, history, three-point (PERT) estimation and planning poker, how to answer "how long will testing take?" honestly, and what to do when the estimate doesn't fit, with a hands-on estimate for FoodDash scheduled orders.
+order: 4.5
+level: intermediate
+minutes: { short: 12, long: 20 }
+platform: both
+tags: [test planning, estimation, pert, agile, communication]
+---
+
+import EstimationExercise from '@/components/demos/estimating-testing-effort/EstimationExercise';
+
+Monday stand-up. The product manager shares her screen: *"Scheduled orders is next. Customers pick a delivery slot for later today or tomorrow. Development thinks a week. How long will testing take?"* Everyone turns to you.
+
+You could say "two days" to sound confident, or "it's done when it's done" to stay safe. Both answers cause trouble later. This lesson shows you how to build an estimate you can explain, how to say it out loud, and what to do when the number doesn't fit the date.
+
+## What an estimate is (and isn't)
+
+An **estimate** is a forecast made with incomplete information. It is not a promise, and it is not a deadline.
+
+<Callout type="example" title="Think of a navigation app">
+
+When you start a trip, the app says "arrive 14:35". It doesn't know about the accident on the highway yet. As you drive, it updates: 14:42, then 14:50. Nobody calls the app a liar. Everyone expects the arrival time to change when the road changes. A good testing estimate works the same way: a number now, based on what you know, and an update as soon as something important changes.
+
+</Callout>
+
+Two words to keep apart:
+
+- **Effort** is the work itself: "about 28 hours of testing".
+- **Duration** is calendar time: "done by Thursday". Duration includes meetings, waiting for builds, other tickets and the sandbox being down for a morning.
+
+People usually ask for duration ("when?"), but you can only build it from effort plus your assumptions. Say both.
+
+## What goes into a testing estimate
+
+Beginners often estimate only the part they picture: running the tests. That's usually less than half of the work.
+
+<div class="not-prose my-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">1 · Understand</p>
+    <p class="mt-1 text-sm text-muted">Read the story, designs and acceptance criteria. Ask questions. Join refinement.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">2 · Design</p>
+    <p class="mt-1 text-sm text-muted">Write scenarios, test cases or charters. Pick the regression set.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">3 · Set up</p>
+    <p class="mt-1 text-sm text-muted">Environment, accounts, test data, devices, feature flags, sandbox payment cards.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">4 · Execute</p>
+    <p class="mt-1 text-sm text-muted">Run the tests on every device and browser in the matrix, not just one.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">5 · Report bugs</p>
+    <p class="mt-1 text-sm text-muted">Reproduce, collect evidence, write the report, answer questions.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">6 · Retest and regression</p>
+    <p class="mt-1 text-sm text-muted">Check each fix on a new build, then check nothing around it broke. Often more than one round.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">7 · Report</p>
+    <p class="mt-1 text-sm text-muted">Keep the test run up to date, write the summary, give a recommendation.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-warn/40 bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">8 · Buffer</p>
+    <p class="mt-1 text-sm text-muted">Late builds, a broken environment, blocking bugs. They happen on most projects.</p>
+  </div>
+</div>
+
+<Short>
+
+## The essentials
+
+### Break the work down
+
+Don't guess one big number. Make a <Term id="work-breakdown-structure">work breakdown</Term>: list the tasks from the eight boxes above for **this** feature, and estimate each one. Small tasks are easier to estimate, and a list shows people *why* testing takes what it takes. This is called a **work breakdown**.
+
+### Use three numbers, not one
+
+For each task, give an **optimistic** (O), a **most likely** (M) and a **pessimistic** (P) number. The **PERT** formula turns them into one expected value:
+
+<div class="not-prose my-4 rounded-2xl border border-line bg-surface p-4 text-center">
+  <p class="font-mono text-lg font-semibold text-fg">E = (O + 4M + P) / 6</p>
+  <p class="mt-1 text-sm text-muted">The most likely value counts four times; the best and worst cases pull it a little toward themselves.</p>
+</div>
+
+Example: test design takes 3 h at best, 4 h most likely, 7 h at worst. E = (3 + 16 + 7) / 6 ≈ **4.3 h**. Add up all tasks, and give the total **with its range**: "about 28 hours, between 16 and 47".
+
+### Other techniques
+
+| Technique | In one line |
+| --- | --- |
+| **Analogy / history** | "Tipping took us 4 days; this is similar but touches checkout too." |
+| **Ratio** | Testing as a share of dev effort, based on *your team's own* history. A sanity check, not a rule. |
+| **Planning poker** | The whole team sizes a story together in story points, testing included. |
+
+### Attach assumptions and risks
+
+An estimate is only as good as its assumptions. Say them: "assuming the build is on staging Monday, test accounts are ready and we test on four phones". If an assumption breaks, the estimate changes, and everyone already knows why.
+
+### Answer honestly
+
+In a stand-up: a number, a range, the main assumption, and when you'll update it. *"About five days, three if it goes smoothly, eight if the build is late or we find a lot. I'll update you Wednesday."* If you don't know enough yet, say what you need and when you'll have a number.
+
+### When it won't fit
+
+Don't quietly squeeze it. Show the gap, then offer options: test the **riskiest parts first and deepest** (<Term id="risk-based-testing" />), cut or move scope, add people or time, or release behind a <Term id="feature-flag" />. Always say **what won't be tested**, and let the product owner decide.
+
+### Common mistakes
+
+Forgetting retest and regression, extra devices, test data and waiting for builds. Giving one number with no range. Never re-estimating.
+
+Switch to **Detailed** at the top for each technique in depth, a full worked estimate, how to talk about it and how to re-estimate.
+
+</Short>
+
+<Long>
+
+## The eight parts, for real
+
+Here's what each box means for a feature like Scheduled orders in the FoodDash app.
+
+| Part | What it covers | Easy to forget |
+| --- | --- | --- |
+| **Understand** | Reading the story and designs, refinement, a <Term id="three-amigos" /> session, questions | Waiting for answers to your questions |
+| **Design** | Scenarios, cases, exploratory charters, choosing the regression set | Updating old cases the change affects |
+| **Set up** | <Term id="environment" />, <Term id="test-data" />, accounts, feature flags, devices charged and updated | Restaurants with special opening hours; test accounts in other time zones |
+| **Execute** | Running everything on the <Term id="device-matrix" /> or <Term id="browser-matrix" /> | Every extra device repeats part of the work |
+| **Report bugs** | Reproducing, evidence, the <Term id="bug-report" />, answering questions | More bugs means more of this |
+| **Retest and regression** | <Term id="retesting" /> each fix on a new build, then <Term id="regression-testing" /> around it | Usually two or three rounds, not one |
+| **Report** | Updating the test run, the <Term id="test-summary-report" />, the go/no-go conversation | Daily status updates add up |
+| **Buffer** | Late builds, environment down, a <Term id="blocker" /> bug | It's not padding; it's the part that always happens |
+
+<Callout type="tip" title="Your estimate covers your work, not everyone's">
+
+You estimate the testing effort. Whether developers need time to fix the bugs you find is their estimate. But the two are linked: if developers plan no time for fixes, your retest time has nowhere to happen. Mention it.
+
+</Callout>
+
+## Techniques
+
+No technique is "correct". Experienced testers combine two: one to build the number, another to check it.
+
+### Work breakdown (bottom-up)
+
+A **work breakdown** splits the job into tasks small enough to picture, usually between one hour and a day each. Then you estimate each task and add them up.
+
+<Steps>
+
+1. **List the tasks.** Use the eight parts as a checklist so nothing is forgotten.
+2. **Split anything bigger than a day.** "Execute" becomes "iPhone", "Android", "older devices", "large text".
+3. **Estimate each task.** Ideally with three numbers (see below).
+4. **Add them up**, and add a line for blockers and waiting.
+5. **Write down the assumptions** each number depends on.
+
+</Steps>
+
+It takes longer than a gut feeling, but the list is valuable on its own: it shows the PM what testing involves, and it becomes your plan.
+
+### Analogy and history
+
+"What did something similar take last time?" If adding tips to checkout took four days of testing, a new delivery-instructions field on the same screen is probably fewer, and Scheduled orders, which touches checkout, tracking *and* notifications, is probably more.
+
+History only works if someone wrote it down. Keep a simple note per feature: estimate, actual, and what surprised you. After a few features you'll see your own pattern ("I always underestimate Android by about a third"), which is worth more than any formula.
+
+### Three-point estimation and PERT
+
+One number hides uncertainty. Three numbers show it: that's <Term id="three-point-estimation">three-point estimation</Term>.
+
+- **O, optimistic:** everything goes right. The build works, the data is ready, few bugs.
+- **M, most likely:** what usually happens.
+- **P, pessimistic:** a realistic bad case. Not the end of the world, but a late build and a nasty bug.
+
+The **PERT** formula (from the Program Evaluation and Review Technique) weights them into one expected value:
+
+<div class="not-prose my-4 rounded-2xl border border-line bg-surface p-4 text-center">
+  <p class="font-mono text-lg font-semibold text-fg">E = (O + 4M + P) / 6</p>
+</div>
+
+Why it helps: the pessimistic side of testing is usually longer than the optimistic side (a lot can go wrong, only a little can go "extra right"), so E lands a bit above M. That small shift is exactly the delay people forget.
+
+Example for one task, "run the tests on iPhone and Pixel":
+
+| O | M | P | E |
+| --- | --- | --- | --- |
+| 4 h | 6 h | 10 h | (4 + 24 + 10) / 6 ≈ **6.3 h** |
+
+Some teams also use **(P − O) / 6** as a rough measure of how uncertain each task is. You don't need it to start; the sum of O and the sum of P already give a useful, honest range.
+
+<Callout type="warning" title="Three numbers, not three decimals">
+
+PERT produces numbers like 28.17 hours. Nobody can estimate testing to a quarter of an hour. Round to half hours for tasks and to half days for the total, and always give the range. "About 5 days (3 to 8)" is more honest and more useful than "28.17 hours".
+
+</Callout>
+
+### Ratio-based estimates
+
+Some teams estimate testing as a share of development effort: "testing usually takes about X% of the dev estimate here". It's quick, and it can be a good **sanity check** on a bottom-up estimate.
+
+The caveats are big:
+
+- The ratio only means something if it comes from **your team's own history**, on similar work. Ratios quoted online vary widely between teams and products; don't treat any of them as a standard.
+- It inherits every mistake in the dev estimate.
+- It ignores what makes testing expensive: a small code change to payments can need far more testing than a big change to an "About" screen.
+
+Use it to ask "why is my number so different?", not to produce the number.
+
+### Planning poker (agile teams)
+
+In many <Term id="scrum" /> teams the whole team estimates a <Term id="user-story" /> together, in **<Term id="story-points">story points</Term>**: a relative size, not hours. In **<Term id="planning-poker">planning poker</Term>**, everyone picks a card (often 1, 2, 3, 5, 8, 13), all cards are shown at once, and the highest and lowest explain their reasoning before a second round.
+
+In most teams the points cover all the work to finish the story, testing included. Your job is to make testing visible: *"I'd say 8, not 3. The code change is small, but it touches checkout, needs four devices and a payment sandbox."* That's often the moment the team discovers the story is bigger than it looked.
+
+### Which one when?
+
+| Situation | Good fit |
+| --- | --- |
+| A feature you'll test yourself in the next sprint or two | Work breakdown + three-point |
+| A quick answer in a meeting | Analogy, with "I'll confirm by tomorrow" |
+| Sprint planning in a scrum team | Planning poker, with your testing view |
+| Checking your own bottom-up number | History and ratio as a cross-check |
+
+## Assumptions and risks
+
+Every estimate rests on assumptions. Write them under the number, short and checkable.
+
+<Compare>
+<Do title="With assumptions">
+
+**About 5 days of testing (3 to 8).** Assumes: build on staging by Monday · test accounts and sandbox cards ready · four phones (iPhone 15, iPhone SE, Pixel 8, Samsung A-series) · no web version in this release. **Risks:** the payment sandbox has been unstable this month; notification timing depends on a backend change that isn't merged yet.
+
+</Do>
+<Dont title="A bare number">
+
+**3 days.**
+
+</Dont>
+</Compare>
+
+When an assumption breaks ("the build will be Wednesday, not Monday"), you don't have to defend the old number. You point at the assumption and give the new one.
+
+## Worked example: "Tip your courier"
+
+FoodDash wants customers to add a tip for the courier after delivery: preset amounts or a custom one, paid with the saved card, shown on the receipt. iOS and Android. Here's a full work breakdown with three-point estimates, in hours:
+
+| Task | O · M · P | E |
+| --- | --- | --- |
+| Understand the story, refinement, questions | 1 · 2 · 3 | 2 |
+| Design scenarios and cases | 3 · 4 · 7 | 4.5 |
+| Test data: completed orders, saved cards, sandbox | 1 · 2 · 4 | 2 |
+| Run on iPhone 15 and Pixel 8 | 4 · 6 · 10 | 6.5 |
+| Extra devices: iPhone SE, Samsung A, large text | 2 · 3 · 5 | 3 |
+| Bug reports and follow-up | 1 · 2 · 4 | 2 |
+| Retest fixes, regression of payment and receipts | 3 · 4 · 8 | 4.5 |
+| Status updates and summary | 1 · 1.5 · 2 | 1.5 |
+| Buffer: late build, sandbox down | 0 · 2 · 4 | 2 |
+| **Total** | **16 · 26.5 · 47** | **about 28** |
+
+With about 6 focused testing hours a day (stand-ups, refinement and other tickets take the rest), that's **about 5 days, between 3 and 8**. Here is how it was said in the planning meeting:
+
+<Callout type="example" title="The estimate, as said in the meeting">
+
+"Testing Tip your courier is about five days of effort, three if everything goes smoothly, eight if the build is late or we find a lot. That's two main phones plus three extra configurations, iOS and Android only. It assumes the build is on staging by Monday and the payment sandbox works. I'll give you an update after the first day of testing."
+
+</Callout>
+
+Notice what the E column did: for most tasks the expected value sits a little above the most likely value. Across nine tasks that adds up to almost two hours, which is roughly the "how did we lose a morning?" that teams always feel.
+
+## How to answer "How long will testing take?"
+
+Most of the time this question comes in a stand-up, a chat message or a hallway. You won't have a spreadsheet open. Use this shape:
+
+<Steps>
+
+1. **A number, with a range.** "About five days, three to eight."
+2. **The biggest assumption.** "If the build is on staging Monday."
+3. **What's not included**, if it matters. "iOS and Android; the web shop isn't in this release."
+4. **When you'll update it.** "I'll know more after the first day of testing."
+
+</Steps>
+
+<Compare>
+<Do title="Honest and useful">
+
+"I need an hour to read the story and ask Marko two questions. I'll post a number with a range in the channel before lunch."
+
+"About five days, three to eight. The main risk is the payment sandbox. I'll update you Wednesday."
+
+</Do>
+<Dont title="Pleasing or vague">
+
+"Two days, no problem." (to make the PM happy, then working late)
+
+"It depends." (true, but useless without saying on what)
+
+"Testing is done when it's done."
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="'I don't know yet' is allowed, with a time-box">
+
+If the story is unclear, a number would be a guess dressed up as a fact. Say what you need to estimate it ("the designs and an answer on time zones") and when you'll have a number. That's a professional answer, not a weak one.
+
+</Callout>
+
+## When the estimate won't fit
+
+The PM says: *"We need to release Thursday. That's three days, not five."* This is where an estimate earns its value: it turns a feeling ("not enough time") into a choice.
+
+<Steps>
+
+1. **Show the gap calmly.** "My estimate is five days. Thursday gives three. Here's what the five days are made of." The breakdown helps here.
+2. **Prioritize by risk.** Score the areas by likelihood and impact, the same way you do in a [test plan](/tutorials/writing-a-test-plan). Money, data and the main flow come first.
+3. **Offer options, not a refusal.** Test the high-risk parts deeply and the rest lightly · cut scope (e.g. only "later today", not "tomorrow") · move the date · add a second tester · release behind a <Term id="feature-flag" /> to a small group first.
+4. **Say what won't be tested.** Write it down: "Not tested by Thursday: large text, Samsung A-series, custom tip amounts above €50."
+5. **Let the owner decide.** The product owner decides whether to accept that risk. Your job is to make the risk visible, not to carry it silently.
+
+</Steps>
+
+What you should not do: quietly test less without telling anyone, or promise three days and work nights. Both hide the real risk from the people who make the release decision. The interview question [What do you do if there isn't enough time to test everything?](/interview/no-time-to-test-everything) covers the same habit from the release side.
+
+## Re-estimating
+
+An estimate is a living number. Re-estimate when:
+
+- **Scope changes**: a new acceptance criterion, a new platform, a design change.
+- **An assumption breaks**: the build is two days late, the sandbox is down, a device isn't available.
+- **Reality differs from the plan**: after the first day, you've found nine bugs instead of the usual two, which means more reporting and more retest rounds.
+
+How to do it well:
+
+- **Track as you go.** Your test run shows how many cases are done ([Test Runs and Test Management](/tutorials/test-runs-and-test-management)). If day two ends at 20% instead of 40%, say so on day two, not on day five.
+- **Give the new number and the reason** in one sentence: "Now about seven days instead of five, because the build arrived Wednesday and checkout has two blocking bugs."
+- **After the release, compare** estimate and actual. Two minutes, one line in your notes. That's how your next estimate gets better.
+
+## Common mistakes
+
+<Callout type="bug" title="Watch out for these">
+
+- **Estimating only execution.** Understanding, design, setup, bug reports and reporting are real work.
+- **Forgetting retest and regression.** Fixes arrive in new builds, often in several rounds, and each one needs checking.
+- **One device in your head.** Each extra phone, OS version or browser repeats part of the execution.
+- **Forgetting test data.** Accounts, orders in the right state, sandbox cards. It's a common reason testing starts late.
+- **Ignoring waiting.** Builds arrive late and environments go down. That's duration even if it isn't effort.
+- **A single number, no range.** It will be read as a promise.
+- **Fake precision.** 28.17 hours suggests a certainty nobody has.
+- **Padding in secret.** Hidden buffers erode trust when discovered. Show the buffer as its own line.
+- **Never re-estimating.** A five-day estimate that becomes eight on day five is a surprise; on day two it's information.
+
+</Callout>
+
+</Long>
+
+## Practice: estimate Scheduled orders
+
+Your PM wants a number for FoodDash's Scheduled orders. Fill in best, likely and worst hours for each task, add anything you think is missing, and watch the PERT total and range. Then run the reality check: it looks for commonly forgotten tasks in your list and shows how an illustrative version of this project actually went. The numbers are made up to show a typical pattern, not to grade you.
+
+<EstimationExercise client:visible />
+
+## Before you give an estimate
+
+<Checklist
+  title="Before you give an estimate"
+  storageKey="estimating-testing-effort"
+  items={[
+    "I read the story and asked my open questions (or said when I'd have the answers)",
+    "The breakdown covers understanding, design, setup, execution, bug reports, retest and regression, reporting and a buffer",
+    "Execution is multiplied by the devices and browsers we actually test on",
+    "Test data and environment setup have their own line",
+    "Each task has a best, likely and worst number",
+    "The total is rounded and given as a range, not a precise number",
+    "Assumptions and risks are written under the number",
+    "I said what is not included",
+    "I said when I'll update the estimate",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "A task has O = 2 h, M = 4 h and P = 12 h. What is the PERT expected value?",
+      options: ["4 h", "5 h", "6 h"],
+      answer: 1,
+      explain: "(O + 4M + P) / 6 = (2 + 16 + 12) / 6 = 30 / 6 = 5 h. The long pessimistic tail pulls the expected value above the most likely 4 h.",
+    },
+    {
+      q: "Which task is most often missing from a beginner's testing estimate?",
+      options: ["Running the tests on the main phone", "Retesting fixes and regression on new builds", "Reading the user story"],
+      answer: 1,
+      explain: "Fixes arrive in new builds, often in two or three rounds, and each needs retesting plus a regression check around it. It's easy to forget because it happens after the first pass.",
+    },
+    {
+      q: "In stand-up, the PM asks how long testing will take. You've only skimmed the story. Best answer?",
+      options: [
+        "\"Two days\", to keep things moving",
+        "\"It depends\"",
+        "\"I need an hour to read it and ask two questions. I'll post a number with a range before lunch.\"",
+      ],
+      answer: 2,
+      explain: "A guess dressed up as an estimate becomes a promise. Saying what you need and when you'll have a number is honest and still helpful.",
+    },
+    {
+      q: "Your estimate is five days. The release is in three. What's the professional response?",
+      options: [
+        "Agree to three days and test less without mentioning it",
+        "Show the gap, prioritize by risk, offer options and say what won't be tested",
+        "Refuse to test until the date moves",
+      ],
+      answer: 1,
+      explain: "Make the trade-off visible and let the product owner decide with full information. Silent shortcuts hide the risk from the people who own the release decision.",
+    },
+    {
+      q: "What's the main caveat of ratio-based estimates (testing as a share of dev effort)?",
+      options: [
+        "They are only meaningful with your own team's history, and they ignore how risky the change is",
+        "The formula is too complicated for most teams",
+        "They always overestimate",
+      ],
+      answer: 0,
+      explain: "A ratio from somewhere else says little about your team. Even your own ratio misses that a small payment change can need far more testing than a big text change.",
+    },
+    {
+      q: "What's the difference between effort and duration?",
+      options: [
+        "They're the same thing",
+        "Effort is the work in hours; duration is calendar time, including waiting and other work",
+        "Duration is only used in waterfall projects",
+      ],
+      answer: 1,
+      explain: "28 hours of effort can take five or eight calendar days depending on meetings, late builds and blockers. People usually ask about duration, so state your assumptions.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- An estimate is a **forecast, not a promise**. Give a number, a range, your assumptions and when you'll update it.
+- A testing estimate covers **understanding, design, setup, execution on every device, bug reports, retest and regression, reporting and a buffer**, not just running tests.
+- **Work breakdown + three-point** is the most useful combination: list the tasks, give O, M and P, and use **E = (O + 4M + P) / 6**.
+- **History, ratios and planning poker** are useful cross-checks. Ratios only mean something with your own team's data.
+- Avoid **fake precision**: round, and always show the range.
+- When it won't fit: **show the gap, prioritize by risk, offer options, say what won't be tested**, and let the owner decide.
+- **Re-estimate** as soon as scope or assumptions change, and compare estimate with actual afterwards.
+
+</KeyTakeaways>
+
+**Next:** turn the estimate into a plan in [Writing a Test Plan](/tutorials/writing-a-test-plan), or see how runs make progress visible in [Test Runs and Test Management Tools](/tutorials/test-runs-and-test-management).

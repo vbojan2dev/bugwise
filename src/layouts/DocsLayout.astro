@@ -1,0 +1,137 @@
+---
+import type { MarkdownHeading } from 'astro';
+import BaseLayout from './BaseLayout.astro';
+import Sidebar from '@/components/layout/Sidebar.astro';
+import Toc from '@/components/layout/Toc.astro';
+import LessonModeToggle from '@/components/layout/LessonModeToggle.astro';
+import CompleteButton from '@/components/layout/CompleteButton.astro';
+import Icon from '@/components/ui/Icon.astro';
+import { getNav } from '@/lib/content';
+import { getSection } from '@/data/site';
+import { href, stripBase } from '@/lib/url';
+import { abs, breadcrumbs, publisher } from '@/lib/seo';
+
+interface Link {
+  title: string;
+  href: string;
+}
+interface Props {
+  title: string;
+  description: string;
+  section: string;
+  headings?: MarkdownHeading[];
+  /** Small labels under the title, e.g. level or platforms. */
+  badges?: { label: string; icon?: string }[];
+  minutes?: { short: number; long?: number };
+  prev?: Link;
+  next?: Link;
+}
+
+const { title, description, section, headings = [], badges = [], minutes, prev, next } = Astro.props;
+const nav = await getNav();
+const sec = getSection(section);
+const hasModes = !!minutes?.long;
+const pageKey = stripBase(Astro.url.pathname).replace(/^\//, '');
+const path = '/' + pageKey;
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'LearningResource',
+    name: title,
+    description,
+    url: abs(path, Astro.site),
+    inLanguage: 'en',
+    learningResourceType: section === 'components' ? 'Guide' : 'Lesson',
+    educationalLevel: 'Beginner',
+    teaches: title,
+    isAccessibleForFree: true,
+    ...(minutes ? { timeRequired: `PT${minutes.long ?? minutes.short}M` } : {}),
+    isPartOf: { '@type': 'WebSite', name: 'Bugwise', url: abs('/', Astro.site) },
+    publisher: publisher(Astro.site),
+  },
+  breadcrumbs([[sec.title, `/${section}`], [title, path]], Astro.site),
+];
+---
+
+<BaseLayout title={title} description={description} jsonLd={jsonLd}>
+  <div class="container-page grid gap-10 lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)_13rem]">
+    <aside class="hidden lg:block">
+      <div class="sticky top-16 max-h-[calc(100dvh-4rem)] overflow-y-auto py-8 pr-2">
+        <Sidebar nav={nav} />
+      </div>
+    </aside>
+
+    <article class:list={['min-w-0 py-10', !hasModes && 'no-modes']} style={`--accent: ${sec.accent}`} data-pagefind-body>
+      <span hidden data-pagefind-meta={`section:${sec.short}`}></span>
+      <header class="mb-10 max-w-[46rem]">
+        <a href={href('/' + sec.id)} class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium" style="color: var(--accent)">
+          <Icon name={sec.icon} size={15} />
+          {sec.title}
+        </a>
+        <h1 class="text-[2.1rem] leading-tight font-bold tracking-tight text-balance sm:text-[2.6rem]">{title}</h1>
+        <p class="mt-3 text-lg leading-relaxed text-pretty text-muted">{description}</p>
+        <div class="mt-5 flex flex-wrap items-center gap-2">
+          {
+            minutes && !hasModes && (
+              <span class="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs font-medium text-muted">
+                <Icon name="clock" size={13} /> {minutes.short} min
+              </span>
+            )
+          }
+          {
+            badges.map((b) => (
+              <span class="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs font-medium text-muted capitalize">
+                {b.icon && <Icon name={b.icon} size={13} />} {b.label}
+              </span>
+            ))
+          }
+        </div>
+        {
+          hasModes && (
+            <div class="mt-6 flex flex-wrap items-center gap-3">
+              <LessonModeToggle short={minutes!.short} long={minutes!.long!} />
+              <span class="text-sm text-faint">Short on time? Switch to the quick version.</span>
+            </div>
+          )
+        }
+      </header>
+
+      <div class="prose">
+        <slot />
+      </div>
+
+      <CompleteButton pageKey={pageKey} title={title} />
+
+      {
+        (prev || next) && (
+          <nav class="mt-16 grid max-w-[46rem] gap-3 border-t border-line pt-8 sm:grid-cols-2" aria-label="Pagination" data-pagefind-ignore>
+            {prev ? (
+              <a href={href(prev.href)} class="group card p-4 transition-colors hover:border-line-strong">
+                <span class="flex items-center gap-1 text-xs text-faint">
+                  <Icon name="arrow-left" size={13} /> Previous
+                </span>
+                <span class="mt-1 block font-medium group-hover:text-brand">{prev.title}</span>
+              </a>
+            ) : (
+              <span />
+            )}
+            {next && (
+              <a href={href(next.href)} class="group card p-4 text-right transition-colors hover:border-line-strong">
+                <span class="flex items-center justify-end gap-1 text-xs text-faint">
+                  Next <Icon name="arrow-right" size={13} />
+                </span>
+                <span class="mt-1 block font-medium group-hover:text-brand">{next.title}</span>
+              </a>
+            )}
+          </nav>
+        )
+      }
+    </article>
+
+    <aside class="hidden xl:block">
+      <div class="sticky top-16 py-10">
+        <Toc headings={headings} />
+      </div>
+    </aside>
+  </div>
+</BaseLayout>

@@ -1,0 +1,423 @@
+---
+title: Decision Tables
+description: How to turn business rules with several conditions into a simple table, collapse it, derive test cases from it, and use it to find gaps and contradictions in requirements.
+order: 9
+level: beginner
+minutes: { short: 13, long: 20 }
+platform: both
+tags: [fundamentals, test design, techniques, black box]
+---
+
+import DTable from '@/components/demos/fundamentals-design/DTable';
+import DecisionTableBuilder from '@/components/demos/fundamentals-design/DecisionTableBuilder';
+import FindTheGap from '@/components/demos/fundamentals-design/FindTheGap';
+
+A food delivery app launches two features in the same sprint: **free delivery for members on orders of €30 or more**, and a **€1 surcharge on rainy days**. Both are tested separately, both pass. On the first rainy Saturday, the support team is flooded: members with big orders are being charged €1 for "free" delivery. Is that a bug? Nobody knows, because **nobody ever decided** what happens when both rules apply at once.
+
+That missing decision would have been obvious in five minutes with a **decision table**.
+
+## What is a decision table?
+
+A <Term id="decision-table" /> is a grid that lists every **combination of conditions** in a business rule, and the **action** the system should take for each one. Each column is one *rule*: "if these conditions are true, do this".
+
+<Callout type="example" title="An everyday analogy">
+
+Think of the ticket price board at a train station: rows for "child or adult" and "peak or off-peak", and a price for each combination. You don't need to read paragraphs of rules, you just find your column. A decision table does the same for app behavior, and as a tester you can turn each column straight into a test.
+
+</Callout>
+
+Here's the smallest possible example, a login screen with two conditions:
+
+<DTable
+  conditions={[
+    ['Email registered?', 'Y', 'Y', 'N', 'N'],
+    ['Password correct?', 'Y', 'N', 'Y', 'N'],
+  ]}
+  actions={[['Result', 'Log in', 'Error', 'Error', 'Error']]}
+  caption="Two yes/no conditions give 2 × 2 = 4 rules. Each column becomes one test."
+/>
+
+Decision tables are a <Term id="black-box-testing">black-box</Term> technique: you build them from the <Term id="requirement">requirements</Term>, not from the code. They sit alongside [equivalence partitioning](/fundamentals/equivalence-partitioning) and [boundary value analysis](/fundamentals/boundary-value-analysis), which handle single inputs, while decision tables handle **combinations**.
+
+<Short>
+
+## The quick version
+
+### When to use one
+
+Use a decision table when the outcome depends on **two or more conditions together**: discounts, fees, eligibility, permissions, login and security rules. If you catch yourself reading "if… and… unless…", draw a table.
+
+### How to build one
+
+<Steps>
+
+1. **List the conditions.** Things that can be true or false and change the outcome (member? order ≥ €30? rainy day?).
+2. **List the actions.** What the system does (charge a fee, show an error, log in).
+3. **Write every combination.** With *n* yes/no conditions you get **2ⁿ** columns: 2 conditions → 4, 3 → 8, 4 → 16.
+4. **Fill in the action for each column** from the requirement. If you can't, you've found a gap.
+5. **Collapse.** When two columns have the same action and differ in only one condition, that condition doesn't matter there: merge them and write "–" (don't care).
+6. **Turn each column into a test case.**
+
+</Steps>
+
+### Why testers love them
+
+Decision tables make **missing** rules ("what if it's rainy *and* the member's order is over €30?") and **contradictory** rules (two rules that both apply but say different things) jump out. Finding those before coding is one of the cheapest bug fixes there is.
+
+### The limit
+
+Every extra condition doubles the table. With 10 conditions you'd have 1,024 columns. Then teams use risk to pick the important ones, or **pairwise testing**, which covers every *pair* of values with far fewer tests.
+
+<Callout type="tip">
+
+Switch to **Detailed** for three fully worked examples (login with 2FA, a delivery fee, credit card approval), how to spot impossible combinations, and more on the limits.
+
+</Callout>
+
+</Short>
+
+<Long>
+
+## When to use a decision table
+
+Decision tables shine when **several conditions combine to decide one outcome**. Typical places in mobile and web apps:
+
+- **Prices and fees:** delivery fees, discounts, shipping, surcharges, loyalty rewards.
+- **Eligibility:** loan or credit card approval, free trials, age-restricted content.
+- **Access and security:** login with <Term id="two-factor-authentication">2FA</Term>, roles and permissions, account lockout.
+- **Business workflows:** whether an order can be canceled, refunded or changed.
+
+They're **not** the best tool when there's only one input (use [equivalence partitioning](/fundamentals/equivalence-partitioning) and [boundaries](/fundamentals/boundary-value-analysis)), or when the outcome depends on the *order* of events, like an order moving from "placed" to "delivered" (use [state transition testing](/fundamentals/state-transition-testing)).
+
+<Callout type="info" title="Words you'll meet">
+
+- **Condition:** an input or situation that is either true or false (Y/N) and affects the result.
+- **Action:** what the system does in response.
+- **Rule:** one column, one combination of condition values plus its actions.
+- **Don't care ("–"):** this condition doesn't change the result in this rule, so any value is fine.
+
+</Callout>
+
+## Building one step by step: login with 2FA
+
+The requirement for a banking app:
+
+> "Users log in with email and password. If the email or password is wrong, show *Incorrect email or password*. If both are correct and the user has two-factor authentication (2FA) turned on, ask for the 6-digit code. If 2FA is off, log the user straight in."
+
+### Step 1: list the conditions
+
+Read the requirement and underline everything that can be true or false and changes what happens:
+
+1. Is the email registered?
+2. Is the password correct?
+3. Is 2FA turned on for the account?
+
+Things like "the phone is in dark mode" don't change the outcome, so they're not conditions here.
+
+### Step 2: list the actions
+
+What can the system do? Show the error, ask for the 2FA code, or log the user in.
+
+### Step 3: count and write every combination
+
+Each yes/no condition doubles the number of combinations, so 3 conditions give **2 × 2 × 2 = 2³ = 8** rules. A simple trick to write them all without missing any: in the first row, write half Y then half N (YYYY NNNN); in the second, alternate in pairs (YY NN YY NN); in the last, alternate one by one (Y N Y N…).
+
+### Step 4: fill in the actions
+
+Go column by column and ask "according to the requirement, what happens here?"
+
+<DTable
+  conditions={[
+    ['Email registered?', 'Y', 'Y', 'Y', 'Y', 'N', 'N', 'N', 'N'],
+    ['Password correct?', 'Y', 'Y', 'N', 'N', 'Y', 'Y', 'N', 'N'],
+    ['2FA on?', 'Y', 'N', 'Y', 'N', 'Y', 'N', 'Y', 'N'],
+  ]}
+  actions={[
+    ['Show error', '', '', '✓', '✓', '✓', '✓', '✓', '✓'],
+    ['Ask for 2FA code', '✓', '', '', '', '', '', '', ''],
+    ['Log in', '', '✓', '', '', '', '', '', ''],
+  ]}
+  caption="The full table: 8 rules. Six of them end in the same error."
+/>
+
+<Callout type="note" title="Impossible or meaningless combinations">
+
+Look at R5 and R6: "email not registered, password correct". If the email doesn't exist, there's no password to be correct! Some combinations are **impossible** in real life (a courier can't pick up an order the restaurant never accepted). Mark them as impossible and don't write tests for them, but do check they really are impossible, not just unlikely.
+
+</Callout>
+
+### Step 5: collapse the table
+
+Six columns end in "Show error". Do we need six tests? Look at R3 and R4: same action, and they differ **only** in "2FA on?". So 2FA doesn't matter when the password is wrong: merge them into one column with "–" (don't care) for 2FA. Repeat until no two columns can be merged:
+
+<DTable
+  conditions={[
+    ['Email registered?', 'Y', 'Y', 'Y', 'N'],
+    ['Password correct?', 'Y', 'Y', 'N', '-'],
+    ['2FA on?', 'Y', 'N', '-', '-'],
+  ]}
+  actions={[
+    ['Show error', '', '', '✓', '✓'],
+    ['Ask for 2FA code', '✓', '', '', ''],
+    ['Log in', '', '✓', '', ''],
+  ]}
+  caption="Collapsed: 8 rules became 4. “–” means any value gives the same result."
+/>
+
+The merge rule is simple: **same actions, and exactly one condition different**. Never merge columns with different actions; their difference is the whole point. The order of merges can matter too: an early merge sometimes blocks a better one. If you end up with more columns than you expected, try merging in a different order.
+
+<Callout type="warning" title="Collapsing is a trade-off">
+
+Collapsing assumes the developer coded the rule the way the table says. If they wrote the 2FA check *before* the password check, "wrong password + 2FA on" might ask for a code first, which is a real security bug. For risky features (payments, security), many testers keep a few of the collapsed combinations as extra tests.
+
+</Callout>
+
+## Turning columns into test cases
+
+Each column is one test case: the conditions become <Term id="precondition">preconditions</Term> and <Term id="test-data" />, and the actions become the <Term id="expected-result" />. For "–", pick any value, ideally the riskier one. See [how to write test cases](/tutorials/writing-test-cases) for the full format.
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-DT-01',
+      title: 'Correct credentials with 2FA on: the app asks for the code',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Account anna@test.com exists with 2FA turned on'],
+      steps: ['Open the app', 'Enter anna@test.com and the correct password', 'Tap Log in'],
+      expected: 'The 6-digit code screen appears; the user is not logged in yet.',
+    },
+    {
+      id: 'TC-DT-02',
+      title: 'Correct credentials with 2FA off: the user is logged straight in',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Account ben@test.com exists with 2FA turned off'],
+      steps: ['Open the app', 'Enter ben@test.com and the correct password', 'Tap Log in'],
+      expected: 'The Home screen opens; no code is requested.',
+    },
+    {
+      id: 'TC-DT-03',
+      title: 'Wrong password shows the generic error (2FA on)',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Account anna@test.com exists with 2FA turned on'],
+      steps: ['Enter anna@test.com and a wrong password', 'Tap Log in'],
+      expected: '"Incorrect email or password" is shown; no code is requested; the user stays on the login screen.',
+    },
+    {
+      id: 'TC-DT-04',
+      title: 'Unregistered email shows the same generic error',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Enter nobody@test.com and any password', 'Tap Log in'],
+      expected: 'The exact same "Incorrect email or password" message is shown (it must not reveal that the email does not exist).',
+    },
+  ]}
+/>
+
+Notice TC-DT-03 picks "2FA on" for the don't-care condition on purpose: it's the riskier choice, because it catches the "asked for the code before checking the password" bug. TC-DT-04 links nicely to <Term id="account-enumeration" />, covered in [login and sign-up](/features/login-and-sign-up).
+
+## Second example: a delivery fee
+
+Back to the rainy Saturday. The requirement:
+
+> "Delivery normally costs €3.99. Members get free delivery on orders of €30 or more, and pay €1.99 on smaller orders. On rainy days, a €1.00 surcharge is added to every order."
+
+<DTable
+  conditions={[
+    ['Member?', 'Y', 'Y', 'Y', 'Y', 'N', 'N', 'N', 'N'],
+    ['Order ≥ €30?', 'Y', 'Y', 'N', 'N', 'Y', 'Y', 'N', 'N'],
+    ['Rainy day?', 'Y', 'N', 'Y', 'N', 'Y', 'N', 'Y', 'N'],
+  ]}
+  actions={[['Delivery fee', '€1.00', '€0.00', '€2.99', '€1.99', '€4.99', '€3.99', '€4.99', '€3.99']]}
+  highlight={[0]}
+  caption="R1 is the combination nobody discussed: is free delivery still free when it rains?"
+/>
+
+Two things stand out:
+
+- **R1 needs a decision.** Read literally ("every order"), a member's free delivery costs €1 on rainy days. Maybe that's intended, maybe not. A tester's job is to **ask before release**, not guess.
+- **Only two pairs collapse.** For non-members, the order size doesn't matter (R5 = R7, R6 = R8), so 8 columns become 6. Rain matters in every rule, so it can never be "–". Not every table shrinks much, and that's fine.
+
+<Callout type="tip" title="Combine with boundaries">
+
+"Order ≥ €30" hides a boundary. When you test the "Y" and "N" values, use **€30.00** and **€29.99** rather than €50 and €10. That's [boundary value analysis](/fundamentals/boundary-value-analysis) inside a decision table, and it catches the classic `>` instead of `>=` bug.
+
+</Callout>
+
+## Third example: credit card approval
+
+> "Applicants under 18 are always rejected. Adults with a credit score of 650 or higher are approved instantly. Adults with a lower score go to manual review if they have a regular income, and are rejected if they don't."
+
+After collapsing:
+
+<DTable
+  conditions={[
+    ['18 or older?', 'Y', 'Y', 'Y', 'N'],
+    ['Score ≥ 650?', 'Y', 'N', 'N', '-'],
+    ['Regular income?', '-', 'Y', 'N', '-'],
+  ]}
+  actions={[['Decision', 'Approve', 'Review', 'Reject', 'Reject']]}
+  caption="8 combinations collapse to 4 rules. The under-18 rule ignores everything else."
+/>
+
+Real rules are often less tidy. If the bank later adds "scores from 600 to 649 get a lower credit limit", the score is no longer yes/no: it has three ranges. You can still use a decision table, with a row whose values are ranges (`< 600`, `600–649`, `≥ 650`) instead of Y/N. This is sometimes called an *extended-entry* table. The number of columns is then the product of the number of values per condition (here 2 × 3 × 2 = 12).
+
+## Spotting missing and contradictory rules
+
+This is the hidden superpower of decision tables. Because you're forced to fill in **every** column, two kinds of requirement bugs become impossible to miss:
+
+| Problem | What you notice | Example |
+| --- | --- | --- |
+| **Gap** (missing rule) | A column where no rule says what happens | "Free cancellation before the restaurant accepts" and "€2 fee after accepting" — but what about after the courier picks up? |
+| **Conflict** (contradiction) | A column where two rules apply and disagree | "Not enough money → Insufficient funds" and "Face ID fails → ask for PIN": what if both are true? |
+| **Impossible combination** | A column that can't happen in reality | Courier picked up, but restaurant never accepted |
+
+When you find a gap or conflict, don't decide yourself. Raise it with the product owner or business analyst, ideally while the <Term id="user-story" /> is still being refined. It's a five-minute conversation now, versus an angry rainy Saturday later.
+
+## Limits: when the table explodes
+
+The number of columns doubles with every yes/no condition:
+
+| Conditions | Combinations |
+| --- | --- |
+| 3 | 8 |
+| 5 | 32 |
+| 10 | 1,024 |
+| 20 | over 1 million |
+
+This is called **combinatorial explosion**. Ways to handle it:
+
+- **Collapse** with don't-cares, as above.
+- **Split** the rule into smaller, independent tables (fees in one, eligibility in another).
+- **Prioritize by risk**: test the combinations that involve money, security or the most users first.
+- **Pairwise testing**: instead of every combination, choose a set of tests where every *pair* of condition values appears at least once. Many bugs are triggered by an interaction between just two conditions, so this catches a lot with very few tests: for 10 yes/no conditions, a handful of tests instead of 1,024. Free tools (such as PICT from Microsoft) generate these sets. It's a useful idea to know for later; for most manual testing, a well-collapsed decision table is enough.
+
+## Common mistakes
+
+- **Mixing up conditions and actions.** "Show an error" is something the system does, not a condition.
+- **Missing a combination.** Use the YYYY NNNN / YY NN / Y N pattern so you never skip one.
+- **Merging columns with different actions.** Only merge when the actions are identical.
+- **Guessing to fill a gap.** An empty column is a question for the team, not for your imagination.
+- **Testing only one value for "–".** Fine for low-risk rules; for payments and security, add the risky value too.
+
+</Long>
+
+## Try it: build a decision table
+
+Pick a requirement, find the conditions, fill in every rule, collapse the table, and watch the test cases appear.
+
+<DecisionTableBuilder client:visible />
+
+## Try it: find the gap
+
+Decision tables don't just produce tests. They expose holes in requirements. In each round, decide for every column whether the requirement covers it.
+
+<FindTheGap client:visible />
+
+## Practice: free checked bag
+
+Build a decision table for this airline app rule, collapse it, and write down the test cases. Then compare with the answer.
+
+> "Business class passengers always get a free checked bag. Economy passengers get one free if they are Gold members or if the flight is longer than 6 hours. Otherwise, a checked bag costs €35."
+
+<details class="not-prose my-4 rounded-xl border border-line bg-surface p-4">
+<summary class="cursor-pointer font-semibold text-fg">Show the answer</summary>
+<div class="mt-3 space-y-2 text-sm text-muted">
+<p>Three conditions (Business class? Gold member? Flight over 6 hours?) give 2³ = 8 combinations. All four Business columns are free, so they collapse to one. For Economy, Gold members are free whatever the flight length.</p>
+<DTable
+  conditions={[
+    ['Business class?', 'Y', 'N', 'N', 'N'],
+    ['Gold member?', '-', 'Y', 'N', 'N'],
+    ['Flight > 6h?', '-', '-', 'Y', 'N'],
+  ]}
+  actions={[['Checked bag', 'Free', 'Free', 'Free', '€35']]}
+/>
+<p>That's 4 test cases. Good extra ideas: test a flight of <strong class="text-fg">exactly 6 hours</strong> (“longer than 6 hours” means 6:00 should cost €35, a boundary worth confirming), and ask the team whether a Gold member in Business gets a second free bag. The rule doesn't say, so it's a question, not an assumption.</p>
+</div>
+</details>
+
+<Checklist
+  title="Decision table checklist"
+  storageKey="decision-tables"
+  items={[
+    'I listed every condition that changes the outcome (and left out actions and irrelevant details)',
+    'I listed every possible action',
+    'My table has 2ⁿ columns for n yes/no conditions (or the product of values for ranges)',
+    'Every column has an action, or a question raised with the team',
+    'I marked impossible combinations instead of testing them',
+    'I collapsed only columns with identical actions that differ in exactly one condition',
+    'For "–" in risky rules, I picked the riskier value or added an extra test',
+    'I used boundary values (like €29.99 / €30.00) for the Y/N of numeric conditions',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "A rule depends on four yes/no conditions. How many columns does the full decision table have?",
+      options: ["4", "8", "16", "24"],
+      answer: 2,
+      explain: "Each yes/no condition doubles the combinations: 2⁴ = 2 × 2 × 2 × 2 = 16.",
+    },
+    {
+      q: "Which of these is a condition, not an action, in a delivery fee rule?",
+      options: ["Show the fee at checkout", "Customer is a member", "Add a €1 surcharge", "Charge the card"],
+      answer: 1,
+      explain: "A condition is something that can be true or false and affects the outcome. The others are things the system does.",
+    },
+    {
+      q: "Two columns have the same action and differ only in 'Rainy day?'. What can you do?",
+      options: [
+        "Delete both columns",
+        "Merge them and mark 'Rainy day?' as '–' (don't care)",
+        "Add a third column",
+        "Nothing, columns can never be merged",
+      ],
+      answer: 1,
+      explain: "Same action and exactly one different condition means that condition doesn't matter there, so the columns merge into one with a don't-care.",
+    },
+    {
+      q: "While building a table, you find a column that no rule in the requirement covers. What should you do?",
+      options: [
+        "Pick the most logical action yourself",
+        "Skip that column",
+        "Raise it with the product owner as a missing rule",
+        "Mark the requirement as passed",
+      ],
+      answer: 2,
+      explain: "A gap is a requirement defect. Testers point it out so the team decides, rather than each developer or tester guessing differently.",
+    },
+    {
+      q: "Two rules both apply to the same column but prescribe different actions. What is that called?",
+      options: ["A don't-care", "An impossible combination", "A conflict (contradiction)", "Pairwise testing"],
+      answer: 2,
+      explain: "When rules overlap and disagree, the requirement is contradictory. The team must decide which rule wins.",
+    },
+    {
+      q: "A rule has 12 yes/no conditions. Why might the team use pairwise testing instead of a full decision table?",
+      options: [
+        "Decision tables only work for exactly 3 conditions",
+        "Pairwise testing covers every pair of values with far fewer tests than all 4,096 combinations",
+        "Pairwise testing tests every combination twice",
+        "Because decision tables are a white-box technique",
+      ],
+      answer: 1,
+      explain: "With 12 conditions the full table has 2¹² = 4,096 columns. Pairwise testing makes sure each pair of values appears together at least once, using a small fraction of the tests.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Use a decision table when **several conditions combine** to decide an outcome: fees, discounts, eligibility, login and permission rules.
+- Build it in order: conditions → actions → all **2ⁿ** combinations → fill in actions → collapse → test cases.
+- Merge two columns only when they have the **same actions** and differ in **exactly one** condition; that condition becomes "–" (don't care).
+- Every remaining column is one test case. For risky "–" values, test the riskier option too.
+- An empty column is a **gap**, two disagreeing rules are a **conflict**: both are requirement bugs worth raising early.
+- Tables explode with many conditions; collapse, split, prioritize by risk, or use pairwise testing.
+
+</KeyTakeaways>

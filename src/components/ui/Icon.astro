@@ -1,0 +1,32 @@
+---
+import nodes from 'lucide-static/icon-nodes.json';
+
+interface Props {
+  name: string;
+  size?: number;
+  class?: string;
+  strokeWidth?: number;
+}
+
+const { name, size = 20, class: className, strokeWidth = 2 } = Astro.props;
+const icon = (nodes as Record<string, [string, Record<string, string>][]>)[name];
+if (!icon) throw new Error(`Unknown icon "${name}". See https://lucide.dev/icons`);
+const inner = icon
+  .map(([tag, attrs]) => `<${tag} ${Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ')} />`)
+  .join('');
+---
+
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width={size}
+  height={size}
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width={strokeWidth}
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  class={className}
+  aria-hidden="true"
+  set:html={inner}
+/>

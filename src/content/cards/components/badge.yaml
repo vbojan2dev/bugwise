@@ -1,0 +1,43 @@
+teaser: "That little red number on your Chats tab makes a promise. How many ways can it lie?"
+cards:
+  - type: flip
+    front: "What are the three kinds of badges?"
+    back: "Count badges (a number), dot badges (something new, or presence) and status labels like Sale, New or Sold out."
+  - type: flip
+    front: "What should a tab badge do when the count reaches zero?"
+    back: "Disappear. Zero means nothing new, and no badge says exactly that. A red 0 is a bug."
+  - type: quiz
+    q: "A tab has 1,284 unread updates. How should an iOS tab bar badge show it?"
+    options: ["1284", "1.2k", "99+"]
+    answer: 2
+    explain: "A capped number fits on the icon and still says a lot. Material 3 allows up to four characters, so 999+ there."
+  - type: quiz
+    q: "What should VoiceOver say for a Chats tab with a red 3?"
+    options: ["Chats, tab, 1 of 5", "Chats, 3 unread, tab, 1 of 5", "Red badge, 3"]
+    answer: 1
+    explain: "The visual badge is hidden from assistive tech, so the count must be part of the tab's accessible name."
+  - type: truefalse
+    statement: "On iOS, an app can show a number on its icon even if the user denied notifications."
+    answer: false
+    explain: "App icon badges are tied to notification permission with badges, and users can switch badges off per app in Settings."
+  - type: truefalse
+    statement: "A badge that updates only after an app restart is a bug, even if the number is right in the end."
+    answer: true
+    explain: "Badges must follow the data. Reading a chat, Mark all as read or reading on another device should update it right away."
+  - type: thisorthat
+    prompt: "A shop marks sale items with a red dot and new items with a green dot."
+    left: "Fine, it has a legend"
+    right: "Color-only, add words"
+    answer: right
+    explain: "Many colorblind users can't tell red from green, and screen readers say nothing. Use text labels like Sale and New."
+  - type: spotbug
+    screen: ["Chats list: 1 unread chat", "Chats tab badge: 3", "(no restart since launch)"]
+    bug: "The badge doesn't match the list."
+    explain: "The count was stored once at launch instead of being derived from unread chats. It must update when chats are read."
+  - type: spotbug
+    screen: ["Tabs: Chats | Calls | Updates", "Calls icon shows a red 0", "All missed calls were seen"]
+    bug: "The badge shows 0 instead of hiding."
+    explain: "A zero badge is noise that users learn to ignore. Check for greater than zero, not just whether a count exists."
+  - type: tip
+    title: "Test every way down"
+    text: "Counts usually go up correctly. Bugs hide where they go down: opening an item, Mark all as read, deleting, and reading on another device."

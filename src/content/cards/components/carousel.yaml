@@ -1,0 +1,45 @@
+teaser: "Ever tried to read a banner that slides away mid-sentence? There's an accessibility rule against exactly that."
+cards:
+  - type: flip
+    front: "What is a carousel?"
+    back: "A strip of slides shown one at a time, moved by swiping, arrows or dots. Some move by themselves (autoplay)."
+  - type: quiz
+    q: "Slides auto-rotate every 4 seconds with no way to stop them. Which WCAG rule fails?"
+    options: ["2.2.2 Pause, Stop, Hide", "1.4.3 Contrast", "2.4.7 Focus Visible"]
+    answer: 0
+    explain: "Moving content that starts by itself and lasts over 5 seconds needs a way to pause, stop or hide it."
+  - type: spotbug
+    screen: ["Banner: Summer sale", "Finger swipes up on the banner", "Page: does not move"]
+    bug: "Vertical swipes on the carousel don't scroll the page."
+    explain: "A carousel should only handle horizontal swipes. Vertical swipes belong to the page."
+  - type: truefalse
+    statement: "The first slide's image should be lazy-loaded to save data."
+    answer: false
+    explain: "The first slide is visible right away and often the biggest element. Lazy-load later slides instead."
+  - type: thisorthat
+    prompt: "Which carousel do users actually engage with?"
+    left: "Auto-rotating promo banners"
+    right: "Product photo gallery"
+    answer: right
+    explain: "Carousels work when users are in control and want more of the same, like more photos of a product."
+  - type: spotbug
+    screen: ["Slide shown: Free delivery (3rd slide)", "Counter: 1 / 5", "VoiceOver: Slide 1 of 5"]
+    bug: "The counter is stuck on 1 of 5."
+    explain: "Counter, active dot and screen reader announcement must match the slide shown after every change."
+  - type: quiz
+    q: "You tap the first dot and slide 2 opens. What do you inspect first?"
+    options: ["The image sizes", "The dot buttons' real tap areas", "The autoplay timer"]
+    answer: 1
+    explain: "Tiny or misplaced tap areas make taps land on the wrong control. DevTools shows each button's real size."
+  - type: thisorthat
+    prompt: "Reduce Motion is on. Should the hero carousel still autoplay?"
+    left: "No"
+    right: "Yes, but slower"
+    answer: left
+    explain: "Reduced motion means nothing should move on its own. Users can still change slides themselves."
+  - type: flip
+    front: "What should a looping carousel do after the last slide?"
+    back: "Continue seamlessly to slide 1. A visible rewind through all slides, a flash or a duplicate slide is a bug."
+  - type: tip
+    title: "Check the crop at every width"
+    text: "Text baked into a banner gets cut off on a square phone slide. Check 360, 768 and 1440 px wide."

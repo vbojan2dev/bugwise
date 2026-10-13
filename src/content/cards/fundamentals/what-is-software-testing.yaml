@@ -1,0 +1,45 @@
+teaser: "Your team ran 300 tests and found zero bugs. Does that mean the app is bug-free? Testers know the honest answer."
+cards:
+  - type: flip
+    front: "What is software testing, in one sentence?"
+    back: "Checking that an app or website does what it is supposed to do, and finding where it doesn't, before real users do."
+  - type: flip
+    front: "Error, defect, failure: what's the chain?"
+    back: "An error is a human mistake. It leaves a defect (bug) in the product. A failure is what the user sees when that defect is triggered."
+  - type: quiz
+    q: "A customer tries to send exactly $1,000 and sees 'Amount exceeds daily limit'. What is that message?"
+    options: ["The error", "The defect", "The failure"]
+    answer: 2
+    explain: "The failure is what the user actually sees. The developer's wrong comparison was the error, and the broken rule in the code is the defect."
+  - type: quiz
+    q: "Which is the best example of quality assurance (QA) rather than quality control (QC)?"
+    options: ["Agreeing every story needs acceptance criteria", "Running test cases on the new build", "Retesting a fixed checkout bug"]
+    answer: 0
+    explain: "QA improves the process to prevent defects. Running tests and retesting fixes check the product itself, which is quality control."
+  - type: truefalse
+    statement: "If you run enough tests and find nothing, you have proven the app has no bugs."
+    answer: false
+    explain: "Testing shows defects are present, not that they are absent. 'We found nothing' only means the tests you ran didn't find anything."
+  - type: truefalse
+    statement: "Running exactly the same tests over and over makes them find fewer new bugs."
+    answer: true
+    explain: "That's the pesticide paradox. Bugs in those paths get fixed and the tests stop surprising you, so keep refreshing tests and mix in exploration."
+  - type: thisorthat
+    prompt: "You need to judge whether a new onboarding flow feels confusing to first-time users."
+    left: "Manual testing"
+    right: "Automated testing"
+    answer: left
+    explain: "Humans are great at spotting confusing screens and 'does this feel right?'. Scripts shine at repeating the same checks thousands of times."
+  - type: thisorthat
+    prompt: "The same 800 regression checks must run on every single build, on many devices."
+    left: "Manual testing"
+    right: "Automated testing"
+    answer: right
+    explain: "Repeating hundreds of identical checks every day is where scripts beat humans. People get tired; code doesn't."
+  - type: spotbug
+    screen: ["Login - small Android phone", "Email: anna@mail.com", "Password: ********", "[ keyboard open ]", "Sign in button: not visible"]
+    bug: "The Sign in button is hidden behind the keyboard."
+    explain: "It works on a new iPhone but not on small Android screens, so a big chunk of users simply can't log in. Device variety matters."
+  - type: tip
+    title: "Where there's one bug..."
+    text: "Defects cluster together, often in complex areas like payments or syncing. When you find a bug, look around nearby. Its friends are often there too."

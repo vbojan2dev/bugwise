@@ -1,0 +1,45 @@
+teaser: "The app's minus button stopped at 1 pizza, yet someone ordered -3 and got a refund. Where was the bug hiding?"
+cards:
+  - type: flip
+    front: "401 vs 403 in one sentence each?"
+    back: "401: the server doesn't know who you are (no, invalid or expired token). 403: it knows you, but you're not allowed."
+  - type: quiz
+    q: "A valid customer token calls an admin-only endpoint. Which status code should come back?"
+    options: ["401 Unauthorized", "403 Forbidden", "200 OK"]
+    answer: 1
+    explain: "The token is valid, so the server knows who you are. You just don't have permission, which is 403."
+  - type: spotbug
+    screen: ["POST /cart/items", "{ \"productId\": 1, \"quantity\": -5 }", "201 Created", "Cart total: -€49.95"]
+    bug: "The API accepts a negative quantity."
+    explain: "The UI blocks it, but anyone can call the API directly. The server must validate too and return 400."
+  - type: thisorthat
+    prompt: "Creating a coupon with a code that already exists returns 500 with a database message."
+    left: "Expected"
+    right: "Bug"
+    answer: right
+    explain: "A predictable client mistake should get a 4xx, here 409 Conflict, with a clear message. A 500 means the server crashed and leaked details."
+  - type: quiz
+    q: "Which request should give the same result whether you send it once or three times?"
+    options: ["POST /orders", "POST /cart/items", "PUT /cart/items/1 with quantity 3"]
+    answer: 2
+    explain: "PUT sets a value, so it's idempotent. POST creates something new each time. Apps retry on bad networks, so this matters."
+  - type: spotbug
+    screen: ["GET /products/999", "200 OK", "null"]
+    bug: "A missing product returns 200 with null."
+    explain: "A resource that doesn't exist should return 404 Not Found. A 200 with null makes apps crash or show an empty page."
+  - type: truefalse
+    statement: "In JSON, \"price\": \"19.99\" and \"price\": 19.99 are the same thing."
+    answer: false
+    explain: "The first is a string, the second a number. If the docs say number, a string is a bug: apps may join text instead of adding prices."
+  - type: thisorthat
+    prompt: "Your collection targets staging. Tomorrow you need the same requests on the dev server."
+    left: "Edit every URL"
+    right: "Switch environment"
+    answer: right
+    explain: "Write {{baseUrl}} in requests and keep the real URL in an environment. Switching environments retargets every request at once."
+  - type: flip
+    front: "Why test the API when the UI works fine?"
+    back: "One API often serves web, iOS and Android, the UI can hide bugs, and API tests are fast. They also show if a bug is front end or back end."
+  - type: tip
+    title: "Treat tokens like passwords"
+    text: "Use tokens from test accounts only. Mask them in screenshots and tickets, and never save them into a shared collection."

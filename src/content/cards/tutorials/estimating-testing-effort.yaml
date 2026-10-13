@@ -1,0 +1,46 @@
+teaser: "Your PM asks how long testing will take, and you say two days. Here's why that answer usually turns into five, and how to give one you can stand behind."
+cards:
+  - type: flip
+    front: "What is the PERT formula for a three-point estimate?"
+    back: "E = (O + 4M + P) / 6. The most likely value counts four times; the optimistic and pessimistic values pull it a little toward them."
+  - type: quiz
+    q: "A task has O = 2 h, M = 4 h, P = 12 h. What's the PERT estimate?"
+    options: ["4 h", "6 h", "5 h"]
+    answer: 2
+    explain: "(2 + 16 + 12) / 6 = 5 h. The long pessimistic tail pulls the expected value above the most likely 4 h."
+  - type: truefalse
+    statement: "A testing estimate is mostly the time it takes to run the test cases."
+    answer: false
+    explain: "Understanding, design, setup, bug reports, retest and regression, reporting and a buffer for blockers often take more time than the first test run."
+  - type: spotbug
+    screen: ["Estimate: Scheduled orders", "Test design: 6 h", "Run on iPhone: 7 h", "Summary: 2 h", "Total: 15 h"]
+    question: "What's missing from this estimate?"
+    bug: "No retest, regression, test data or other devices."
+    explain: "Fixes come back in new builds, often several times, and Android and test data need time too. Missing tasks cause most blown estimates."
+  - type: thisorthat
+    prompt: "In stand-up the PM asks how long testing will take. You've only skimmed the story."
+    left: "Say two days"
+    right: "Number by lunch"
+    answer: right
+    explain: "A guess becomes a promise. Say what you need to estimate it and when you'll have a number with a range."
+  - type: quiz
+    q: "Your estimate is five days, but the release is in three. What should you do?"
+    options: ["Test less and say nothing", "Show the gap and offer options", "Refuse until the date moves"]
+    answer: 1
+    explain: "Prioritize by risk, offer options like cutting scope or a feature flag, say what won't be tested, and let the product owner decide."
+  - type: flip
+    front: "Effort vs duration?"
+    back: "Effort is the work in hours. Duration is calendar time, including meetings, waiting for builds and blockers. People ask for duration, so state your assumptions."
+  - type: thisorthat
+    prompt: "Which answer is more useful to a PM?"
+    left: "About 5 days, 3 to 8"
+    right: "28.17 hours"
+    answer: left
+    explain: "Nobody can estimate testing to the minute. A rounded number with a range is more honest and shows the uncertainty."
+  - type: truefalse
+    statement: "A test-to-dev effort ratio is only meaningful if it comes from your own team's history."
+    answer: true
+    explain: "Ratios from elsewhere vary widely, and even your own ratio ignores how risky a change is. Use it as a cross-check, not as the estimate."
+  - type: tip
+    title: "Re-estimate early"
+    text: "Build two days late or nine bugs on day one? Give the new number and the reason now. On day two it's information; on day five it's a surprise."

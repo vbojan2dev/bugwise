@@ -1,0 +1,46 @@
+teaser: "Every button on the page works, yet shoppers leave before buying. Can a page fail without a single functional bug?"
+cards:
+  - type: flip
+    front: "What do LCP, INP and CLS measure?"
+    back: "LCP: loading, when the biggest element appears. INP: how fast the page reacts to a tap. CLS: how much content jumps around."
+  - type: quiz
+    q: "What is the \"good\" threshold for Largest Contentful Paint?"
+    options: ["1 second or less", "4 seconds or less", "2.5 seconds or less"]
+    answer: 2
+    explain: "LCP up to 2.5 s is good, up to 4 s needs improvement, and above 4 s is poor."
+  - type: quiz
+    q: "A promo banner appears late and pushes the Add to cart button down. Which metric gets worse?"
+    options: ["CLS", "LCP", "TTFB"]
+    answer: 0
+    explain: "Unexpected movement of visible content is a layout shift, measured by CLS. Reserving space for the banner fixes it."
+  - type: spotbug
+    screen: ["Network · Img · sorted by Size", "hero-sneakers.jpg   4.2 MB", "LCP: 5.0 s (poor)"]
+    bug: "A huge hero image makes the page load slowly."
+    explain: "The 4.2 MB photo is the LCP element, so users wait for it. A correctly sized WebP or AVIF would be around 100–250 KB."
+  - type: thisorthat
+    prompt: "A request spends 3 s \"Waiting for server response\" and 20 ms downloading. Who do you report it to?"
+    left: "Backend team"
+    right: "Image designers"
+    answer: left
+    explain: "Almost all the time passes before the first byte arrives (high TTFB), so the server is slow, not the file or the network."
+  - type: truefalse
+    statement: "If the page feels fast on your office laptop and Wi-Fi, it's fast for users."
+    answer: false
+    explain: "Many real users have mid-range phones on slow networks. Always test with network and CPU throttling turned on."
+  - type: spotbug
+    screen: ["Network · Fetch/XHR", "api/cart/count   200", "api/cart/count   200", "... 20 identical rows"]
+    bug: "The same API call fires 20 times on one load."
+    explain: "One request is enough. Duplicates waste data, battery and server capacity, and under load they can take the API down."
+  - type: thisorthat
+    prompt: "Lighthouse shows LCP 1.8 s. PageSpeed Insights field data shows real users at 4.2 s. Which reflects real users?"
+    left: "Lighthouse lab run"
+    right: "Field data"
+    answer: right
+    explain: "Lab data is one device, network and moment. Field data comes from real users. The gap tells you to test with heavier throttling."
+  - type: truefalse
+    statement: "Run Lighthouse several times and report the median, because scores vary between runs."
+    answer: true
+    explain: "Single runs vary by a few points. Measuring 3–5 times and giving the median makes the numbers trustworthy and the fix easy to confirm."
+  - type: tip
+    title: "Never just say \"slow\""
+    text: "Report the conditions (device, browser, throttling, cache), the numbers from several runs, the culprit request and a comparison with an earlier release."

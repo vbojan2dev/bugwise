@@ -1,0 +1,41 @@
+teaser: "Nobody expects a new tester to know everything. So what do teams actually notice in your first three months?"
+cards:
+  - type: flip
+    front: "Days 1 to 30 in a first QA job: the focus?"
+    back: "Learn the product, the process and the people: use the main flows, learn the board and releases, read old bugs, meet colleagues."
+  - type: flip
+    front: "How do you ask a good question as a new tester?"
+    back: "Try for 15 to 30 minutes first, then ask with what you tried and what you expected. Write the answer down."
+  - type: quiz
+    q: "How should you handle your first few bug reports?"
+    options: ["Use your course format", "Use the team template, get a review", "Report them verbally only"]
+    answer: 1
+    explain: "Every team has its own conventions. An early review from a senior tester saves many back-and-forths."
+  - type: quiz
+    q: "Which is a good 61-to-90-day contribution?"
+    options: ["Rewrite all test cases alone", "Add a release smoke checklist", "Stop exploratory testing"]
+    answer: 1
+    explain: "A small, useful improvement the team actually uses is the goal. Big solo rewrites rarely land well this early."
+  - type: truefalse
+    statement: "Teams usually worry more about new people who don't ask questions than ones who do."
+    answer: true
+    explain: "A new tester stuck silently for a day costs more than a well-asked question that takes two minutes to answer."
+  - type: thisorthat
+    prompt: "A developer says your bug 'works as designed'."
+    left: "Reopen: still broken"
+    right: "Ask what's expected"
+    answer: right
+    explain: "It might be a requirements gap or a misunderstanding. Clarify the expected behavior and who decides, then check the requirements."
+  - type: thisorthat
+    prompt: "You're curious about test automation in your third month."
+    left: "Pair with automation engineer"
+    right: "Rewrite the suite yourself"
+    answer: left
+    explain: "Pairing shows you what automation involves in this team, while you keep doing valuable manual and exploratory work."
+  - type: spotbug
+    screen: ["Slack, to dev: Refunds don't", "work, can you help?"]
+    bug: "No context: what was tried, where, expected result."
+    explain: "Say the environment, data, what you tried and what you expected. Then someone can answer quickly."
+  - type: tip
+    title: "Turn notes into onboarding"
+    text: "Write down every answer you get. Tidied up, your notes make a great onboarding page for the next new person."

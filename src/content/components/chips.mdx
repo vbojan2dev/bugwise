@@ -1,0 +1,427 @@
+---
+title: Chips / Tags
+description: Small rounded elements that filter a list, hold things you typed or suggest an action. Learn the four Material chip types, chips vs tags vs checkboxes, and the overflow, color-only and remove bugs testers find in them.
+category: input
+aka: [Chips, Tags, Pills, Filter chips, Tokens]
+platforms: [ios, android, web]
+minutes: 35
+order: 10
+---
+
+import Anatomy from '@/components/demos/chips/Anatomy';
+import VariantsGallery from '@/components/demos/chips/VariantsGallery';
+import Playground from '@/components/demos/chips/Playground';
+import TokenField from '@/components/demos/chips/TokenField';
+import { BuggyRestaurantFilters } from '@/components/demos/chips/BuggyRestaurantFilters';
+
+*Open now · Free delivery · Vegan.* The row of little rounded buttons above a restaurant list. The recipients in the **To:** field of an email. The skills on a job profile. The "On my way!" reply under a message. All chips.
+
+They look harmless, but they pack a lot of behavior into a tiny space: selecting, removing, scrolling sideways, counting results. That's where the bugs live.
+
+## What is a chip?
+
+A chip is a **small, compact element that represents a choice, a filter, a piece of entered information or a quick action**. It usually has rounded corners, a short label and sometimes an icon, a count or a remove button (×).
+
+The word means different things to different people, so let's untangle it first:
+
+- **Chip** (Material Design's name): an *interactive* element. You tap it to select, remove or do something.
+- **Tag** or **badge**: a *label* that only describes something ("Vegan", "New", "−20%"). You can't tap it.
+- **Pill**: a common nickname for the capsule shape. Designers use it for both.
+- **Token**: an input chip inside a text field, like an email recipient.
+
+<Callout type="tip" title="First question: control or label?">
+Before you test anything, find out: **is it supposed to be tappable?** A tag that looks like a button (users tap it, nothing happens) is a bug. So is a chip that is tappable but looks like a static label.
+</Callout>
+
+### Anatomy
+
+<Anatomy />
+
+### The four Material 3 chip types
+
+Material Design 3 defines four chip types. iOS has no native chip, but iPhone apps build the same patterns by hand, and the web uses all of them.
+
+| Type | What it does | Example |
+| --- | --- | --- |
+| **Filter** | Toggles a filter on or off (often multi-select) | Open now · Free delivery |
+| **Input** | Shows information the user entered, removable with × | Email recipients, skills |
+| **Assist** | Starts an action related to the content | Directions · Call |
+| **Suggestion** | Offers a generated suggestion to tap | Smart replies: "On my way!" |
+
+### Filter chips vs segmented control vs checkboxes
+
+All three let users pick options. The difference is **how many** and **where**:
+
+| Component | How many? | Typical place |
+| --- | --- | --- |
+| **Filter chips** | Zero, one or many | Above a list, often in a horizontal scroll row |
+| **<Term id="segmented-control">Segmented control</Term>** | Exactly one of 2–5 | Switching views: Day · Week · Month |
+| **<Term id="checkbox">Checkboxes</Term>** | Zero, one or many | Forms and filter panels with longer labels |
+
+Filter chips are basically compact checkboxes that apply **immediately**: tap "Vegan" and the list updates. See also [Segmented control](/components/segmented-control) and [Checkbox](/components/checkbox).
+
+## Designs & variants
+
+<VariantsGallery client:visible />
+
+### Input chips done right
+
+Input chips (tokens) turn text into removable pieces: email recipients, cuisines you like, skills on a CV, labels on a ticket. They have the most keyboard behavior of any chip, so they have the most bugs. Here's a correct one to compare against:
+
+<TokenField client:visible />
+
+The rules worth testing in every token field:
+
+- **Adding:** Enter (and often comma) turns the text into a chip. Pasting a list ("a@x.com, b@y.com") creates several chips.
+- **Duplicates:** "Pizza", "pizza" and "pizza " are the same thing. The app should ignore or merge them, ideally with a message.
+- **Removing:** each × removes **exactly its own** chip.
+- **Backspace** in the empty field removes (or first highlights) **the last chip only**. Never all of them.
+- **Validation:** an invalid entry (a broken email address) is marked clearly, with an icon or text, not only red.
+
+## When to use it
+
+Chips are a good choice when:
+
+- Users want to **narrow down a list quickly** with a few common filters, right above the results.
+- Users enter **several short values** into one field: recipients, tags, skills, ingredients.
+- The app can offer **smart suggestions or shortcuts** that save typing (search ideas, quick replies).
+- You need to **show the active filters** compactly, each removable with ×, e.g. "Price: €20–50 ×".
+
+## Good and bad uses
+
+<Compare>
+<Do title="A few short, common filters">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><div class="flex flex-wrap gap-2 text-[14px] font-medium"><span class="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#e8def8] pr-3.5 pl-2 text-[#1d192b]">✓ Open now</span><span class="inline-flex h-8 items-center rounded-lg px-3.5 text-[#49454f] ring-1 ring-[#79747e] ring-inset">Free delivery</span><span class="inline-flex h-8 items-center rounded-lg px-3.5 text-[#49454f] ring-1 ring-[#79747e] ring-inset">4.5+</span></div></div>
+
+One tap each, results update right away, and the selected one has a checkmark.
+
+</Do>
+<Dont title="Forty options as chips">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><div class="flex flex-wrap gap-1.5 text-[12px] text-[#49454f]">{['Afghan','African','American','Argentinian','Asian','BBQ','Brazilian','British','Burgers','Caribbean','Chinese','Cuban','Ethiopian','French','Georgian','Greek','Indian','…'].map((c) => <span class="inline-flex h-6 items-center rounded-md px-2 ring-1 ring-[#79747e] ring-inset">{c}</span>)}</div></div>
+
+A wall of chips is hard to scan. Use a searchable list or checkboxes in a filter sheet.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Exactly one of a few: segmented control">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><div class="flex rounded-[10px] p-[3px] text-[14px] text-black" style="background: rgba(118,118,128,.12)"><span class="flex-1 rounded-[8px] bg-white py-1.5 text-center font-semibold shadow-sm">Delivery</span><span class="flex-1 py-1.5 text-center">Pick-up</span></div></div>
+
+Two mutually exclusive modes. A segmented control makes "exactly one" obvious.
+
+</Do>
+<Dont title="Single choice disguised as chips">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><div class="flex gap-2 text-[14px] font-medium"><span class="inline-flex h-8 items-center rounded-lg bg-[#e8def8] px-3.5 text-[#1d192b]">Delivery</span><span class="inline-flex h-8 items-center rounded-lg px-3.5 text-[#49454f] ring-1 ring-[#79747e] ring-inset">Pick-up</span></div></div>
+
+Users expect chips to be multi-select. Can they select both? Neither? Nobody knows until they try.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Tags as plain labels">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><p class="text-[14px] font-semibold text-black">Green Bowl Kitchen</p><div class="mt-1 flex gap-1"><span class="rounded bg-[#dcf5e3] px-1.5 text-[11px] font-semibold text-[#16632f]">Vegan</span><span class="rounded bg-[#dfeafe] px-1.5 text-[11px] font-semibold text-[#1d4fb8]">New</span></div></div>
+
+Small, flat, no border or shadow: clearly information, not a button.
+
+</Do>
+<Dont title="Labels that look tappable">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><p class="text-[14px] font-semibold text-black">Green Bowl Kitchen</p><div class="mt-1 flex gap-2"><span class="inline-flex h-8 items-center rounded-full bg-white px-4 text-[14px] text-[#007aff] shadow ring-1 ring-[#007aff]">Vegan ›</span></div></div>
+
+Looks like a button, does nothing when tapped. Users tap it again and again.
+
+</Dont>
+</Compare>
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Selected state by color only** | In greyscale or with color blindness, you can't tell which filters are on | Medium–High |
+| 2 | **Hidden chips in a scroll row** | The row ends cleanly, nothing hints at more chips; some filters are never found | Medium |
+| 3 | **Last chip unreachable** | A button or gradient covers the end of the row, even when fully scrolled | High |
+| 4 | **× removes the wrong chip** | Tap × on "Burgers", "Sushi" disappears | High |
+| 5 | **Backspace clears everything** | One Backspace in the empty field deletes all recipients | High |
+| 6 | **Duplicates** | "Pizza" and "pizza " both appear as chips | Low–Medium |
+| 7 | **Stale counts** | "12 results" stays after a filter is removed | Medium |
+| 8 | **Active filters out of view** | A selected chip is scrolled off-screen; users don't know why the list is short | Medium |
+| 9 | **Long labels** | A German or user-entered label overflows the chip or pushes the × off-screen | Low–Medium |
+| 10 | **Nothing announced** | Screen reader says only "Vegan" (no "selected") or "button" for the × | High (for affected users) |
+
+<Callout type="bug" title="Why #4 happens">
+Developers often remove an item by its **position** (index) in a list. That works until the list is shown in a **different order** than it is stored: sorted A–Z, newest first, or after a chip was moved. Then "remove the 1st chip on screen" deletes the 1st item in memory, which is a different one. Always test removing chips **after** the order has changed, and remove the first, middle and last chip.
+</Callout>
+
+## Stress-test it
+
+Overflow is the chip row's biggest design question: **wrap** to several lines, or **scroll sideways**? Scrolling saves space but hides chips. Play with both, and turn on greyscale.
+
+<Playground client:visible />
+
+<Callout type="info" title="Make scrolling discoverable">
+A horizontal chip row needs a **hint** that there is more: the next chip should peek in at the edge (cut in half), or a fade shows the content continues. A row that happens to end exactly between two chips looks complete, so test on **several screen widths**, because a row that peeks on one phone can end cleanly on another.
+</Callout>
+
+## Find the bug
+
+This food delivery app has a filter chip row and a "search by dish" field with input chips. It contains **six bugs**. Explore it like a real tester:
+
+- Select and **deselect** filters, and read the result count every time.
+- Turn on the **greyscale** color filter in the device settings.
+- **Scroll the chip row** to the very end (swipe, trackpad, Shift + mouse wheel or Tab).
+- Remove dish chips with **×**, and try **Backspace** in the empty field.
+- Add a dish that's already there, with different capitals or a trailing space.
+
+<BugHunt
+  title="Restaurant filters"
+  bugs={[
+    {
+      title: 'Selected filters are shown by color only',
+      hint: 'Select two filters, then turn on the greyscale color filter.',
+      detail: 'Selected chips are pink, unselected ones grey, and that is the only difference: no checkmark, no fill or outline change. In greyscale both turn the <strong>same grey</strong>, so you can\'t tell which filters are on. That fails <strong>WCAG 1.4.1 Use of Color</strong> and hurts color-blind users and anyone in bright sunlight. Expected: a checkmark and a clear fill/outline change, as in Material 3 filter chips.',
+    },
+    {
+      title: 'No scroll hint, and the last filter can never be tapped',
+      hint: 'Scroll the chip row to its very end. Which filter is the last one? Can you tap it?',
+      detail: 'The Sort button sits on top of the end of the row with a solid background, so no chip ever peeks out: nothing suggests the row scrolls. And because the row has no right padding, the last chip, <strong>Halal</strong>, stays hidden under the Sort button even when fully scrolled. On a small screen it is unreachable. Expected: a visible hint (peek or fade) and end padding at least as wide as the Sort button.',
+    },
+    {
+      title: '× removes a different dish',
+      hint: 'Without adding anything, tap the × on the first dish chip.',
+      detail: 'Tapping × on <strong>Burgers</strong> removes <strong>Sushi</strong>. The chips are displayed sorted A–Z, but the remove button deletes by <em>index</em> in the original (unsorted) list. Expected: each × removes its own chip, whatever the display order.',
+    },
+    {
+      title: 'Backspace in the empty field removes all dishes',
+      hint: 'Add a dish or two, clear the text, then press Backspace once.',
+      detail: 'One Backspace deletes <strong>every</strong> chip at once, with no undo. Expected: Backspace removes (or first highlights) only the <strong>last</strong> chip, like Gmail or Slack recipient fields.',
+    },
+    {
+      title: 'Duplicate dishes are allowed',
+      hint: 'Add "Pizza", then add "pizza " (lower case, with a space at the end).',
+      detail: 'Both become chips: <code>Pizza</code> and <code>pizza </code>. The duplicate check is case-sensitive and doesn\'t trim spaces. Expected: entries are compared trimmed and case-insensitively, and a duplicate is ignored (ideally with a short message).',
+    },
+    {
+      title: 'Result count doesn\'t update when a filter is deselected',
+      hint: 'Select "Rating 4.5+", read the count, then deselect it and count the restaurants in the list.',
+      detail: 'Selecting a filter updates the count ("1 restaurants"), but deselecting it doesn\'t: the list shows 3 restaurants again while the label still says <strong>1</strong>. Expected: the count is recalculated on every change, select and deselect. (Bonus finding: "1 restaurants" should be "1 restaurant".)',
+    },
+  ]}
+>
+  <BuggyRestaurantFilters client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #3?">
+
+**Title:** Dish search: tapping × on a dish chip removes a different chip
+
+**Steps:** 1. Open Delivery near you (default dishes: Burgers, Sushi). 2. Tap the × on **Burgers**.
+
+**Expected:** "Burgers" is removed, "Sushi" stays, and the list shows sushi restaurants.
+**Actual:** "Sushi" is removed and "Burgers" stays. The list shows burger restaurants.
+
+**Severity:** High (users can't remove the chip they want) · **Reproducible:** 10/10 · **Note:** chips are shown A–Z; looks like removal uses the index in the unsorted list
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Chips test checklist"
+  storageKey="chips"
+  items={[
+    'It is clear which chips are tappable and which are just tags (labels)',
+    'Selected filter chips show a checkmark or shape change, not only a different color (check in greyscale)',
+    'Selecting and deselecting a chip updates the list, the result count and any count badges',
+    'A horizontal chip row shows a hint (peek or fade) that more chips exist, on small and large screens',
+    'The last chip in a scroll row can be scrolled fully into view and tapped',
+    'Active filters stay visible or are summarized, and there is a way to clear them all',
+    'Each × removes exactly its own chip, also after the order changed',
+    'Backspace in an empty token field removes only the last chip (or highlights it first)',
+    'Duplicates (different case, extra spaces) are not added twice; pasted lists are split correctly',
+    'Long labels and large text truncate cleanly and never hide the × button',
+    'Touch targets are at least 44×44 pt (iOS) / 48×48 dp (Android), even if the chip looks smaller',
+    'Keyboard: Tab reaches every chip and ×, Space/Enter toggles, focus ring is visible',
+    'Screen reader announces the chip name and state ("Vegan, toggle button, selected") and "Remove Italian" for ×',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-CHP-001',
+      title: 'Filter chip selection is visible without color',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Device color filter set to greyscale (iOS: Accessibility › Display & Text Size › Color Filters › Grayscale; Android: Accessibility › Color correction › Grayscale)'],
+      steps: ['Open the restaurant list', 'Select "Open now" and "Vegan"'],
+      expected: 'Selected chips are clearly different from unselected ones (checkmark and fill), even in greyscale.',
+    },
+    {
+      id: 'TC-CHP-002',
+      title: 'Every chip in the scroll row is reachable',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Smallest supported screen (e.g. iPhone SE, 375 pt wide)'],
+      steps: ['Swipe the chip row to the very end', 'Tap the last chip'],
+      expected: 'The last chip is fully visible, not covered by other elements, and toggles when tapped.',
+    },
+    {
+      id: 'TC-CHP-003',
+      title: 'Result count updates on deselect',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Note the result count', 'Select "Rating 4.5+"', 'Deselect "Rating 4.5+"'],
+      expected: 'The count changes after each step and always matches the number of items in the list.',
+    },
+    {
+      id: 'TC-CHP-004',
+      title: 'Remove a chip after the order changed',
+      priority: 'high',
+      type: 'edge',
+      data: 'Added in this order: Sushi, Burgers, Pizza (shown A–Z)',
+      steps: ['Add the three dishes', 'Tap × on the first chip shown', 'Tap × on the last chip shown'],
+      expected: 'Each tap removes exactly the chip whose × was tapped.',
+    },
+    {
+      id: 'TC-CHP-005',
+      title: 'Backspace in an empty token field',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Three recipients are entered'],
+      steps: ['Put the cursor in the empty text part of the field', 'Press Backspace once', 'Press Backspace again'],
+      expected: 'First press highlights (or removes) only the last recipient; the second press removes it. The other two stay.',
+    },
+    {
+      id: 'TC-CHP-006',
+      title: 'Duplicates are ignored',
+      priority: 'low',
+      type: 'negative',
+      data: '"Pizza", then "pizza ", then " PIZZA"',
+      steps: ['Add each value with Enter'],
+      expected: 'Only one "Pizza" chip exists; the app shows a short "already added" message or silently ignores the duplicates.',
+    },
+    {
+      id: 'TC-CHP-007',
+      title: 'Screen reader announces state and remove buttons',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['VoiceOver or TalkBack is on'],
+      steps: ['Swipe to the "Vegan" filter chip', 'Double-tap', 'Swipe to the × of the "Italian" chip'],
+      expected: 'Hears the name, role and state (e.g. "Vegan, toggle button, not selected"; wording varies by screen reader), then "selected" after the double-tap, then "Remove Italian, button".',
+    },
+  ]}
+/>
+
+## Accessibility
+
+Chips are small and dense, which makes them easy to get wrong for keyboard and screen reader users.
+
+| Key (web) | What it should do |
+| --- | --- |
+| <kbd>Tab</kbd> | Moves to the next chip (or into the group) and to each × |
+| <kbd>Space</kbd> / <kbd>Enter</kbd> | Toggles a filter chip or activates an action chip |
+| <kbd>Backspace</kbd> (empty token field) | Highlights or removes the last token only |
+| <kbd>Backspace</kbd> / <kbd>Delete</kbd> (on a token) | Removes that token |
+
+- **Roles:** a filter chip is a **toggle button** or a checkbox. Screen readers then say "Vegan, toggle button, selected" (wording varies by reader). A single-select chip group should be a radio group. An assist chip is a plain button. A tag is plain text.
+  <DevNote>A toggle button is `<button aria-pressed="true">`.</DevNote>
+- **Remove buttons:** the × is its own button with a name that includes the chip: "Remove Italian". A bare "×" or "button" is useless when there are five of them.
+  <DevNote>`aria-label="Remove Italian"`.</DevNote>
+- **Not by color alone:** selected chips need a checkmark, fill or outline change (<Term id="wcag" /> 1.4.1). Chip borders and icons need at least 3:1 <Term id="contrast-ratio">contrast</Term>, labels 4.5:1.
+- **Announce changes:** when a chip is added or removed, or the result count changes, tell <Term id="screen-reader">screen reader</Term> users (a polite live region: "Removed Italian. 2 cuisines.").
+- **Focus after removing:** when a chip is removed, focus moves somewhere sensible (the previous chip or the text field), not back to the top of the page.
+- **<Term id="touch-target">Touch targets</Term>:** chips are often 32 dp/pt tall, and the × even smaller. Their *touch area* should still be 44×44 pt (iOS) / 48×48 dp (Android); Material adds invisible padding for this.
+- **Scroll rows:** keyboard focus moving to an off-screen chip must scroll it into view, uncovered.
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- iOS has **no chip component**. Every chip on iOS is custom (capsule buttons, tokens in a search field), so test VoiceOver labels and traits carefully.
+- One native exception: **search tokens** (Mail, Photos), with Backspace behavior built in.
+  <DevNote>Neither UIKit nor SwiftUI has a chip; search tokens live in `UISearchTextField`.</DevNote>
+- Horizontal chip rows are usually a horizontal scroll view: check the swipe doesn't trigger the **back gesture** near the left edge.
+- Test **Dynamic Type**: at the largest sizes, chips grow taller and wider and the row may need to wrap.
+
+</Tab>
+<Tab>
+
+<DevNote>Material Components provide `Chip` (styles for assist, filter, input, suggestion) and `ChipGroup` (`singleSelection`, `selectionRequired`). Compose has `AssistChip`, `FilterChip`, `InputChip` and `SuggestionChip`.</DevNote>
+
+- A chip group can be single-line (horizontal scroll) or wrap. Check which one is used on small screens and with large **font scale**.
+- Selected filter chips should show the **checkmark**. Teams sometimes turn it off for looks, leaving color as the only cue.
+  <DevNote>The setting is `checkedIconVisible`.</DevNote>
+- Test with **TalkBack** and **color correction / greyscale** in the Accessibility settings.
+
+</Tab>
+<Tab>
+
+- No native element, and libraries vary a lot in quality.
+  <DevNote>Chips are `<button>`s (filters, actions), tags are `<span>`s, and token fields are custom widgets around an `<input>`.</DevNote>
+- A horizontal row with a hidden scrollbar is hard to scroll with a **mouse**: users need Shift + wheel or a trackpad. Many sites add arrow buttons; test them at both ends.
+- Test **paste** into token fields (comma- or newline-separated lists), **autocomplete** suggestions, and what is sent to the server (trimmed? deduplicated?).
+- Check the **URL**: filter chips often add <Term id="query-parameter">query parameters</Term> (`?open=1&diet=vegan`). Reload and share the link: are the same chips selected?
+
+</Tab>
+</Tabs>
+
+Related pages: filter chips usually belong to a [search and filter](/features/search-filters-and-sorting) feature, compare them with the [segmented control](/components/segmented-control) and [checkbox](/components/checkbox), and token fields are a special kind of [text field](/components/text-field).
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'Which Material 3 chip type shows recipients you typed into an email "To:" field?',
+      options: ['Assist chip', 'Input chip', 'Suggestion chip', 'Filter chip'],
+      answer: 1,
+      explain: 'Input chips represent information the user entered and can be removed with ×.',
+    },
+    {
+      q: 'Selected filter chips are blue and unselected ones grey. Nothing else changes. What is the problem?',
+      options: ['Nothing, blue is a clear color', 'The selected state relies on color alone', 'Chips should never be blue', 'Filter chips can only be single-select'],
+      answer: 1,
+      explain: 'Color-blind users (and anyone in greyscale or bright sunlight) can\'t see the difference. Add a checkmark or a fill/outline change.',
+    },
+    {
+      q: 'You tap × on "Burgers" and "Sushi" disappears. The chips are shown A–Z. What is the likely cause?',
+      options: ['The server is slow', 'Removal uses the index in the unsorted list', 'A caching problem', 'The touch target is too small'],
+      answer: 1,
+      explain: 'The display order differs from the stored order, and the code removes by position. Always test removal after the order changed.',
+    },
+    {
+      q: 'What should Backspace do in an empty token field with three recipients?',
+      options: ['Remove all recipients', 'Nothing', 'Highlight or remove only the last recipient', 'Remove the first recipient'],
+      answer: 2,
+      explain: 'Backspace works on the last token only, often in two steps: highlight first, then remove.',
+    },
+    {
+      q: 'What should a screen reader announce for the × of a chip called "Italian"?',
+      options: ['"Button"', '"Times"', '"Remove Italian, button"', 'Nothing, it is decorative'],
+      answer: 2,
+      explain: 'Each remove button needs a name that says what it removes. Five buttons all called "button" are useless.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- **Chips** are interactive (filter, input, assist, suggestion); **tags** are just labels. Each must look like what it is.
+- Filter chips are compact multi-select toggles that apply **immediately**. For "exactly one of a few", a segmented control is clearer.
+- The selected state needs a **checkmark or shape change**, never color alone. Test in greyscale.
+- Horizontal chip rows need a **scroll hint**, and the **last chip** must be reachable on the smallest screen.
+- Token fields: each **× removes its own chip**, **Backspace removes only the last**, **duplicates** are ignored, and counts update on **every** change.
+
+</KeyTakeaways>

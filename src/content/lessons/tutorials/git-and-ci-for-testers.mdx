@@ -1,0 +1,424 @@
+---
+title: Git and CI for Testers
+description: Understand repositories, commits, branches, pull requests and merges, build numbers, versions and environments, and what a CI/CD pipeline does, so you always know which build contains a fix. No command line needed, with a hands-on pipeline simulator.
+order: 9.5
+level: beginner
+minutes: { short: 11, long: 20 }
+platform: both
+tags: [git, ci/cd, builds, environments, releases, pipelines]
+---
+
+import PipelineSimulator from '@/components/demos/git-and-ci-for-testers/PipelineSimulator';
+
+Tuesday morning. A bug you reported last week has moved to **Resolved: Fixed**. You open the app on staging, follow your steps, and the bug is still there. You're about to reopen it when the developer writes: *"It's merged, but it's not in your build yet. Should be in 412."*
+
+Merged? Not in your build? 412? Developers talk like this all day, and testers who understand it save themselves (and everyone else) a lot of confusion. You don't need to write code or open a terminal. You need to know how a change travels from a developer's laptop to your phone, and how to tell where it is right now.
+
+## The big picture
+
+<Callout type="example" title="Think of a shared document with suggestions">
+
+Imagine the whole app is one big shared document with full version history. Nobody types directly into the final text. Each person makes a **copy** to work on (a branch), saves their edits with a note (commits), and then **suggests** the changes (a pull request). A colleague reviews the suggestion, and when it's accepted, it's **merged** into the main text. A robot then prints a fresh copy of the document after every accepted change and checks it for obvious mistakes. That robot is CI.
+
+</Callout>
+
+<div class="not-prose my-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">1 · Code</p>
+    <p class="mt-1 font-semibold">Branch and commits</p>
+    <p class="mt-1 text-sm text-muted">A developer fixes FD-327 on its own branch and saves the change as a commit.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">2 · Review</p>
+    <p class="mt-1 font-semibold">Pull request</p>
+    <p class="mt-1 text-sm text-muted">Others review the change; automated checks run on it.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">3 · Build</p>
+    <p class="mt-1 font-semibold">Merge and pipeline</p>
+    <p class="mt-1 text-sm text-muted">The change joins the main code. CI makes a new numbered build and deploys it to a test environment.</p>
+  </div>
+  <div class="min-w-0 rounded-2xl border border-line bg-surface p-4">
+    <p class="text-xs font-semibold tracking-wide text-faint uppercase">4 · Ship</p>
+    <p class="mt-1 font-semibold">Test and release</p>
+    <p class="mt-1 text-sm text-muted">You test that build. Later, a release build goes to production or the stores.</p>
+  </div>
+</div>
+
+<Short>
+
+## The essentials
+
+### Git words in one table
+
+| Word | What it is |
+| --- | --- |
+| **Repository** ("repo"), tracked with <Term id="git">Git</Term> | The project's code plus its complete history. Hosted on GitHub, GitLab, Bitbucket or similar. |
+| **<Term id="commit">Commit</Term>** | One saved change, with a message, an author and a unique ID (hash) like `a1c9e2f`. |
+| **<Term id="branch">Branch</Term>** | A separate line of work, so a change can be built without disturbing everyone else. |
+| **<Term id="pull-request">Pull request (PR)</Term>** | A request to merge a branch, with the changes, comments and checks. GitLab calls it a **merge request (MR)**. |
+| **<Term id="code-review">Code review</Term>** | Teammates read the change and approve it or ask for changes. |
+| **<Term id="merge">Merge</Term>** | The branch's changes join the target branch, usually `main`. |
+
+### Common branches
+
+`main` (the shared, latest code; some teams also use `develop`), `feature/…` or `fix/…` (one piece of work), `release/…` (a version being stabilized), `hotfix/…` (an urgent fix for what's live). These are **common patterns, not rules**: ask how your team works.
+
+### Versions, builds and environments
+
+A **version** like `2.1.0` is what users see (<Term id="semantic-versioning" />: MAJOR.MINOR.PATCH). A <Term id="build" /> number like `412` identifies one exact build, and many builds can share a version. A change travels through <Term id="environment">environments</Term>: **dev** → <Term id="staging" /> → <Term id="production" />.
+
+### CI and CD
+
+<Term id="continuous-integration">Continuous integration</Term> builds and checks every change automatically. **<Term id="continuous-delivery">Continuous delivery</Term>** keeps every good build ready to release; **continuous deployment** releases it automatically. A typical **<Term id="pipeline">pipeline</Term>**: build → unit tests → lint → deploy to a test environment → automated API/UI tests → manual testing → release.
+
+### Where you fit
+
+- **Test PR builds** when your team makes them, to catch bugs before merge.
+- **Match the build**: before you retest a fix, confirm your build contains it (release notes, the app's About screen, links in the ticket).
+- **Read a red pipeline**: which stage failed, which test, and is it related to the change?
+- **Flaky tests** pass and fail without any change. Make them visible; don't just re-run until green.
+- **Feature flags** let code ship switched off. Check the flag before you call a fix broken.
+
+Switch to **Detailed** at the top for branches and versions in depth, how a change moves between environments, pipeline stages, reading a red pipeline, and the few git commands you might see.
+
+</Short>
+
+<Long>
+
+## Git in plain words
+
+**Git** is a version control system: software that records every change to a set of files, who made it and why, and lets many people work on the same code without overwriting each other. Almost every software team uses it. The website you open it in (GitHub, GitLab, Bitbucket, Azure DevOps) adds pull requests, reviews and pipelines on top.
+
+### Repository
+
+A **repository** (repo) is the project: all the code, plus its complete history. A company often has several: one for the iOS app, one for Android, one for the backend, one for the website. That matters to you: a bug in "the app" might be fixed in the backend repo, which is deployed separately.
+
+### Commit
+
+A **commit** is one saved change. It has:
+
+- a **hash**, a unique ID such as `7f3d0b1c…`, usually shortened to 7 characters;
+- an **author** and a **date**;
+- a **message**, ideally with the ticket key: `Use current menu prices when reordering (FD-327)`.
+
+Commits are what builds are made of. "Which commit is this build from?" is the most precise way to ask "does this build have the fix?".
+
+### Branch
+
+A **branch** is a separate line of commits. A developer creates `fix/FD-327-reorder-prices` from `main`, commits there, and nobody else is affected until it's merged. Many branches exist at once: one per feature or fix in progress.
+
+### Pull request and code review
+
+A **pull request** (GitHub, Bitbucket, Azure DevOps) or **merge request** (GitLab) says: "please merge my branch into `main`". The PR page shows:
+
+- the **diff**: which lines changed, in which files;
+- **comments** from **code review**, where at least one teammate reads the change and approves it or asks for changes;
+- the **checks**: CI results for exactly this change (green ticks or red crosses).
+
+Testers rarely review code, but reading a PR's title, description and list of changed files tells you a lot about what to test. "Changed: `PriceCalculator.kt`, `CartViewModel.kt`" is a strong hint that cart totals deserve a regression check.
+
+### Merge
+
+When the PR is approved and the checks pass, it's **merged**: the branch's commits become part of `main`. Sometimes two branches changed the same lines; that's a **merge conflict**, and a developer resolves it by hand. Merges are a classic place for a fix to get lost or for an old bug to come back, which is one reason regression testing exists.
+
+## Branch patterns you'll meet
+
+Teams organize branches differently. Here are the names you'll see most:
+
+| Branch | Typical use | What it means for you |
+| --- | --- | --- |
+| `main` (or `master`) | The shared, up-to-date code. In many teams, always releasable. | Most staging builds come from here. |
+| `develop` | In some teams, the integration branch for the next release, with `main` holding only released code. | Ask which branch your test builds come from. |
+| `feature/…`, `fix/…` | One story or bug, short-lived. | PR builds come from these, if your team makes them. |
+| `release/…` | A version being stabilized, e.g. `release/2.1.0`. Only fixes go in. | Release candidates are built from here. |
+| `hotfix/…` | An urgent fix to what's live, often made from the release. | Small, risky, fast. Test the fix and the critical flows. |
+
+Two broad styles exist. **GitFlow**-style teams use `develop`, `release` and `hotfix` branches. **Trunk-based** teams keep branches very short and merge to `main` many times a day, often hiding unfinished work behind <Term id="feature-flag">feature flags</Term>. Neither is "the right one", and most teams use some mix. On your first week, ask: *"Which branch do staging builds come from, and how do I get a build for a PR?"*
+
+## Versions and build numbers
+
+Two numbers identify an app build, and testers need both.
+
+| | Example | Who sees it | Changes when |
+| --- | --- | --- | --- |
+| **Version** | 2.1.0 | Users, in the store and the app | A release is planned |
+| **Build number** | 412 | The team, in TestFlight, the About screen, CI | Every build, even of the same version |
+
+The version usually follows <Term id="semantic-versioning" />, **MAJOR.MINOR.PATCH**: 2.1.0 → 2.1.1 is a fix, 2.1.0 → 2.2.0 adds features, 2.x → 3.0.0 is a big or breaking change. Teams use it loosely, but it tells you how wide your regression should be.
+
+Many builds share one version: 2.1.0 might go through builds 405, 411, 412 and 415 before release. That's why "I tested 2.1.0" is not enough, and "2.1.0 (412)" is.
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+TestFlight lists builds as `2.1.0 (412)`: version, then build in brackets. Many apps also show both in their own Settings › About screen.
+
+</Tab>
+<Tab>
+
+Android has a version shown to users and a whole-number build code that must increase with every upload to Google Play. You can see the version in **Settings › Apps › [app]**, and builds in Firebase App Distribution or Play Console testing tracks.
+
+</Tab>
+<Tab>
+
+Websites rarely show a version. Teams often put it in a page footer, an HTML comment, a `/version` or `/health` endpoint, or the console on load. Ask where it is, and note it in bug reports just like an app build. See [DevTools for Testers](/web/devtools-for-testers).
+
+</Tab>
+</Tabs>
+
+<Callout type="dev" title="Where the two numbers live">
+
+On iOS the version is `CFBundleShortVersionString` ("Version" in Xcode) and the build is `CFBundleVersion` ("Build"). On Android they're `versionName` and `versionCode`. You'll see these names in tickets and CI logs.
+
+</Callout>
+
+[TestFlight and Firebase App Distribution](/mobile/beta-distribution) shows how mobile builds reach your phone and how to check which one you have.
+
+## Environments, and how a change travels
+
+An <Term id="environment" /> is a complete copy of the system (app, servers, database) for a purpose:
+
+| Environment | Used for | Data |
+| --- | --- | --- |
+| **Dev** (or a PR preview) | Developers trying changes; sometimes PR builds for testers | Test data, often unstable |
+| <Term id="staging">**Staging**</Term> (or QA, test, UAT) | Testing a build that's close to release | Realistic test data, sandbox payments |
+| <Term id="production">**Production**</Term> | Real users | Real data, real money |
+
+Names vary: some teams have a separate QA environment before staging, some have per-PR preview environments, some call staging "pre-prod". The idea is the same: the closer to production, the more stable and realistic.
+
+Here's the journey of one fix:
+
+<Steps>
+
+1. **Commit on a branch.** Marko fixes FD-327 on `fix/FD-327-reorder-prices`. Commit `a1c9e2f`.
+2. **Pull request #418.** CI builds and checks the branch. If the team makes PR builds, a test build of the branch appears, for example in Firebase App Distribution or as a preview URL.
+3. **Review and merge.** A teammate approves; the PR is merged into `main` as commit `7f3d0b1`.
+4. **Staging build.** CI builds `main` again. The result is build **412**, deployed to staging (for the backend and web) or uploaded to TestFlight and Firebase (for the apps).
+5. **Testing.** You retest FD-327 on 412, plus a regression check around it.
+6. **Release.** A release branch or tag produces the release candidate, for example build 415. After final checks it goes to production, or to App Store and Google Play review.
+
+</Steps>
+
+<Callout type="warning" title="Web and mobile release differently">
+
+A website or backend change is live for everyone as soon as it's deployed. A mobile app has to pass store review and then users have to update, so old versions stay in use for months. And a **backend** fix can change how an old app version behaves without any new app build. When a ticket says "fixed", ask: *fixed in which part: app, backend or both?*
+
+</Callout>
+
+## CI and CD
+
+**Continuous integration (CI)** means every change is merged often and automatically built and checked. The checks run on a CI server (GitHub Actions, GitLab CI, Jenkins, Bitrise, CircleCI and many others) within minutes of a push.
+
+**CD** means one of two things, and people mix them up:
+
+- **Continuous delivery:** every change that passes the pipeline is *ready* to release; a person decides when.
+- **Continuous deployment:** every change that passes is released to production *automatically*, with no human step.
+
+Mobile apps rarely do continuous deployment in the strict sense: every release goes through store review, and users update in their own time. Websites and backends can do either.
+
+### The pipeline
+
+A **pipeline** is the sequence of automated stages a change goes through. Each stage must pass before the next starts. A typical one:
+
+| Stage | What happens | If it's red |
+| --- | --- | --- |
+| **Build** | The code is compiled into an app or site. | Nothing to test yet. |
+| **Unit tests** | Thousands of small, fast code-level tests (<Term id="unit-testing" />). | A developer's logic broke something. |
+| **Lint / static analysis** | Tools check code style and common mistakes without running it. | Usually a quick code fix. |
+| **Deploy to a test environment** | The build goes to dev or staging. | The environment or deployment failed, not the feature. |
+| **Automated API and UI tests** | Scripts check key flows end to end (see the <Term id="test-pyramid" />). | A real bug, a changed screen the test didn't expect, or a flaky test. |
+| **Manual testing** | You: new features, risky areas, real devices, exploration. | You report what you find. |
+| **Release** | A build is promoted to production or submitted to the stores. | Check the release notes and the RC. |
+
+Not every team has every stage, and manual testing isn't always drawn in the pipeline tool. But this is the order in which a change gets more expensive to fix: a problem found by a unit test costs minutes, one found in production costs much more.
+
+## Where the tester fits
+
+### Testing a PR or feature-branch build
+
+If your team produces builds for PRs, testing one before merge is a powerful habit: bugs are found while the developer still has the change fresh in mind, and they never reach `main`. Write the build and commit in your comment ("Checked on PR-418 build, `a1c9e2f`: works on iPhone, one issue on Android"). Remember that a PR build doesn't include other work merged in the meantime, so you'll still check the merged result on staging.
+
+### Which build contains the fix?
+
+This is the question that saves the most wasted time. Before you retest:
+
+<Steps>
+
+1. **Read the ticket.** Many teams fill a "Fixed in build" or "Fix version" field. If Jira is connected to the code host, the ticket's **Development** panel lists the branch, commits, PR and sometimes builds and deployments. See [Working with Jira](/tutorials/working-with-jira).
+2. **Read the build's release notes** or the CI page for that build. Does it list the PR or ticket?
+3. **Check your device.** The app's About screen, TestFlight or App Tester show the version and build. Some test builds also show the commit and environment.
+4. **Match them.** Fixed in 412, you have 411? Don't retest yet. Install 412 or ask when it lands.
+
+</Steps>
+
+If the ticket doesn't say which build, ask in a friendly way, and suggest adding the field. It's one of the cheapest process improvements a tester can make.
+
+### Reading a red pipeline
+
+You don't have to fix a pipeline, but you should be able to read one at a basic level:
+
+- **Which stage failed?** A failed build means there's nothing to test. A failed deploy is an environment problem. A failed UI test may be a real bug.
+- **Which test, and what did it say?** The log usually names the test and the error: "Timed out after 30 s waiting for map tiles", "Expected €10.50 but was €9.50".
+- **Is it related to the change?** A pricing fix and a failing map test probably aren't. A pricing fix and a failing cart-total test probably are.
+- **Is it new?** The test's history shows whether it failed before on unrelated changes.
+
+Then say what you see, kindly: *"PR #418 is red on TrackingMapTest, which timed out. It also failed on main twice this week. Looks flaky; can you re-run it?"*
+
+### Flaky tests
+
+A <Term id="flaky-test" /> passes and fails on the same code with no change, because of timing, test data, network or test order. They're dangerous because they teach people to ignore red: "oh, that one always fails". One day the red is real.
+
+- Re-running once to unblock work is common. Re-running silently until it's green is not.
+- A flaky test is a bug in the test suite. It needs a ticket and an owner.
+- Many teams **quarantine** a flaky test (run it, but don't let it block merges) until it's fixed. See [Regression and Smoke Suites](/tutorials/regression-and-smoke-suites).
+
+### Feature flags, briefly
+
+A <Term id="feature-flag" /> lets code ship switched off and be turned on later, for some users or everyone, without a new build. For you, that means: a fix or feature can be **in the build but not active**. Check the flag state for your test account before you reopen a bug, test both states, and write the flag state in your results. For rollouts and flag strategy, see the interview question [How do staged rollouts and feature flags change your work?](/interview/staged-rollouts-and-feature-flags)
+
+## Optional: commands you'll see
+
+You don't need a terminal to do any of the above. But developers paste git output into chats, and some teams ask testers to switch a local web project to a branch. These three commands only show information or switch which version you're looking at on your own computer. They don't change anything on the shared repository.
+
+```text
+$ git log --oneline -3
+7f3d0b1 Merge pull request #418 from fooddash/fix/FD-327-reorder-prices
+a1c9e2f Use current menu prices when reordering (FD-327)
+5b2e9c4 Show opening hours on the menu screen (FD-318)
+```
+
+`git log` lists commits, newest first: short hash and message. Here you can see that the fix (`a1c9e2f`) was merged in `7f3d0b1`, after `5b2e9c4`. So a build made from `5b2e9c4` doesn't have it.
+
+```text
+$ git status
+On branch main
+Your branch is up to date with 'origin/main'.
+nothing to commit, working tree clean
+```
+
+`git status` tells you which branch you're on and whether you have local changes. "Up to date with origin/main" means your copy matches what was last downloaded from the shared repository; it doesn't download anything by itself.
+
+```text
+$ git checkout fix/FD-327-reorder-prices
+Switched to branch 'fix/FD-327-reorder-prices'
+```
+
+`git checkout <branch>` switches your local files to another branch, for example to run a web project with a fix locally. Newer git versions also offer `git switch <branch>` for the same thing. If a developer asks you to do this, ask them to walk you through it the first time.
+
+## Common mistakes
+
+<Callout type="bug" title="Watch out for these">
+
+- **Retesting on a build that can't contain the fix**, then reopening the bug. Always match the build first.
+- **"Latest" instead of a build number** in bug reports and test results. Latest changes every hour.
+- **Assuming a higher build number means "has every fix".** A hotfix branch can produce a newer build without your fix.
+- **Treating Resolved as Verified.** Resolved is the developer's part. Verifying on a real build is yours.
+- **Ignoring red pipelines**, or the opposite, panicking at every red one. Read which stage and test failed.
+- **Re-running flaky tests silently until green.**
+- **Forgetting the flag.** The fix is in the build, but switched off for your account.
+- **Forgetting the backend.** A server-side fix might be on staging but not production, or the reverse.
+
+</Callout>
+
+</Long>
+
+## Practice: follow a fix from commit to release
+
+Follow FoodDash bug FD-327 ("Order again" adds dishes at their old prices) through the pipeline. At each step, read the situation and pick what a tester should do. You'll get feedback straight away; wrong answers explain why, and you can try again.
+
+<PipelineSimulator client:visible />
+
+## Before you retest a fix
+
+<Checklist
+  title="Before you retest a fix"
+  storageKey="git-and-ci-for-testers"
+  items={[
+    "I know which build the fix is in (ticket field, Development panel or release notes)",
+    "My device or browser shows that build number and the right environment",
+    "I know whether the fix is in the app, the backend or both",
+    "I checked whether the fix is behind a feature flag, and its state for my account",
+    "I retest with the original steps and data",
+    "I write the exact build, environment and flag state in the ticket",
+    "I plan a short regression around what the change touched",
+    "If a pipeline is red, I read which stage and test failed before drawing conclusions",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "What is a pull request?",
+      options: [
+        "A request to download the latest app build",
+        "A request to merge a branch's changes, with review comments and automated checks",
+        "A bug report filed by a developer",
+      ],
+      answer: 1,
+      explain: "A pull request (a merge request in GitLab) proposes merging a branch, usually into main. Teammates review it and CI runs checks on it.",
+    },
+    {
+      q: "The ticket says 'Fixed in build 412'. Your staging app shows 2.1.0 (411). What do you do?",
+      options: [
+        "Retest now and reopen the bug if it still happens",
+        "Install 412 (or ask when it lands), then retest",
+        "Close the ticket, because the developer marked it fixed",
+      ],
+      answer: 1,
+      explain: "Build 411 can't contain a fix that landed in 412. Match the build first, then retest.",
+    },
+    {
+      q: "In version 2.1.0 (412), what is 412?",
+      options: ["The patch number", "The build number, which identifies one exact build", "The number of bugs fixed"],
+      answer: 1,
+      explain: "2.1.0 is the version users see (MAJOR.MINOR.PATCH). 412 is the build number. Many builds can share one version, so always report both.",
+    },
+    {
+      q: "A PR's pipeline is red because a map UI test timed out. The PR only changes reorder pricing, and that test failed on main twice this week. Best response?",
+      options: [
+        "Reopen the pricing bug",
+        "Point out it looks like a known flaky test, ask for a re-run, and make sure the flaky test has a ticket",
+        "Re-run the pipeline until it's green and say nothing",
+      ],
+      answer: 1,
+      explain: "Read which test failed and whether it's related. One re-run is reasonable for a known flaky test, but flakiness itself is a bug that needs an owner.",
+    },
+    {
+      q: "What's the difference between continuous delivery and continuous deployment?",
+      options: [
+        "There is none",
+        "Delivery keeps every good build ready to release and a person decides; deployment releases automatically",
+        "Delivery is for mobile apps only; deployment is for websites only",
+      ],
+      answer: 1,
+      explain: "Both rely on CI. With continuous deployment, every change that passes the pipeline goes to production with no human step.",
+    },
+    {
+      q: "The fix is in your build, but you still see the bug. The About screen shows the related feature flag is OFF for your account. What next?",
+      options: [
+        "Reopen the bug",
+        "Confirm with the developer that the fix is behind the flag, turn it on for your test account and retest",
+        "Mark it Passed because the code is in the build",
+      ],
+      answer: 1,
+      explain: "Code can ship switched off. Test with the flag on, note the flag state in the ticket, and make sure someone decides its production setting.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A **commit** is one saved change, a **branch** is a separate line of work, a **pull request** proposes merging it after **code review** and checks, and a **merge** brings it into the shared code.
+- Branch names like `main`, `develop`, `feature/…`, `release/…` and `hotfix/…` are **common patterns**. Ask your team which branch your test builds come from.
+- **Version** (2.1.0) is for users; the **build number** (412) identifies one exact build. Report both.
+- A change travels **branch → PR → merge → build → dev/staging → production**. Web deploys are immediate; mobile releases go through stores, and backend fixes deploy separately.
+- **CI** builds and checks every change. A **pipeline** runs build, unit tests, lint, deploy, automated tests, manual testing and release.
+- Before retesting, **confirm the build contains the fix**: ticket, release notes, About screen. Check feature flags too.
+- Read red pipelines at a basic level, and make **flaky tests** visible instead of re-running them silently.
+
+</KeyTakeaways>
+
+**Next:** use what you know about builds when you plan a regression run in [Regression and Smoke Suites](/tutorials/regression-and-smoke-suites), or query the data behind the app in [SQL for Testers](/tutorials/sql-for-testers).

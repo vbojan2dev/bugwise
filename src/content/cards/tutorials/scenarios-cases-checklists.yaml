@@ -1,0 +1,46 @@
+teaser: "Scenario, test case, checklist: three words that sound alike but do very different jobs. Can you tell them apart at a glance?"
+cards:
+  - type: flip
+    front: "Scenario vs test case vs checklist in one line each?"
+    back: "Scenario = what to test, in one line. Test case = exactly how, with steps, data and expected result. Checklist = quick checks to tick, no steps."
+  - type: quiz
+    q: "Which of these is a test scenario?"
+    options: ["Reorder when the restaurant is closed", "Steps: open Orders, tap Reorder on #1042", "Reorder button is at least 44 x 44 pt"]
+    answer: 0
+    explain: "A scenario is a one-line situation that says what to test. The second is part of a test case, the third is a checklist item."
+  - type: flip
+    front: "How do scenarios and test cases relate?"
+    back: "One scenario usually becomes several test cases: the happy one, the negative ones and the limits."
+  - type: thisorthat
+    prompt: "Banking app. Auditors want proof of exactly what was tested for a new transfer limit."
+    left: "Checklist"
+    right: "Detailed test cases"
+    answer: right
+    explain: "Regulated, risky work needs repeatable steps, exact data and a recorded result for every check."
+  - type: thisorthat
+    prompt: "An experienced tester does a 10-minute check of the settings screen on every build, twice a week."
+    left: "Checklist"
+    right: "Detailed test cases"
+    answer: left
+    explain: "The tester already knows the app. A short list is quick to run and cheap to keep up to date."
+  - type: truefalse
+    statement: "A checklist works just as well for a brand-new tester as for an experienced one."
+    answer: false
+    explain: "Checklists skip the steps and trust the tester to know the app. Someone new would have to guess, so give them test cases or pair up."
+  - type: quiz
+    q: "How detailed should a test case be?"
+    options: ["Describe every pixel and color", "Enough that a newcomer gets the same Pass or Fail", "One line is always enough"]
+    answer: 1
+    explain: "Match detail to risk and reader. Too little and testers guess; too much and the case breaks with every redesign."
+  - type: spotbug
+    screen: ["TC-RO-004 Reorder", "1. Tap the green button top-right", "2. Check total is exactly 11.90 €"]
+    question: "What makes this test case hard to maintain?"
+    bug: "It relies on color, position and a hard-coded price."
+    explain: "A redesign or a menu price change breaks the case even though Reorder works. Name controls by their label instead."
+  - type: spotbug
+    screen: ["Reorder checklist", "[ ] Reorder is good", "[ ] Check everything about the cart"]
+    bug: "The items can't be checked with a clear yes or no."
+    explain: "Every checklist item should have an obvious answer, like 'Extras such as no onions are kept'."
+  - type: tip
+    title: "Scenarios first, always"
+    text: "List scenarios before writing any test case. The team can review a one-page list in five minutes and spot what you missed."

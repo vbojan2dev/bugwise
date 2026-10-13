@@ -1,0 +1,465 @@
+---
+title: Search, Filters and Sorting
+description: How search, filters and sorting work behind the scenes, where they usually break, and how to test them on websites and mobile apps, with a hands-on bug hunt in a broken shop.
+order: 2
+level: beginner
+minutes: { short: 35 }
+platform: both
+tags: [search, filters, sorting, e-commerce, functional testing]
+---
+
+import { BuggyShopSearch } from '@/components/demos/search/BuggyShopSearch';
+import { DebounceDemo } from '@/components/demos/search/DebounceDemo';
+
+You type "running shoes" into a shopping app, tap **Men**, tap **Under $100**, sort by **Top rated**, and expect a tidy list of exactly what you asked for. You do this in shops, food delivery apps, banking transaction lists, travel sites and music players, often dozens of times a day.
+
+Because people use search constantly, they notice instantly when it's wrong: a missing product, a count that doesn't add up, a price list in a strange order. And a shopper who can't find a product can't buy it. Search bugs cost real money. Let's learn how these features work and how testers break them.
+
+## How it works
+
+Search, filters and sorting are three separate features that work together on one results screen.
+
+### Search: from query to results
+
+<Steps>
+
+1. **The user types a query.** For example `mug`. Many apps start searching while you type ("search as you type"); others wait for the **Search** key or button.
+2. **The app waits a moment (debounce).** A good app doesn't send a request on every keystroke. It waits until you pause typing for around 200–500 ms. This is called a <Term id="debounce" />.
+3. **The app sends a request.** Something like `GET /api/search?q=mug` goes to the server's <Term id="api">API</Term>. Filters and sort order are usually sent along: `&cat=kitchen&sort=price_asc`.
+4. **The server finds matches.** It normalizes the query (trims spaces, ignores upper/lower case, often ignores accents like é) and ranks results by **relevance**.
+5. **The app shows the results.** It shows a <Term id="loading-state" /> while waiting, then the results, a results count and the matched words **highlighted**. If nothing matches, it shows an <Term id="empty-state" /> with a helpful message.
+6. **More results load on demand.** Long lists are split into pages: numbered **[pagination](/components/pagination)** ("Page 2 of 8") or **infinite scroll** (the next batch loads as you reach the bottom).
+
+</Steps>
+
+Extra helpers you'll often meet:
+
+- **Autocomplete / suggestions:** a dropdown under the search box with suggested queries or products while you type ("mug" → "mug set", "travel mug").
+- **Recent searches:** your last few queries, shown when you tap the empty search box. They should be removable and private to your account or device.
+- **Spelling tolerance:** "headphnes" still finds headphones, or the app asks "Did you mean *headphones*?"
+
+See for yourself why debouncing matters. Type quickly with the debounce on, then turn it off and try again:
+
+<DebounceDemo client:visible />
+
+<Callout type="bug" title="Why fast typing is risky">
+
+Without a debounce, typing "mug" sends three requests: `m`, `mu` and `mug`. They travel over the network independently and can come back **in any order**. If the app simply shows whichever response arrives last, the slow `m` response can overwrite the `mug` results. That's a classic <Term id="race-condition" />. A good app debounces **and** ignores responses that don't belong to the latest query.
+
+</Callout>
+
+### Filters: narrowing the list
+
+Filters let the user narrow results by attributes: category, price range, size, rating, availability.
+
+| Filter type | Looks like | Example |
+| --- | --- | --- |
+| **[Chips](/components/chips)** | Small pill buttons you tap on and off | *Kitchen*, *In stock*, *4★ & up* |
+| **Checkboxes** | A list in a side panel or bottom sheet | Brand: ☐ Nike ☐ Adidas ☐ Puma |
+| **Range** | A slider with two handles, or min/max fields | Price: $20 – $100 |
+| **Single choice** | Radio buttons or a dropdown | Delivery: *Today* / *This week* |
+| **Toggle** | A switch | *Free shipping only* |
+
+Things every filter UI should have:
+
+- A **filter count badge**, like **Filters (3)**, so the user knows filters are active even when the panel is closed.
+- **Clear all** to remove every filter at once, and a way to remove a single filter (often an × on the chip).
+- An updated **results count** after every change.
+
+<Callout type="info" title="AND vs OR: the rule testers must know">
+
+Most shops combine filters like this:
+
+- **Inside one group, OR.** *Kitchen* + *Home* shows products from Kitchen **or** Home, so the list gets **bigger**.
+- **Between groups, AND.** *Kitchen* + *In stock* shows products that are Kitchen **and** in stock, so the list gets **smaller**.
+
+The requirements should say which rule applies. If they don't, ask. It's one of the most common sources of "is this a bug?" discussions.
+
+</Callout>
+
+### Sorting: putting results in order
+
+Sorting changes the **order**, never the **set** of results. The count must stay the same when you change the sort.
+
+| Sort option | Correct order | Watch out for |
+| --- | --- | --- |
+| **Relevance** (default) | Best match first | Exact matches should beat partial ones |
+| **Price: low to high** | $5.49, $8.99, $12.50, $100 | Sorting prices as **text** gives $100 before $12.50 |
+| **Price: high to low** | The reverse | Sale prices vs. original prices: which one is used? |
+| **Top rated** | 4.9 before 4.1 | Products with 1 review of 5★ ranking above 2,000 reviews of 4.8★ |
+| **Newest** | Most recently added first | Time zones and items with the same date |
+
+**Ties** happen all the time: two products cost $19.99. A good sort is **stable**: items that tie keep a consistent order (for example, by relevance), so they don't jump around every time you reload or load the next page. Unstable ties can even cause a product to appear on **page 1 and page 2**, while another product never appears at all.
+
+### URL state on the web
+
+On a website, the current search, filters and sort should live in the address bar:
+
+```
+shop.example.com/search?q=mug&cat=kitchen&sort=price_asc
+```
+
+This gives users three important things:
+
+- **Shareable links:** paste the URL to a friend and they see the same results.
+- **Back button works:** open a product, press Back, and you return to the *same* filtered list, ideally at the same scroll position.
+- **Refresh keeps state:** reloading the page doesn't wipe your filters.
+
+Mobile apps don't have an address bar, but the same idea applies: going back from a product should keep your query, filters, sort and scroll position. Some apps also support <Term id="deep-link">deep links</Term> that open a pre-filtered search.
+
+## Example requirements
+
+<Callout type="example" title="User story">
+
+As a **shopper**, I want to **search, filter and sort products** so that **I can quickly find something I want to buy at a price I'm happy with**.
+
+**Acceptance criteria**
+
+1. Search starts automatically 300 ms after the user stops typing, or immediately when they press **Search**/Enter.
+2. Search ignores upper/lower case, leading/trailing spaces and accents ("cafe" finds "Café").
+3. Matching words in product names are highlighted.
+4. If nothing matches, the page shows "No results for '…'" with a tip to check spelling or remove filters.
+5. Filters within a group are combined with OR; different groups are combined with AND.
+6. The **Filters** label shows a badge with the number of active filters. **Clear all** removes every filter and refreshes the results.
+7. The results count always equals the number of matching products.
+8. Sort options: Relevance (default), Price low to high, Price high to low, Top rated, Newest. Prices sort numerically.
+9. Web: query, filters and sort are stored in the URL. Back and refresh keep them.
+10. Only the response to the latest query is ever shown.
+
+</Callout>
+
+Notice how testable each line is. Criterion 7 alone gives you a check to run after *every* other test. Learn more in <Term id="acceptance-criteria" /> and <Term id="user-story" />.
+
+## What usually goes wrong
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Out-of-order responses** | You typed "mug" but see results for "m", usually after typing fast | High |
+| 2 | **Strict text matching** | "cafe" doesn't find "Café", "Mug" finds things "mug" doesn't, "mugs" finds nothing | Medium–High |
+| 3 | **Wrong results count** | "24 results" above a list of 9 products | Medium |
+| 4 | **Clear all only clears the UI** | Chips look unselected, but the list is still filtered | High |
+| 5 | **Text sorting of numbers** | $100 listed before $12.50 when sorting low to high | High |
+| 6 | **Missing empty state** | Blank screen or a spinner that never stops when nothing matches | Medium |
+| 7 | **Filter and search ignore each other** | Applying a filter clears the query, or a new search drops the filters | High |
+| 8 | **Wrong AND/OR logic** | Selecting two categories shows fewer results instead of more | High |
+| 9 | **Lost state on Back** | Returning from a product resets filters and scrolls to the top | Medium |
+| 10 | **Pagination duplicates** | The same product appears on page 1 and page 2, or one never appears | Medium |
+| 11 | **Unsafe input handling** | Special characters like `'` or `<` cause an error page or break the layout | High (security) |
+| 12 | **Request flood** | Every keystroke sends a request, slowing the app and the server | Low–Medium |
+
+## Find the bug
+
+The home goods shop below has a search page with **six bugs**. Explore it like a real tester:
+
+- Type slowly, then type quickly, and watch the network log.
+- Search for words with and without accents.
+- Turn filters on, combine them, then press **Clear all**.
+- Try every sort option and check the prices.
+- Search for something that doesn't exist.
+- Compare the results count with what you can actually see.
+
+<BugHunt
+  title="Nook & Co. shop search"
+  bugs={[
+    {
+      title: 'Results belong to an older query (race condition)',
+      hint: 'Type "lamp" as fast as you can and watch the network log.',
+      detail: 'Every keystroke sends a request (no debounce), and short queries respond more slowly. The <code>q=l</code> response arrives <strong>last</strong> and overwrites the <code>q=lamp</code> results, so the box says "lamp" but the list shows everything containing an "l". Expected: debounce typing and only show the response for the latest query.',
+    },
+    {
+      title: 'Search does not ignore accents',
+      hint: 'Search for "cafe", then for "café".',
+      detail: '"cafe" finds only the <em>Cafe Bistro Chair</em>, and "café" finds only the <em>Café Espresso Beans</em>. "creme" doesn\'t find the <em>Crème Brûlée Torch</em> either. Expected: accents are ignored, so both queries find both products.',
+    },
+    {
+      title: 'Results count does not match the list',
+      hint: 'Turn on "4★ & up" and count the products.',
+      detail: 'The count ignores the rating filter. With no query and only <strong>4★ & up</strong> on, it still says <strong>18 results</strong>, but only 15 products are shown. Expected: the count always equals the number of products in the list.',
+    },
+    {
+      title: '"Clear all" only resets the chips',
+      hint: 'Select Tech, then press Clear all.',
+      detail: 'The chips, the filter badge and the URL all look cleared, but the list still shows only <strong>Tech</strong> products. The UI state and the applied filters are out of sync. Expected: Clear all removes the filters from the results too and shows all products.',
+    },
+    {
+      title: 'Price sort compares prices as text',
+      hint: 'Sort by "Price: low to high" and read the prices top to bottom.',
+      detail: 'The list starts with <strong>$100.00</strong>, <strong>$110.00</strong>, <strong>$12.50</strong>… and ends with <strong>$9.99</strong>. Prices are compared character by character like words ("1" comes before "5"), not as numbers. "High to low" is wrong in the same way. Expected: $5.49, $7.50, $8.99 … $249.00.',
+    },
+    {
+      title: 'No empty state: endless spinner',
+      hint: 'Search for something the shop doesn\'t sell, like "piano".',
+      detail: 'The network log shows the request finished with <code>0 items</code>, but the page shows "Searching…" with a spinner forever. Users think the app is stuck. Expected: a clear message like "No results for \'piano\'" with tips (check spelling, remove filters).',
+    },
+  ]}
+>
+  <BuggyShopSearch client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #4?">
+
+**Title:** Search: "Clear all" resets filter chips but results stay filtered
+
+**Steps:** 1. Open the search page. 2. Tap the **Tech** chip. 3. Tap **Clear all**.
+
+**Expected:** All chips are unselected and all 18 products are shown.
+**Actual:** All chips are unselected and the filter badge disappears, but only the 4 Tech products are shown.
+
+**Severity:** High (users can't get back to the full list without reloading) · **Reproducible:** 10/10
+
+</Callout>
+
+## Test scenarios
+
+Group your ideas so you don't forget whole areas. A <Term id="test-scenario" /> is *what* to check; you'll turn the important ones into test cases next.
+
+### Functional
+
+- Search by a full product name, a partial word ("lam" finds "Lamp") and a word from the middle of a name.
+- Search is triggered by typing (after the debounce), by the **Search**/Enter key and by the search button.
+- Each filter on its own narrows the list correctly.
+- Two values in **one** group (OR) make the list bigger; filters from **different** groups (AND) make it smaller.
+- Search and filters work together: changing one keeps the other.
+- Each sort option orders the list correctly, and the results count doesn't change when sorting.
+- Ties are stable: products with the same price keep the same order after reload and across pages.
+- Results count is correct after every search, filter and sort change.
+- Pagination or infinite scroll: no duplicates, no gaps, the last page ends cleanly.
+- Autocomplete suggestions match the query and tapping one runs the search.
+- Recent searches are saved, shown in the right order (newest first), and can be removed one by one or all at once.
+- Web: URL updates; Back, Forward, refresh and a shared link restore the same state.
+
+### Negative and edge cases
+
+This is where <Term id="negative-testing" /> and <Term id="edge-case">edge cases</Term> shine. Try each of these queries:
+
+| Query | What to check |
+| --- | --- |
+| *(empty)* | Pressing Search does nothing, or shows all products or recent searches. Never an error |
+| `"   "` (only spaces) | Treated like an empty query. Not "No results for '   '" |
+| `"  mug  "` | Leading/trailing spaces are ignored; finds the same as `mug` |
+| `MUG`, `Mug`, `mUg` | Same results as `mug` (case-insensitive) |
+| `cafe` vs `café` | Same results (accents, called diacritics, are ignored) |
+| `mugs` vs `mug` | Plurals ideally find the same products |
+| `mgu`, `headphnes` | Typos: "Did you mean…?" or fuzzy matches, at least a friendly empty state |
+| `%`, `&`, `_`, `#`, `+` | No error; the character is searched literally (`%` and `_` are wildcards in some databases) |
+| `'` or `"` | No error page. A crash here can hint at <Term id="sql-injection" /> |
+| `<b>hi</b>` | Shown as plain text, never rendered as bold HTML (if it renders, that's a sign of <Term id="xss" /> risk) |
+| 300+ characters | Field limits input or handles it; layout doesn't break; no server error |
+| Emoji `☕` and non-Latin text `кофе` | No crash; sensible results or empty state |
+| A price range where min > max | Prevented or swapped, with a clear message |
+| Filters that match nothing | Empty state that suggests removing filters |
+
+### UI and usability
+
+- A loading indicator appears while waiting and **always** disappears afterwards.
+- The empty state explains what happened and what to do next ("Check the spelling or clear filters").
+- The search box has a clear (×) button that empties the field and resets the results (more in [Search bar](/components/search-bar)).
+- On mobile, the keyboard shows a **Search** key (not "Return"), and pressing it hides the keyboard.
+- Highlighting marks the right part of the name, including when case or accents differ.
+- The filter badge count matches the number of active filters.
+- Long product names and long queries are truncated nicely, not overlapping prices or buttons.
+- The <Term id="placeholder" /> text explains what you can search ("Search products").
+
+### Performance
+
+- Results appear within the agreed time (for example, under 1 second on a normal connection).
+- Typing fast doesn't send a request for every keystroke (check the network tab in <Term id="devtools" />).
+- Old requests are canceled or ignored, so results never flicker between queries.
+- Scrolling a long list (hundreds of items, infinite scroll) stays smooth.
+- On a slow or offline connection, the app shows a loading state and then an error message, not a frozen screen.
+
+### Accessibility
+
+- The search field has a label that <Term id="screen-reader">screen readers</Term> announce ("Search products, search field").
+- After results load, a screen reader announces the count ("12 results").
+  <DevNote>For example with an `aria-live` region on the web.</DevNote>
+- Filter chips announce their state: "Kitchen, toggle button, selected".
+  <DevNote>`aria-pressed` on the web.</DevNote>
+- Everything works with a keyboard: Tab to the field, type, Enter to search, arrow keys in autocomplete, Esc closes suggestions.
+- Highlighting doesn't rely on color alone (bold text helps), and text keeps 4.5:1 contrast.
+- Chips and the clear button are big enough to tap: 44×44 pt on iOS, 48×48 dp on Android.
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-SRCH-001',
+      title: 'Search by partial product name',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['Catalog contains "Linen Table Lamp" and "Desk Lamp with USB Port"'],
+      steps: ['Open the search page', 'Type "lamp"', 'Wait 1 second'],
+      data: 'Query: lamp',
+      expected: 'Exactly the two lamp products are shown, "lamp" is highlighted in each name, and the count says "2 results for \'lamp\'".',
+    },
+    {
+      id: 'TC-SRCH-002',
+      title: 'Search ignores case, spaces and accents',
+      priority: 'high',
+      type: 'edge',
+      steps: ['Search for "cafe"', 'Note the results', 'Search for "  CAFÉ  "'],
+      expected: 'Both searches return the same products, including "Café Espresso Beans" and "Cafe Bistro Chair".',
+    },
+    {
+      id: 'TC-SRCH-003',
+      title: 'Fast typing shows results for the final query only',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Network throttled to "Slow 4G" in DevTools'],
+      steps: ['Type "lamp" as fast as possible', 'Wait 3 seconds without typing'],
+      expected: 'Only lamp products are shown. At most one or two requests appear in the network tab, and the list never switches to results for "l" or "la".',
+    },
+    {
+      id: 'TC-SRCH-004',
+      title: 'No results shows a helpful empty state',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Search for "piano"'],
+      expected: 'The loading indicator disappears and the page shows "No results for \'piano\'" with a tip to check spelling or remove filters.',
+    },
+    {
+      id: 'TC-SRCH-005',
+      title: 'Filters in different groups combine with AND',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Tap "Kitchen"', 'Note the count', 'Tap "4★ & up"'],
+      expected: 'The list shows only Kitchen products rated 4.0 or higher, and the count shrinks to match the number of visible products.',
+    },
+    {
+      id: 'TC-SRCH-006',
+      title: 'Clear all removes every filter from the results',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Tap "Tech" and "In stock"', 'Tap "Clear all"'],
+      expected: 'All chips are unselected, the filter badge disappears and all products are shown with the full count.',
+    },
+    {
+      id: 'TC-SRCH-007',
+      title: 'Price sort is numeric',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Select sort "Price: low to high"', 'Read prices from top to bottom', 'Select "Price: high to low"'],
+      expected: 'Low to high starts with $5.49 and ends with $249.00, each price ≥ the one above. High to low is the exact reverse. The count does not change.',
+    },
+    {
+      id: 'TC-SRCH-008',
+      title: 'Back button restores search state (web)',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Search "mug", tap "Kitchen", sort by "Top rated"', 'Open any product', 'Press the browser Back button'],
+      expected: 'The URL, query, chip, sort and results are the same as before opening the product, and the scroll position is kept.',
+    },
+    {
+      id: 'TC-SRCH-009',
+      title: 'Special characters are handled safely',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Search for each: \' " % _ <b>x</b>'],
+      expected: 'No error page or broken layout. The query is shown as plain text in the empty state or results.',
+    },
+  ]}
+/>
+
+## Mobile vs web
+
+<Tabs labels={['Mobile app', 'Website']}>
+<Tab>
+
+- **Keyboard:** check that the keyboard shows a **Search** key and that it runs the search and hides the keyboard. Check the clear (×) button and the **Cancel** button on iOS search bars.
+- **Filters in a [bottom sheet](/components/bottom-sheet):** filters often open in a sheet with an **Apply** button. Test closing the sheet *without* applying: changes should be discarded.
+- **Infinite scroll** is more common than numbered pages. Scroll to the end, then rotate the device and check nothing is duplicated or lost.
+- **State:** open a product, go back, send the app to the background and return. Query, filters, sort and scroll position should survive.
+- **Voice input and paste:** dictating or pasting a query should trigger a search just like typing.
+- **Bad networks:** switch to airplane mode mid-search. Expect a clear error and a **Retry** option.
+- **Recent searches** are often stored on the device, so check they are cleared on log out.
+
+</Tab>
+<Tab>
+
+- **URL state:** every change should update the URL. Test Back, Forward, refresh and opening a copied link in a private window.
+- **Network tab:** open <Term id="devtools" />, filter by "search", type quickly and count the requests. Throttle to "Slow 4G" to expose race conditions.
+- **Pagination:** check page numbers, "Next" on the last page, and changing a filter while on page 3 (it should usually return to page 1).
+- **Keyboard:** Tab, Enter, arrow keys in autocomplete, Esc to close suggestions, visible focus on chips.
+- **Responsive layout:** filters in a sidebar on desktop often become a "Filters" button with a drawer on small screens. Test both. See <Term id="responsive-design" />.
+- **Browser autofill:** the browser's own suggestions shouldn't cover the site's autocomplete list.
+- **Cross-browser:** test accent-insensitive search and sorting in Chrome, Safari and Firefox, because text handling can differ.
+
+</Tab>
+</Tabs>
+
+## Checklist
+
+<Checklist
+  title="Search, filters and sorting checklist"
+  storageKey="search-filters-sorting"
+  items={[
+    'Partial, full and mid-word queries find the right products',
+    'Search ignores case, extra spaces and accents (cafe = café)',
+    'Typing fast sends few requests and always shows results for the final query',
+    'Empty query and spaces-only query are handled gracefully',
+    'Special characters, emoji, very long queries and HTML are handled safely',
+    'No results shows a helpful empty state, never a blank list or endless spinner',
+    'Loading indicator appears and always disappears',
+    'Matching text is highlighted correctly',
+    'Each filter works alone; OR within a group, AND between groups',
+    'Filter badge count matches active filters; Clear all clears UI and results',
+    'Search and filters keep each other when either changes',
+    'Results count always equals the number of matching products',
+    'Every sort option is correct; prices sort numerically; ties are stable',
+    'Pagination or infinite scroll has no duplicates or gaps',
+    'Web: URL holds state; Back, refresh and shared links restore it',
+    'Mobile: Search key works; state survives Back, rotation and backgrounding',
+    'Screen reader announces the field, results count and chip states',
+    'Works on slow and offline networks with clear messages',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'You type "mug" quickly. The box says "mug", but the list shows products containing "m". What is the most likely cause?',
+      options: ['The search is case-sensitive', 'Responses arrived out of order and the old one overwrote the new one', 'The sort order is wrong', 'The filter count badge is broken'],
+      answer: 1,
+      explain: 'Without a debounce and without ignoring outdated responses, the slow response for "m" can arrive last. This is a race condition.',
+    },
+    {
+      q: 'You select the "Kitchen" and "Home" category chips. What should usually happen to the number of results?',
+      options: ['It goes down, because filters are combined with AND', 'It goes up, because values in the same group are combined with OR', 'It stays the same', 'It resets to zero'],
+      answer: 1,
+      explain: 'Inside one filter group, values are usually combined with OR (Kitchen or Home), so the list grows. Between different groups, filters are combined with AND.',
+    },
+    {
+      q: 'Sorted by "Price: low to high", the list shows $100, $110, $12.50, $129, $15. What is the bug?',
+      options: ['Prices are sorted as text instead of numbers', 'The sort is unstable', 'The currency is wrong', 'Nothing, this is correct'],
+      answer: 0,
+      explain: 'Text sorting compares character by character, so "100" comes before "12.50". Prices must be compared as numbers.',
+    },
+    {
+      q: 'Which query is the best check for accent handling?',
+      options: ['MUG', 'cafe vs café', 'A 300-character query', 'An empty query'],
+      answer: 1,
+      explain: '"cafe" and "café" should usually return the same results. MUG checks case; the others check limits and empty input.',
+    },
+    {
+      q: 'Why should search filters and sort be stored in the URL on a website?',
+      options: ['It makes the page load faster', 'So links can be shared and Back/refresh keep the same results', 'It is required for SEO only', 'So the server can skip the API call'],
+      answer: 1,
+      explain: 'With the state in the URL, a shared link, a bookmark, Back and refresh all show the same results. Without it, users lose their filters.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Search flows from **query → debounce → request → results**, with loading, empty and error states along the way.
+- The nastiest search bug is the **race condition**: type fast on a slow network and check you see results for the final query.
+- Test queries with **case, spaces, accents, plurals, typos, special characters and extreme lengths**.
+- Filters: **OR within a group, AND between groups**. Check the badge, Clear all, and that search and filters keep each other.
+- Sorting changes the order, never the set. Check **numeric** price sorting and **stable ties**.
+- After every action, check that the **results count matches the list**.
+- On the web, state belongs in the **URL**; on mobile, it must survive **Back, rotation and backgrounding**.
+
+</KeyTakeaways>

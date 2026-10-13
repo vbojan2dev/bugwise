@@ -1,0 +1,436 @@
+---
+title: Gestures
+description: Tap, long press, swipe, pinch and the rest. How touch gestures work, why they clash with each other and with the system, and how to test them so every user can still get the job done.
+order: 3
+level: beginner
+minutes: { short: 35 }
+platform: mobile
+tags: [mobile, gestures, touch, accessibility, usability]
+---
+
+import GesturePad from '@/components/demos/mobile-gestures/GesturePad';
+import EdgeZones from '@/components/demos/mobile-gestures/EdgeZones';
+import { BuggyMailApp } from '@/components/demos/mobile-gestures/BuggyMailApp';
+
+A food delivery app shipped a neat new feature: swipe an order left in your basket to remove it. Within a week, support tickets piled up. "My pizza disappeared." "I didn't remove anything!" People were scrolling the basket with their thumb, the thumb drifted a little sideways, and items vanished. No Undo, no confirmation. Some customers only noticed at the door, when the rider handed over half an order.
+
+Nobody had tested **scrolling** the basket. The swipe worked perfectly when you swiped. It also "worked" when you didn't mean to.
+
+## Why gestures matter
+
+On a phone there is no mouse and no hover. Everything happens through a few <Term id="gesture">gestures</Term>: tap, hold, swipe, pinch. They feel natural, which is exactly why users notice instantly when one misbehaves, and why bugs here feel like the app is "broken" even when the code technically does what it was told.
+
+Gestures are tricky to test because:
+
+- They are **invisible**. A button says "Delete". A swipe-to-delete says nothing until you discover it.
+- They **compete**. The same finger movement could be a scroll, a swipe, a drag or the system's back gesture. The app has to guess.
+- They depend on **thresholds**: how long is a long press? How far is a swipe? Change a number and the feel changes completely.
+- Not everyone can perform them. People using a <Term id="screen-reader" />, a switch device or voice control need another way to do the same thing.
+
+## The gesture vocabulary
+
+These are the gestures you'll meet in almost every app, and what they usually mean.
+
+| Gesture | How it's done | Typical use | Watch out for |
+| --- | --- | --- | --- |
+| **Tap** | Touch and lift quickly | Open, select, press a button | Small <Term id="touch-target">touch targets</Term>, double actions on fast taps |
+| **Double tap** | Two quick taps in the same spot | Zoom in on a photo or map, "like" a post | Single-tap action fires first; delay before a single tap registers |
+| **Long press** (touch and hold) | Touch and hold still for about 0.5 s | Context menu, select mode, drag to reorder | Tap action also fires on release; no visual or haptic cue |
+| **Swipe** (flick) | Quick movement, finger lifts while moving | Delete or archive a row, next photo, dismiss a card | Triggered by accident while scrolling; too easy or too hard |
+| **Drag** (pan) | Touch, move slowly, lift | Move a slider, reorder a list, pan a map | Item jumps, drops in the wrong place, scroll fights the drag |
+| **Pinch** | Two fingers apart (zoom in) or together (zoom out) | Photos, maps, PDFs | Zoom limits, blurry images, losing position |
+| **Rotate** | Two fingers turn around each other | Maps, photo editors | Accidental rotation while zooming |
+| **Pull to refresh** | Drag down when the list is already at the top | Reload a feed, inbox or order list | Fires twice, spinner stuck, list jumps |
+| **Edge swipe** | Swipe in from a screen edge | Back, drawers, system menus | Clashes with app gestures near the edge |
+| **Multi-finger** | Two or three fingers at once | Two-finger tap to zoom out in maps, three-finger undo on iPad/iPhone | Hard to discover; conflicts with accessibility gestures |
+
+### What separates a tap from a swipe
+
+An app doesn't "see" gestures. It sees a stream of touch points: finger down at (120, 340), moved to (124, 338), lifted after 180 ms. A **gesture recognizer** turns that stream into a decision using a few thresholds:
+
+<Steps>
+
+1. **Touch slop.** A finger always wobbles a few pixels. Movement under a small threshold (Android's default *touch slop* is 8 dp, about a millimeter) still counts as "not moving".
+2. **Time.** Lift before roughly 500 ms without moving: **tap**. Stay still longer: **long press**, which fires *while the finger is still down*.
+3. **Distance and speed.** Moved and still moving fast when lifted: **swipe** (a fling). Moved but slowed down before lifting: **drag**.
+4. **Waiting for a second tap.** If a view supports double tap, the app must wait about 300 ms after the first tap before it knows whether a single tap happened. That's why single taps on zoomable photos can feel slightly slow.
+5. **Fingers.** Two touch points whose distance changes: **pinch**. Two points turning around each other: **rotate**.
+
+</Steps>
+
+## Try it: the gesture pad
+
+Play with the pad below and watch how the numbers decide the gesture. Try a slow drag versus a quick flick over the same distance. Hold still until the ring fills. Turn off "Wait for double tap" and double tap: you'll get a *Tap* first and then a *Double tap*, which is exactly how "the like button also opened the post" bugs happen.
+
+<GesturePad client:visible />
+
+<Callout type="info" title="Same gesture, different numbers">
+iOS and Android use similar defaults, but every app can tune its own thresholds, and users can change some of them. On Android, **Settings › Accessibility › Touch & hold delay** offers Short, Medium and Long. On iOS, **Settings › Accessibility › Touch** has *Haptic Touch* speed and *Touch Accommodations* (hold duration, ignore repeat). Good apps respect these settings, so test with them changed.
+</Callout>
+
+## Edge swipes belong to the system
+
+Some edges of the screen are reserved. A swipe that starts there is handled by the operating system or by the navigation stack, not by your app's content.
+
+<EdgeZones />
+
+Things to know:
+
+- **iOS back swipe** comes from the navigation controller. Apps with custom navigation sometimes break it, so swiping from the left edge does nothing or, worse, leaves the screen half-dismissed.
+- **Android back** is a system gesture from **both** side edges. It must do the same as the back button: close the drawer, dialog or keyboard first, then go back a screen, and only then leave the app. With **predictive back**, apps that support it show a preview of where you'll land (since Android 15; on by default for apps that target Android 16).
+- Apps can ask the system to **exclude** small areas from the back gesture (for example a drawing canvas), but that's limited and should be rare.
+- In full-screen games and video, iOS may need **two swipes** from the edge (the first one just shows the indicator), so the game doesn't get interrupted.
+
+## When gestures collide
+
+The most interesting gesture bugs come from **conflicts**: two things want the same finger movement. Good apps decide early, usually within the first few pixels, which direction the finger is going and then **lock** to one gesture.
+
+| Conflict | What should happen | Typical bug |
+| --- | --- | --- |
+| **Horizontal carousel inside a vertical list** (product rows on a shopping home screen) | Mostly-horizontal movement scrolls the carousel, mostly-vertical scrolls the page | Page won't scroll when your thumb starts on a carousel; carousel jitters while scrolling |
+| **Swipe-to-delete vs. back swipe** | Swipes starting at the very edge go back; swipes on the row act on the row | Trying to go back deletes the first row, or row swipes navigate back |
+| **Map inside a scrolling page** (a delivery tracking screen) | One finger scrolls the page; panning the map needs two fingers or a "tap to interact" step | You get stuck "inside" the map and can't scroll past it |
+| **Swipe actions vs. vertical scrolling** | No direction lock, no action | A slightly diagonal scroll swipes a row and triggers its action |
+| **Pinch-zoom vs. page zoom** (web views) | The image zooms, not the whole page | The whole page zooms and the layout breaks |
+| **Drawer from the left edge vs. Android back** | Clear grab handle or menu button opens the drawer | Opening the drawer sends the user back instead |
+
+<Callout type="tip" title="Tester mindset">
+For every gesture on a screen, ask: **"What else could this finger movement mean here?"** Then try the "wrong" one on purpose: scroll diagonally over swipeable rows, start a scroll on top of a carousel, swipe from the edge on top of a swipeable item.
+</Callout>
+
+## Discoverability: hidden gestures need a visible way
+
+A gesture is a **shortcut**, never the only path. Users can't see swipe actions or long-press menus, so many will never find them. Apple's and Google's guidelines both say the same thing: provide a visible control for important actions.
+
+<Compare>
+<Do title="Gesture plus a visible control">
+
+Swipe left on an email to delete it, **and** there is a trash button in the opened email, **and** "Delete" is in the long-press menu. After deleting, a snackbar says "Email deleted · Undo" (see [toast](/components/toast)).
+
+</Do>
+<Dont title="Gesture only">
+
+The only way to delete is swiping. There is no hint, no button, and once it's gone, it's gone. Users who don't know the gesture can't delete; users who trigger it by accident can't recover.
+
+</Dont>
+</Compare>
+
+Destructive gestures deserve extra care: a **higher threshold** (a full swipe or a swipe plus tap on the revealed button), a clear **color and icon** while swiping, and an **Undo** afterwards.
+
+## Accessibility: every gesture needs an alternative
+
+Lots of people can't do a precise swipe, pinch or long press: people with tremors or limited dexterity, people using a stylus or a head pointer, and people who can't see the screen. When **VoiceOver** (iOS) or **TalkBack** (Android) is on, gestures change meaning completely: a single tap only *selects* an item, a double tap activates it, and swiping left or right moves between elements. Your app's custom swipe never reaches the app.
+
+So for every gesture, check that there's another way:
+
+- **Screen readers.** Custom swipe actions should be exposed as **accessibility actions**: VoiceOver reads "Actions available" and the user swipes up or down to pick "Delete". TalkBack lists them in its **Actions** menu. Standard iOS list swipe actions get this for free; custom-built ones often don't.
+- **Switch Control (iOS) / Switch Access (Android)** users scan through items and pick actions from a menu. Drag-only features (reordering, sliders without +/− buttons) are often impossible for them.
+- **Voice Control** users say "Tap Delete". That only works if a visible, labeled button exists.
+- **<Term id="wcag">WCAG</Term> 2.5.1 Pointer Gestures (Level A):** anything that needs a multi-finger or path-based gesture (swipe, pinch, drawing a shape) must also work with a **single pointer without a path**, such as a simple tap on a button. Examples: zoom buttons next to pinch-to-zoom, arrows next to a swipeable carousel.
+- **WCAG 2.5.7 Dragging Movements (Level AA, WCAG 2.2):** anything done by dragging must also be possible without dragging, such as "Move up / Move down" buttons for a reorderable list.
+- **WCAG 2.5.2 Pointer Cancellation (Level A):** actions should fire when the finger **lifts**, not when it touches down, so users can slide off a button to cancel.
+
+### Haptic feedback
+
+A light vibration (a "haptic") confirms that something happened without looking: the long press fired, a swipe passed the point of no return, a toggle snapped. iOS Mail gives a tick when a full swipe crosses the delete threshold; Android gives one when a long press is recognized.
+
+Test that haptics are **present where expected**, **not overused** (a buzz on every scroll item is annoying), and that the app respects the system setting (iOS **Settings › Sounds & Haptics › System Haptics**, Android **Settings › Sound & vibration › Vibration & haptics**). You can't feel haptics in a <Term id="simulator" /> or <Term id="emulator" />, so this needs a <Term id="real-device" />.
+
+## What to test
+
+**Basic recognition**
+
+- Every tappable item reacts to a single tap, and nothing happens twice on a fast double tap (see <Term id="double-submit" />).
+- Long press opens its menu after about 0.5 s, with visual and haptic feedback, and the tap action does **not** also fire.
+- Swipes trigger only past a clear threshold; short or slow swipes snap back.
+- Pinch zoom has sensible minimum and maximum levels and keeps the point under your fingers in place.
+
+**Conflicts and edges**
+
+- Scroll lists diagonally over [swipeable rows](/components/swipe-list) and [carousels](/components/carousel).
+- Swipe back from the left edge (and the right edge on Android) on every screen, including screens with swipeable content.
+- [Pull to refresh](/components/pull-to-refresh) once, twice quickly, and while a refresh is already running. Watch the network log.
+- Start a gesture and **cancel** it: drag back to the start, slide off the button, or get interrupted by a call or notification.
+
+**Recovery and accessibility**
+
+- Destructive gestures have an Undo or confirmation.
+- Every gesture action is also available through a visible button or menu.
+- Everything works with VoiceOver, TalkBack, Switch Control and Voice Control.
+- Long press respects the system touch-and-hold delay.
+
+### Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Accidental destructive swipe** | Items deleted while scrolling or after a tiny nudge | High |
+| 2 | **No Undo** | Deleted or archived item is gone with no way back | High |
+| 3 | **Gesture-only action** | Feature can't be reached without a swipe, pinch or drag (fails WCAG 2.5.1 / 2.5.7) | High (for affected users) |
+| 4 | **Double action** | Long press opens the menu *and* opens the item; double tap "likes" *and* opens the post | Medium |
+| 5 | **Pull to refresh misfires** | Two requests, duplicated items, or a spinner that never stops | Medium |
+| 6 | **Scroll vs. swipe conflict** | Carousels, maps or rows hijack vertical scrolling | Medium–High |
+| 7 | **Broken back gesture** | Edge swipe does nothing, closes the app, or leaves a half-dismissed screen | High |
+| 8 | **Wrong zoom behavior** | Pinch zooms the whole page, jumps to a corner, or has no limit | Low–Medium |
+| 9 | **Stuck state after cancel** | A row stays half-swiped or a dragged item stays "lifted" after an interruption | Medium |
+| 10 | **No feedback** | Long press works but nothing shows it's coming, so users give up early | Low |
+
+## Find the bug
+
+This mail app supports swiping, long press and pull to refresh, and it has **six gesture bugs**. Everything works with a mouse too: drag to swipe or scroll, press and hold for the menu. Explore it like a tester:
+
+- Swipe a row a little, then a lot. Scroll the list by dragging, not perfectly straight.
+- Try to delete an email **without** swiping.
+- Press and hold an email, then let go.
+- Pull to refresh and keep an eye on the spinner and the network log.
+
+<BugHunt
+  title="Mail inbox"
+  bugs={[
+    {
+      title: 'Swipe to delete has no Undo',
+      hint: 'Delete an email, then try to get it back.',
+      detail: 'The email disappears instantly: no confirmation, no <strong>Undo</strong> snackbar, no trash folder. Expected: after a destructive swipe the app shows "Email deleted · Undo" for a few seconds (or moves the email to Trash).',
+    },
+    {
+      title: 'A tiny swipe deletes the email (threshold too low)',
+      hint: 'Drag a row sideways just a little and let go.',
+      detail: 'Moving only <strong>24 px</strong> to the left deletes the email. Expected: a short swipe reveals the red Delete button or snaps back; deleting needs a long swipe (around half the row) or a tap on the revealed button.',
+    },
+    {
+      title: 'Delete is only possible with a swipe',
+      hint: 'Open an email or press and hold one. Can you delete it from there?',
+      detail: 'Neither the opened email (only Reply and Forward) nor the long-press menu has a <strong>Delete</strong> option. Users who don\'t know the gesture, and VoiceOver, TalkBack, Switch Control or Voice Control users, can\'t delete at all. Fails <em>WCAG 2.5.1 Pointer Gestures</em>.',
+    },
+    {
+      title: 'Long press opens the menu AND the email',
+      hint: 'Press and hold a row until the menu appears, then release.',
+      detail: 'The menu appears, but on release the tap action also runs, so the email opens underneath the menu (and is marked as read). Expected: once the long press fires, the tap is canceled.',
+    },
+    {
+      title: 'Pull to refresh fires twice and the spinner never stops',
+      hint: 'Pull down at the top of the list and watch the network log.',
+      detail: 'One request is sent when the pull crosses the threshold and another on release. The duplicate is canceled, but the app waits for <em>that</em> one to finish, so "Checking for mail…" spins forever even though new mail arrived. Expected: exactly one request per pull, and the spinner hides when it completes.',
+    },
+    {
+      title: 'Scrolling the list deletes emails',
+      hint: 'Scroll the list by dragging up, slightly diagonally.',
+      detail: 'There is no direction lock: a mostly vertical scroll with a small sideways drift also moves the row and deletes it on release. Expected: the app decides in the first few pixels whether the movement is a scroll or a swipe and ignores the other direction.',
+    },
+  ]}
+>
+  <BuggyMailApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #6?">
+
+**Title:** Inbox: scrolling the list with a slightly diagonal drag deletes an email
+
+**Steps:** 1. Open the Inbox (12 emails). 2. Put your finger on "Northwind Bank". 3. Drag upward about 3 cm while drifting about 1 cm to the left. 4. Lift your finger.
+
+**Expected:** The list scrolls; no email changes.
+**Actual:** The list scrolls and "Northwind Bank" is deleted. There is no Undo.
+
+**Severity:** High (silent data loss during normal use) · **Reproducible:** 10/10 · **Device:** iPhone 15, iOS 18.1 · Pixel 8, Android 15
+
+</Callout>
+
+## Tools and how-to
+
+<Tabs labels={['iOS', 'Android', 'Accessibility']}>
+<Tab>
+
+**Xcode Simulator**
+
+- A click is a tap; click and drag is a swipe or drag. Click and hold for a long press.
+- Hold **Option (⌥)** to show two touch points mirrored around the center: drag to **pinch**, drag in a circle to **rotate**. Add **Shift** to move both points together (two-finger drag).
+- Use **Device › Home** (⇧⌘H) and **Device › App Switcher**, or drag up from the bottom edge, to test system gestures.
+- **Device › Shake** triggers the shake gesture (often used for "Undo" or "Report a bug").
+- The Simulator can't reproduce haptics, real finger size or touch pressure. Always repeat gesture tests on a <Term id="real-device" />.
+
+**Real iPhone**
+
+- Turn on **Settings › Accessibility › Touch › AssistiveTouch** to get an on-screen menu with gestures you can trigger with one finger, useful to check single-pointer alternatives.
+- Screen recordings don't show your touches, so describe your gestures precisely in bug reports ("swipe from the left edge, about 2 cm, slowly").
+
+</Tab>
+<Tab>
+
+**Android Emulator**
+
+- Click is a tap, click-drag is a swipe. Hold **Ctrl** (⌘ on a Mac) while dragging to pinch and zoom.
+- The emulator uses gesture navigation by default on recent system images; switch to 3-button mode under **Settings › System › Navigation mode** (called *Gestures › System navigation* on older versions) and test both.
+
+**Developer options** (tap *Build number* 7 times to unlock)
+
+- **Show taps** draws a dot wherever you touch, perfect for screen recordings attached to a <Term id="bug-report" />.
+- **Pointer location** overlays the exact coordinates, the path of each finger and its velocity, so you can see how far and how fast you really swiped.
+
+**<Term id="adb" /> for exact, repeatable gestures**
+
+```bash
+adb shell input tap 540 1200                    # tap
+adb shell input swipe 540 1200 540 1200 800     # long press (800 ms in one spot)
+adb shell input swipe 900 1200 300 1200 150     # fast swipe left
+adb shell input swipe 900 1200 860 1200 300     # tiny 40 px swipe: is that enough to delete?
+```
+
+These commands make threshold bugs <Term id="reproducible" />: the developer can run exactly the same swipe.
+
+</Tab>
+<Tab>
+
+- **VoiceOver:** Settings › Accessibility › VoiceOver. Focus a row and swipe up or down to hear its custom actions ("Delete", "Archive"). Add VoiceOver to *Accessibility Shortcut* so a triple-click on the side button toggles it.
+- **TalkBack:** Settings › Accessibility › TalkBack. Focus an item and open the TalkBack menu (three-finger tap, or swipe down then right on older versions) and pick **Actions**.
+- **Switch Control / Switch Access:** use the screen as a switch and check every action can be reached by scanning, without dragging.
+- **Voice Control (iOS) / Voice Access (Android):** say "Show names" or "Show numbers" and check every gesture action has a visible, labeled control you can say.
+- See <Term id="accessibility-testing" /> for the bigger picture.
+
+</Tab>
+</Tabs>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-GES-001',
+      title: 'Short swipe on an email does not delete it',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Inbox contains at least 5 emails'],
+      steps: ['Swipe the first email to the left by about 1 cm', 'Lift the finger'],
+      expected: 'The row snaps back (or reveals the Delete button). The email is still in the list.',
+    },
+    {
+      id: 'TC-GES-002',
+      title: 'Deleting by swipe can be undone',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Swipe an email fully to the left', 'Tap "Undo" in the snackbar within 5 seconds'],
+      expected: 'The email is deleted, a snackbar "Email deleted · Undo" appears, and after Undo the email is back in its original position.',
+    },
+    {
+      id: 'TC-GES-003',
+      title: 'Diagonal scroll does not trigger swipe actions',
+      priority: 'high',
+      type: 'edge',
+      steps: ['Place a finger on an email', 'Drag upward about 3 cm while drifting 1 cm sideways', 'Lift the finger'],
+      expected: 'The list scrolls. No row is swiped, deleted or archived.',
+    },
+    {
+      id: 'TC-GES-004',
+      title: 'Long press opens the menu without opening the email',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Touch and hold an unread email for 1 second', 'Lift the finger'],
+      expected: 'A context menu appears with haptic feedback. The email does not open and stays unread.',
+    },
+    {
+      id: 'TC-GES-005',
+      title: 'Pull to refresh sends exactly one request',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Proxy tool or network log is recording'],
+      steps: ['Scroll the inbox to the top', 'Pull down past the threshold and release', 'Wait 5 seconds'],
+      expected: 'Exactly one inbox request is sent. New emails appear at the top and the spinner disappears.',
+    },
+    {
+      id: 'TC-GES-006',
+      title: 'Delete is available without gestures (VoiceOver)',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['VoiceOver is on'],
+      steps: ['Swipe right until an email is focused', 'Swipe down to cycle through actions', 'Double tap when "Delete" is announced'],
+      expected: 'VoiceOver announces "Actions available", offers Delete, and the email is deleted with an announcement.',
+    },
+    {
+      id: 'TC-GES-007',
+      title: 'Back gesture from the edge goes back, not to the row action',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Android, gesture navigation on'],
+      steps: ['Open a folder from the mailbox list', 'Swipe in from the left screen edge over the first email'],
+      expected: 'The app goes back to the mailbox list. The first email is not swiped or changed.',
+    },
+    {
+      id: 'TC-GES-008',
+      title: 'Map zoom works with buttons as well as pinch',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Open order tracking', 'Pinch out on the map', 'Tap the "−" zoom button'],
+      expected: 'Pinch zooms in around the fingers; the "−" button zooms out one level. Both reach the same minimum and maximum zoom.',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="Gesture test checklist"
+  storageKey="gestures"
+  items={[
+    'Single tap works on every interactive element and never fires twice',
+    'Long press opens its menu after about 0.5 s and does not also trigger the tap action',
+    'Swipe actions need a clear, deliberate movement; short or slow swipes snap back',
+    'Destructive gestures have Undo or a confirmation',
+    'Diagonal scrolling never triggers row swipes or carousel moves',
+    'Carousels and maps don\'t trap vertical scrolling',
+    'Edge swipes go back (iOS left edge, Android both edges) on every screen',
+    'Pull to refresh sends one request per pull and the spinner always stops',
+    'Canceled gestures (slide off, interruption) leave nothing half-done',
+    'Every gesture has a visible alternative: a button, menu item or zoom control',
+    'Custom swipe actions are announced as actions in VoiceOver and TalkBack',
+    'Long press respects the system touch-and-hold delay setting',
+    'Haptic feedback is present where expected and follows the system setting',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A user moves their finger 60 px but slows to a stop before lifting it. What does a typical recognizer report?',
+      options: ['Tap', 'Swipe', 'Drag', 'Long press'],
+      answer: 2,
+      explain: 'A swipe needs the finger to still be moving fast at release. Slow, controlled movement is a drag.',
+    },
+    {
+      q: 'Why can single taps on a zoomable photo feel slightly delayed?',
+      options: ['The network is slow', 'The app waits about 300 ms to see whether a second tap (double tap) follows', 'Touch targets are too small', 'The long press timer is running'],
+      answer: 1,
+      explain: 'If a view supports double tap, the app can only be sure a tap was single after the double-tap window has passed.',
+    },
+    {
+      q: 'Which finding is a WCAG 2.5.1 Pointer Gestures failure?',
+      options: ['The Delete button is red', 'A photo carousel can only be changed by swiping, with no arrow buttons', 'Long press takes 500 ms', 'Pull to refresh shows a spinner'],
+      answer: 1,
+      explain: 'Path-based gestures like swipes need a single-pointer alternative without a path, such as Next/Previous buttons.',
+    },
+    {
+      q: 'Users report emails disappearing "by themselves" while scrolling. What should you test first?',
+      options: ['Dark mode', 'Diagonal scrolling over swipeable rows', 'Push notifications', 'Changing the language'],
+      answer: 1,
+      explain: 'A missing direction lock lets a slightly diagonal scroll also count as a swipe, which then deletes the row.',
+    },
+    {
+      q: 'With VoiceOver on, what does a single tap on an email row do?',
+      options: ['Opens the email', 'Deletes the email', 'Selects (focuses) the row and reads it aloud', 'Nothing at all'],
+      answer: 2,
+      explain: 'With a screen reader, a single tap selects and a double tap activates. Custom swipes never reach the app, so swipe actions must be offered as accessibility actions.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Gestures are decided by **thresholds**: touch slop, ~500 ms for long press, ~300 ms double-tap window, distance and release speed for swipe vs. drag.
+- The best bugs live in **conflicts**: scroll vs. swipe, carousel vs. page, row swipe vs. back gesture, map vs. page. Always try the "wrong" movement on purpose.
+- **Edges belong to the system**: iOS left-edge back, Android back from both edges, notification shade at the top, Home at the bottom.
+- A gesture is a **shortcut, not the only path**. Destructive gestures need a deliberate threshold and **Undo**.
+- Every gesture needs an **accessible alternative** for VoiceOver, TalkBack, Switch Control and Voice Control users (WCAG 2.5.1, 2.5.7).
+- Repeat gesture tests on a **real device**: simulators can't reproduce finger size, haptics or real-world thumb drift.
+
+</KeyTakeaways>
+
+Next up: what happens to all of this when the user turns the phone sideways, in [Orientation and Screen Sizes](/mobile/orientation-and-screen-sizes).

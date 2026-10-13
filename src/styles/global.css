@@ -1,0 +1,463 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* ---------- Design tokens ---------- */
+:root {
+  --bg: #ffffff;
+  --subtle: #f6f7fb;
+  --surface: #ffffff;
+  --elevated: #ffffff;
+  --line: #e5e7ef;
+  --line-strong: #d3d6e2;
+  --fg: #0e1120;
+  --muted: #555b6e;
+  --faint: #8a90a3;
+  --brand: #5b4bff;
+  --brand-2: #00b8a9;
+  --brand-soft: #eeecff;
+  --brand-fg: #ffffff;
+  --ok: #0f9f6e;
+  --ok-soft: #e6f7f0;
+  --warn: #c27c0e;
+  --warn-soft: #fdf4e3;
+  --danger: #e5484d;
+  --danger-soft: #fdecec;
+  --info: #2f7ae5;
+  --info-soft: #e9f2fd;
+  --shadow-sm: 0 1px 2px rgb(16 18 35 / 0.06);
+  --shadow-md: 0 4px 16px -4px rgb(16 18 35 / 0.1), 0 2px 4px -2px rgb(16 18 35 / 0.06);
+  --shadow-lg: 0 24px 48px -16px rgb(16 18 35 / 0.18);
+  --accent: var(--brand);
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --bg: #0a0b11;
+  --subtle: #10121a;
+  --surface: #13151f;
+  --elevated: #1a1d29;
+  --line: #242836;
+  --line-strong: #323748;
+  --fg: #eceef6;
+  --muted: #a3a8ba;
+  --faint: #6f7489;
+  --brand: #8b7dff;
+  --brand-2: #2dd4bf;
+  --brand-soft: #1f1c3d;
+  --brand-fg: #0a0b11;
+  --ok: #34d399;
+  --ok-soft: #0f2a21;
+  --warn: #fbbf24;
+  --warn-soft: #2d2410;
+  --danger: #ff6b6f;
+  --danger-soft: #331718;
+  --info: #60a5fa;
+  --info-soft: #132238;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 16px -4px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 24px 48px -16px rgb(0 0 0 / 0.6);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, monospace;
+  --color-bg: var(--bg);
+  --color-subtle: var(--subtle);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-fg: var(--brand-fg);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-accent: var(--accent);
+  --shadow-soft: var(--shadow-md);
+  --shadow-float: var(--shadow-lg);
+}
+
+/* ---------- Base ---------- */
+@layer base {
+  html {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    scroll-padding-top: 5.5rem;
+  }
+  body {
+    background: var(--bg);
+    min-height: 100dvh;
+    /* Hidden tooltips near the edge must never cause sideways scrolling on phones. */
+    overflow-x: clip;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--brand) 25%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@utility container-page {
+  width: 100%;
+  max-width: 88rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+  @media (width >= 640px) {
+    padding-inline: 1.5rem;
+  }
+}
+
+@utility text-gradient {
+  background: linear-gradient(100deg, var(--brand) 10%, var(--brand-2) 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+@utility bg-grid {
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse at 50% 0%, black 20%, transparent 70%);
+}
+
+/* ---------- Prose (lesson body) ---------- */.prose {
+  color: var(--fg);
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  max-width: 46rem;
+}
+
+.prose > * + *:not(.not-prose *) {
+  margin-top: 1.15em;
+}
+
+.prose h2:not(.not-prose *) {
+  font-size: 1.6rem;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-top: 2.6em;
+  padding-top: 0.2em;
+}
+
+.prose h3:not(.not-prose *) {
+  font-size: 1.22rem;
+  line-height: 1.35;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  margin-top: 2em;
+}
+
+.prose h4:not(.not-prose *) {
+  font-size: 1.05rem;
+  font-weight: 650;
+  margin-top: 1.6em;
+}
+
+.prose h2 + *:not(.not-prose *), .prose h3 + *:not(.not-prose *), .prose h4 + *:not(.not-prose *) {
+  margin-top: 0.6em;
+}
+
+.prose :where(h2:not(.not-prose *), h3) a.heading-anchor:not(.not-prose *) {
+  opacity: 0;
+  margin-left: 0.4rem;
+  color: var(--faint);
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.prose :where(h2:not(.not-prose *), h3):hover a.heading-anchor:not(.not-prose *) {
+  opacity: 1;
+}
+
+.prose p:not(.not-prose *), .prose li:not(.not-prose *) {
+  color: color-mix(in oklab, var(--fg) 88%, var(--muted));
+}
+
+.prose strong:not(.not-prose *) {
+  color: var(--fg);
+  font-weight: 650;
+}
+
+.prose a:not(.term):not(.not-prose a):not(.not-prose *) {
+  color: var(--brand);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--brand) 35%, transparent);
+  text-underline-offset: 3px;
+  font-weight: 500;
+}
+
+.prose a:not(.term):hover:not(.not-prose *) {
+  text-decoration-color: var(--brand);
+}
+
+.prose ul:not(.not-prose *), .prose ol:not(.not-prose *) {
+  padding-left: 1.4em;
+}
+
+.prose ul:not(.not-prose *) {
+  list-style: disc;
+}
+
+.prose ol:not(.not-prose *) {
+  list-style: decimal;
+}
+
+.prose li + li:not(.not-prose *) {
+  margin-top: 0.35em;
+}
+
+.prose li:not(.not-prose *)::marker {
+  color: var(--faint);
+}
+
+.prose blockquote:not(.not-prose *) {
+  border-left: 3px solid var(--brand);
+  padding: 0.2em 0 0.2em 1em;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.prose hr:not(.not-prose *) {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 2.5em 0;
+}
+
+.prose :not(pre) > code:not(.not-prose *) {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--subtle);
+  border: 1px solid var(--line);
+  padding: 0.12em 0.38em;
+  border-radius: 0.4em;
+  /* Long URLs and commands must wrap instead of widening the page on phones. */
+  overflow-wrap: anywhere;
+}
+
+.prose pre:not(.not-prose *) {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  padding: 1rem 1.15rem;
+  overflow-x: auto;
+}
+
+.prose table:not(.not-prose *) {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  overflow: hidden;
+  display: block;
+  overflow-x: auto;
+}
+
+.prose th:not(.not-prose *) {
+  text-align: left;
+  background: var(--subtle);
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.prose th:not(.not-prose *), .prose td:not(.not-prose *) {
+  padding: 0.65em 0.9em;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.prose tr:last-child td:not(.not-prose *) {
+  border-bottom: 0;
+}
+
+.prose img:not(.not-prose *) {
+  border-radius: 0.9rem;
+}
+
+/* Shiki dual theme */
+[data-theme='dark'] .astro-code,
+[data-theme='dark'] .astro-code span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+}
+.astro-code {
+  background-color: var(--subtle) !important;
+}
+[data-theme='dark'] .astro-code {
+  background-color: var(--subtle) !important;
+}
+
+/* ---------- Quick / Detailed lesson modes ---------- */
+html[data-lesson-mode='short'] .mode-long,
+html:not([data-lesson-mode='short']) .mode-short {
+  display: none;
+}
+.no-modes .mode-short, .no-modes .mode-long {
+  display: block !important;
+}
+
+/* ---------- Glossary term tooltip ---------- */
+.term {
+  position: relative;
+  color: inherit;
+  text-decoration: underline dotted;
+  text-decoration-color: var(--brand);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  cursor: help;
+}
+.term-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translate(-50%, 4px);
+  width: max-content;
+  max-width: min(18rem, 80vw);
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.75rem;
+  background: var(--elevated);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  font-weight: 400;
+  font-style: normal;
+  color: var(--muted);
+  text-align: left;
+  display: none;
+  pointer-events: none;
+  z-index: 40;
+}
+.term-tip b {
+  display: block;
+  color: var(--fg);
+  font-weight: 650;
+  margin-bottom: 0.15rem;
+}
+.term-tip small {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--brand);
+  font-weight: 550;
+}
+.term:hover .term-tip,
+.term:focus-visible .term-tip {
+  display: block;
+  transform: translate(-50%, 0);
+  animation: tip-in 0.15s ease-out;
+}
+@keyframes tip-in {
+  from { opacity: 0; transform: translate(-50%, 4px); }
+}
+
+/* ---------- Steps ---------- */
+/* Doubled class beats the `.prose ol:not(.not-prose *)` rule, which would otherwise
+   bring back the default list numbers next to the custom step circles. */
+.steps.steps ol {
+  list-style: none;
+  padding-left: 0;
+  counter-reset: step;
+}
+.steps ol > li {
+  position: relative;
+  padding-left: 3rem;
+  padding-bottom: 1.25rem;
+  counter-increment: step;
+  margin-top: 0 !important;
+}
+.steps ol > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0.05rem;
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-weight: 700;
+  font-size: 0.9rem;
+  border: 1px solid color-mix(in oklab, var(--brand) 30%, transparent);
+}
+.steps ol > li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: calc(1rem - 1px);
+  top: 2.4rem;
+  bottom: 0.3rem;
+  width: 2px;
+  background: var(--line);
+}
+
+/* ---------- Misc animations ---------- */
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-float { animation: float-y 6s ease-in-out infinite; }
+.animate-fade-up { animation: fade-up 0.6s cubic-bezier(.2,.7,.2,1) both; }
+
+/* Light "device screen" behind static platform demos, so iOS-style controls
+   keep their native contrast on both site themes. */
+@utility demo-screen {
+  background: #f2f2f7;
+  border-radius: 0.85rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  overflow-x: auto;
+}
+
+/* iOS search bar demos: Cancel slides in from the right when search starts. */
+@keyframes ios-cancel-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [class*='ios-cancel-in'] { animation: none !important; }
+}

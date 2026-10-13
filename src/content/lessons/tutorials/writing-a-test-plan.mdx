@@ -1,0 +1,452 @@
+---
+title: Writing a Test Plan
+description: Learn what a test plan is, which sections it needs, how to prioritize with risk-based testing and how to keep it to one useful page, with a worked example for Apple Pay and Google Pay at checkout and a hands-on plan builder.
+order: 4
+level: intermediate
+minutes: { short: 11, long: 20 }
+platform: both
+tags: [test planning, documentation, risk-based testing, test plan]
+---
+
+import TestPlanBuilder from '@/components/demos/tutorial-planning/TestPlanBuilder';
+
+Your lead pings you on Tuesday: *"We're adding Apple Pay and Google Pay to checkout in the shopping app. Can you write the test plan by Thursday? Keep it to a page. We'll go through it at stand-up."*
+
+A test plan can sound like a 40-page document nobody reads. It doesn't have to be. A good one fits on a page, takes an hour to write, and saves days of "wait, were we supposed to test that?" This lesson shows you how to write one.
+
+## What a test plan is (and isn't)
+
+A <Term id="test-plan">test plan</Term> is a short document that answers, for **one project, release or feature**: what will we test, what won't we test, how, where, with what, by whom, by when, and how do we know we're done?
+
+<Callout type="example" title="Think of planning a trip">
+
+Your company's travel policy says "economy class, hotels under 150 € a night". That's the **test strategy**: general rules for every trip. Your itinerary for the Berlin conference says which flights, which hotel, who's going and what to do if the train is canceled. That's the **test plan**: the rules applied to one specific trip.
+
+</Callout>
+
+| | Test strategy | Test plan |
+| --- | --- | --- |
+| Covers | The whole product or company | One release, feature or sprint |
+| Lifespan | Years, changes rarely | Weeks, changes often |
+| Example | "Every release gets a smoke test on 5 real devices" | "Test Apple Pay on iPhone 16 and iPhone SE this sprint" |
+
+A <Term id="test-strategy" /> sets the general rules; the plan applies them to one piece of work. Small teams often have no written strategy at all, and that's fine: the plan just states the approach directly.
+
+A test plan **isn't**:
+
+- **A list of test cases.** The plan says *what* areas get tested and *how deeply*. The cases live elsewhere and are linked from it. (See [Test Scenarios vs Test Cases vs Checklists](/tutorials/scenarios-cases-checklists).)
+- **A promise to test everything.** It's a set of choices, made on purpose and written down.
+- **Write once, forget.** When scope or dates change, update it. A wrong plan is worse than none.
+
+<Short>
+
+## The essentials
+
+### The sections of a one-page plan
+
+| Section | Answers |
+| --- | --- |
+| Scope (in / out) | What we test, and what we deliberately don't |
+| Objectives | What "good" means for this feature |
+| Approach | Which kinds of testing, in what order |
+| Environments & devices | Where: staging, devices, browsers |
+| Test data | Accounts, test cards, coupons |
+| Entry / exit criteria | When we can start, when we're done |
+| Risks | What could go wrong, and what we do about it |
+| Schedule & people | Who does what, by when |
+| Deliverables | What we hand over at the end |
+
+### Risk-based testing in one minute
+
+You never have time to test everything equally, so you test the **riskiest things first and deepest**. For each risk, rate:
+
+- **Likelihood**: how likely is it to go wrong? (Low 1, Medium 2, High 3)
+- **Impact**: how bad would it be? (Low 1, Medium 2, High 3)
+
+**Risk score = likelihood × impact.** "Customer charged twice" is medium likelihood (2) × high impact (3) = 6, so it's tested before "wallet button looks off in dark mode" (2 × 1 = 2).
+
+### Keep it short and reviewed
+
+For a sprint or a feature, aim for **one page**. Write it, then spend 10 to 15 minutes going through it with the developer and product owner. Their "oh, that's out of scope" or "you forgot Samsung phones" is the most valuable feedback you'll get all sprint.
+
+<Callout type="tip">
+
+The **out of scope** list is the most underrated line in any plan. Writing "Web shop wallets: not tested in this release" stops someone from assuming they were.
+
+</Callout>
+
+Switch to **Detailed** at the top for every section explained with examples, lightweight vs formal plans (IEEE 829 and ISO/IEC/IEEE 29119-3), a full one-page example and a copyable template.
+
+</Short>
+
+<Long>
+
+## Lightweight vs formal test plans
+
+There are two very different styles out there, and you'll likely meet both.
+
+| | Lightweight (agile) | Formal |
+| --- | --- | --- |
+| Length | One page, often a wiki page | 10 to 50 pages |
+| Written for | A feature, sprint or release | A whole project or contract |
+| Updated | Whenever things change | Through versioned approvals |
+| Typical in | Startups, product teams, most apps | Banking, medical, government, outsourcing |
+
+The classic formal template comes from **IEEE 829**, the old "Standard for Software and System Test Documentation". It has been replaced by the **ISO/IEC/IEEE 29119** series, whose part 3 (**ISO/IEC/IEEE 29119-3**) covers test documentation. That's the name you'll see in modern contracts and audits. Both describe much the same contents: test items, features to be tested and not tested, approach, pass/fail criteria, suspension and resumption criteria (when to pause testing, for example if the build is too broken), deliverables, environment, responsibilities, schedule, risks and approvals.
+
+<Callout type="note" title="You don't need to memorize the standard">
+
+The sections of a one-page agile plan are the same ideas, just shorter. If you can write a good one-page plan, you can fill in a formal template when a regulated project asks for one. Ask your team which style they expect before you start.
+
+</Callout>
+
+## The sections, one by one
+
+### Scope: in and out
+
+List the features and platforms you **will** test, and just as clearly, what you **won't**. "Out" doesn't mean "unimportant". It means "not part of this piece of work" or "someone else covers it".
+
+<Compare>
+<Do title="Specific scope">
+
+**In:** Apple Pay in the iOS app, Google Pay in the Android app, canceling the wallet sheet, wallet unavailable, confirmation email, regression of card and PayPal.
+
+**Out:** Wallets on the web shop (next quarter), express checkout on product pages, PayCo's server load.
+
+</Do>
+<Dont title="Vague scope">
+
+**In:** Checkout.
+
+**Out:** —
+
+</Dont>
+</Compare>
+
+### Objectives
+
+One to three sentences on what success means, in user and business terms: *"Customers can pay with Apple Pay and Google Pay and get a correct order. Nobody is charged twice or the wrong amount."* Objectives help you decide what matters when time runs short.
+
+### Approach and test types
+
+Say **which kinds of testing** you'll do and **how deep**. For example: scripted <Term id="test-case">test cases</Term> for payment and order creation; [exploratory testing](/tutorials/exploratory-testing) sessions for the wallet sheet and interruptions; a [regression](/tutorials/regression-and-smoke-suites) checklist for old payment methods; <Term id="accessibility-testing" /> of the new button with a screen reader. Mention what is automated, if anything, so nobody duplicates it by hand.
+
+### Environments and the device/browser matrix
+
+Where will you test? Usually a <Term id="staging" /> environment with sandbox payment keys, never <Term id="production" /> with real money. Then the <Term id="device-matrix" /> (or <Term id="browser-matrix" /> for websites): a short, deliberate list of devices, OS versions and browsers that represents your real users and your risks.
+
+| Device | Why it's on the list |
+| --- | --- |
+| iPhone 16 · iOS 18 · Face ID | Main Apple Pay path |
+| iPhone SE · iOS 17 · Touch ID | Oldest supported iOS, different authentication |
+| Pixel 9 · Android 15 | Main Google Pay path |
+| Samsung Galaxy A · Android 13 | Popular budget phone, oldest supported Android |
+| Phone with no card in its wallet | "Wallet unavailable" path |
+
+Use your analytics to pick devices. "Every phone in the office" is not a matrix, it's a pile.
+
+### Test data
+
+List the accounts, cards, coupons and orders you need, and how you'll get them. For wallets: Apple's **sandbox tester accounts** with Apple's test cards added to Wallet, and Google Pay's **TEST environment**, which returns test tokens so no real card is charged. Ask for test data early: it's the most common reason testing starts late.
+
+### Entry and exit criteria
+
+<Term id="entry-criteria">Entry criteria</Term> say when testing can **start**; exit criteria say when it's **done enough** to give a recommendation.
+
+<Compare>
+<Do title="Measurable">
+
+**Entry:** both wallets work end to end on staging (smoke test passed); sandbox accounts ready.
+
+**Exit:** all high-priority cases run on every must-have device; no open Critical or Major bugs in checkout; every risk scored 6+ tested and reported.
+
+</Do>
+<Dont title="Unmeasurable">
+
+**Entry:** when dev is ready.
+
+**Exit:** when testing is finished. Zero bugs.
+
+</Dont>
+</Compare>
+
+"Zero bugs of any kind" sounds strict but is unrealistic, so it gets quietly ignored. Criteria that can't be met teach the team to ignore criteria.
+
+### Risks and mitigations
+
+This is the heart of **<Term id="risk-based-testing">risk-based testing</Term>**: you spend the most effort where a failure is both likely and painful. For each risk, rate likelihood and impact from 1 to 3, multiply, and test the highest scores first and deepest.
+
+| Risk | L × I | Mitigation |
+| --- | --- | --- |
+| Customer charged twice | 2 × 3 = **6** | Double-tap and slow-network cases; check PayCo dashboard |
+| Wallet amount ≠ cart total | 2 × 3 = **6** | Cases with coupon, shipping, tax |
+| Paid but no order created | 1 × 3 = **3** | Kill app / drop network after paying |
+| Button style off in dark mode | 2 × 1 = **2** | One checklist item |
+
+Include **project risks** too, not just product risks: "Sandbox accounts not ready by Monday → testing starts late. Mitigation: request them today."
+
+### Schedule and responsibilities
+
+Who tests what, and when. Keep it to a few lines: *"Ana: iOS. Ben: Android. Days 1 to 2 data and cases, days 3 to 7 execution, day 8 regression, day 9 summary."* Also name who makes the **release decision**. That's usually the product owner, not the tester.
+
+Not sure how many days to put in? [Estimating Testing Effort](/tutorials/estimating-testing-effort) shows how to build the number and its range.
+
+### Deliverables
+
+What the team gets from testing: test cases linked to the <Term id="user-story" />, <Term id="bug-report">bug reports</Term>, and a short <Term id="test-summary-report" /> with a recommendation at the end.
+
+### Tools
+
+Name them in one line: where cases live (a test management tool or a spreadsheet), where bugs go (for example <Term id="jira" />), and any helpers such as a <Term id="proxy-tool" /> to simulate network failures.
+
+## How to write it, step by step
+
+<Steps>
+
+1. **Read everything first.** The user stories, <Term id="acceptance-criteria" />, designs and any tech notes. Ask the developer one question: *"What are you most worried about?"*
+2. **Write scope in and out.** Be blunt. List the obvious "outs" too.
+3. **List and score the risks.** Ten minutes of brainstorming, then likelihood × impact. This decides your order of work.
+4. **Choose the approach, devices and data** that cover the highest risks. Don't add a device that doesn't reduce a risk.
+5. **Write entry and exit criteria** that someone else could check without asking you.
+6. **Add schedule, people, deliverables.** A few lines each.
+7. **Review it with the team** for 10 to 15 minutes, then update it. Link it from the ticket or sprint board.
+
+</Steps>
+
+## Worked example: Apple Pay & Google Pay at checkout
+
+Here's a complete one-page plan for the ShopFast shopping app. Notice how short each section is.
+
+<div class="not-prose my-6 rounded-2xl border border-line bg-surface p-5 text-sm leading-relaxed text-fg">
+  <p class="text-xs font-semibold tracking-wide text-faint uppercase">Test plan · ShopFast iOS & Android 5.2 · Sprint 14</p>
+  <p class="mt-1 text-lg font-semibold">Apple Pay & Google Pay at checkout</p>
+  <p class="mt-1 text-muted">Owner: QA (Ana) · Reviewed with: Chris (dev lead), Dana (product owner) · Version 2</p>
+  <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div class="min-w-0">
+      <p class="font-semibold">Scope: in</p>
+      <ul class="mt-1 list-disc pl-5 text-muted">
+        <li>Apple Pay (iOS app), Google Pay (Android app)</li>
+        <li>Canceling the wallet sheet</li>
+        <li>Wallet unavailable: button hidden or offers setup</li>
+        <li>Order confirmation + email show the wallet</li>
+        <li>Light regression: card and PayPal</li>
+      </ul>
+    </div>
+    <div class="min-w-0">
+      <p class="font-semibold">Scope: out</p>
+      <ul class="mt-1 list-disc pl-5 text-muted">
+        <li>Wallets on the web shop (next quarter)</li>
+        <li>Express checkout on product pages</li>
+        <li>PayCo server load (provider's responsibility)</li>
+      </ul>
+    </div>
+    <div class="min-w-0">
+      <p class="font-semibold">Objectives</p>
+      <p class="mt-1 text-muted">Customers can pay with a wallet and get a correct order. Nobody is charged twice or the wrong amount. Old payment methods keep working.</p>
+    </div>
+    <div class="min-w-0">
+      <p class="font-semibold">Approach</p>
+      <p class="mt-1 text-muted">Risk-based. Scripted cases for payment, amount and order creation. Two 60-min exploratory sessions (interruptions, slow network). Regression checklist for card and PayPal. VoiceOver/TalkBack check of the new button.</p>
+    </div>
+    <div class="min-w-0">
+      <p class="font-semibold">Risks (testing order)</p>
+      <ol class="mt-1 list-decimal pl-5 text-muted">
+        <li>Charged twice (2×3 = 6)</li>
+        <li>Wallet amount ≠ cart total (2×3 = 6)</li>
+        <li>Button shown when wallet unavailable (3×2 = 6)</li>
+        <li>Cancel leaves a stuck spinner (3×2 = 6)</li>
+        <li>Incomplete wallet address (2×2 = 4)</li>
+        <li>Paid but no order (1×3 = 3)</li>
+        <li>Button style in dark mode (2×1 = 2)</li>
+      </ol>
+    </div>
+    <div class="min-w-0">
+      <p class="font-semibold">Devices</p>
+      <p class="mt-1 text-muted">iPhone 16 (iOS 18, Face ID) · iPhone SE (iOS 17, Touch ID) · iPhone with empty Wallet · Pixel 9 (Android 15) · Samsung Galaxy A (Android 13) · Android phone without Google Play services</p>
+    </div>
+    <div class="min-w-0">
+      <p class="font-semibold">Environment & data</p>
+      <p class="mt-1 text-muted">Staging with PayCo sandbox keys. Apple Pay sandbox tester account with Apple test cards. Google Pay TEST environment. Coupon SAVE10; an item with paid shipping.</p>
+    </div>
+    <div class="min-w-0">
+      <p class="font-semibold">Entry / exit</p>
+      <p class="mt-1 text-muted"><strong class="text-fg">Entry:</strong> both wallets pass a smoke test on staging; sandbox accounts ready. <strong class="text-fg">Exit:</strong> all high-priority cases run on must-have devices; no open Critical/Major bugs in checkout; all risks scored 6+ tested and reported; regression checklist passed.</p>
+    </div>
+    <div class="min-w-0">
+      <p class="font-semibold">Schedule & people</p>
+      <p class="mt-1 text-muted">Ana: iOS · Ben: Android · Days 1–2 cases and data, 3–7 execution, 8 regression, 9 summary. Release decision: Dana.</p>
+    </div>
+    <div class="min-w-0">
+      <p class="font-semibold">Deliverables & tools</p>
+      <p class="mt-1 text-muted">Cases in the test management tool, linked to SHOP-512. Bugs in Jira. Test summary report on day 9. Proxy tool for network failures.</p>
+    </div>
+  </div>
+</div>
+
+<Callout type="tip" title="Notice the patterns">
+
+- Three of the top four risks are about **money or a stuck checkout**, so they get scripted cases. The dark-mode styling gets one checklist line.
+- Every device on the list is there for a reason you could say out loud.
+- The exit criteria are things anyone can check: a count of cases, a bug list, a checklist.
+
+</Callout>
+
+### A template you can copy
+
+```markdown
+# Test plan: <feature> (<app> <version>, <sprint>)
+Owner: <you> · Reviewed with: <dev>, <PO> · Version: 1
+
+## Scope
+In: <features, platforms>
+Out: <what we deliberately don't test, and why>
+
+## Objectives
+<1-3 sentences: what "good" means for users and the business>
+
+## Approach
+<test types, what is scripted, exploratory sessions, regression, automation>
+
+## Risks (testing order)
+| Risk | Likelihood | Impact | Score | Mitigation |
+
+## Environments & devices
+<staging/sandbox, device or browser matrix and why>
+
+## Test data
+<accounts, cards, coupons, how to get them>
+
+## Entry / exit criteria
+Entry: <...>
+Exit: <...>
+
+## Schedule & people
+<who, what, when; who decides on release>
+
+## Deliverables & tools
+<cases, bug reports, summary report; where they live>
+```
+
+## Reviewing it with the team
+
+A plan nobody else has read is just your opinion. Book 10 to 15 minutes with the developer and product owner and ask:
+
+- *"Is anything in **out of scope** actually something you expect to be tested?"*
+- *"Do these risk scores match your gut? What worries you most?"*
+- *"Is this device list enough for our users?"*
+- *"If we hit the exit criteria, would you be comfortable releasing?"*
+
+Write down the answers, update the plan, bump the version and link it from the ticket. If the scope or dates change mid-sprint, update the plan again and say so in stand-up.
+
+## Common mistakes
+
+<Callout type="bug" title="Watch out for these">
+
+- **Copying a 30-page template for a two-week feature.** Nobody reads it, so nobody follows it.
+- **No out-of-scope list.** Someone will assume the web shop was tested.
+- **Every risk rated High.** If everything is a priority, nothing is. Use the matrix honestly.
+- **Exit criteria nobody can measure**, such as "testing is complete" or "the team feels confident".
+- **A device matrix built from what's in the drawer** instead of from analytics and risks.
+- **Forgetting test data and environments** until day one of testing.
+- **Writing it alone and never reviewing it.**
+- **Never updating it** after scope or dates change.
+
+</Callout>
+
+</Long>
+
+## Practice: build the plan
+
+Now it's your turn. Fill in the four key sections for Apple Pay & Google Pay at checkout. Each section gives you feedback, and the last step turns your choices into a one-page plan you can copy as Markdown.
+
+<TestPlanBuilder client:visible />
+
+## Before you share your test plan
+
+<Checklist
+  title="Test plan checklist"
+  storageKey="writing-a-test-plan"
+  items={[
+    "Scope lists what is in AND what is deliberately out",
+    "Objectives say what good means for users and the business",
+    "Risks are scored by likelihood × impact, and the highest are tested first",
+    "Every device or browser in the matrix is there for a reason",
+    "Test data and environments are requested before testing starts",
+    "Entry and exit criteria are measurable by someone other than me",
+    "Schedule, people and who makes the release decision are named",
+    "It fits on about one page for a sprint or feature",
+    "I reviewed it with the developer and product owner and updated it",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "What is the main difference between a test strategy and a test plan?",
+      options: [
+        "A strategy lists test cases; a plan lists bugs",
+        "A strategy sets general rules for the product; a plan applies them to one release or feature",
+        "They are the same document with different names",
+      ],
+      answer: 1,
+      explain: "The strategy is broad and long-lived. The plan is specific to one piece of work and changes often.",
+    },
+    {
+      q: "Why write an 'out of scope' list?",
+      options: [
+        "To make the plan look longer",
+        "So nobody assumes those areas were tested",
+        "Because out-of-scope items are unimportant",
+      ],
+      answer: 1,
+      explain: "Out of scope means 'not part of this work', not 'unimportant'. Saying it out loud prevents dangerous assumptions.",
+    },
+    {
+      q: "A risk has medium likelihood (2) and high impact (3). Another has high likelihood (3) and low impact (1). Which do you test first?",
+      options: ["The first one (score 6)", "The second one (score 3)", "Either, they are equal"],
+      answer: 0,
+      explain: "Risk score = likelihood × impact. 2 × 3 = 6 beats 3 × 1 = 3, so it gets tested first and deepest.",
+    },
+    {
+      q: "Which is the best exit criterion?",
+      options: [
+        "Testing stops when the release date arrives",
+        "Zero open bugs of any severity",
+        "No open Critical or Major bugs in checkout",
+      ],
+      answer: 2,
+      explain: "It is measurable and realistic. A date is a deadline, not a quality signal, and zero bugs is almost never achievable.",
+    },
+    {
+      q: "What is ISO/IEC/IEEE 29119-3?",
+      options: [
+        "The modern standard for test documentation that replaced IEEE 829",
+        "A law that makes test plans mandatory",
+        "Apple's guideline for Apple Pay testing",
+      ],
+      answer: 0,
+      explain: "It describes test documentation such as test plans. Formal projects often follow it; agile teams use a lighter version of the same ideas.",
+    },
+    {
+      q: "How long should a test plan for a two-week feature usually be?",
+      options: ["About one page", "At least 20 pages", "It doesn't need to be written down"],
+      answer: 0,
+      explain: "A short plan gets read, reviewed and updated. A long one for a small feature gets ignored.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A test plan says what you'll test and won't, how, where, with what, by whom, by when, and when you're done, for one release or feature.
+- A test strategy sets the general rules; the plan applies them to one piece of work.
+- Agile teams write a one-page plan; formal projects may follow IEEE 829 or its modern replacement, ISO/IEC/IEEE 29119-3.
+- Use risk-based testing: score likelihood × impact and test the highest risks first and deepest.
+- Make entry and exit criteria measurable, and always write an out-of-scope list.
+- Review the plan with the developer and product owner, and keep it updated.
+
+</KeyTakeaways>
+
+**Next: run your cases.** See how the plan turns into test runs in [Test Runs and Test Management Tools](/tutorials/test-runs-and-test-management), and how the cycle ends in [Traceability and Test Summary Reports](/tutorials/traceability-and-test-reports).

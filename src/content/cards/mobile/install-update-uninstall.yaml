@@ -1,0 +1,44 @@
+teaser: "Every test passed on a fresh install of 3.0, and users still lost their data on launch morning. What did the testers skip?"
+cards:
+  - type: flip
+    front: "What does an app update keep, and what does it replace?"
+    back: "It replaces the app's code but keeps its data: database, files, preferences and Keychain or Keystore items. The new code must migrate that old data."
+  - type: flip
+    front: "Version number vs build number?"
+    back: "Version (like 2.4.1) is what users see in the store. The build number identifies one specific build. Ten builds can share one version."
+  - type: quiz
+    q: "A migration works from 3.3 to 3.4 but loses data from 3.0 to 3.4. Most likely cause?"
+    options: ["Low storage on the device", "Only the previous version's migration runs", "A slow network during update"]
+    answer: 1
+    explain: "Users who skip releases need every missing migration to run in order: 3.0, 3.1, 3.2 and so on up to 3.4."
+  - type: quiz
+    q: "On iOS, which data can survive uninstalling and reinstalling an app?"
+    options: ["The app database", "Permission answers", "Keychain items, like a login token"]
+    answer: 2
+    explain: "Keychain items can survive a reinstall. Apps should detect a fresh install and clear leftovers, or a new user may see someone else's login."
+  - type: truefalse
+    statement: "Users can downgrade to an older version from the App Store or Google Play."
+    answer: false
+    explain: "Stores only move users forward. Testers can downgrade with test builds, for example an older TestFlight build or adb install -r -d."
+  - type: truefalse
+    statement: "Compared as plain text, version \"1.10\" sorts before \"1.9\"."
+    answer: true
+    explain: "The character 1 sorts before 9. That's why a lazy check can trap 1.10 users in a forced-update loop. Compare each part as a number."
+  - type: thisorthat
+    prompt: "You have one day before release. Which upgrade test matters most?"
+    left: "Fresh install of RC"
+    right: "Store version to RC"
+    answer: right
+    explain: "Most users already have the store version and will update. That exact path runs the migrations a fresh install never touches."
+  - type: spotbug
+    screen: ["FreshCart 2.4.1 (318)", "Just updated from 2.3.0", "Welcome! Sign in to start", "Dark mode: Off"]
+    bug: "The update logged the user out and reset settings."
+    explain: "An update must keep the session and preferences. Logging everyone out or resetting dark mode means the migration missed them."
+  - type: spotbug
+    screen: ["BUG-204 · Favorites empty", "Build: latest", "Device: iPhone 15, iOS 18.5"]
+    question: "What's wrong with this report?"
+    bug: "The build field says latest instead of an exact build."
+    explain: "Latest changes every day. Developers need version and build, like 2.4.1 (318), plus the upgrade path when it matters."
+  - type: tip
+    title: "Keep old builds around"
+    text: "You can't test an upgrade from 2.3.0 if nobody can give you 2.3.0. Ask the team to keep every build that went to the store."

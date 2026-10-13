@@ -1,0 +1,453 @@
+---
+title: Cookies, Sessions and Storage
+description: How websites remember you with cookies, sessions, localStorage and sessionStorage, what consent banners must really do, and how to test login state, expiry, carts and privacy with DevTools.
+order: 4
+level: intermediate
+minutes: { short: 35 }
+platform: web
+tags: [cookies, sessions, local storage, privacy, gdpr, devtools, security]
+---
+
+import StorageLab from '@/components/demos/web-devtools/StorageLab';
+
+A customer checks their bank balance on a library computer, clicks **Log out** and walks away. The next person opens the same browser, presses **Back**, then **Reload**... and lands in the first customer's account.
+
+The logout button "worked": it showed the login page. But the login token was still sitting in the browser's storage, and the app happily used it again. Nobody noticed in testing, because nobody looked at what the browser was *remembering*.
+
+That's what this lesson is about. Websites keep a surprising amount of data in your browser: <Term id="cookie">cookies</Term>, <Term id="local-storage" />, session storage and more. Testers who know where to look find bugs in privacy, security and "it forgot my cart" problems that everyone else misses.
+
+## Why it matters
+
+- **Security:** a session that doesn't end on logout, or a token readable by any script, can hand someone else your account.
+- **Privacy and law:** in the EU and UK, tracking cookies need consent. A "Reject" button that doesn't actually reject is a legal risk, not just a bug.
+- **Money:** a cart that disappears after login, or a checkout that logs you out halfway, loses sales.
+- **Trust:** seeing someone else's cart or name on a shared computer is the kind of bug that ends up in the news.
+
+## Where a website keeps data
+
+| Storage | Lifetime | Sent to the server automatically? | Readable by page JavaScript? | Typical use |
+| --- | --- | --- | --- | --- |
+| **Cookie** | Until it expires, or until the browser closes (session cookie) | **Yes**, with every request to its domain | Yes, unless `HttpOnly` | Login session, consent choice, language, analytics IDs |
+| **localStorage** | Forever, until the site or user deletes it | No | Yes | Guest cart, theme, "don't show again" flags |
+| **sessionStorage** | Until the **tab** is closed (survives reloads) | No | Yes | Form drafts, one-time banners, checkout steps in one tab |
+| **IndexedDB** | Forever, until deleted | No | Yes | Large structured data: offline mode, cached messages, files |
+| **Cache Storage / HTTP cache** | Until evicted or cleared | (It *replaces* requests) | Cache Storage: yes | Offline pages (service workers), images, scripts |
+
+The sizes differ too: a cookie holds about 4 KB, localStorage and sessionStorage about 5 MB per site, and IndexedDB can hold far more. You don't need to memorize numbers, but you should know **which one a feature uses**, because that decides what survives a reload, a closed tab or a logout.
+
+<Callout type="tip" title="Rule of thumb">
+Cookies are for the **server** (they travel with requests). Web storage is for the **page** (it stays in the browser). So anything secret, like a login token, belongs in an `HttpOnly` cookie, not in localStorage where any script on the page can read it.
+</Callout>
+
+## Cookies up close
+
+A server creates a cookie by sending a `Set-Cookie` header in its response. The browser stores it and sends it back in a `Cookie` header with every following request to that site.
+
+<div class="not-prose my-6 overflow-hidden rounded-2xl border border-line bg-surface">
+  <p class="border-b border-line bg-subtle px-4 py-2 text-xs font-semibold tracking-wide text-faint uppercase">Response header from the server</p>
+  <div class="overflow-x-auto px-4 py-3 font-mono text-[13px] leading-relaxed">
+    <span class="text-muted">Set-Cookie:</span> <span class="rounded bg-brand-soft px-1 text-brand">session_id=s_9f2c41e7</span>; <span class="rounded bg-info-soft px-1 text-info">Domain=shop.example</span>; <span class="rounded bg-info-soft px-1 text-info">Path=/</span>; <span class="rounded bg-warn-soft px-1 text-warn">Max-Age=2592000</span>; <span class="rounded bg-ok-soft px-1 text-ok">HttpOnly</span>; <span class="rounded bg-ok-soft px-1 text-ok">Secure</span>; <span class="rounded bg-ok-soft px-1 text-ok">SameSite=Lax</span>
+  </div>
+  <div class="grid grid-cols-1 gap-x-6 gap-y-1 border-t border-line px-4 py-3 text-sm sm:grid-cols-2">
+    <p class="min-w-0"><span class="font-semibold text-brand">Name=value</span> <span class="text-muted">the data itself</span></p>
+    <p class="min-w-0"><span class="font-semibold text-info">Domain, Path</span> <span class="text-muted">where it's sent</span></p>
+    <p class="min-w-0"><span class="font-semibold text-warn">Expires / Max-Age</span> <span class="text-muted">how long it lives</span></p>
+    <p class="min-w-0"><span class="font-semibold text-ok">HttpOnly, Secure, SameSite</span> <span class="text-muted">security flags</span></p>
+  </div>
+</div>
+
+| Attribute | What it does | What to check |
+| --- | --- | --- |
+| **Name / Value** | The data, e.g. `session_id=s_9f2c…` | No readable personal data (email, name) or secrets in plain text |
+| **Domain** | Which hosts receive it. `Domain=shop.example` also includes subdomains like `api.shop.example`; without a Domain, only the exact host gets it | Not wider than needed |
+| **Path** | Which URLs receive it, usually `/` | Admin cookies limited to admin paths if intended |
+| **Expires / Max-Age** | When it's deleted. **No expiry = session cookie** | Matches the requirement ("Remember me" for 30 days, otherwise session) |
+| **HttpOnly** | Page JavaScript can't read it (`document.cookie` won't show it) | **Must** be set on session/auth cookies, so <Term id="xss" /> can't steal them |
+| **Secure** | Only sent over <Term id="https" /> | **Must** be set on anything sensitive |
+| **SameSite** | Whether it's sent on requests coming from other sites: `Strict`, `Lax` or `None` | `Lax` or `Strict` for sessions. `None` requires `Secure`. If SameSite is missing, Chromium browsers (Chrome, Edge) treat the cookie as `Lax` |
+
+### Session cookies vs persistent cookies
+
+- A **session cookie** has no `Expires` or `Max-Age`. The browser deletes it when it closes. In DevTools its expiry shows as **Session**.
+- A **persistent cookie** has an expiry date and survives restarts. "Remember me", language and consent cookies are usually persistent. Chrome caps cookie lifetimes at 400 days.
+
+<Callout type="warning" title="Browsers can restore session cookies">
+If Chrome or Firefox is set to **continue where you left off**, it may restore session cookies after a restart. When testing "Remember me" off, close the browser *completely*, and check the cookie's expiry in DevTools rather than relying only on what you see.
+</Callout>
+
+### First-party vs third-party cookies
+
+- **First-party:** set by the site in the address bar (`shop.example`). Login, cart and consent cookies.
+- **Third-party:** set by another domain embedded in the page, e.g. an ad network's `IDE` cookie from `adnet.example`. Used mostly for tracking across sites.
+
+Browsers increasingly restrict third-party cookies. Safari blocks them by default, Firefox isolates them per site, and Chrome blocks them in Incognito windows and lets users block them everywhere. For testers this means: **features that rely on third-party cookies (embedded logins, chat widgets, payment iframes) must be tested in Safari, Firefox and Incognito**, or they'll break for real users. See [Cross-browser Testing](/web/cross-browser-testing).
+
+## Sessions: how "staying logged in" works
+
+HTTP itself has no memory. Every request is a stranger. A <Term id="session" /> is how the server recognizes you again:
+
+<Steps>
+
+1. **You log in.** The server checks your password and creates a session record: "session `s_9f2c` belongs to Anna, last active 09:00".
+2. **The server sends a <Term id="session-token" />** in a `Set-Cookie` header. The token is just a long random ID, not your password.
+3. **The browser sends the cookie with every request.** The server looks up the session and knows it's Anna.
+4. **The session expires** after a period of inactivity (an *idle timeout*, e.g. 30 minutes for a bank) and/or a maximum age (an *absolute timeout*, e.g. 12 hours). The server must reject the old token afterwards.
+5. **Logout destroys the session on the server** and tells the browser to delete the cookie. Even a copied token should stop working.
+
+</Steps>
+
+Some apps use a token (often a JWT) stored in **localStorage** instead of a cookie and send it in an `Authorization` header. That works, but any script on the page, including an injected one, can read localStorage. So check extra carefully that the token is **removed on logout** and expires on its own.
+
+**"Remember me"** usually means a persistent cookie with a long expiry (for example 30 days) instead of a session cookie. When it's unchecked, closing the browser should log you out.
+
+## localStorage, sessionStorage, IndexedDB and cache
+
+| Event | Cookies (session) | Cookies (persistent) | localStorage | sessionStorage |
+| --- | --- | --- | --- | --- |
+| Reload the page | Kept | Kept | Kept | Kept |
+| Open the site in a **new tab** | Shared | Shared | Shared | **New, empty** |
+| Close and reopen the tab | Kept | Kept | Kept | **Gone** |
+| Quit and reopen the browser | **Gone** | Kept until expiry | Kept | **Gone** |
+| Private / Incognito window | Separate, wiped on close | Separate, wiped on close | Separate, wiped on close | Separate |
+| DevTools › Clear site data | Gone | Gone | Gone | Gone |
+| User clicks **Log out** | Only what the app deletes | Only what the app deletes | Only what the app deletes | Only what the app deletes |
+
+(Reopening a closed tab with <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd>, or duplicating a tab, can bring sessionStorage back, so close tabs normally when you test this.)
+
+The last row is the important one. **Logout clears nothing automatically.** The app must delete every piece of personal data itself. That's where the bugs are.
+
+**IndexedDB** is a real database inside the browser, used by apps that work offline (email, notes, chat). Test it like localStorage: is it cleared on logout? Does it hold sensitive data? **Cache Storage** (used by service workers) can serve an old version of a page after a release, a classic "the fix doesn't show up" problem. **Clear site data** removes all of these at once.
+
+## Consent banners: GDPR basics for testers
+
+In the EU, the **ePrivacy rules** require consent before storing non-essential cookies (analytics, advertising, social media), and the **GDPR** defines what valid consent is. The UK has similar rules (PECR), and since 2026 allows some simple first-party analytics cookies without consent as long as users can opt out, so check which rules your product follows. You don't need to be a lawyer, but you should test these points:
+
+- **Nothing optional before a choice.** Before you click anything, only strictly necessary cookies may exist (session, cart, security, the consent choice itself). No `_ga`, no ad cookies, no requests to analytics domains.
+- **Reject is as easy as Accept.** A "Reject all" button on the first layer, equally visible. Not hidden behind "Settings" in grey text.
+- **Reject really rejects.** After rejecting, no analytics cookies appear, and no analytics requests show up in the Network panel, on this page or the next ones.
+- **Accept really accepts.** The expected cookies appear, and only after the click.
+- **The choice is remembered** (usually in a consent cookie), and the banner doesn't reappear on every page.
+- **Consent can be withdrawn** as easily as it was given (a "Cookie settings" link), and withdrawing deletes the cookies or at least stops new tracking.
+- **Granular choices work.** If there are toggles per category, each one is respected.
+
+<Callout type="info">
+This is an overview for testers, not legal advice. Rules differ between countries, so ask your team which ones the product must follow, and turn them into acceptance criteria you can test.
+</Callout>
+
+## Try it: a shop and its Application panel
+
+**Pantry** is a small shop with DevTools' Application panel next to it. Everything you do writes to cookies, localStorage or sessionStorage, and changed rows flash yellow. Use the **browser controls** to close the tab, quit the browser or let time pass.
+
+<StorageLab client:visible />
+
+<Callout type="example" title="Things to try">
+
+- **Consent:** look at the Cookies table *before* clicking the banner. Then click **Reject all**. Only `cookie_consent` should appear. Open **Cookie settings** and **Accept all** to see `_ga` and the third-party `IDE` cookie.
+- **Session cookie:** log in without "Remember me". `session_id` expires at **Session** and has `HttpOnly` and `Secure` ticked. Click **Quit & reopen browser**: you're logged out.
+- **Remember me:** log in again with it ticked. Now the cookie has a date 30 days ahead and survives quitting the browser. Try **Wait 31 days**.
+- **Idle timeout:** log in without "Remember me" and click **Wait 31 min**.
+- **Delete a cookie:** while logged in, delete `session_id` in the panel. The page still says "Hi, Anna" (it doesn't know yet). Now add something to the cart.
+- **sessionStorage:** dismiss the promo strip, reload (it stays hidden), then **Close & reopen tab** (it's back).
+- **Cart:** add items as a guest, then log in. Log out, log in as Ben. Whose cart do you see?
+
+</Callout>
+
+### How to inspect and edit storage in real DevTools
+
+New to DevTools? Start with [DevTools for Testers](/web/devtools-for-testers).
+
+<Tabs labels={['Chrome / Edge', 'Firefox', 'Safari']}>
+<Tab>
+
+<Steps>
+
+1. Open DevTools (<kbd>F12</kbd> / <kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>I</kbd>) and go to the **Application** panel.
+2. In the sidebar under **Storage**, expand **Cookies**, **Local storage** or **Session storage** and click the site's origin.
+3. **Read** the table: name, value, domain, path, **Expires / Max-Age**, size, **HttpOnly**, **Secure**, **SameSite**. Cookies with problems are highlighted, and hovering shows why.
+4. **Edit** a value by double-clicking it. **Delete** a row by selecting it and pressing <kbd>Delete</kbd>, or use the 🚫 button to clear the whole list.
+5. **Clear everything:** Application › **Storage** › **Clear site data**.
+6. To see which cookies a request sent or received, open the request in **Network** and check its **Cookies** tab. Blocked cookies are shown with the reason.
+
+</Steps>
+
+</Tab>
+<Tab>
+
+<Steps>
+
+1. Open DevTools (<kbd>F12</kbd>) and go to the **Storage** panel.
+2. Expand **Cookies**, **Local Storage**, **Session Storage**, **Indexed DB** or **Cache Storage** and pick the site.
+3. Double-click a value to edit it. Right-click a row to delete it, or delete everything for the site.
+4. The sidebar on the right parses values, which is handy for JSON in localStorage.
+
+</Steps>
+
+</Tab>
+<Tab>
+
+<Steps>
+
+1. Enable developer features (Safari › Settings › Advanced › **Show features for web developers**) and open Web Inspector with <kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>I</kbd>.
+2. Open the **Storage** tab and choose **Cookies**, **Local Storage**, **Session Storage** or **IndexedDB**.
+3. Double-click values to edit, and use the delete key or the trash button to remove entries.
+4. Remember that Safari blocks third-party cookies and limits some script-written storage, so features can behave differently than in Chrome.
+
+</Steps>
+
+</Tab>
+</Tabs>
+
+The **Console** is useful too:
+
+- `document.cookie` lists the cookies **JavaScript can read**. If you see the session cookie here, it's missing `HttpOnly`. That's a bug.
+- `localStorage.getItem('cart')` shows one value. `Object.keys(localStorage)` lists every key.
+- `localStorage.clear()` and `sessionStorage.clear()` wipe them for this site.
+
+## What to test
+
+**Login and logout**
+
+- Logging in sets a session cookie with `HttpOnly`, `Secure` and `SameSite`. Nothing secret appears in localStorage or the URL.
+- Logging out deletes the session cookie **and** any tokens or personal data in localStorage, sessionStorage and IndexedDB.
+- After logout, **Back** and **Reload** don't show account pages. A copied old session cookie no longer works.
+
+**Session expiry and "Remember me"**
+
+- After the idle timeout, the next action asks you to log in again, with a clear message and without losing what you typed if possible.
+- "Remember me" **off**: quitting the browser logs you out (session cookie). "Remember me" **on**: you stay logged in until the stated expiry, then you're logged out.
+- The session also expires on the server: deleting or editing the cookie mid-session leads to a clean "Please log in" state, not a crash or a blank page.
+
+**Multiple tabs and windows**
+
+- Logging out in one tab logs you out in others on their next action.
+- Logging in as another user in a second tab doesn't mix data between the two.
+- A **private / Incognito window** starts clean and keeps nothing after closing.
+
+**Cart and preferences**
+
+- The guest cart survives a reload and a browser restart (if the requirement says so).
+- Logging in merges or replaces the guest cart as specified. Logging out doesn't leave the cart for the next person on the same browser.
+- Language, theme and "don't show again" choices persist where expected, and nowhere else.
+
+**Consent and privacy**
+
+- No optional cookies or analytics requests before consent. Reject works. Accept works. Withdrawing works.
+- No personal or sensitive data in localStorage (email, address, tokens, card details).
+- Clearing cookies mid-session, or blocking cookies entirely in browser settings, produces a helpful message, not a broken site.
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Logout doesn't clear the token** | Token stays in localStorage; Reload or Back logs you back in | Critical |
+| 2 | **Session never expires** | Still logged in after hours of inactivity; server accepts old tokens | High |
+| 3 | **Session cookie missing HttpOnly / Secure** | `document.cookie` shows the session ID; no ✓ in the HttpOnly/Secure columns | High |
+| 4 | **"Remember me" ignored** | Cookie has an expiry date even when unchecked, or none when checked | Medium–High |
+| 5 | **Reject doesn't reject** | Analytics cookies and requests appear after "Reject all" | High (legal) |
+| 6 | **Cookies set before consent** | `_ga` or ad cookies exist before you click the banner | High (legal) |
+| 7 | **Data leaks between users** | Previous user's cart, name or address shown after logout/login on the same browser | High–Critical |
+| 8 | **Sensitive data in web storage** | Email, address, tokens or card data in localStorage | High |
+| 9 | **Crash when a cookie is missing** | Deleting a cookie gives a blank page or endless spinner instead of "Please log in" | Medium |
+| 10 | **Cart lost on login** | Guest cart disappears when the user logs in | Medium |
+
+## Find the bug
+
+Here's another build of Pantry, with **six bugs**. Watch the Application panel closely after every action, and use the browser controls.
+
+- Make a cookie choice, then look at the Cookies table.
+- Log in (with and without "Remember me"), then log out and reload.
+- Check the flags on `session_id`.
+- Quit the browser, wait, and log in as a different user.
+
+<BugHunt
+  title="Pantry shop storage"
+  bugs={[
+    {
+      title: '"Reject all" still sets analytics cookies',
+      hint: 'Click Reject all and look at the Cookies table.',
+      detail: 'After <strong>Reject all</strong>, the <code>_ga</code> and <code>_ga_K7Q2PL</code> analytics cookies are set anyway, next to <code>cookie_consent=…analytics:0</code>. Expected: only strictly necessary cookies and the consent choice. Besides being a bug, this breaks EU/UK consent rules.',
+    },
+    {
+      title: 'Logout leaves auth_token in localStorage and a reload logs you back in',
+      hint: 'Log in, log out, check Local storage, then press Reload.',
+      detail: 'Logout deletes <code>session_id</code>, but <code>auth_token</code> stays in localStorage. On reload the app uses it to create a new session silently, so "logged out" users on a shared computer are logged straight back in. Expected: logout removes every token and the next page load shows a guest.',
+    },
+    {
+      title: 'Session cookie has no HttpOnly or Secure flag',
+      hint: 'Log in and select session_id in the Cookies table.',
+      detail: '<code>session_id</code> has <strong>HttpOnly: no</strong>, <strong>Secure: no</strong> and no SameSite. Any script on the page (for example injected via XSS) can read it with <code>document.cookie</code>, and it can be sent over plain HTTP. Expected: <code>HttpOnly; Secure; SameSite=Lax</code> (or Strict).',
+    },
+    {
+      title: '"Remember me" is ignored: you stay logged in after quitting the browser',
+      hint: 'Log in with Remember me unchecked, look at the Expires column, then Quit & reopen browser.',
+      detail: 'Even with <strong>Remember me</strong> unchecked, <code>session_id</code> gets an expiry date 30 days ahead instead of <em>Session</em>, so it survives a browser restart. Expected: a session cookie when unchecked, a 30-day cookie only when checked.',
+    },
+    {
+      title: "Ben sees Anna's cart after she logs out",
+      hint: 'Log in as Anna, add items, log out, then log in as Ben.',
+      detail: 'The cart is stored in localStorage under one shared <code>cart</code> key and is not cleared on logout or reloaded per user. After Anna logs out and Ben logs in on the same browser, Ben sees (and could buy) Anna\'s items. Expected: logout clears the cart, and each user gets their own cart from the server.',
+    },
+    {
+      title: 'The session never expires',
+      hint: 'Log in without Remember me, delete auth_token, then use Wait 31 min.',
+      detail: 'After 31 minutes of inactivity you are still logged in, and the <code>session_id</code> value hasn\'t changed, so the server accepted the old session. Expected: after the 30-minute idle timeout the next request returns 401 and the page says "Your session expired. Please log in again."',
+    },
+  ]}
+>
+  <StorageLab buggy client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #2?">
+
+**Title:** Logout leaves auth_token in localStorage; reloading the page logs the user back in
+
+**Environment:** pantry.example, Chrome 141, Windows 11
+
+**Steps:** 1. Log in as anna@test.com (Remember me unchecked). 2. Click **Log out**. 3. Open DevTools › Application › Local storage. 4. Reload the page.
+
+**Expected:** After logout, no auth data is left in storage, and the reloaded page shows the guest view.
+**Actual:** `auth_token` (a JWT for Anna) remains in localStorage. After reload, Anna is logged in again and a new `session_id` cookie is set.
+
+**Severity:** Critical (account takeover on shared devices) · **Reproducible:** 5/5 · **Attachment:** screenshot of Local storage after logout
+
+</Callout>
+
+More security checks like these are in [Security Basics for Testers](/web/security-basics), and the full login flow is covered in [Login and Sign Up](/features/login-and-sign-up).
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-ST-001',
+      title: 'Logout removes the session and all auth data',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['User anna@test.com exists', 'DevTools open on Application'],
+      steps: ['Log in as anna@test.com', 'Click Log out', 'Check Cookies, Local storage and Session storage', 'Reload the page', 'Press Back'],
+      expected: 'No session cookie, token or personal data remains. After reload and Back the page shows the guest view.',
+    },
+    {
+      id: 'TC-ST-002',
+      title: 'Session cookie has secure flags',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Log in', 'Open Application › Cookies and select session_id', 'In the Console, run document.cookie'],
+      expected: 'session_id has HttpOnly and Secure ticked and SameSite=Lax or Strict. It does not appear in the document.cookie output.',
+    },
+    {
+      id: 'TC-ST-003',
+      title: 'Without "Remember me", quitting the browser ends the session',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Log in with Remember me unchecked', 'Check that session_id expires at "Session"', 'Quit the browser completely and reopen the site'],
+      expected: 'The user is logged out and sees the login form.',
+    },
+    {
+      id: 'TC-ST-004',
+      title: 'Idle session expires after 30 minutes',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Idle timeout configured to 30 minutes (ask devs for a shorter timeout on the test environment)'],
+      steps: ['Log in without Remember me', 'Do nothing for 31 minutes', 'Add a product to the cart'],
+      expected: 'The request returns 401. The page shows "Your session expired. Please log in again." The product is not lost.',
+    },
+    {
+      id: 'TC-ST-005',
+      title: 'Rejecting cookies sets no analytics cookies or requests',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Fresh Incognito window', 'DevTools open on Application and Network'],
+      steps: ['Open the site and check cookies before clicking anything', 'Click Reject all', 'Browse two more pages'],
+      expected: 'Before and after rejecting, only necessary cookies exist (plus cookie_consent). No requests go to analytics or ad domains.',
+    },
+    {
+      id: 'TC-ST-006',
+      title: "Next user doesn't see the previous user's cart",
+      priority: 'high',
+      type: 'negative',
+      steps: ['Log in as anna@test.com and add 2 items', 'Log out', 'Log in as ben@test.com'],
+      expected: "Ben sees only his own cart. Anna's items are not shown and not in localStorage.",
+    },
+    {
+      id: 'TC-ST-007',
+      title: 'Deleting the session cookie mid-session is handled gracefully',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Log in', 'Delete session_id in Application › Cookies', 'Add a product to the cart'],
+      expected: 'The app shows a "Please log in again" message. No crash, blank page or endless spinner.',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="Cookies, sessions and storage checklist"
+  storageKey="cookies-sessions-and-storage"
+  items={[
+    'Session cookie has HttpOnly, Secure and SameSite (Lax or Strict)',
+    'No tokens, passwords or personal data in localStorage, sessionStorage or URLs',
+    'Logout deletes the session on the server and all auth data in the browser',
+    'Back and Reload after logout do not show account pages',
+    'Idle timeout and absolute timeout work, with a clear "session expired" message',
+    '"Remember me" off: session cookie; on: persistent cookie with the documented expiry',
+    'Multiple tabs: logout in one tab is respected in the others',
+    'Private window starts clean and keeps nothing after closing',
+    'Deleting or editing cookies mid-session leads to a clean logged-out state',
+    'Guest cart persists as specified and merges or resets correctly on login',
+    'No cart or personal data carries over to the next user on the same browser',
+    'No optional cookies or tracking requests before consent',
+    'Reject all is as easy as Accept all, and really rejects',
+    'Consent choice is remembered and can be changed later',
+    'Features relying on third-party cookies tested in Safari, Firefox and Incognito',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'In DevTools, a cookie shows "Session" in the Expires / Max-Age column. What does that mean?',
+      options: ['It expires in exactly 30 minutes', 'It is deleted when the browser is closed', 'It is a server-side session record', 'It never expires'],
+      answer: 1,
+      explain: 'A cookie without Expires or Max-Age is a session cookie. The browser deletes it when it closes (unless session restore brings it back).',
+    },
+    {
+      q: 'Which flag stops page JavaScript, including injected scripts, from reading a cookie?',
+      options: ['Secure', 'SameSite=Strict', 'HttpOnly', 'Path=/'],
+      answer: 2,
+      explain: 'HttpOnly cookies are sent to the server but are invisible to document.cookie. Secure only limits them to HTTPS.',
+    },
+    {
+      q: 'A user dismisses a banner, the site saves that in sessionStorage. When will the banner come back?',
+      options: ['On the next reload', 'When the tab is closed and the site is opened again', 'Never', 'After 30 days'],
+      answer: 1,
+      explain: 'sessionStorage survives reloads but is tied to one tab. A new tab starts with empty sessionStorage.',
+    },
+    {
+      q: 'After clicking "Reject all" on the consent banner, you see a _ga cookie in the Application panel. What is this?',
+      options: ['Expected: _ga is a necessary cookie', 'A bug and a likely consent-law violation', 'A browser extension issue', 'Only a problem in Safari'],
+      answer: 1,
+      explain: '_ga is a Google Analytics cookie. Analytics is optional, so it must not be set when the user rejects.',
+    },
+    {
+      q: 'You log out, then reload, and you are logged in again. Where should you look first?',
+      options: ['The CSS in Elements', 'Local storage and cookies in the Application panel', 'The Lighthouse score', 'The device toolbar'],
+      answer: 1,
+      explain: 'Something that survived logout is logging you back in, usually a token in localStorage or a cookie that was not deleted.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- **Cookies** travel to the server with every request. **localStorage** and **sessionStorage** stay in the browser. sessionStorage dies with the tab.
+- Session cookies have no expiry and vanish when the browser closes. Persistent cookies live until their date.
+- Auth cookies need **HttpOnly**, **Secure** and **SameSite**. Tokens and personal data don't belong in localStorage.
+- Logout clears nothing by itself. The app must end the server session **and** delete every token and personal item in the browser.
+- Test expiry, "Remember me", multiple tabs, private windows, deleting cookies mid-session and switching users on one browser.
+- Consent banners: nothing optional before a choice, Reject as easy as Accept, and Reject must really reject. Verify it in the Application and Network panels.
+
+</KeyTakeaways>

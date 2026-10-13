@@ -1,0 +1,336 @@
+---
+import CapstoneShell from '@/components/capstone/CapstoneShell.astro';
+import BriefDone from '@/components/capstone/BriefDone';
+import Icon from '@/components/ui/Icon.astro';
+import { SPEC } from '@/lib/capstone';
+import { href } from '@/lib/url';
+
+const eur = (n: number) => `€${n.toFixed(2)}`;
+const now = new Date(SPEC.now);
+const nowText = `${now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}, ${SPEC.now.slice(11, 16)}`;
+const exampleFood = 21;
+const exampleAfter = exampleFood * (1 - SPEC.coupon.percent / 100);
+
+const toc = [
+  ['overview', 'Product overview'],
+  ['release-notes', 'Release notes 2.0'],
+  ['stories', 'User stories'],
+  ['nfr', 'Non-functional requirements'],
+  ['environment', 'Test environment'],
+  ['devices', 'Supported devices'],
+  ['known-issues', 'Known issues'],
+  ['open-questions', 'Open questions'],
+];
+
+const stories: { id: string; area: string; story: string; ac: string[] }[] = [
+  {
+    id: 'US-01',
+    area: 'Login',
+    story: 'As a returning customer, I want to log in with my email and password, so that I see my saved addresses and past orders.',
+    ac: [
+      `The email is not case-sensitive and spaces before or after it are ignored: <code>${SPEC.testAccount.email.replace(/^m/, 'M')}</code> logs in like <code>${SPEC.testAccount.email}</code>.`,
+      'A wrong email or a wrong password shows the same generic message, e.g. "Email or password is incorrect". The message never reveals whether an account exists.',
+      'After a successful login, the Home screen opens.',
+    ],
+  },
+  {
+    id: 'US-02',
+    area: 'Search and filters',
+    story: 'As a hungry customer, I want to search and filter restaurants, so that I quickly find something I like that delivers to me.',
+    ac: [
+      'Search matches restaurant and dish names and ignores capitalization and accents: "cevapi" finds "Ćevapi", "creme" finds "Crème brûlée".',
+      'The "N restaurants" label always equals the number of restaurant cards shown, for every combination of search and filters.',
+      'Long restaurant names are truncated or wrap. They never cover the rating or other card content, on any supported screen size.',
+    ],
+  },
+  {
+    id: 'US-03',
+    area: 'Restaurant menu',
+    story: 'As a customer, I want to add dishes from a restaurant menu to my cart, so that I can order a meal for myself or a group.',
+    ac: [
+      `A customer can order up to ${SPEC.maxPerDish} of each dish. At ${SPEC.maxPerDish}, the + button is disabled and a short message explains the limit (the kitchen can't prepare more per order).`,
+      `Every Add, + and − button has an accessible name with the dish and its price, e.g. "Add Margherita, ${eur(9.5)}".`,
+    ],
+  },
+  {
+    id: 'US-04',
+    area: 'Cart and coupon',
+    story: 'As a customer, I want to apply a coupon code in my cart, so that I get the discount I was promised.',
+    ac: [
+      `The code <code>${SPEC.coupon.code}</code> gives ${SPEC.coupon.percent}% off the items in the cart.`,
+      'Only one coupon per order. Applying the same code again shows a message such as "This code is already applied" and does not change the total.',
+      'An unknown or misspelled code shows an error and does not change the total.',
+      `Every amount shows exactly two decimals: ${eur(23.9)}, never €23.9 or €23.900000001.`,
+    ],
+  },
+  {
+    id: 'US-05',
+    area: 'Delivery fee',
+    story: 'As a customer, I want free delivery on bigger orders, so that ordering for the family feels worth it.',
+    ac: [
+      `Delivery costs ${eur(SPEC.deliveryFee)}.`,
+      `Delivery is free when the cart total <strong>after discounts</strong> is at least ${eur(SPEC.freeDeliveryFrom)}.`,
+      `Example: ${eur(exampleFood)} of food with ${SPEC.coupon.code} is ${eur(exampleAfter)} after the discount, so the ${eur(SPEC.deliveryFee)} delivery fee still applies.`,
+    ],
+  },
+  {
+    id: 'US-06',
+    area: 'Checkout: delivery time',
+    story: 'As a customer, I want to pick when my food arrives, so that it is hot when I get home.',
+    ac: [
+      `Delivery times are offered as ${SPEC.slotMinutes}-minute slots.`,
+      'Only slots that are still in the future can be chosen. Slots that have already started or passed are not offered.',
+    ],
+  },
+  {
+    id: 'US-07',
+    area: 'Checkout: address',
+    story: 'As a customer, I want address suggestions while I type, so that the courier finds me on the first try.',
+    ac: [
+      'As the customer types, matching address suggestions appear.',
+      'An order can only be placed with an address picked from the suggestions. Otherwise a clear error appears next to the address field.',
+      'Everything typed in checkout is kept when the phone is rotated.',
+    ],
+  },
+  {
+    id: 'US-08',
+    area: 'Checkout: place order',
+    story: 'As a customer, I want to place my order with one tap, so that checkout is fast and I am charged exactly once.',
+    ac: [
+      'Tapping Place order disables the button and shows progress until the order is confirmed.',
+      'Exactly one order and one payment are created per checkout, even after a double tap or on a slow network.',
+      'When the order is confirmed, order tracking starts.',
+    ],
+  },
+  {
+    id: 'US-09',
+    area: 'Tracking and notifications',
+    story: 'As a customer waiting for food, I want to see where my order is, so that I know when to go to the door.',
+    ac: [
+      'Each progress step (e.g. Confirmed, Preparing, On the way, Delivered) has a text label. The current step is not shown by color alone and is announced by screen readers.',
+      'The status updates automatically, including when the customer returns to the app from the background.',
+      "Tapping an order-status push notification opens that order's tracking screen, even when the app was closed.",
+    ],
+  },
+  {
+    id: 'US-10',
+    area: 'Profile, settings and logout',
+    story: 'As a customer, I want to control notifications and log out safely, so that the app respects my choices and my privacy.',
+    ac: [
+      'Notification settings have separate switches for order updates and promotions. With promotions off, no promo notifications arrive; order updates still do.',
+      'Log out ends the session. After logging out, going Back (button or gesture) shows the Login screen, and no personal data (name, address, phone) is visible.',
+    ],
+  },
+  {
+    id: 'US-11',
+    area: 'Localization',
+    story: 'As a customer in Germany or Serbia, I want to use FoodDash in my language, so that I understand every step and every price.',
+    ac: [
+      `The app is available in ${SPEC.languages.join(', ')}. Changing the language updates all text right away.`,
+      'Buttons and labels fit or wrap in every language; text is never cut off.',
+      `${SPEC.languages[0]} and ${SPEC.languages[1]} show prices in ${SPEC.currencyByLanguage.English}. ${SPEC.languages[2]} shows prices in ${SPEC.currencyByLanguage.Srpski} with Serbian number formatting, e.g. 1.299,00 RSD.`,
+    ],
+  },
+];
+
+const nfr = [
+  { icon: 'accessibility', title: 'Accessibility (target: WCAG 2.2 AA)', items: [
+    'Text contrast of at least 4.5:1 for normal text and 3:1 for large text and UI parts (WCAG 1.4.3 Contrast (Minimum), AA, and 1.4.11 Non-text Contrast, AA), in light and dark mode.',
+    'Every control has an accessible name (WCAG 4.1.2 Name, Role, Value, A).',
+    'Information is never conveyed by color alone (WCAG 1.4.1 Use of Color, A).',
+    'Supports large text (iOS Dynamic Type, Android font size): labels stay readable and are not clipped (WCAG 1.4.4 Resize Text, AA).',
+    'Touch targets are at least 44×44 pt on iOS and 48×48 dp on Android.',
+  ] },
+  { icon: 'moon', title: 'Dark mode', items: ['The app follows the system appearance setting.', 'Every screen is fully readable in both themes.'] },
+  { icon: 'smartphone', title: 'Device behavior', items: ['Portrait and landscape are supported on phones. Rotating never loses what the customer typed.', 'Returning from the background shows fresh data.'] },
+  { icon: 'wifi-off', title: 'Network', items: ['Offline or on a failing network, the app shows a clear message and a way to retry. No endless spinners.', 'Screens load in under 2 seconds on "Fast 4G".'] },
+];
+
+const devices = [
+  ['iOS', '17 and later', 'iPhone SE (3rd gen), iPhone 15, iPhone 16 Pro Max'],
+  ['Android', '10 and later', 'Galaxy A15, Pixel 8, Galaxy S24'],
+  ['Tablets', 'Not supported', 'Runs in phone layout; not tested for 2.0'],
+];
+---
+
+<CapstoneShell
+  path="/capstone/brief"
+  phase="brief"
+  title="The project brief"
+  description="FoodDash 2.0 project documents: product overview, release notes, user stories with acceptance criteria, test account, supported devices, known issues and open questions."
+  lead="Everything the FoodDash team gave you on day one. Read it like a tester: every acceptance criterion is an oracle you can test against, and every gap is a question to ask."
+>
+  <div class="grid grid-cols-1 gap-10 lg:grid-cols-[13rem_minmax(0,1fr)]">
+    <aside class="hidden lg:block">
+      <nav aria-label="Brief sections" class="sticky top-20 text-sm">
+        <p class="mb-2 text-xs font-semibold tracking-wider text-faint uppercase">In this brief</p>
+        <ul class="space-y-1.5">
+          {toc.map(([id, label]) => <li><a class="text-muted hover:text-brand" href={`#${id}`}>{label}</a></li>)}
+        </ul>
+      </nav>
+    </aside>
+
+    <div class="min-w-0 max-w-[50rem] space-y-12">
+      <div class="card grid grid-cols-2 gap-4 p-5 text-sm sm:grid-cols-4">
+        <div class="min-w-0"><p class="text-xs text-faint">Product</p><p class="font-semibold">{SPEC.app}</p></div>
+        <div class="min-w-0"><p class="text-xs text-faint">Version</p><p class="font-semibold">{SPEC.version} (build {SPEC.build})</p></div>
+        <div class="min-w-0"><p class="text-xs text-faint">Target release</p><p class="font-semibold">Friday, after go / no-go</p></div>
+        <div class="min-w-0"><p class="text-xs text-faint">QA contact</p><p class="font-semibold">You (lead: Sara)</p></div>
+      </div>
+
+      <section id="overview" class="prose">
+        <h2>Product overview</h2>
+        <p>
+          {SPEC.app} is a food delivery app for iOS and Android. Customers find a restaurant, fill a cart, choose a delivery address and time, pay, and follow the courier
+          until the food arrives. Most orders are placed in the evening, on a phone, often in a hurry and one-handed.
+        </p>
+        <p>The app has seven main screens:</p>
+        <ul>
+          <li><strong>Login</strong>: email and password.</li>
+          <li><strong>Home</strong>: restaurant list with search and filters.</li>
+          <li><strong>Restaurant menu</strong>: dishes with quantity controls.</li>
+          <li><strong>Cart</strong>: items, coupon code, delivery fee and total.</li>
+          <li><strong>Checkout</strong>: address, delivery time and Place order.</li>
+          <li><strong>Order tracking</strong>: progress of the current order, plus push notifications.</li>
+          <li><strong>Profile and settings</strong>: personal data, language, notifications and Log out.</li>
+        </ul>
+        <p>
+          <strong>Goals of 2.0:</strong> raise checkout conversion with the redesigned checkout, and launch in Germany, Austria and Serbia. Checkout and payment are where
+          the money is, so problems there hurt the most.
+        </p>
+      </section>
+
+      <section id="release-notes" class="prose">
+        <h2>Release notes: {SPEC.app} {SPEC.version} (build {SPEC.build})</h2>
+        <h3>New</h3>
+        <ul>
+          <li><strong>Redesigned checkout</strong> with {SPEC.slotMinutes}-minute delivery slots and one-tap Place order.</li>
+          <li><strong>Address autocomplete</strong>: suggestions as you type.</li>
+          <li><strong>Coupon codes</strong> in the cart. Launch code: <code>{SPEC.coupon.code}</code> ({SPEC.coupon.percent}% off).</li>
+          <li><strong>Free delivery</strong> from {eur(SPEC.freeDeliveryFrom)} after discounts; otherwise {eur(SPEC.deliveryFee)}.</li>
+          <li><strong>Deutsch and Srpski</strong> next to English. Srpski shows prices in RSD.</li>
+          <li><strong>Dark mode</strong> that follows the system setting.</li>
+          <li><strong>Push notifications</strong> for order status, and new <strong>notification settings</strong> with a separate switch for promotions.</li>
+        </ul>
+        <h3>Improved</h3>
+        <ul>
+          <li>Search ignores capitalization and accents.</li>
+          <li>Restaurant cards show the rating next to the name.</li>
+          <li>Menu buttons have screen reader labels.</li>
+          <li>A limit of {SPEC.maxPerDish} per dish, requested by restaurant partners.</li>
+        </ul>
+        <h3>Fixed since 1.9</h3>
+        <ul>
+          <li>The cart badge showed the wrong count after removing an item.</li>
+          <li>On small phones, the keyboard covered the password field on Login.</li>
+        </ul>
+      </section>
+
+      <section id="stories">
+        <div class="prose">
+          <h2>User stories and acceptance criteria</h2>
+          <p>
+            Written by Product (Lena) and refined with the developers. If the app behaves differently from an acceptance criterion (AC), that is a bug. Need a refresher?
+            See <a href={href('/tutorials/user-stories-and-acceptance-criteria')}>user stories and acceptance criteria</a>.
+          </p>
+        </div>
+        <div class="mt-6 space-y-4">
+          {
+            stories.map((s) => (
+              <article class="card min-w-0 p-5">
+                <p class="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                  <span class="rounded-md bg-brand-soft px-2 py-0.5 font-mono text-brand">{s.id}</span>
+                  <span class="text-muted">{s.area}</span>
+                </p>
+                <p class="mt-2 font-medium text-pretty">{s.story}</p>
+                <p class="mt-3 text-xs font-semibold tracking-wider text-faint uppercase">Acceptance criteria</p>
+                <ol class="mt-2 space-y-1.5 text-[0.95rem] leading-relaxed">
+                  {s.ac.map((a, i) => (
+                    <li class="flex gap-2">
+                      <span class="shrink-0 font-mono text-xs leading-6 text-faint">AC{i + 1}</span>
+                      <span class="min-w-0 [&_code]:rounded [&_code]:bg-subtle [&_code]:px-1 [&_code]:font-mono [&_code]:text-[0.85em] [&_code]:break-all" set:html={a} />
+                    </li>
+                  ))}
+                </ol>
+              </article>
+            ))
+          }
+        </div>
+      </section>
+
+      <section id="nfr">
+        <div class="prose">
+          <h2>Non-functional requirements</h2>
+          <p>These apply to every screen and every story above.</p>
+        </div>
+        <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+          {
+            nfr.map((n) => (
+              <div class="card min-w-0 p-5">
+                <p class="flex items-center gap-2 font-semibold">
+                  <Icon name={n.icon} size={18} class="text-brand" /> {n.title}
+                </p>
+                <ul class="mt-3 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-muted marker:text-faint">
+                  {n.items.map((it) => <li>{it}</li>)}
+                </ul>
+              </div>
+            ))
+          }
+        </div>
+      </section>
+
+      <section id="environment" class="prose">
+        <h2>Test environment</h2>
+        <table>
+          <tbody>
+            <tr><th scope="row">Build</th><td>{SPEC.app} {SPEC.version} (build {SPEC.build}), staging</td></tr>
+            <tr><th scope="row">Test account</th><td>Email <code>{SPEC.testAccount.email}</code><br />Password <code>{SPEC.testAccount.password}</code></td></tr>
+            <tr><th scope="row">Coupon</th><td><code>{SPEC.coupon.code}</code></td></tr>
+            <tr><th scope="row">Clock</th><td>Frozen at {nowText}, so time-based behavior is repeatable.</td></tr>
+          </tbody>
+        </table>
+        <p>
+          The build runs in a simulated phone on the <a href={href('/capstone/test')}>Test the app</a> page. Use its device controls to change things a real phone
+          would, such as orientation, appearance, text size, network and notifications. File bugs from the app's own bug report panel.
+        </p>
+      </section>
+
+      <section id="devices" class="prose">
+        <h2>Supported devices</h2>
+        <table>
+          <thead><tr><th>Platform</th><th>Versions</th><th>Top devices (analytics)</th></tr></thead>
+          <tbody>{devices.map(([p, v, d]) => <tr><td>{p}</td><td>{v}</td><td>{d}</td></tr>)}</tbody>
+        </table>
+        <p>About 60% of orders come from Android, 40% from iOS. The smallest supported screen is the iPhone SE (4.7 inch). The website is not part of this release.</p>
+      </section>
+
+      <section id="known-issues" class="prose">
+        <h2>Known issues (won't fix in 2.0)</h2>
+        <p>These are known, accepted by Product and tracked for later. You don't need to report them.</p>
+        <ul>
+          <li><strong>KI-1: Placeholder images.</strong> Restaurant photos are placeholder illustrations on staging, and dishes have no photos yet. Real photos come from the production image service.</li>
+          <li><strong>KI-2: Payment is simulated.</strong> On staging every order is paid with the saved test card (Visa ending 4242) and no money moves. Changing the payment method is planned for 2.1.</li>
+        </ul>
+      </section>
+
+      <section id="open-questions" class="prose">
+        <h2>Open questions</h2>
+        <p>Not everything is decided yet. When the brief is silent, a tester asks instead of guessing, and notes the gap as a risk.</p>
+        <ul>
+          <li>
+            <strong>OQ-1: Who may use {SPEC.coupon.code}?</strong> Marketing's launch email calls it "a welcome gift for new customers", but no story defines who is allowed to use it, and nobody
+            has said whether existing customers (like the test account) should be blocked. <em>Owner: Product. Status: open.</em>
+          </li>
+          <li>
+            <strong>OQ-2: Minimum order value.</strong> A €10 minimum was discussed for Serbia and Germany, but there is no decision and nothing is implemented. <em>Owner: Product. Status: open.</em>
+          </li>
+          <li>
+            <strong>OQ-3: Changing or canceling a scheduled order</strong> is not covered by any 2.0 story. <em>Status: not discussed yet.</em>
+          </li>
+        </ul>
+      </section>
+
+      <BriefDone client:load />
+    </div>
+  </div>
+</CapstoneShell>

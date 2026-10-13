@@ -1,0 +1,46 @@
+teaser: "\"It should be fast and user-friendly.\" Sounds fine, right? It's one of the most expensive sentences a team can write."
+cards:
+  - type: flip
+    front: "What are the three parts of a user story?"
+    back: "As a (who), I want (what), so that (why). The 'so that' tells you what working really means to the user."
+  - type: flip
+    front: "What do Given, When and Then each describe?"
+    back: "Given = the starting situation. When = the one action. Then = the result you can check."
+  - type: quiz
+    q: "Which acceptance criterion is testable?"
+    options: ["Pausing should feel quick", "Tapping Pause stops the timer within 1 second", "Pause works on all devices"]
+    answer: 1
+    explain: "It has an action, an observable result and a number. The others rely on fog words with no clear pass or fail."
+  - type: quiz
+    q: "In refinement, which tester question is most valuable?"
+    options: ["What color is the Pause button?", "Which framework will you use?", "What if the app is closed while paused?"]
+    answer: 2
+    explain: "It uncovers a missing rule about state and interruptions. Color and framework don't change the behavior you test."
+  - type: truefalse
+    statement: "Acceptance criteria and the Definition of Done are the same thing."
+    answer: false
+    explain: "Acceptance criteria are specific to one story. The Definition of Done is the team-wide quality bar for every story. A story needs both."
+  - type: truefalse
+    statement: "If nobody knows how fast search must be, the tester should not invent a number."
+    answer: true
+    explain: "Spot the gap, don't make up the answer. Record it as an open question so the team agrees on a target."
+  - type: thisorthat
+    prompt: "A criterion says: \"The PromoService returns 200 and updates the discount column.\""
+    left: "Good criterion"
+    right: "Rewrite it"
+    answer: right
+    explain: "It describes the implementation, not what the shopper sees. Criteria should be written from the user's point of view."
+  - type: spotbug
+    screen: ["SHOP-219 Apply a promo code", "AC1: User can enter a code", "AC2: Valid code gives a discount", "AC3: Errors handled gracefully"]
+    question: "What's wrong with these criteria?"
+    bug: "They're vague: no amounts, no messages, no error cases."
+    explain: "Which discount? Which error text? Does the total change? Two testers would reach different verdicts, so the story isn't ready."
+  - type: thisorthat
+    prompt: "Product, development and testing look at a story together before work starts."
+    left: "Three amigos"
+    right: "Sprint retro"
+    answer: left
+    explain: "The three amigos meeting is a small refinement session: business, development and testing each bring their own questions."
+  - type: tip
+    title: "Hunt the fog words"
+    text: "Fast, easy, modern, gracefully, all. When you see one, ask: how would we know it passed? Then replace it with a number, message or state."

@@ -1,0 +1,43 @@
+teaser: "You tap the little heart on a product and the whole product page opens. Why does that happen so often, and what else hides inside one small card?"
+cards:
+  - type: flip
+    front: "What is a card in a UI?"
+    back: "A container that groups media, a title, supporting text, metadata and maybe actions about one item, usually opening a detail page."
+  - type: spotbug
+    screen: ["[Photo]  Dome Tent 2P   -20%", "€249.00", "was €199.00 (struck through)"]
+    bug: "The sale price and old price are swapped."
+    explain: "On a sale the current price is lower and the struck-through old price is higher. Also compare with the detail page."
+  - type: quiz
+    q: "You tap the heart on a product card. The heart fills and the product page opens. What's the likely cause?"
+    options: ["A slow network", "The tap bubbles up to the card", "A missing image"]
+    answer: 1
+    explain: "The heart sits inside a clickable card. Unless the tap is stopped, both the heart and the card handle it."
+  - type: flip
+    front: "What is the 'one link per card' pattern?"
+    back: "Only the title is a real link, its click area stretched over the card. Buttons like the heart sit on top as separate targets."
+  - type: truefalse
+    statement: "A card marked 'Sold out' that still adds the item to the bag is a bug."
+    answer: true
+    explain: "The badge, the card button and the detail page must agree. Selling something out of stock is a high-severity bug."
+  - type: thisorthat
+    prompt: "A product has no photo. What should its card show?"
+    left: "Same-size placeholder"
+    right: "Shorter card, no image"
+    answer: left
+    explain: "Keeping the image area's size keeps the grid even. Broken-image icons, file names or collapsed cards are bugs."
+  - type: quiz
+    q: "Which test data is most likely to break a card's layout?"
+    options: ["A product called 'Hat'", "A normal price", "A 70-character name with large text"]
+    answer: 2
+    explain: "Long names on narrow screens with big text overflow fixed-height titles and overlap prices."
+  - type: spotbug
+    screen: ["VoiceOver:", "'IMG_4021.jpg, link'", "'Trail Rain Jacket, link'", "'button'", "'View Trail Rain Jacket, link'"]
+    bug: "File name read, unlabeled button and duplicate links."
+    explain: "A good card is one link with the product name, a labeled favorite button, and a decorative image that is skipped."
+  - type: truefalse
+    statement: "Shadows are the best way to show a card's edge in dark mode."
+    answer: false
+    explain: "Shadows barely show on black. Dark cards need a lighter surface or a subtle border to stay visible."
+  - type: tip
+    title: "Tap every part separately"
+    text: "On each card, tap the heart, the button, the menu and an empty spot one by one. Note what happens. One tap should do one thing."

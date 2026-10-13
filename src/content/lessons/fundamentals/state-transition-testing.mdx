@@ -1,0 +1,561 @@
+---
+title: State Transition Testing
+description: Learn to test features whose behavior depends on "where they are right now", like orders, logins with lockout and music players. Draw state diagrams and state tables, test valid and invalid transitions, and hunt bugs in a broken order system.
+order: 10
+level: intermediate
+minutes: { short: 30, long: 35 }
+platform: both
+tags: [fundamentals, test design, techniques, state transition, black-box]
+---
+
+import StateDiagram from '@/components/demos/fundamentals-state/StateDiagram';
+import StateExplorer from '@/components/demos/fundamentals-state/StateExplorer';
+import ParkingStateTable from '@/components/demos/fundamentals-state/ParkingStateTable';
+import { BuggyOrderAdmin } from '@/components/demos/fundamentals-state/BuggyOrderAdmin';
+
+Maya orders a pair of running shoes. They arrive on Tuesday, she wears them on Wednesday, and on Thursday she opens the shop app out of curiosity. The **Cancel order** button is still there. She taps it. The app says "Order canceled", and three days later **$84 lands back on her card**. She keeps the shoes.
+
+Nobody wrote code that said "give away free shoes". The developer simply forgot to ask one question: *should Cancel still work when the order is already delivered?* The button did the same thing in every situation, when it should have depended on **where the order was in its journey**.
+
+That question is the whole idea behind <Term id="state-transition-testing">state transition testing</Term>.
+
+## What is state transition testing?
+
+Some features always react the same way: a calculator adds 2 + 2 the same way every time. Many others **remember where they are**, and the same action gives a different result depending on that. Tapping **Cancel** on a fresh order should cancel it. Tapping it on a delivered order should not.
+
+State transition testing is a <Term id="black-box-testing">black-box</Term> test design technique for those features. You draw the places the system can be in (its **states**), the things that move it between them (**events**), and then you test both the moves that *should* happen and the ones that *should not*.
+
+<Callout type="example" title="An everyday analogy: the washing machine">
+
+A washing machine is always in one state: **Idle**, **Washing**, **Spinning** or **Done**. Pressing **Start** in Idle starts a wash. Pressing **Start** while it is already washing does nothing. And pulling the door handle mid-wash must *not* open the door, or your bathroom floods.
+
+Same button, same handle, different results, all depending on the state. Engineers who build washing machines think this way, and testers should too.
+
+</Callout>
+
+### The building blocks
+
+| Word | Meaning | Music player example |
+| --- | --- | --- |
+| **State** | A situation the system is in, which changes how it reacts | Stopped, Playing, Paused |
+| **Event** | Something that happens: a tap, a timer, a server message | The user taps Pause |
+| **Transition** | A move from one state to another, caused by an event | Playing → Paused |
+| **Guard** | A condition that must be true for the transition to happen | Refund only if delivered ≤ 30 days ago |
+| **Action** | What the system does while it moves | Remember the playback position |
+
+Here is the music player drawn as a **state diagram**. Boxes are states, arrows are transitions, and the label on each arrow is the event. The small dot with an arrow marks the **initial state** (where everything starts).
+
+<div class="not-prose my-6 rounded-2xl border border-line bg-surface p-4">
+  <StateDiagram modelId="music" caption="Music player: three states and five valid transitions." />
+</div>
+
+Notice what is **not** on the diagram: there's no arrow for "Pause while Stopped" or "Play while Playing". Those are **invalid transitions**, and they are where a lot of bugs hide. Pressing Play twice in a row in a buggy player can start the same song twice, on top of itself.
+
+<Short>
+
+## The quick version
+
+### Two ways to write it down
+
+A **state diagram** (like the one above) is great for seeing the flow. A **state table** is great for finding gaps. It lists every state as a row and every event as a column, so you're forced to answer *"what if this event happens in this state?"* for every single combination:
+
+| State ↓ / Event → | Play | Pause | Stop |
+| --- | --- | --- | --- |
+| **Stopped** | Playing | ✕ ignore | ✕ ignore |
+| **Playing** | ✕ ignore | Paused | Stopped |
+| **Paused** | Playing | ✕ ignore | Stopped |
+
+Every **✕** cell is an **invalid transition**: the event must be rejected or ignored, and the state must not change. Diagrams quietly hide those cells. Tables put them in front of you.
+
+### How much to test: three levels of coverage
+
+<Steps>
+
+1. **Every state.** Make sure you visit each state at least once. The weakest level.
+2. **Every valid transition.** Fire each arrow on the diagram at least once. This is the usual minimum for a feature.
+3. **Every invalid transition.** Try each ✕ cell and check the system says no. This is where the expensive bugs are.
+
+</Steps>
+
+### Where it shines
+
+Anything with a **status** or a **mode** in a mobile or web app:
+
+- **Orders:** Placed → Paid → Shipped → Delivered, plus Canceled and Refunded. See [shopping cart and checkout](/features/shopping-cart-and-checkout).
+- **Login lockout:** 0, 1, 2 wrong passwords, then Locked for 15 minutes. See [login and sign-up](/features/login-and-sign-up).
+- **Players and trackers:** Stopped / Playing / Paused, or a workout that is Running / Paused / Finished.
+- **Trips and deliveries:** a ride that is Requested → Driver assigned → On trip → Completed.
+- **Cards and accounts:** Active, Blocked, Expired.
+
+### Typical bugs it finds
+
+- An invalid transition is **allowed**: canceling a delivered order, paying twice, refunding an unpaid order.
+- A **stuck state**: the order stays "Processing" forever after a network error, and no button gets you out.
+- The **wrong state after restart**: you pause a workout, the app is killed in the background, and it comes back "Running". See [background and foreground](/mobile/background-and-foreground).
+
+<Callout type="tip">
+
+Switch to **Detailed** at the top of the page for guards and actions in depth, how to build a diagram from a spec, the bank card and ride-hailing models, and how to turn every transition into a test case.
+
+</Callout>
+
+</Short>
+
+<Long>
+
+## The building blocks in depth
+
+### States
+
+A state is a **situation that changes how the system reacts to the same input**. That definition is the test for whether something deserves to be a state.
+
+- "The order is paid" is a state, because Pay, Cancel and Refund all behave differently once it's true.
+- "The order has a blue shipping label" is not a state if nothing behaves differently because of it.
+
+Two special kinds of state appear in almost every model:
+
+- The **initial state** is where the system starts: a new order is Placed, a fresh login screen has 0 wrong attempts. On a diagram it's marked with a small filled dot and an arrow.
+- A **final state** is one the system never leaves: a Canceled or Refunded order. It's drawn with a double border. Final states are great places to test, because *every* event there should be rejected.
+
+<Callout type="note" title="States are not screens">
+
+Beginners often draw one state per screen. That's a different thing. The Order details **screen** can show an order in six different **states**, and the Logged in state can span fifty screens. Ask "does the system behave differently?", not "does the screen look different?".
+
+</Callout>
+
+### Events and transitions
+
+An **event** is anything that can happen to the system. Some come from the user (tap Cancel), some from time (15 minutes pass, the paid parking time runs out), and some from other systems (the courier's scanner says "delivered", the bank confirms a payment, a <Term id="push-notification" /> arrives).
+
+A **transition** is the arrow: *in state A, when event E happens, go to state B.* A transition can also go back into the **same** state. A bank card that is Active stays Active after a successful payment, but something still happens: money moves. That's called a self-transition.
+
+### Guards
+
+A **guard** is a yes/no condition written in square brackets on an arrow, like `refund [≤ 30 days since delivery]`. The same event in the same state can go different ways depending on the guard:
+
+- Delivered + Refund **[within 30 days]** → Refunded
+- Delivered + Refund **[after 30 days]** → stays Delivered, with the message "The return window has closed"
+
+Guards are where state transition testing meets <Term id="boundary-value-analysis" />: test day 30 and day 31, not just day 5. And where several conditions combine (amount, country, membership level), a <Term id="decision-table" /> is the better tool for the guard itself. See [boundary value analysis](/fundamentals/boundary-value-analysis) and [decision tables](/fundamentals/decision-tables).
+
+### Actions
+
+An **action** is what the system *does* during a transition: charge the card, send the tracking email, reset the counter, release the reserved stock. Written after a slash: `cancel / refund payment`.
+
+Actions matter because a transition can land in the right state and still do the wrong thing. If canceling a paid order shows "Canceled" but never refunds the money, the state is correct and the customer is still out $84. Always check the **state** and the **action** in your <Term id="expected-result">expected result</Term>.
+
+## Drawing a state diagram from a spec
+
+You don't need special software. Paper, a whiteboard or any diagram tool works. Here's the method, using an online shop's order rules.
+
+<Steps>
+
+1. **Find the nouns that describe a status.** Read the <Term id="requirement">requirements</Term> and highlight words like *placed, paid, shipped, delivered, canceled, refunded*. Those are your candidate states.
+2. **Find the verbs and the timers.** *Pay, ship, deliver, cancel, refund, 30 days pass.* Those are your events.
+3. **Draw the happy path first.** Placed → Paid → Shipped → Delivered.
+4. **Add the side exits.** Where can the order be canceled? Where can it be refunded? Add guards and actions as you go.
+5. **Mark the initial and final states.** Where does it start? Which states are dead ends?
+6. **Turn it into a table and look at the empty cells.** Every empty cell is a question for the product owner: "What should happen if a customer taps Cancel while the order is Shipped?" If nobody knows, you've found a gap in the spec before writing a single test.
+
+</Steps>
+
+<div class="not-prose my-6 rounded-2xl border border-line bg-surface p-4">
+  <StateDiagram modelId="order" caption="Online order: Placed is the initial state; Canceled and Refunded are final (double border)." />
+</div>
+
+## State tables: where the bugs hide
+
+The diagram above has 6 states and 5 events. That's 6 × 5 = **30 combinations**, but only **6 arrows**. The other 24 combinations are invalid transitions. A diagram doesn't show them, so nobody thinks about them. A state table does.
+
+You'll build the full order table in the explorer below (switch it to **State table**). Here's a compact version of the most interesting rows:
+
+| State | Cancel | Refund | Pay |
+| --- | --- | --- | --- |
+| **Placed** | Canceled | ✕ nothing was paid | Paid |
+| **Paid** | Canceled / refund | ✕ use Cancel | ✕ already paid |
+| **Shipped** | ✕ offer a return | ✕ not delivered | ✕ already paid |
+| **Delivered** | ✕ too late | Refunded [≤ 30 days] | ✕ already paid |
+
+For every ✕ cell, a correct system does three things:
+
+1. **Stays in the same state.** Nothing moves.
+2. **Does no action.** No money moves, no email is sent, no stock is released.
+3. **Tells the user why** (if the user caused it), or hides/disables the control in the first place. See [buttons](/components/button) and their <Term id="disabled-state">disabled state</Term>.
+
+<Callout type="warning" title="Hidden buttons are not enough">
+
+A good app hides the Cancel button on a delivered order. But testers know the button isn't the only way in: a second browser tab opened earlier, an old link in an email, the app's <Term id="api" />, a slow network that lets you tap twice. The **server** must reject invalid transitions too, not just the UI. When you can, test both.
+
+</Callout>
+
+## How much to test: coverage levels
+
+<Term id="test-coverage">Coverage</Term> tells you how much of the model your tests have touched. From weakest to strongest:
+
+| Level | What you test | Order example |
+| --- | --- | --- |
+| **All states** | Each state at least once | 6 states, reachable in 2 tests (one ending in Canceled, one in Refunded) |
+| **All valid transitions** | Each arrow at least once | 6 arrows, coverable in 3 tests; the usual minimum |
+| **All invalid transitions** | Each ✕ cell at least once | 24 cells, the high-value negative tests |
+
+Visiting every state is **not** enough. You can visit all six order states without ever trying "cancel a paid order", and miss that it forgets to refund.
+
+<Callout type="info" title="Going further: 0-switch and 1-switch coverage">
+
+In ISTQB terms, these levels are called *all states coverage*, *valid transitions coverage* and *all transitions coverage* (every valid transition fired **and** every invalid one tried). You may also see the terms **0-switch** and **1-switch** coverage. **0-switch** means testing every single transition on its own (the "all valid transitions" level above). **1-switch** means testing every *pair* of transitions in a row, such as Paid → Shipped followed by Shipped → Delivered. Pairs catch bugs where the second step depends on how you got there. For most manual testing, all valid transitions plus the risky invalid ones is the sweet spot; reach for 1-switch on payment or safety-critical flows.
+
+</Callout>
+
+## Where it shines in mobile and web apps
+
+<Tabs labels={["Orders", "Login lockout", "Ride-hailing", "Bank card"]}>
+<Tab>
+
+**Order status** is the classic. The same rules usually show up in three places: the customer app, the staff back office, and emails or push notifications. Each one is a door into the same state machine. Things to try:
+
+- Cancel at every state, not just Placed.
+- Pay twice: double-tap Pay, or pay from two tabs. This is a <Term id="double-submit" /> and the server needs <Term id="idempotency" /> to stop it.
+- Refund at every state, especially before payment and after the 30-day guard.
+
+More in [shopping cart and checkout](/features/shopping-cart-and-checkout).
+
+</Tab>
+<Tab>
+
+A **login with lockout** turns a counter into states: 0 wrong, 1 wrong, 2 wrong, Locked. It protects against a <Term id="brute-force-attack" />.
+
+- The third wrong password locks the account (not the second, not the fourth: a boundary!).
+- The **right** password while Locked must still be rejected.
+- A successful login resets the counter. Does it? Test 2 wrong → right → log out → 1 wrong: the account must not lock.
+- After 15 minutes, can you log in again? What if you kill the app during the lockout?
+
+More in [login and sign-up](/features/login-and-sign-up).
+
+</Tab>
+<Tab>
+
+A **ride-hailing trip** has states driven by three different people: the rider, the driver and the system.
+
+<div class="not-prose my-4 rounded-2xl border border-line bg-surface p-4">
+  <StateDiagram modelId="ride" caption="Ride-hailing trip: the rider can cancel before pickup; a fee applies once the driver has been on the way for more than 2 minutes." />
+</div>
+
+- Can the rider cancel **On trip**? (No: the trip must be ended by drop-off.)
+- What happens if the driver accepts at the exact moment the rider cancels? This is a <Term id="race-condition" />, and only one of them can win.
+- Is the late-cancel fee charged at 1:59 and at 2:01 correctly?
+
+</Tab>
+<Tab>
+
+A **bank card** in a banking app: Active, Blocked (frozen by the user) and Expired.
+
+<div class="not-prose my-4 rounded-2xl border border-line bg-surface p-4">
+  <StateDiagram modelId="card" caption="Bank card: paying while Active is a self-transition; unblocking needs an ID check (a guard)." />
+</div>
+
+- Paying while **Blocked** must be declined. This is the whole point of the freeze button.
+- Unblock needs Face ID or the PIN (the guard). Test it with the check failing.
+- An **Expired** card must not come back to life when someone taps Unblock.
+
+</Tab>
+</Tabs>
+
+## Turning transitions into test cases
+
+Each transition (valid or invalid) becomes one <Term id="test-case" />. The structure maps neatly:
+
+| Test case part | Comes from |
+| --- | --- |
+| <Term id="precondition">Precondition</Term> | The **start state** (and how to get there) |
+| Step | The **event** (and the guard value) |
+| Expected result | The **end state** + the **action** (or "stays, nothing happens") |
+
+<Steps>
+
+1. **Pick a transition**, for example Paid + Cancel.
+2. **Write the precondition as a path from the initial state:** "Order placed and paid with a test card."
+3. **Write the step:** "Tap Cancel order and confirm."
+4. **Write both halves of the expected result:** "Status is Canceled **and** a refund of $84.00 appears in Payments."
+5. **Chain transitions to save time.** One test can walk Placed → Paid → Shipped → Delivered → Refunded and check each step. Just make sure a failure in step 2 doesn't hide steps 3 to 5.
+
+</Steps>
+
+<Callout type="tip">
+
+For invalid transitions, write the expected result as "**stays** in Shipped, no refund, message 'This order has already shipped'". "Nothing happens" on its own is too vague: you want to check that the state, the money **and** the message are right. More on writing good steps in [writing test cases](/tutorials/writing-test-cases).
+
+</Callout>
+
+## Typical bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | Invalid transition allowed | Delivered order can be canceled and refunded | Critical |
+| 2 | Paying twice | Double-tap Pay, card charged twice | Critical |
+| 3 | Refund on an unpaid order | Refund issued for money never received | Critical |
+| 4 | Lockout ignores the right password | Locked account still logs in with the right password | Critical |
+| 5 | Stuck state | Order stays "Processing" forever after a network error | Major |
+| 6 | Wrong state after restart | Paused workout comes back as Running after the app is killed | Major |
+| 7 | Action missing | Order shows Canceled but no refund is made | Major |
+| 8 | Final state revived | Old payment link re-opens a canceled order | Major |
+
+Bugs 5 and 6 deserve a special mention for mobile. Apps are paused, killed and restored all the time, and the state must come back correctly from the server or from saved data. That's <Term id="state-persistence" /> and <Term id="state-restoration" />. Test transitions **across** a restart: start in Paused, kill the app, reopen, and check you're still in Paused. See [background and foreground](/mobile/background-and-foreground) and [interruptions](/mobile/interruptions).
+
+When you find one of these, the state table makes your [bug report](/tutorials/writing-bug-reports) easy to write: start state, event, expected state, actual state.
+
+## When to use it (and when not to)
+
+**Use it when** the same input gives different results depending on history: statuses, modes, counters, wizards, sessions, players, anything with "if it's already X, then…".
+
+**Skip it when** the feature has no memory: a unit converter, a tip calculator, a search box. There, <Term id="equivalence-partitioning" /> and <Term id="boundary-value-analysis" /> do the work.
+
+<Callout type="info" title="Same idea, different names">
+
+You'll also hear *state machine*, *finite state machine*, *state model* and *lifecycle*. They describe the same thing. The [bug life cycle](/fundamentals/bug-life-cycle) itself is a state machine: New → Assigned → Fixed → Retest → Closed, with Reopened as the path back when a retest fails.
+
+</Callout>
+
+</Long>
+
+## Try it: the state machine explorer
+
+This is the heart of the lesson. Pick a model, fire events, and watch the current state move. Arrows turn **green** once you've covered them. Then do what a good tester does: fire events that *shouldn't* work and read what a correct system must do.
+
+<StateExplorer client:visible />
+
+<Callout type="tip" title="Challenges">
+
+- **Order:** fill all three meters. How many events does it take? (Hint: you'll need "Back to start state" a few times, because Canceled and Refunded are final.)
+- **Login lockout:** reach Locked, then try the right password. Then find the path that proves a successful login resets the counter.
+- **Bank card:** untick the ID-check guard and try to unblock.
+
+</Callout>
+
+## Find the bug: a broken order system
+
+Below is a shop's back-office order page. The staff tool shows **every** action button all the time, so the server is responsible for rejecting the ones that aren't allowed. Compare what it does with the order diagram and state table (the explorer above shows the spec). Use **New order** to start again. The notebook keeps your coverage across orders, so you can be systematic: try every action in every state.
+
+<BugHunt
+  title="Order back office"
+  bugs={[
+    {
+      title: "A delivered order can be canceled",
+      hint: "Get an order all the way to Delivered, then try the red buttons.",
+      detail: "Delivered + Cancel should be rejected (customer already has the goods; offer a return instead). Here it moves to <strong>Canceled</strong> and refunds $84, so the customer gets the goods for free. An <em>invalid transition that is allowed</em>.",
+    },
+    {
+      title: "Refund before payment",
+      hint: "On a brand-new order, look at what Refund does to Payments.",
+      detail: "Placed + Refund must be rejected: nothing was paid. Here the order jumps to <strong>Refunded</strong> and Payments shows a refund with a negative net of −$84.00. Real money leaves the business.",
+    },
+    {
+      title: "Unpaid orders can be shipped",
+      hint: "What happens if you skip Record payment?",
+      detail: "Placed + Ship moves the order to <strong>Shipped</strong> while Payments still says \"No payments yet\". The spec only allows shipping from Paid.",
+    },
+    {
+      title: "A canceled order comes back to life",
+      hint: "Canceled is a final state. Is it really final?",
+      detail: "Canceled + Record payment moves the order back to <strong>Paid</strong> and charges the card. Final states must reject every event. In real life this happens when an old payment link in an email still works after cancellation.",
+    },
+    {
+      title: "Paying twice charges twice",
+      hint: "Try the same action twice in a row.",
+      detail: "Paid + Record payment should be rejected (\"already paid\"). Instead it shows a success toast and adds a <strong>second $84.00 charge</strong>. The state looks right (still Paid), which is why this bug slips through when testers only check the status pill. Always check the <em>action</em> too.",
+    },
+  ]}
+>
+  <BuggyOrderAdmin client:visible />
+</BugHunt>
+
+<Callout type="note">
+
+Notice how the coverage counters help: "Invalid tried 7/24" tells you there are still 17 combinations you haven't touched. Some bugs (like paying twice) only show up in cells most people never think to try.
+
+</Callout>
+
+## Practice: build a state table
+
+Time to do it yourself. A parking app called ParkEasy lets drivers pay for street parking by the hour. Read its 7 rules and fill in the state table. Every cell is either the **next state** or **✕** (the event must be rejected).
+
+<ParkingStateTable client:visible />
+
+Once your table is right, you've also written your test plan: **12 cells = 12 test cases**, 6 positive and 6 negative. Some extra ideas a curious tester would add:
+
+- What if "Time runs out" and "Stop" happen in the same second? Which one wins, and is the driver charged correctly?
+- Does Extended survive killing the app and reopening it the next morning?
+- Is the receipt created exactly once when an Expired session is stopped?
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: "TC-ST-01",
+      title: "Order happy path: Placed to Delivered",
+      priority: "high",
+      type: "positive",
+      preconditions: ["Logged in as a customer", "Cart with 1 item ($84.00 incl. shipping)"],
+      steps: ["Place the order", "Pay with a test card", "Staff marks it Shipped", "Courier marks it Delivered"],
+      expected: "Status goes Placed → Paid → Shipped → Delivered. One charge of $84.00, a tracking email after Shipped, a push notification after Delivered.",
+    },
+    {
+      id: "TC-ST-02",
+      title: "Cancel a paid order refunds the payment",
+      priority: "high",
+      type: "positive",
+      preconditions: ["Order is Paid ($84.00)"],
+      steps: ["Open the order", "Tap Cancel order and confirm"],
+      expected: "Status is Canceled and a refund of $84.00 is created. Reserved stock is released.",
+    },
+    {
+      id: "TC-ST-03",
+      title: "Cancel is rejected for a delivered order",
+      priority: "high",
+      type: "negative",
+      preconditions: ["Order is Delivered"],
+      steps: ["Open the order in the app", "Check whether Cancel is offered", "Send a cancel request another way (an older tab or the API)"],
+      expected: "The app offers Return & refund instead of Cancel. The cancel request is rejected; status stays Delivered and no refund is created.",
+    },
+    {
+      id: "TC-ST-04",
+      title: "Paying twice charges only once",
+      priority: "high",
+      type: "negative",
+      preconditions: ["Order is Placed", "Network throttled to a slow 3G profile"],
+      steps: ["Double-tap Pay", "Open the order in a second tab and pay again"],
+      expected: "Exactly one charge of $84.00. The second attempt shows \"This order is already paid\" and the status stays Paid.",
+    },
+    {
+      id: "TC-ST-05",
+      title: "Right password is rejected while the account is locked",
+      priority: "high",
+      type: "negative",
+      preconditions: ["Test account exists", "3 wrong passwords entered, account is Locked"],
+      steps: ["Enter the correct password", "Tap Log in"],
+      expected: "Login is refused with \"Too many attempts. Try again in 15 minutes.\" The account stays Locked.",
+    },
+    {
+      id: "TC-ST-06",
+      title: "Successful login resets the wrong-password counter",
+      priority: "medium",
+      type: "edge",
+      preconditions: ["Test account exists", "0 wrong attempts"],
+      steps: ["Enter a wrong password twice", "Enter the right password", "Log out", "Enter a wrong password once"],
+      expected: "After the last step the account is in \"1 wrong\" and is NOT locked.",
+    },
+    {
+      id: "TC-ST-07",
+      title: "Refund is blocked after the return window (guard false)",
+      priority: "medium",
+      type: "edge",
+      preconditions: ["Order Delivered 31 days ago"],
+      steps: ["Open the order", "Request a refund"],
+      expected: "Refund is refused with \"The return window has closed\". Status stays Delivered; no refund is created. (Repeat with an order delivered exactly 30 days ago: refund is allowed.)",
+    },
+    {
+      id: "TC-ST-08",
+      title: "Paused state survives the app being killed",
+      priority: "medium",
+      type: "edge",
+      preconditions: ["Fitness app, a workout is Paused at 12:30"],
+      steps: ["Send the app to the background", "Kill it from the app switcher", "Reopen the app"],
+      expected: "The workout is still Paused at 12:30, not Running and not lost.",
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  storageKey="state-transition-testing"
+  title="State transition testing checklist"
+  items={[
+    "I listed every state, including the initial state and any final states",
+    "I listed every event: user taps, timers and messages from other systems",
+    "I drew the diagram and built the state table from it",
+    "Every empty cell in the table has an agreed answer (asked the product owner where unclear)",
+    "Every state is visited by at least one test",
+    "Every valid transition is covered by at least one test",
+    "The risky invalid transitions are tested (final states, money, security)",
+    "Guards are tested both true and false, at their boundaries",
+    "Each expected result checks the end state AND the action (money, emails, stock)",
+    "Invalid events are rejected by the server, not only hidden in the UI",
+    "Double taps and two tabs can't fire the same transition twice",
+    "The state is correct after killing and reopening the app",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "In a music player, the user taps Pause while it's Playing and it moves to Paused. What is 'tap Pause' in state transition terms?",
+      options: ["A state", "An event", "A guard", "An action"],
+      answer: 1,
+      explain: "Tapping Pause is the event that triggers the transition from Playing to Paused. 'Remember the position' would be the action.",
+    },
+    {
+      q: "Which notation describes a guard?",
+      options: ["Paid → Shipped", "cancel / refund payment", "refund [≤ 30 days since delivery]", "A box with a double border"],
+      answer: 2,
+      explain: "A guard is a condition in square brackets. The slash introduces an action, and a double border marks a final state.",
+    },
+    {
+      q: "Your tests visit all six order states. What can you honestly claim?",
+      options: [
+        "Every transition has been tested",
+        "Every state was reached at least once, but some transitions may never have been fired",
+        "All invalid transitions are rejected",
+        "The feature is fully tested",
+      ],
+      answer: 1,
+      explain: "All-states coverage is the weakest level. You can visit every state without, say, ever canceling a paid order, and miss that it forgets the refund.",
+    },
+    {
+      q: "Why is a state table better than a diagram for finding invalid transitions?",
+      options: [
+        "It looks more professional",
+        "It lists every state × event combination, so you must decide what happens in each cell",
+        "It only shows the happy path",
+        "Tables can't contain guards",
+      ],
+      answer: 1,
+      explain: "A diagram only shows the arrows that exist. The table shows the empty cells too, and each empty cell asks 'what if this event happens in this state?'",
+    },
+    {
+      q: "A login locks after 3 wrong passwords. Which test is an invalid transition test?",
+      options: [
+        "Enter the right password from 0 wrong attempts",
+        "Enter a wrong password from 2 wrong attempts",
+        "Enter the right password while Locked",
+        "Wait 15 minutes while Locked",
+      ],
+      answer: 2,
+      explain: "Right password while Locked has no arrow in the model: a correct system must reject it. The other three are valid transitions.",
+    },
+    {
+      q: "Paid + Pay is fired. The status pill still says Paid. Is that enough to pass the test?",
+      options: [
+        "Yes, the state didn't change",
+        "No, you must also check that no second charge happened and the user was told it's already paid",
+        "Yes, because Paid → Paid is a valid self-transition",
+        "No, the status should change to Shipped",
+      ],
+      answer: 1,
+      explain: "For an invalid transition, check the state, the action and the message. A system can keep the right state and still charge the card twice.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Use state transition testing when the same action gives different results depending on where the system is: orders, logins, players, trips, cards.
+- The building blocks are **states**, **events**, **transitions**, **guards** (conditions in brackets) and **actions** (what happens during the move).
+- Diagrams show the flow; **state tables** expose every "what if this event happens in this state?" combination.
+- Coverage grows from **all states** to **all valid transitions** to **invalid transitions**. The invalid ones find the costly bugs.
+- Each transition becomes a test case: start state as precondition, event as step, end state **plus action** as expected result.
+- Watch for allowed invalid transitions, stuck states and the wrong state after an app restart.
+
+</KeyTakeaways>

@@ -1,0 +1,535 @@
+---
+title: User Stories and Acceptance Criteria
+description: Learn to read user stories like a tester, write acceptance criteria in Given/When/Then, ask the right questions in refinement, and turn fuzzy requirements into rules you can actually test.
+order: 5
+level: beginner
+minutes: { short: 12, long: 25 }
+platform: both
+tags: [user stories, acceptance criteria, gherkin, agile, requirements]
+---
+
+import StoryAnatomy from '@/components/demos/tutorial-stories/StoryAnatomy';
+import RefinementSimulator from '@/components/demos/tutorial-stories/RefinementSimulator';
+import TestableSorter from '@/components/demos/tutorial-stories/TestableSorter';
+
+It's Tuesday afternoon on a fitness app team. Your lead pings you: "Refinement for **Pause a workout** is tomorrow at 10. Can you read the story and bring your questions? Devs want to start on Thursday."
+
+You open the ticket. It says: *"As a runner, I want to pause my workout. It should work well."* That's it. Where do you even start?
+
+This lesson shows you. You'll learn how stories and their rules are written, what a tester looks for, which questions to ask, and how to rewrite a vague line like "it should work well" into something you can test.
+
+## Why testers care about stories
+
+Most <Term id="agile" /> teams don't write long specification documents. They describe work as small <Term id="user-story">user stories</Term>, each with a short list of <Term id="acceptance-criteria" />: the rules that must be true for the story to count as done.
+
+Those criteria are the closest thing you have to a contract. They become your <Term id="test-case">test cases</Term>, your bug evidence ("AC3 says the timer stops") and your argument when someone says "that's not a bug, that's a feature".
+
+<Callout type="tip" title="The cheapest bug is the one you prevent">
+
+A missing rule found in a meeting costs five minutes. The same gap found after release costs a hotfix, angry reviews and maybe refunds. Reviewing stories early is called <Term id="shift-left">shifting left</Term>, and it's one of the most valuable things a tester does.
+
+</Callout>
+
+<Short>
+
+## The essentials
+
+### The user story format
+
+A user story is one sentence about **who** wants **what** and **why**:
+
+> **As a** runner, **I want** to pause my workout **so that** a red traffic light doesn't ruin my time and pace.
+
+| Part | Answers | Tester's angle |
+| --- | --- | --- |
+| As a… | Who? | Which users, permissions and devices? |
+| I want… | What? | What exactly can they do? |
+| so that… | Why? | What does "working" mean for them? |
+
+The story itself is only a conversation starter. The real detail lives in the **acceptance criteria**.
+
+### Acceptance criteria are testable rules
+
+Good criteria can only **pass or fail**. A popular format is **Given / When / Then** (the style of the Gherkin language):
+
+```gherkin
+Given I am recording a run and the timer shows 12:30
+When I tap "Pause"
+Then the timer stops at 12:30
+And the distance stops increasing
+```
+
+- **Given** = the starting situation
+- **When** = the one action
+- **Then** = the result you can check
+
+### Questions a tester asks in refinement
+
+Before anyone writes code, the team meets to discuss the story (the "three amigos": product, development, testing). Bring questions about:
+
+- **Empty states and errors**: what if there's no data, no GPS, a failed save?
+- **Limits**: how long can a workout stay paused? What's the maximum?
+- **Interruptions and offline**: a phone call, the app closed by the system, no network?
+- **Permissions, accessibility, other platforms, analytics**: who can do it, does VoiceOver read it, does the watch app need it, what do we measure?
+
+### Spot untestable criteria
+
+<Compare>
+<Do title="Measurable">
+
+Tapping **Pause** stops the timer within 1 second.
+
+</Do>
+<Dont title="Fog words">
+
+Pausing should be fast and user-friendly.
+
+</Dont>
+</Compare>
+
+Words like *fast*, *easy*, *modern*, *gracefully* and *all* are warning signs. Ask: "How would we know it passed?"
+
+Switch to **Detailed** at the top of the page for INVEST, rule-based vs scenario-based criteria, Definition of Ready and Done, the full "Pause a workout" example and turning criteria into test cases.
+
+</Short>
+
+<Long>
+
+## Anatomy of a user story
+
+A <Term id="user-story" /> describes a small piece of value from the user's point of view. It deliberately leaves out *how* it's built. Here's a real-looking ticket from a fitness app called **FitTrack**:
+
+<StoryAnatomy />
+
+The format is a template, not a law. Some teams write "**In order to** … **as a** … **I want** …", others drop "so that" for obvious stories. What matters is that everyone can answer *who*, *what* and *why*.
+
+<Callout type="note" title="Card, conversation, confirmation">
+
+A common way to remember what a story is: the **card** (the one-liner), the **conversation** (the team discussing it) and the **confirmation** (the acceptance criteria that prove it's done). Testers are most useful in the last two.
+
+</Callout>
+
+### Is it a good story? INVEST in one minute
+
+Teams often check stories against **INVEST**. You don't need to memorize it, but each letter hints at a testing problem:
+
+| Letter | Means | Why a tester cares |
+| --- | --- | --- |
+| **I**ndependent | Can be built and released on its own | You can test it without waiting for three other stories |
+| **N**egotiable | Details are agreed together | You're allowed to ask questions and suggest rules |
+| **V**aluable | Gives value to a user | The "so that" tells you what really matters |
+| **E**stimable | The team can size it | If nobody can estimate it, nobody can test it either |
+| **S**mall | Fits in one <Term id="sprint" /> | Huge stories hide huge, untested corners |
+| **T**estable | You can tell when it's done | This one is *your* letter |
+
+If a story fails **T**, it isn't ready. That's not you being difficult; it's you saving the team from building the wrong thing.
+
+## Acceptance criteria: the rules of the story
+
+<Term id="acceptance-criteria">Acceptance criteria</Term> (often shortened to **AC**) are the conditions a story must meet to be accepted by the product owner. Good criteria are:
+
+- **Testable**: each one can clearly pass or fail.
+- **Specific**: real numbers, real messages, real states. "Within 1 second", not "fast".
+- **About behavior, not implementation**: what the user sees, not which database table changes.
+- **Complete enough**: they cover the unhappy paths too, not only the happy path.
+- **Agreed before development starts**, so the developer and tester aim at the same target.
+
+### Rule-based vs scenario-based criteria
+
+There are two common styles, and many teams mix them.
+
+| Style | Looks like | Best for |
+| --- | --- | --- |
+| **Rule-based** (a checklist) | "Paused time isn't counted in average pace." | Simple rules, limits, UI details |
+| **Scenario-based** (Given/When/Then) | A short story with a start, an action and a result | Flows, state changes, anything with "if this, then that" |
+
+Rule-based criteria are quick to write and read. Scenario-based criteria take longer but force you to state the starting situation and the exact result, which is where most gaps hide.
+
+## Given / When / Then (Gherkin)
+
+**Gherkin** is a simple, structured language for writing scenarios. It's also what tools like Cucumber use to run automated tests, but you don't need any tool to use it. It's just a clear way to write criteria.
+
+| Keyword | Meaning | Tip |
+| --- | --- | --- |
+| **Scenario** | A short name for the example | One behavior per scenario |
+| **Given** | The starting state (the precondition) | Make it concrete: real data, real screen |
+| **When** | The action the user (or the system) takes | Usually exactly one action |
+| **Then** | The observable result | Something you can see or measure |
+| **And / But** | Add more of the step above | Keep it short; many Ands = split the scenario |
+
+### Example: resuming a workout
+
+```gherkin
+Scenario: Resume a paused run
+  Given I paused my run at 12:30 and 2.10 km
+  And the run has been paused for 2 minutes
+  When I tap "Resume"
+  Then the timer continues from 12:30
+  And the distance continues from 2.10 km
+  But the 2 paused minutes are not counted in my average pace
+```
+
+### Example: one rule, many inputs
+
+When the same scenario needs several values, use a **Scenario Outline** with an **Examples** table. This is <Term id="boundary-value-analysis" /> written straight into the criteria:
+
+```gherkin
+Scenario Outline: Auto-save a long pause
+  Given my run has been paused for <minutes> minutes
+  Then the workout is <result>
+
+  Examples:
+    | minutes | result                         |
+    | 59      | still paused                   |
+    | 60      | saved and ended automatically  |
+```
+
+<Callout type="tip" title="Write Then like an expected result">
+
+A good **Then** reads exactly like the expected result of a test case: which screen, which message (word for word), which value. If you can't write the Then, the rule probably isn't decided yet. That's a question for refinement.
+
+</Callout>
+
+## Definition of Ready vs Definition of Done
+
+Two team agreements decide when a story can *start* and when it can *finish*. Teams word them differently, but this is the tester's view:
+
+| | Definition of Ready (before work starts) | Definition of Done (before it's called finished) |
+| --- | --- | --- |
+| **Purpose** | The story is clear enough to build and test | The story is truly finished, not "done except testing" |
+| **Tester checks** | AC exist and are testable; designs attached; open questions answered; test data known | All AC pass; bugs fixed or agreed; <Term id="regression-testing">regression</Term> checked; tests written or updated |
+| **If missing** | Raise it in refinement, don't start | The story stays open |
+
+The **acceptance criteria** are specific to one story. The **Definition of Done** is the same for every story (for example "code reviewed, tests pass, works on iOS and Android, analytics events added"). A story is finished only when it meets **both**. The Definition of Ready plays a similar role to <Term id="entry-criteria" /> in more formal test processes.
+
+## The three amigos and refinement
+
+**Refinement** (sometimes called backlog grooming) is the meeting where the team discusses upcoming stories. A small version of it is called the **three amigos**: one person each for **business** (the product owner), **development** and **testing** look at a story together, usually for 15 to 30 minutes.
+
+Each amigo brings a different question:
+
+- **Product**: what problem are we solving?
+- **Development**: how could we build it, and what's hard?
+- **Testing**: what could go wrong, and how will we know it works?
+
+<Steps>
+
+1. **Read the story before the meeting.** Twice. Underline every rule, number and message, and every word that could mean two things.
+2. **Walk through it as a user.** Imagine using the feature on a bus, with a weak signal, with big fonts, as a brand-new user and as a power user.
+3. **Write your questions down.** Use the question list below. Prioritize: you'll only get to ask a few.
+4. **In the meeting, ask and listen.** Turn every answer into a new or clearer criterion on the spot. Agree on concrete examples.
+5. **Afterwards, check the ticket.** Were the answers actually added to the AC? A decision that only lives in someone's memory will be forgotten.
+
+</Steps>
+
+### The tester's question list
+
+| Area | Example questions |
+| --- | --- |
+| **Empty states** | What does the screen show with no workouts yet? No GPS signal? (See <Term id="empty-state" />.) |
+| **Errors** | What if saving fails? What exact <Term id="error-message" /> appears? Is the user's data kept? |
+| **Limits** | Minimum, maximum, how long, how many? What happens at exactly the limit? |
+| **Permissions** | Who can do this? What if location permission is denied? Free vs premium users? |
+| **Offline and interruptions** | No network? A phone call? The app killed by the system? (See <Term id="offline-mode" /> and <Term id="interruption" />.) |
+| **Accessibility** | Does a <Term id="screen-reader" /> announce it? Big enough <Term id="touch-target">touch targets</Term>? Large text? |
+| **Other platforms** | iOS and Android? Tablet, web, smartwatch? Lock screen controls? |
+| **Analytics** | Which events should fire, with which data? How will we know people use it? |
+
+<Callout type="warning" title="Low-value questions waste the meeting">
+
+Questions about button colors (the design file answers those), which framework the developer will use (doesn't change what you test) or "will it work?" (unanswerable) burn time without finding missing rules. Ask things that change **behavior**.
+
+</Callout>
+
+## Worked example: "Pause a workout"
+
+Let's refine the FitTrack story from the start of the lesson.
+
+<Callout type="info" title="First draft: FIT-482 Pause a workout">
+
+**As a** runner, **I want** to pause my workout **so that** a red traffic light doesn't ruin my time and pace.
+
+**Acceptance criteria**
+
+1. The user can pause and resume.
+2. Paused time is handled correctly.
+3. It should work well in the background.
+
+</Callout>
+
+Every line here is fog. "Handled correctly" how? "Work well" means what? Here are the questions the tester brought, and the answers from the product owner:
+
+| Question | Answer |
+| --- | --- |
+| Is paused time counted in moving time and pace? | No. Total time includes it, moving time and pace don't. |
+| How long can a run stay paused? | 60 minutes, then it's saved and ended with a notification. |
+| What if the system closes the app while paused? | Reopening restores the paused workout exactly. |
+| Can I pause from the lock screen or watch? | Lock screen: yes (iOS Live Activity, Android notification). Watch: separate story. |
+| Does GPS keep running while paused? | No, to save battery. It restarts on Resume. |
+| What does VoiceOver/TalkBack say? | "Pause workout" / "Resume workout"; state change is announced. |
+| Analytics? | `workout_paused` and `workout_resumed`, with elapsed time. |
+
+### The refined criteria
+
+**Rules**
+
+- Total time includes paused time; moving time and average pace don't.
+- GPS tracking stops while paused and restarts on Resume.
+- The Pause button has the accessible label "Pause workout" and is at least 44×44 pt on iOS and 48×48 dp on Android.
+- `workout_paused` and `workout_resumed` events are sent with the elapsed time.
+
+**Scenarios**
+
+```gherkin
+Scenario: Pause a running workout
+  Given I am recording a run and the timer shows 12:30
+  When I tap "Pause"
+  Then the timer stops at 12:30 within 1 second
+  And the distance stops increasing
+  And I see the buttons "Resume" and "End"
+
+Scenario: Resume after a pause
+  Given I paused my run at 12:30 and 2.10 km two minutes ago
+  When I tap "Resume"
+  Then the timer continues from 12:30
+  And moving time and average pace do not include the 2 paused minutes
+
+Scenario: Paused for too long
+  Given my run has been paused for 60 minutes
+  Then the workout is saved and ended automatically
+  And I get the notification "Workout saved after 60 minutes paused"
+
+Scenario: App closed by the system while paused
+  Given my run is paused at 12:30 and 2.10 km
+  When the system closes FitTrack in the background and I open it again
+  Then I see my paused run at 12:30 and 2.10 km with "Resume" and "End"
+
+Scenario: Pause from the lock screen
+  Given I am recording a run and my phone is locked
+  When I tap "Pause" on the lock screen controls
+  Then the workout pauses
+  And the app shows the paused state when I unlock the phone
+```
+
+Notice what happened: the watch question became a **separate story**, not a bigger one. Splitting is a perfectly good outcome of refinement.
+
+### From criteria to test cases
+
+Each scenario becomes at least one <Term id="test-case" /> (see [How to Write Test Cases](/tutorials/writing-test-cases)); limits become two (one on each side). Rules often become extra checks or a <Term id="checklist" />. Here are four of them:
+
+<TestCases
+  cases={[
+    {
+      id: "TC-PAUSE-001",
+      title: "Pause stops timer and distance",
+      priority: "high",
+      type: "positive",
+      preconditions: ["FitTrack installed, location permission granted", "A run is being recorded outdoors"],
+      steps: ["Wait until the timer shows about 12:30", "Tap 'Pause'", "Walk for 30 seconds", "Look at the timer and distance"],
+      expected: "The timer stops within 1 second of the tap and doesn't change. The distance doesn't increase while walking. 'Resume' and 'End' are shown.",
+    },
+    {
+      id: "TC-PAUSE-002",
+      title: "Paused minutes are excluded from moving time and pace",
+      priority: "high",
+      type: "positive",
+      preconditions: ["A run has been recorded for 10:00 and 2.00 km"],
+      steps: ["Tap 'Pause'", "Wait 2 minutes", "Tap 'Resume'", "Tap 'End' immediately and open the summary"],
+      expected: "Total time is about 12:00. Moving time is about 10:00. Average pace is calculated from 10:00 and 2.00 km (5:00 /km).",
+    },
+    {
+      id: "TC-PAUSE-003",
+      title: "Run paused for 59 minutes stays paused",
+      priority: "medium",
+      type: "edge",
+      preconditions: ["A run is paused", "Device time can be advanced, or a test build with a short timer is available"],
+      steps: ["Keep the run paused for 59 minutes", "Open the app"],
+      expected: "The run is still paused and can be resumed. No notification has been shown.",
+    },
+    {
+      id: "TC-PAUSE-004",
+      title: "Paused run is restored after the system closes the app",
+      priority: "high",
+      type: "edge",
+      preconditions: ["A run is paused at a known time and distance"],
+      steps: ["Send FitTrack to the background", "Make the system close it, not a force stop (on Android, for example, run adb shell am kill with the app's package name)", "Open FitTrack again"],
+      expected: "The paused run is shown with the same time and distance, and 'Resume' and 'End' work.",
+    },
+  ]}
+/>
+
+The fifth case, exactly 60 minutes, completes the boundary pair with TC-PAUSE-003. Linking each case back to FIT-482 and its AC is what builds a <Term id="traceability-matrix" />.
+
+## Spotting and fixing untestable criteria
+
+Untestable criteria nearly always hide behind a few **fog words**. When you see one, ask "how would we know?" and replace it with a number, a message or a state.
+
+| Fog word | Ask | Measurable rewrite |
+| --- | --- | --- |
+| fast, quickly | How fast, on what network? | "Results appear within 2 s on 4G" |
+| user-friendly, easy | Easy for whom, compared to what? | "Checkout has at most 3 screens; each field has a visible label" |
+| gracefully, properly | What should the user see? | "Shows 'Upload failed. Try again.' and keeps the photo" |
+| all, every, any | Which ones, exactly? | "iOS 17+ and Android 10+" |
+| modern, nice | Compared to what? | "Matches the approved design v3" |
+| etc., and so on | What else, exactly? | List the remaining items |
+
+<Compare>
+<Do title="Testable">
+
+Given I'm on 4G, when I search "running shoes", then results appear within 2 seconds and a skeleton loader shows while waiting.
+
+</Do>
+<Dont title="Untestable">
+
+Search should be fast and user-friendly.
+
+</Dont>
+</Compare>
+
+<Callout type="note" title="Don't invent the numbers">
+
+Your job is to notice the missing number, not to make it up. "Within 2 seconds" must come from the product owner or the team. If nobody knows, the honest criterion is a question on the ticket, not a guess.
+
+</Callout>
+
+Some qualities really are hard to pin down, like "the onboarding feels welcoming". That's fine: test them with people (usability sessions) and say so, instead of pretending a checklist covers it.
+
+## Common mistakes
+
+<Callout type="bug" title="Watch out for these">
+
+- **Only the happy path.** If every criterion starts with "the user successfully…", ask about errors, limits and interruptions.
+- **Criteria that describe the code.** "The API returns 200" isn't what the user experiences. Ask what they *see*.
+- **One giant scenario.** Ten Ands in a row means several behaviors. Split it.
+- **Answers that never reach the ticket.** Decisions made in a meeting and not written down will be forgotten by Thursday.
+- **Testing what you think, not what's agreed.** If you believe a rule is missing, ask. Don't silently test (or fail) against your own private rule.
+- **Being the "no" person.** Frame questions as helping the team: "What should happen when…?" works better than "This is wrong."
+
+</Callout>
+
+## Templates you can copy
+
+```text
+STORY
+As a <type of user>
+I want <goal>
+so that <value>
+
+RULES
+- <rule with a number, message or state>
+
+SCENARIOS
+Scenario: <one behavior>
+  Given <starting situation with real data>
+  When <one action>
+  Then <observable result>
+  And <another observable result>
+
+OPEN QUESTIONS
+- <question> (owner, date)
+```
+
+</Long>
+
+## Practice: run a refinement
+
+Time to sit in the meeting yourself. The story below is from a shopping app. Pick your questions, hear the answers, then rewrite the weak criteria.
+
+<RefinementSimulator client:visible />
+
+### Quick sorter: testable or not?
+
+<TestableSorter client:visible />
+
+## Before you approve a story
+
+<Checklist
+  title="Story review checklist"
+  storageKey="user-stories-and-acceptance-criteria"
+  items={[
+    "I can say who the user is, what they want and why",
+    "Every acceptance criterion can clearly pass or fail",
+    "No fog words: fast, easy, modern, gracefully, all",
+    "Errors and empty states are covered, with exact messages",
+    "Limits are stated, and I know what happens exactly at the limit",
+    "Permissions, offline and interruptions have been discussed",
+    "Accessibility and other platforms (iOS, Android, web) are covered or explicitly out of scope",
+    "Analytics events are listed if the team tracks them",
+    "Answers from refinement are written on the ticket",
+    "I know which test cases each criterion will become",
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "Which part of a user story tells you what 'working' really means to the user?",
+      options: ["As a…", "I want…", "so that…", "The story points"],
+      answer: 2,
+      explain: "The 'so that' states the value. If pausing exists but the pace is still ruined, the story hasn't delivered its value.",
+    },
+    {
+      q: "Which acceptance criterion is testable?",
+      options: [
+        "Pausing should be quick and intuitive",
+        "Tapping Pause stops the timer within 1 second",
+        "Pause works on all devices",
+        "Pause is handled gracefully",
+      ],
+      answer: 1,
+      explain: "It has an action, an observable result and a number. The others rely on fog words with no clear pass or fail.",
+    },
+    {
+      q: "In Given/When/Then, what belongs in the Given?",
+      options: ["The action the user takes", "The starting situation", "The expected result", "The test priority"],
+      answer: 1,
+      explain: "Given sets the scene (like a precondition), When is the action, Then is the observable result.",
+    },
+    {
+      q: "In refinement, which question is the most valuable for a tester to ask?",
+      options: [
+        "Which programming language will you use?",
+        "What color is the Pause button?",
+        "What happens if the system closes the app while a workout is paused?",
+        "Can we skip testing this one?",
+      ],
+      answer: 2,
+      explain: "It uncovers a missing rule about state and interruptions. Language and color don't change the behavior you test.",
+    },
+    {
+      q: "What's the difference between acceptance criteria and the Definition of Done?",
+      options: [
+        "They are the same thing",
+        "Acceptance criteria are specific to one story; the Definition of Done applies to every story",
+        "The Definition of Done is written by the tester alone",
+        "Acceptance criteria are only for automated tests",
+      ],
+      answer: 1,
+      explain: "AC describe what this story must do. The Definition of Done is the team-wide quality bar (reviewed, tested, regression checked). A story needs both.",
+    },
+    {
+      q: "The product owner can't say how fast search must be. What should the tester do?",
+      options: [
+        "Pick a number and write it into the criteria",
+        "Mark the story as passed",
+        "Leave it as 'should be fast'",
+        "Record it as an open question with an owner, so the team agrees on a number",
+      ],
+      answer: 3,
+      explain: "Spot the gap, don't invent the answer. Targets must be agreed by the team; until then it's an open question.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A user story says **who** wants **what** and **why**; acceptance criteria are the testable rules that confirm it's done.
+- Good criteria can only pass or fail: concrete data, exact messages, real numbers, written from the user's view.
+- Given/When/Then gives every scenario a starting state, one action and a checkable result. Each Then is a ready-made expected result.
+- In refinement, ask about empty states, errors, limits, permissions, offline and interruptions, accessibility, other platforms and analytics.
+- Replace fog words (fast, easy, gracefully, all) with agreed numbers, messages or states, and never invent the numbers yourself.
+- Definition of Ready decides when a story can start, Definition of Done when it's truly finished.
+
+</KeyTakeaways>

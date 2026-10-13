@@ -1,0 +1,45 @@
+teaser: "Your app works perfectly on the developer's new phone. On a three-year-old phone it forgets everything after a quick trip to email. Why?"
+cards:
+  - type: flip
+    front: "What is the Suspended state?"
+    back: "A few seconds after you leave, the app stays in memory but runs no code. It's frozen until you return, or the OS kills it."
+  - type: flip
+    front: "What is state restoration?"
+    back: "Bringing the user back to the same screen with the same typed data after the OS killed the app in the background."
+  - type: thisorthat
+    prompt: "The user swiped the app away in the app switcher, then reopened it. It starts on the home screen."
+    left: "Expected"
+    right: "Bug"
+    answer: left
+    explain: "A swipe-away means the user closed it, so a fresh start is fine. Saved data like cart, login and settings must still be there."
+  - type: thisorthat
+    prompt: "The OS killed the app to free memory. The user never closed it. On reopen, the half-filled form is empty."
+    left: "Expected"
+    right: "Bug"
+    answer: right
+    explain: "From the user's point of view the app was never closed. They expect the same screen and typed data back."
+  - type: quiz
+    q: "Which adb command simulates the OS killing a backgrounded app, keeping its saved state?"
+    options: ["adb shell am force-stop <package>", "adb shell am kill <package>", "adb uninstall <package>"]
+    answer: 1
+    explain: "am kill only kills a background app, just like the system would. force-stop is like Force stop in Settings and does not keep state."
+  - type: quiz
+    q: "Which Android developer option destroys every screen as soon as you leave it?"
+    options: ["Don't keep activities", "Stay awake", "Show taps"]
+    answer: 0
+    explain: "It makes any screen that doesn't save its state show the bug immediately. Turn it off when you're done."
+  - type: truefalse
+    statement: "A push notification only needs to open the right screen when the app is in the background."
+    answer: false
+    explain: "It must work in foreground, background and killed states. The cold-start path is a different code path and is broken most often."
+  - type: spotbug
+    screen: ["Northbank · App switcher", "Main account: €3,482.10", "Lisa Park  +€120.00", "Rent  -€950.00"]
+    bug: "The balance and transactions are visible in the snapshot."
+    explain: "Anyone glancing at the phone can read them. Banking and health apps should blur the snapshot or cover it with the logo."
+  - type: spotbug
+    screen: ["Clock: 10:12", "Balance: €1,240.00", "Updated 9:41", "(Away 30 min, session is 15 min)"]
+    bug: "Expired session still shows personal data with a stale balance."
+    explain: "On return the app should check the session and show login right away, not old data that fails on the first action."
+  - type: tip
+    title: "Test on an old phone"
+    text: "Fast phones with lots of memory almost never kill apps. An older, low-memory device and long gaps (minutes, hours, overnight) reveal far more bugs."

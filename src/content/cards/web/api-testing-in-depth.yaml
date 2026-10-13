@@ -1,0 +1,46 @@
+teaser: "Every test in the collection was green, and the API was leaking password hashes for months. What were the tests not looking at?"
+cards:
+  - type: flip
+    front: "What are the three parts of a JWT?"
+    back: "Header, payload and signature, separated by dots. Header and payload are just base64url-encoded JSON, so anyone can read them."
+  - type: truefalse
+    statement: "If you can decode a JWT, you've proven it's genuine."
+    answer: false
+    explain: "Decoding only turns base64url back into JSON. Only the server, with its secret key, can verify the signature."
+  - type: quiz
+    q: "You edit a JWT's role from customer to admin and call an admin endpoint. What should you get?"
+    options: ["401 Unauthorized", "200 OK", "403 Forbidden"]
+    answer: 0
+    explain: "The edited payload no longer matches the signature, so the token is invalid. Invalid credentials mean 401."
+  - type: thisorthat
+    prompt: "A customer's valid token calls GET /admin/users."
+    left: "401"
+    right: "403"
+    answer: right
+    explain: "The server knows who you are, you're just not allowed. 401 is for missing, invalid or expired credentials."
+  - type: spotbug
+    screen: ["As Anna: GET /orders/1043", "200 OK", "customer: Ben Okafor", "address: 48 Harbor Rd"]
+    bug: "Anna can read Ben's order (IDOR)."
+    explain: "Another user's object must return 404 or 403 with no data. The server isn't checking ownership."
+  - type: quiz
+    q: "POST /orders without the required items field returns 500. What should it return?"
+    options: ["201 Created", "500 is fine", "400 naming the field"]
+    answer: 2
+    explain: "A missing field is a predictable client mistake. The server should validate it and answer 4xx, not crash."
+  - type: spotbug
+    screen: ["PATCH /users/me", "200 OK", "phone: +1 555 0177", "passwordHash: $2b$12$Qm7c..."]
+    bug: "The response leaks the password hash."
+    explain: "A 200 isn't enough. Check the whole body: hashes, tokens, internal fields and stack traces must never appear."
+  - type: thisorthat
+    prompt: "DELETE /addresses/31 returned 200. What's your next request?"
+    left: "Delete it again"
+    right: "GET /addresses/31"
+    answer: right
+    explain: "Read after delete. It should be 404 and gone from the list. A 200 alone doesn't prove anything was deleted."
+  - type: truefalse
+    statement: "Sending the same Idempotency-Key twice with the same body should create only one order."
+    answer: true
+    explain: "The server recognizes the retry and returns the first response, so a lost response on a bad network doesn't mean two dinners."
+  - type: flip
+    front: "What should a rate-limited request return?"
+    back: "429 Too Many Requests, ideally with a Retry-After header saying how long to wait, and no side effect."

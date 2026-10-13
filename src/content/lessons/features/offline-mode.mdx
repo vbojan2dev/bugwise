@@ -1,0 +1,471 @@
+---
+title: Offline Mode
+description: What should work without a connection, how apps queue and sync changes when they're back online, how conflicts between devices are resolved, and how to test offline behavior on mobile and the web.
+order: 13
+level: intermediate
+minutes: { short: 35 }
+platform: both
+tags: [offline, sync, conflicts, mobile, pwa, data integrity]
+---
+
+import SyncConflictLab from '@/components/demos/offline-mode/SyncConflictLab';
+import { BuggyShoppingList } from '@/components/demos/offline-mode/BuggyShoppingList';
+
+Mia is in the supermarket basement, where her phone has no signal. She opens the family shopping list, ticks off what's in her trolley and adds "Oat milk" because Leo just texted her about it on the way down. Upstairs at the checkout, the list syncs. Leo, at home, still sees "Eggs" unticked and buys a second dozen on his way home. And "Oat milk"? It's on the list twice.
+
+Nothing crashed. No error appeared. But the app broke the one promise a shared list makes: **everyone sees the same thing, and nothing gets lost**. That's what offline testing is about. You already know how to simulate bad networks from [Network Conditions](/mobile/network-conditions). This lesson goes one level deeper: what the app does with your data while it's offline, and what happens when it comes back.
+
+## How it works
+
+### Online-only vs offline-first
+
+Every app sits somewhere on a scale:
+
+| Approach | What it means | Examples |
+| --- | --- | --- |
+| **Online-only** | Without a connection the app can only show an error | Live video, payments, ride-hailing, banking transfers |
+| **Offline-tolerant** | Shows saved content and blocks or queues some actions | News, shopping, social media, most e-commerce apps |
+| **Offline-first** | Saves everything on the device first and syncs in the background; the network is a bonus | Notes, to-do lists, email, maps with downloaded areas, music with downloads |
+
+Neither is "right". A bank transfer *should* refuse to go through offline. A note-taking app that refuses to save a note offline is broken. Your first question as a tester is always: **"What is this app supposed to do offline?"** If nobody can answer it, that's already a finding. In the glossary this is called <Term id="offline-mode" />.
+
+### What can work offline, and what can't
+
+| Usually works offline | Can't really work offline |
+| --- | --- |
+| Content you already loaded (<Term id="cache">cached</Term>): lists, articles, order history | Anything that needs fresh server data: live prices, stock, seat availability |
+| Drafts: notes, messages, forms, a half-written review | Payments and anything that moves money |
+| **Queued actions**: likes, "add to list", sent messages, uploads | Search over data that isn't on the device |
+| Downloaded media and map areas | Logging in for the first time, password reset, 2FA codes by SMS |
+
+The tricky middle ground is **queued actions**. The app pretends the action happened, stores it in a **queue** (a waiting list on the device), and sends it later. That's great for users and full of bugs.
+
+### Offline indicators
+
+Users need to know when they're offline, and what that means for them:
+
+- A **banner or label** ("You're offline. Changes will sync when you're back online.") that appears quickly and **disappears when the connection returns**.
+- **Per-item status** for queued work: "Waiting to send", a small clock icon, a greyed-out message.
+- **Disabled actions with a reason**: "Checkout needs an internet connection", not a button that silently does nothing.
+- **Stale data labels**: "Updated 2 h ago" or "Prices may have changed". Old data shown as if it were live is one of the most expensive offline bugs (a sale that ended, a balance that's wrong).
+
+### Syncing when you're back online
+
+<Steps>
+
+1. **Save locally first.** The change is written to the device's storage, so it survives an app restart or the OS killing the app in the background (see [Background and Foreground](/mobile/background-and-foreground)).
+2. **Put it in the queue.** Each change becomes a queue entry: "add Oat milk", "tick off Eggs", "delete Bread". The queue must be stored on disk too, not only in memory.
+3. **Notice the connection is back.** The app listens for network changes, and retries when it returns to the foreground. Don't trust the signal icon: a phone can be "connected" to Wi-Fi without internet.
+4. **Send the queue in order.** "Add Milk" must arrive before "rename Milk to Oat milk". Failed entries are retried, waiting a bit longer each time (<Term id="retry-backoff">retry with backoff</Term>).
+5. **Make repeats harmless.** A request can arrive at the server even though the app never got the answer, so the app sends it again. Each entry carries a unique ID so the server can recognize a repeat and ignore it. That's <Term id="idempotency" /> ([glossary](/glossary/idempotency)), and without it reconnects create duplicates.
+6. **Resolve conflicts.** If someone else changed the same thing in the meantime, the app needs a rule (see below).
+7. **Refresh and tell the user.** Fetch the latest data, clear the "waiting" badges, hide the offline banner, and report anything that couldn't be synced.
+
+</Steps>
+
+### Conflicts: two devices, one item
+
+A **conflict** happens when the same item is changed in two places before they've synced. Mia (offline) changes "Eggs × 6" to 12, while Leo (online) adds a note. There are three common strategies:
+
+| Strategy | What happens | Risk |
+| --- | --- | --- |
+| **Last write wins** | Whoever syncs last replaces the whole item | Silent data loss: the other person's change just disappears |
+| **Merge** | Changes to *different* fields are combined; same field still needs a rule | Works well until both edit the same field |
+| **Ask the user** | The app shows both versions: keep mine, keep theirs, keep both | Safe, but annoying if it happens often |
+
+Try them. Change who syncs last and what Leo edits:
+
+<SyncConflictLab client:visible />
+
+<Callout type="tip" title="Your job is not to pick the strategy">
+
+The team decides the strategy. Your job is to find out **which one they chose**, test that it behaves that way, and check that the user is never surprised. "Last write wins" can be fine for a profile photo. It's a bug magnet for a shared list or a document.
+
+</Callout>
+
+Watch out for one more hidden trap: **timestamps**. If the app decides "last" by the phone's clock, a phone with the wrong time (manually set, or a different <Term id="time-zone" /> handled badly) wins or loses unfairly, and lists sort in a strange order. Reliable apps let the **server** decide order and time.
+
+### Storage limits
+
+Offline data has to live somewhere, and space isn't unlimited:
+
+- **Phones:** when storage is almost full, iOS and Android can clear app **caches** without asking. Users can also tap "Clear cache" or "Offload app". Anything important (drafts, the queue) must not live in a cache folder.
+- **Big downloads:** offline maps, playlists and videos need clear sizes ("1.2 GB"), a warning when space is low, and a way to delete them.
+- **Browsers:** websites get a storage quota, and Safari can delete a site's stored data if the user hasn't visited it for about a week (web apps added to the Home Screen are treated differently). So a website should never be the *only* place an unsynced change lives for long. More on browser storage in [Cookies, sessions and storage](/web/cookies-sessions-and-storage).
+
+### On the web: PWAs and service workers
+
+A **Progressive Web App (PWA)** is a website that can be "installed" to the home screen and work offline. The piece that makes offline possible is a **service worker**: a small script the browser runs in the background, between the page and the network. It can answer requests from a saved copy when the network is gone, and keep the app shell (layout, scripts, icons) available offline. Data is usually stored in <Term id="indexeddb" />.
+
+For testers, service workers mean two things: offline pages can work even with the network off, and **old versions can stick around**. A service worker can keep serving yesterday's files until it updates. "I still see the old design" after a release is often a service worker, not your imagination.
+
+## Example requirements
+
+<Callout type="example" title="User story: Shared shopping list works offline">
+
+**As a** family member doing the shopping, **I want to** use our shared list without signal **so that** I can tick off items and add new ones in the supermarket basement.
+
+**Acceptance criteria**
+
+1. The list opens offline with the last synced content, and an offline banner is shown within 2 seconds of losing the connection.
+2. Adding, renaming, ticking off and deleting items work offline. Changes show a "waiting to sync" indicator.
+3. Offline changes survive an app restart and a phone restart.
+4. When the connection returns, changes are synced **automatically, once, in the order they were made**, and the banner disappears.
+5. Changes made on one phone appear on other online phones within 5 seconds.
+6. If the same item was changed on two phones, changes to different fields are merged. If the same field was changed, the app shows a conflict message and lets the user choose.
+7. A deleted item stays deleted after sync, on every phone.
+8. The list is ordered by the time items reached the server, not by the phone's clock.
+9. Offline actions that can't work (sharing the list with a new person) are disabled with an explanation.
+
+</Callout>
+
+Criteria 3, 4 ("once"), 6 and 7 are the ones that catch real bugs. Notice that none of them say "it works offline". Good offline requirements describe what happens **after** offline.
+
+## What usually goes wrong
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Queue not persisted** | Items added offline vanish after a restart or after the OS kills the app | High |
+| 2 | **Duplicates after reconnect** | The queue is sent twice (or retried without an idempotency key) | High |
+| 3 | **Silent overwrite** | Last write wins with no warning; the other person's change is lost | High |
+| 4 | **Stale data on other devices** | One phone shows old content until a manual refresh or restart | Medium–High |
+| 5 | **Banner stuck** | "You're offline" stays after the connection returns, or never appears | Medium |
+| 6 | **Deleted items come back** | Offline deletes aren't queued, so the next sync restores them | Medium |
+| 7 | **Wrong order** | Items sorted or merged by the device clock; a phone with the wrong time scrambles the list | Medium |
+| 8 | **Old data shown as current** | Cached prices or balances with no "last updated" hint | High |
+| 9 | **Endless "waiting to sync"** | One failing entry blocks the whole queue forever, with no error shown | High |
+| 10 | **Logged out offline** | The session expires offline and the app throws away unsynced changes | High |
+
+## Find the bug
+
+The family shopping list below is open on **Mia's** and **Leo's** phones. Each phone has its own **Online/Offline** switch and a **Restart app** button. The sync log shows every request that reaches the server. There are **six bugs**. Try this:
+
+- Add items on each phone, online and offline. Compare the order and the times.
+- Go offline, make changes, then **restart the app** before going online again.
+- Go offline, make changes, go back online. Count the items.
+- Tick off or rename the same item on both phones (tap an item's name to rename it). Look at the other phone.
+- Delete an item offline, then reconnect.
+- Watch the banner after you reconnect.
+
+<BugHunt
+  title="Shared shopping list"
+  bugs={[
+    {
+      title: 'Items added offline are lost after restarting the app',
+      hint: 'Switch Mia offline, add an item, then tap Restart app (still offline).',
+      detail: 'After the restart the list shows the last synced version, and the new item and the "waiting to sync" counter are gone. When Mia goes online, nothing is sent. The queue only lived in memory. Expected: the queue is saved on the device, so offline changes survive restarts, crashes and the OS killing the app.',
+    },
+    {
+      title: 'Reconnecting sends the queue twice and creates duplicates',
+      hint: 'Switch Mia offline, add "Oat milk", then switch her back online.',
+      detail: 'The sync log shows <code>POST /items "Oat milk"</code> twice, both answered with <code>201</code>, and the item appears twice on both phones. Two parts of the app react to the reconnect and both flush the queue, and the server has no way to recognize the repeat. Expected: one request per change, with a unique ID so the server ignores repeats (<em>idempotency</em>).',
+    },
+    {
+      title: 'Edits silently overwrite each other, and the other phone shows stale data',
+      hint: 'Rename "Eggs" on Leo’s phone. Then switch Mia offline, rename "Eggs" differently and reconnect. Or just tick off an item while both are online.',
+      detail: 'The server accepts the last <code>PATCH</code> without checking whether the item changed since Mia last saw it, so Leo’s change is lost with no warning. Worse, edits and ticks are never sent to the other phone: Leo keeps seeing the old name until he taps refresh or restarts. Expected: changes reach other online phones within seconds, and a real conflict is merged or shown to the user.',
+    },
+    {
+      title: 'The offline banner never disappears',
+      hint: 'Switch a phone offline, then back online. Wait.',
+      detail: 'The banner appears correctly, but stays after the connection returns, even though the sync itself works. Only <strong>Restart app</strong> removes it. Users think they’re still offline and stop trusting the app. Expected: the banner hides as soon as the connection is back.',
+    },
+    {
+      title: 'Items deleted offline come back after syncing',
+      hint: 'Switch Leo offline, delete "Bread", then reconnect.',
+      detail: 'The delete is applied on the phone but never queued: the log shows no <code>DELETE</code> request. When the app refreshes from the server after reconnecting, "Bread" is back. Adds and edits are queued, deletes are not. Expected: offline deletes are queued and synced like any other change.',
+    },
+    {
+      title: 'New items from Leo jump to the top of the list',
+      hint: 'Add an item on each phone, one after the other. Look at the order and the times, and at the clocks in the status bars.',
+      detail: 'The list is sorted by the time each phone puts on the item. Leo’s phone clock is an hour behind, so his brand-new "17:45" item sorts above Mia’s "18:02" Bread. Expected: the server decides the order (its own time or a sequence number), so a wrong device clock can’t scramble the list.',
+    },
+  ]}
+>
+  <BuggyShoppingList client:visible />
+</BugHunt>
+
+<Callout type="tip" title="Notice what works">
+
+Restarting **offline** still shows the last synced list (good caching). Queued items get a "waiting to sync" badge and a counter. Items added or deleted while both phones are online appear on the other phone straight away. Comparing the working parts with the broken ones makes your bug reports sharper: "Adds reach the other phone, edits don't."
+
+</Callout>
+
+<Callout type="example" title="How would you report bug #2?">
+
+**Title:** Sync: items added offline are created twice after reconnecting
+
+**Environment:** iPhone 15, iOS 18.1, Family List 2.3.0 (build 412), Wi-Fi
+
+**Steps:** 1. Turn on airplane mode. 2. Add "Oat milk". 3. Turn airplane mode off. 4. Wait 5 seconds.
+
+**Expected:** "Oat milk" appears once on all phones. One `POST /items` request.
+**Actual:** "Oat milk" appears twice on both phones. The proxy log shows two identical `POST /items` requests 30 ms apart, both `201 Created`, without an idempotency key.
+
+**Severity:** High · **Reproducible:** 5/5
+
+</Callout>
+
+## Test scenarios
+
+### Functional
+
+- Open the app offline: cached content appears with an offline indicator. First launch offline (nothing cached) shows a helpful empty state, not an endless spinner.
+- Every offline-capable action works offline and shows a "waiting" status: add, edit, delete, like, send.
+- Actions that need the network are disabled or explained, never silently dropped.
+- Reconnect: the queue syncs **automatically**, once, in order, and the indicator disappears.
+- Changes reach the other devices of the same user (and other users of shared data).
+- Stale content is labeled ("Updated 2 h ago") and refreshes when the connection is back.
+
+### Negative
+
+- The server rejects a queued change (validation error, item deleted meanwhile, no permission any more). The user is told which change failed and why.
+- The session expires while offline. After logging in again, the queued changes are still there and get sent.
+- Airplane mode on **during** a sync, halfway through the queue.
+- Storage almost full while saving offline data or downloading content.
+
+### Edge cases
+
+- **Toggle mid-action:** go offline while a request is on its way (between tapping Save and the answer). Nothing lost, nothing doubled.
+- **Long offline periods:** a day or a week offline with many queued changes. Does sync still work? In order? Fast enough?
+- **Two devices** editing the same item, the same field, and different fields. Delete on one, edit on the other.
+- **Restart and kill** the app with a non-empty queue, offline. Also reboot the phone.
+- **Flaky network:** connection on and off every few seconds (elevator, train). No duplicates, no stuck queue.
+- **Wrong device clock** or a different time zone on one device.
+- **Captive portal** Wi-Fi that looks connected but isn't (see [Network Conditions](/mobile/network-conditions)).
+- **Log out** with unsynced changes: the app warns before throwing them away.
+
+### UI & usability
+
+- The offline banner appears quickly, doesn't cover content or buttons, and hides when back online.
+- Queued items are clearly marked, and the user can tell when everything is synced.
+- Conflict messages are understandable to a non-technical person and offer clear choices.
+- Error messages for failed syncs say what failed and what to do next.
+
+### Security
+
+- Offline data is stored in the app's private storage, and sensitive data (health, banking) is encrypted or not stored offline at all.
+- Logging out deletes offline data and the queue (after warning about unsynced changes), so the next person on a shared device can't see it.
+- The server checks permissions for queued changes when they arrive, not only when they were made. Someone removed from a shared list while offline must not be able to change it on reconnect.
+
+### Accessibility
+
+- The offline banner and sync status changes are announced by screen readers (a polite live region), not shown only with color or an icon.
+- "Waiting to sync" icons have a text alternative.
+- Conflict dialogs are fully usable with VoiceOver, TalkBack and the keyboard.
+
+## How to test offline behavior
+
+The tools for cutting and slowing the network are covered in [Network Conditions](/mobile/network-conditions) and [Proxy Tools](/mobile/proxy-tools). Here is how to use them for offline and sync testing.
+
+<Tabs labels={['Mobile', 'Web', 'Two devices', 'Proxies']}>
+<Tab>
+
+- **<Term id="airplane-mode" />** is the quickest switch. Remember that you can turn Wi-Fi back on while airplane mode is on, so check the status bar before each test.
+- **Turn off only Wi-Fi or only mobile data** to test network switching rather than full offline.
+- **Kill and restart** the app with a non-empty queue: swipe it away, or `adb shell am force-stop <package>` on Android and `xcrun simctl terminate booted <bundle id>` in the iOS Simulator.
+- **Simulate the OS killing the app** in the background (see [Background and Foreground](/mobile/background-and-foreground)), then reconnect: does the queue still sync?
+- **Wrong clock:** in Settings, turn off automatic date & time and set the clock an hour back on one device.
+- **Low storage:** fill a test device with large files and try offline downloads and saving.
+
+</Tab>
+<Tab>
+
+In Chrome <Term id="devtools" />:
+
+- **Network tab → throttling → Offline** cuts the network for the current tab. Toggle it in the middle of a save.
+- **Application tab → Service workers:** see whether a service worker is active, tick **Offline**, use **Update on reload** to avoid old cached versions, or **Unregister** it to start fresh.
+- **Application tab → Storage:** look at <Term id="indexeddb" />, Cache Storage and <Term id="local-storage" /> to see what's saved for offline use. **Clear site data** simulates a first visit.
+- Test with several **tabs** open: a change made offline in one tab should appear in the others after sync.
+- Don't rely on the browser's "online" flag alone: a laptop on a network without internet still reports itself as online.
+
+</Tab>
+<Tab>
+
+Sync bugs only appear with **two devices** (or two browsers, or a phone and a website) on the **same account**:
+
+<Steps>
+
+1. Log in with the same account on device A and device B.
+2. Put A offline. Change item X on A, and change the same item X on B.
+3. Bring A back online. Check both devices **without refreshing**: what do they show? Was anyone warned?
+4. Repeat with: the same field, different fields, a delete on one side and an edit on the other, and an add on both sides.
+5. Write down which device synced last, and the exact times. Conflict bugs are hard to reproduce without them.
+
+</Steps>
+
+</Tab>
+<Tab>
+
+A [proxy tool](/mobile/proxy-tools) like Charles or Proxyman is the best way to **see** sync traffic:
+
+- Count the requests after reconnecting: one per queued change, or doubles?
+- Check that each request carries an ID that stays the same on retries (often a header such as `Idempotency-Key`, or an ID in the body).
+- Use a **breakpoint** to hold a sync request, then cut the network. Release it later and see whether the app sends it again and what the server does.
+- Make the server return an error (500, 409 Conflict) for one queued change and check that the rest of the queue still syncs.
+
+</Tab>
+</Tabs>
+
+## Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-OFF-001',
+      title: 'List opens offline with cached content and a banner',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['List was synced online before', 'Airplane mode on'],
+      steps: ['Kill the app', 'Open the app'],
+      expected: 'The last synced list is shown. An offline banner appears within 2 seconds.',
+    },
+    {
+      id: 'TC-OFF-002',
+      title: 'Offline changes survive an app restart',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Airplane mode on'],
+      steps: ['Add "Oat milk"', 'Tick off "Eggs"', 'Delete "Bread"', 'Kill and reopen the app', 'Turn airplane mode off'],
+      expected: 'After reopening, all three changes are still visible with a "waiting to sync" status. After reconnecting, they sync and appear on other devices.',
+    },
+    {
+      id: 'TC-OFF-003',
+      title: 'Reconnect sends each queued change once',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Proxy tool recording traffic', 'Airplane mode on'],
+      steps: ['Add 3 items', 'Turn airplane mode off', 'Count the requests in the proxy and the items on both devices'],
+      expected: 'Exactly 3 POST requests, each with a unique idempotency key. Each item appears once on every device.',
+    },
+    {
+      id: 'TC-OFF-004',
+      title: 'Offline delete stays deleted',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['"Bread" is on the list on devices A and B'],
+      steps: ['Put device A offline', 'Delete "Bread" on A', 'Bring A back online', 'Check A and B without refreshing'],
+      expected: '"Bread" is gone on both devices and does not come back after a refresh.',
+    },
+    {
+      id: 'TC-OFF-005',
+      title: 'Same field edited on two devices',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Devices A and B logged in to the same account'],
+      steps: ['Put A offline', 'Rename "Eggs" to "Eggs × 12" on A', 'Rename "Eggs" to "Eggs (free range)" on B', 'Bring A back online'],
+      expected: 'A conflict message is shown on A with both versions. The chosen version appears on both devices. No change is lost without the user knowing.',
+    },
+    {
+      id: 'TC-OFF-006',
+      title: 'Offline banner hides after reconnecting',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['App open, airplane mode on, banner visible'],
+      steps: ['Turn airplane mode off', 'Wait 5 seconds without touching the app'],
+      expected: 'The banner disappears and the list refreshes without a restart.',
+    },
+    {
+      id: 'TC-OFF-007',
+      title: 'Wrong device clock does not change the order',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Device B clock set one hour behind (automatic time off)'],
+      steps: ['Add "Apples" on A', 'Then add "Milk" on B', 'Check the order on both devices'],
+      expected: '"Milk" appears after "Apples" on both devices (server order).',
+    },
+  ]}
+/>
+
+## Mobile vs web
+
+<Tabs labels={['Mobile app', 'Website']}>
+<Tab>
+
+- Apps can store a lot of data and a durable queue in their own storage, so users expect **real** offline support from native apps.
+- The OS can kill the app at any time in the background. A queue that only lives in memory is lost. Test kill and restart with a full queue.
+- Background sync is limited: iOS and Android decide when background work may run (battery, Low Power Mode, Data Saver). Test what happens when the user simply reopens the app.
+- Phones switch networks constantly (Wi-Fi ↔ mobile data, tunnels), which triggers many small offline moments, not one long one.
+- Updating the app with unsynced changes in the queue must not lose them (see [Install, Update, Uninstall](/mobile/install-update-uninstall)).
+
+</Tab>
+<Tab>
+
+- Most websites are online-only: offline, the browser shows its own error page. That's acceptable for many sites, but forms should never lose typed text because of a short drop.
+- **PWAs** use a service worker and IndexedDB to work offline. Test with DevTools offline mode, and after a release check that the service worker updates and doesn't keep serving old files.
+- Storage is limited and can be cleared by the browser or the user ("Clear browsing data", private windows). Safari can remove data of sites that haven't been used for a while.
+- Multiple tabs share the same storage: two tabs syncing the same queue at once is a classic source of duplicates.
+- Background Sync (sending queued work after the tab is closed) is only available in Chromium-based browsers, so test the queue in Safari and Firefox too.
+
+</Tab>
+</Tabs>
+
+## Checklist
+
+<Checklist
+  title="Offline mode checklist"
+  storageKey="offline-mode"
+  items={[
+    'It is clear (and written down) what the app should do offline',
+    'Cached content opens offline and is labeled with its age',
+    'An offline indicator appears quickly and disappears when the connection returns',
+    'Offline actions show a waiting status; network-only actions are disabled with a reason',
+    'Queued changes survive app restarts, kills and phone reboots',
+    'Reconnecting syncs automatically, once, in the right order (no duplicates)',
+    'Deletes, edits and adds made offline all sync correctly',
+    'Changes reach other devices without a manual refresh',
+    'Conflicts follow the agreed strategy and never lose data silently',
+    'Order and times come from the server, not the device clock',
+    'Failed sync entries are reported and do not block the rest of the queue',
+    'Logging out or expiring sessions handle unsynced changes safely',
+    'Storage limits and cleared caches do not lose drafts or queued changes',
+    'Web: service worker updates, DevTools offline mode and multiple tabs were tested',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A user adds three items offline, reconnects, and each item appears twice. Which concept was missing?',
+      options: ['Caching', 'Idempotency: the server should recognize and ignore repeated requests', 'Dark mode', 'A bigger timeout'],
+      answer: 1,
+      explain: 'Reconnects and retries can send the same change twice. A unique ID per change lets the server ignore repeats, so the result is the same no matter how often it arrives.',
+    },
+    {
+      q: 'Items added offline disappear when the app is restarted before reconnecting. What is the most likely cause?',
+      options: ['The server deleted them', 'The offline queue was stored only in memory, not on the device', 'The phone clock is wrong', 'The banner was hidden'],
+      answer: 1,
+      explain: 'Anything not written to storage is lost when the app process ends. The queue must be saved on the device.',
+    },
+    {
+      q: 'Two people edit the same item; the second sync replaces the first without any message. Which strategy is this?',
+      options: ['Merge', 'Ask the user', 'Last write wins', 'Offline-first'],
+      answer: 2,
+      explain: 'Last write wins keeps whoever synced last. It is simple, but the other change is lost silently, which is a bug for shared data.',
+    },
+    {
+      q: 'Which of these should usually NOT be queued to run later while offline?',
+      options: ['Adding an item to a shopping list', 'Sending a chat message', 'Paying for an order', 'Liking a photo'],
+      answer: 2,
+      explain: 'Payments need a confirmed answer from the server right now. They should be blocked offline with a clear message, not silently queued.',
+    },
+    {
+      q: 'After a release, a PWA still shows the old design for some users. What is a likely cause?',
+      options: ['The service worker is still serving the old cached files', 'The user is in airplane mode', 'IndexedDB is full', 'The server time zone'],
+      answer: 0,
+      explain: 'Service workers cache the app shell. Until the new service worker takes over, the browser can keep serving old files. Check it in DevTools → Application → Service workers.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- First find out what the app **should** do offline: online-only, offline-tolerant or offline-first.
+- Good offline apps show cached content with its age, mark queued work, disable what can't work, and hide the offline indicator when the connection returns.
+- The queue must be **saved on the device**, synced **once** and **in order**, with an ID per change so repeats are ignored (<Term id="idempotency" />).
+- Conflicts need a clear strategy (last write wins, merge, or ask). Silent data loss and stale data on other devices are the classic bugs.
+- Test with airplane mode, toggling mid-action, restarts with a full queue, flaky networks, two devices on one account, a wrong clock, and a proxy to count sync requests.
+
+</KeyTakeaways>

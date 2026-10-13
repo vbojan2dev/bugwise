@@ -1,0 +1,413 @@
+---
+title: Pagination
+description: Splits a long list into pages with Prev, Next and page numbers. Learn numbered pages vs "Load more" vs infinite scroll, why the page belongs in the URL, and the boundary bugs hiding on page 1, the last page and page 999.
+category: navigation
+aka: [Paging, Page numbers, Load more]
+platforms: [ios, android, web]
+minutes: 35
+order: 5
+---
+
+import Anatomy from '@/components/demos/pagination/Anatomy';
+import PatternsCompare from '@/components/demos/pagination/PatternsCompare';
+import Playground from '@/components/demos/pagination/Playground';
+import ShiftingData from '@/components/demos/pagination/ShiftingData';
+import { BuggyProductList } from '@/components/demos/pagination/BuggyProductList';
+
+You're shopping for a tent. You scroll to the bottom of page 1, tap **2**, and the first tent on page 2 is... the last tent from page 1. You open a promising one on page 3, press **Back**, and you're on page 1 again. You give up and buy somewhere else.
+
+Pagination looks like a row of small numbers. Underneath, it's **arithmetic** (which items belong on page 3?), **state** (where was the user?) and **boundaries** (page 1, the last page, page 0, page 999). Those three are exactly where testers find bugs.
+
+## What is it?
+
+<Term id="pagination">Pagination</Term> splits a long list (products, search results, orders, transactions) into **pages** that load one at a time. The user moves with **Previous / Next** and **page numbers**. Pages keep each request small and fast, and give users a sense of *where they are*: page 5 of 16.
+
+You'll meet it in web shops and search results, bank transaction histories, admin tables, and in the API behind almost every list in a mobile app, even when the app hides it behind a "Load more" button or <Term id="infinite-scroll" />.
+
+### Anatomy
+
+<Anatomy />
+
+### Numbered pages, "Load more" or infinite scroll?
+
+There are three common ways to reveal the rest of a long list. Each one is valid in the right place. Switch between them and try to reach the footer:
+
+<PatternsCompare client:visible />
+
+| Pattern | Best for | Watch out for |
+| --- | --- | --- |
+| **Numbered pages** | Search results, shops, tables, anything users compare or come back to | Tiny targets on phones, wrong page math |
+| **"Load more" button** | Mobile lists, product grids | Losing loaded items and position after Back |
+| **Infinite scroll** | Social feeds, photo streams, "just browsing" | Unreachable footer, no sense of position, memory, accessibility |
+
+<Callout type="info" title="It's pagination underneath anyway">
+"Load more" and infinite scroll still fetch **pages** from the server (`?page=2`, `?cursor=abc`). So the page-math bugs on this page (duplicates, missing items, the last page) apply to all three patterns. For search results specifically, see [Search, filters & sorting](/features/search-filters-and-sorting).
+</Callout>
+
+## Designs & variants
+
+- **Full pager (web, desktop):** ‹ 1 … 4 **5** 6 … 16 ›. Shows first, last, the current page and its neighbors, with an ellipsis for the gaps.
+- **Compact pager (phones):** ‹ Prev · Page 5 of 16 · Next ›. Fewer, bigger targets. Material and Apple's guidelines don't define a numbered pager; mobile apps usually prefer "Load more" or infinite scroll.
+- **Prev / Next only:** for feeds or cursor-based APIs where the total isn't known.
+- **With a page size selector:** "Per page: 20 / 50 / 100", common in tables and admin tools.
+- **With a result summary:** "Showing 81–100 of 312". Small text, many bugs.
+
+## When to use it
+
+- Users need to **find, compare and come back to** items: shops, search results, statements, admin tables.
+- The list is **long** (hundreds or thousands of items) and loading everything would be slow.
+- The page should be **shareable or bookmarkable** ("look at page 3 of the sale").
+- There is important content **below the list**: a footer, filters, contact details.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Short list, show it all">
+
+A settings screen with 14 options, or a cart with 6 items. Just show the list.
+
+</Do>
+<Dont title="Pages for a handful of items">
+
+"Page 1 of 2" for 12 notifications. Users have to tap to see the last two, and gain nothing.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Infinite scroll for a feed">
+
+A photo feed users browse without a goal. Nobody needs to come back to "page 7".
+
+</Do>
+<Dont title="Infinite scroll on a shop with a footer">
+
+The *Returns* and *Contact* links in the footer run away every time the user scrolls toward them.
+
+</Dont>
+</Compare>
+
+## How good pagination behaves
+
+### The page lives in the URL
+
+On the web, the current page (and page size, sort, filters) belongs in the address: a <Term id="query-parameter" /> like `shop.example.com/products?page=3&size=20`. That single decision makes **Back**, **Refresh**, **bookmarks** and **shared links** all work. If the URL never changes, Back from a product takes the user to page 1, and a refresh throws away their place.
+
+In apps, the same idea applies: after opening an item and going back, the list must be **exactly where it was**: same page, same loaded items, same scroll position.
+
+### The math is right at every boundary
+
+Page *n* shows items `(n − 1) × size + 1` to `n × size`, but **never more than the total**. Classic <Term id="boundary-value-analysis" /> applies; test these pages every time:
+
+| Page | What should happen |
+| --- | --- |
+| **1** | Prev disabled. Items 1–20. |
+| **2** | Starts with item 21. Nothing from page 1 repeats. |
+| **Last (16)** | Next disabled. "Showing 301–312 of 312". Only 12 items. |
+| **0, −1, abc** | Redirect to page 1 (or a clear error). Never a crash. |
+| **999** | A helpful "This page doesn't exist" with a link to the last page. Not an endless spinner. |
+
+<Callout type="bug" title="The off-by-one">
+If page 2 starts with the **last item of page 1**, someone wrote `offset = (page − 1) × size − 1`. If an item is **skipped**, the offset is one too big. Both are <Term id="off-by-one-error">off-by-one errors</Term>. To spot them, always compare the **last item of one page** with the **first item of the next**.
+</Callout>
+
+Also check the edges of the data, not just of the pager: **0 results** (an empty state, no pager), **exactly one page** (no pager, or both arrows disabled), **exactly 20 items with 20 per page** (one page, not two with an empty second one), and a **last page with exactly one item**.
+
+### Changing the page size lands somewhere sensible
+
+On page 8 with 20 per page, the user switches to 50 per page. There are now only 7 pages, so "page 8" doesn't exist. Good apps go back to page 1, or better, to the page that contains the item the user was looking at (item 141 → page 3). Same rule when a **filter** reduces the results: never leave the user on a page that no longer exists.
+
+### Data that changes between pages
+
+Lists aren't frozen. While you read page 1, new listings get posted and others sell out. With **offset** pagination ("skip 20, take 20"), that shifts everything: you see **duplicates** when items are added, and **miss items** when items are removed. **Cursor** pagination ("20 items after item X") largely avoids it, because each page starts right after the last item you actually received. Try both:
+
+<ShiftingData client:visible />
+
+As a tester you can't choose the strategy, but you can find the bug: open page 1, have someone (or an admin tool, or a second device) add or delete items, then go to page 2. Report duplicates and missing items with the exact items involved.
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Off-by-one offset** | Last item of page 1 repeats on page 2, or one item is never shown | High |
+| 2 | **Wrong result summary** | "Showing 301–320 of 312" on the last page | Low |
+| 3 | **Next enabled on the last page** | Leads to an empty page or an error | Medium |
+| 4 | **Out-of-range page** | `?page=999` shows an endless spinner, a crash or a blank page | Medium |
+| 5 | **Page size change keeps the page** | Page 8 of 7: an empty list | Medium |
+| 6 | **Page not in the URL** | Back, refresh or a shared link always open page 1 | Medium–High |
+| 7 | **Duplicates or gaps after data changes** | The same item twice, or items missing across pages | Medium |
+| 8 | **Wrong total** | "16 pages" but page 16 is empty, or the count ignores a filter | Medium |
+| 9 | **Tiny targets on phones** | 24 px page numbers, users hit 4 instead of 5 | Medium |
+| 10 | **Filters/sort reset when paging** | Page 2 shows unsorted, unfiltered results | High |
+
+## Stress-test it
+
+A correct pager on a correct list. The page and page size are in the URL. Try the browser Back and Reload buttons, type `?page=999`, `?page=0` or `?page=abc` in the address, switch **Results** to 0 or 7, and change **Per page** while you're on the last page.
+
+<Playground client:visible />
+
+## Find the bug
+
+This web shop lists **312 products, 20 per page**, and has **six bugs**. Explore it like a tester:
+
+- Compare the **last product on page 1** with the **first one on page 2**.
+- Go to the **last page** (16) and read everything on it. Then look at the arrows.
+- Use the links panel: a bookmark to `?page=3` and an old link to `?page=999`. Watch the **Network** log.
+- Go to page 8 and change **Per page**.
+- Go to page 3, open a product, then use the browser's **Back** (and try **Reload**).
+
+<BugHunt
+  title="Outdoor gear list"
+  bugs={[
+    {
+      title: 'The last product of page 1 appears again on page 2',
+      hint: 'Note the last product on page 1, then go to page 2.',
+      detail: 'The app requests <code>offset=19</code> for page 2 (see the Network log) instead of <code>offset=20</code>. The code computes <code>(page − 1) × size − 1</code>, an <em>off-by-one error</em>. Every page after page 1 starts one item early, so users see duplicates.',
+    },
+    {
+      title: 'The result summary is wrong on the last page',
+      hint: 'Go to page 16 and read the text under the title.',
+      detail: 'It says <strong>Showing 301–320 of 312</strong>, although there are only 312 products. The end of the range must be <code>min(page × size, total)</code>: 301–312. (And because of bug 1, page 16 actually shows 13 items.)',
+    },
+    {
+      title: 'Next is enabled on the last page and leads to an empty page',
+      hint: 'On page 16, look at the › arrow and tap it.',
+      detail: 'Next is only disabled when <code>page &gt; totalPages</code>, so on page 16 it still works and opens a blank “page 17”: the API answers 404 and the app shows an empty grid. Expected: Next is disabled on the last page.',
+    },
+    {
+      title: '?page=999 shows an endless spinner',
+      hint: 'Open the shop.example.com/products?page=999 link and wait. Check the Network log.',
+      detail: 'The API answers <code>404 out_of_range</code>, but the first-load code ignores errors, so “Loading products…” spins forever. Old bookmarks and links from emails hit this. Expected: a message like “Page 999 doesn’t exist, there are 16 pages” with a link to the last page.',
+    },
+    {
+      title: 'Changing the page size keeps a page that no longer exists',
+      hint: 'Go to page 8, then set Per page to 50 or 100.',
+      detail: 'With 50 per page there are only 7 pages, but the app stays on page 8 and shows an empty list (and a summary like 351–400 of 312). Expected: go to page 1, or to the page that contains the first item the user was looking at.',
+    },
+    {
+      title: 'Back from a product (and Reload) returns to page 1',
+      hint: 'Go to page 3, open a product, press the browser Back button.',
+      detail: 'The address never changes while paging: it stays <code>/products</code>. So Back, Reload and shared links all start at page 1. The app even reads <code>?page=3</code> when you open that link, it just never writes it. Expected: the URL updates to <code>?page=3</code> and Back returns there.',
+    },
+  ]}
+>
+  <BuggyProductList client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Product list: last product of page 1 is repeated as first product of page 2
+
+**Steps:** 1. Open shop.example.com/products. 2. Note the last product on page 1 ("Tundra Backpack"). 3. Go to page 2.
+
+**Expected:** Page 2 starts with product 21 ("Umber Backpack"). No product appears on two pages.
+**Actual:** Page 2 starts with "Tundra Backpack" again. The request is `GET /api/products?offset=19&limit=20` (expected `offset=20`). The same shift happens on every later page.
+
+**Severity:** High (users see duplicates and can't trust the list) · **Reproducible:** 10/10 · **Environment:** Chrome 141, staging
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Pagination test checklist"
+  storageKey="pagination"
+  items={[
+    'Page 1: Prev disabled, items 1 to N, summary correct',
+    'Last item of each page is not repeated on the next page, and no item is skipped',
+    'Last page: Next disabled, summary ends at the total (301–312 of 312), only the remaining items shown',
+    'Totals at the edges: 0 results (empty state, no pager), exactly one page, a last page with one item',
+    'URL contains the page: refresh, Back, Forward, bookmarks and shared links keep it',
+    'Invalid pages (?page=0, -1, abc, 3.5) redirect to page 1 or show a clear error',
+    'Out-of-range pages (?page=999) show a helpful message, not a spinner or blank screen',
+    'Changing the page size, sort or filters never leaves you on a page that does not exist',
+    'Sort order and filters are kept when moving between pages',
+    'Adding or removing items between page loads does not cause duplicates or gaps (or it is a known, accepted risk)',
+    'After opening an item and going back, the list is on the same page and scroll position',
+    'Pager targets are at least 44×44 pt (iOS) / 48×48 dp (Android) on touch screens',
+    'Keyboard: every control reachable with Tab, visible focus, Enter activates',
+    'Screen reader: pager is a navigation landmark, current page announced as current, ellipsis not read',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-PAG-001',
+      title: 'No duplicates between page 1 and page 2',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['312 products, 20 per page', 'Sorted by "Newest"'],
+      steps: ['Open the product list', 'Note the last product on page 1', 'Go to page 2'],
+      expected: 'Page 2 starts with product 21. The last product of page 1 does not appear on page 2.',
+    },
+    {
+      id: 'TC-PAG-002',
+      title: 'Last page boundaries',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['312 products, 20 per page'],
+      steps: ['Go to page 16'],
+      expected: '12 products are shown, the summary says "Showing 301–312 of 312", Next is disabled.',
+    },
+    {
+      id: 'TC-PAG-003',
+      title: 'Page survives Back and refresh',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Go to page 3', 'Open any product', 'Press the browser Back button', 'Refresh the page'],
+      expected: 'Both times the list shows page 3 and the URL contains ?page=3.',
+    },
+    {
+      id: 'TC-PAG-004',
+      title: 'Page number beyond the last page',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Open shop.example.com/products?page=999'],
+      expected: 'A message explains the page does not exist and offers a link to the last page (16). No endless spinner. The server responds 404 (or redirects).',
+    },
+    {
+      id: 'TC-PAG-005',
+      title: 'Invalid page values',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Open ?page=0', 'Open ?page=-1', 'Open ?page=abc', 'Open ?page=2.5'],
+      data: 'page = 0, -1, abc, 2.5',
+      expected: 'Each URL redirects to page 1 or shows a clear error. No crash, no empty list, no "Showing -19–0".',
+    },
+    {
+      id: 'TC-PAG-006',
+      title: 'Changing page size on a late page',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Go to page 8 (20 per page)', 'Change Per page to 50'],
+      expected: 'The list shows an existing page (page 3, containing item 141, or page 1). The URL and summary are updated.',
+    },
+    {
+      id: 'TC-PAG-007',
+      title: 'Filter and sort are kept across pages',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Filter by "Tents" and sort by "Price: low to high"', 'Go to page 2 and page 3'],
+      expected: 'Every page only shows tents, prices keep increasing across pages, and the filter chips stay selected.',
+    },
+    {
+      id: 'TC-PAG-008',
+      title: 'Screen reader announces the current page',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Turn on VoiceOver or NVDA', 'Navigate to the pager by landmarks', 'Move to the current page number'],
+      expected: 'The pager is announced as a "Pagination" navigation landmark and the current page as "Page 3, current page". The ellipsis is not read.',
+    },
+  ]}
+/>
+
+### Tools
+
+- **The URL bar** is your best tool: edit `?page=` and `?size=` by hand to hit every boundary in seconds.
+- **DevTools › Network** (see [DevTools for testers](/web/devtools-for-testers)): filter by the API path and check `page`, `offset`, `limit` or `cursor` for each click. An `offset=19` on page 2 is a bug you can prove.
+- **API directly** ([Postman](/web/api-testing-with-postman)): request the last page, `page=0`, a negative page and a huge page; check status codes and the `total` field.
+- **Mobile apps:** use a [proxy tool](/mobile/proxy-tools) (Charles, Proxyman) to see the paging requests behind "Load more" and infinite scroll.
+
+## Accessibility
+
+- **Landmark.** The pager is a navigation landmark, so <Term id="screen-reader" /> users can jump straight to it. If there are two pagers (top and bottom), label them differently or keep only one.
+  <DevNote>Wrap the pager in `<nav aria-label="Pagination">`.</DevNote>
+- **Current page.** Mark it with a visual style that isn't only color (bold, filled background). Screen readers then say "Page 3, current page".
+  <DevNote>Mark it with `aria-current="page"`.</DevNote>
+- **Real links or buttons.** Page numbers should be links or buttons. Give arrow-only controls an accessible name: "Previous page", "Next page". Hide the ellipsis from screen readers.
+  <DevNote>Links like `<a href="?page=3">`, not clickable `<span>`s.</DevNote>
+- **Disabled states.** Prev on page 1 and Next on the last page should be disabled *and* announced as dimmed or unavailable, not just greyed out with a working click.
+- **<Term id="keyboard-navigation">Keyboard</Term>.** Everything reachable with <kbd>Tab</kbd>, visible focus, <kbd>Enter</kbd> activates. After changing page, move focus to the top of the results (or the results heading) so keyboard users don't have to tab back up through the whole page.
+- **<Term id="touch-target">Touch targets</Term>.** At least 44×44 pt on iOS and 48×48 dp on Android. On the web, WCAG 2.5.8 (AA) asks for at least 24×24 CSS px, and 44×44 px (2.5.5, AAA) is the comfortable target. A row of ten 24 px numbers is a classic mobile failure; a compact "Page 3 of 16" with big Prev/Next buttons is better.
+- **Infinite scroll** is hard for keyboard and screen reader users: new items appear without notice and the footer is unreachable. Offer a "Load more" button or a way to pause loading.
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- No native numbered pager. Lists usually load the next page when the user nears the end (infinite scroll) or show a **Load more** row.
+  <DevNote>`UITableView`, SwiftUI `List`.</DevNote>
+- Test on a slow network: is there a loading row at the bottom? What happens if loading fails: a **Retry** button, or a silent dead end?
+- Pull to refresh while on "page 3" of loaded items: does the list reset cleanly without duplicates?
+- Open an item, go back: the list must keep every loaded item and the scroll position.
+
+</Tab>
+<Tab>
+
+- Lists usually load pages as you scroll.
+  <DevNote>`RecyclerView` with the Paging library, or a `LazyColumn` in Compose.</DevNote>
+- Check **rotation** and **process death** (Developer options › *Don't keep activities*): does the list come back on the same position, or restart from the top?
+- Fast scrolling ("fling") through hundreds of items: watch for duplicates, gaps, placeholders that never fill and jumps in position.
+- Use **airplane mode** mid-scroll: a clear error row with Retry, not an endless spinner.
+
+</Tab>
+<Tab>
+
+- Numbered pagination is most common here. The page must be in the **URL**: test Back, Forward, Refresh, bookmarks and shared links.
+- Edit the URL by hand: `?page=0`, `?page=999`, `?page=abc`, `?size=10000` (does the server cap the size?).
+- Check the **responsive** layout: at 360 px, does the pager wrap neatly, switch to a compact version, or overflow the page?
+- Search engines index paginated pages: every page should have its own URL and return 200; non-existent pages should return 404, not an empty 200 page.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'The last product on page 1 is also the first product on page 2. What is the most likely cause?',
+      options: ['Slow network', 'An off-by-one error in the offset', 'A caching problem in the browser', 'Correct behavior'],
+      answer: 1,
+      explain: 'Page 2 should start at offset 20 (20 per page). Starting at 19 repeats the last item of page 1: a classic off-by-one.',
+    },
+    {
+      q: 'There are 312 products and 20 per page. What should the summary say on the last page?',
+      options: ['Showing 301–320 of 312', 'Showing 301–312 of 312', 'Showing 300–312 of 312', 'Showing 16 of 16'],
+      answer: 1,
+      explain: 'Page 16 starts at item 301, and the end of the range is capped at the total: 312.',
+    },
+    {
+      q: 'A user goes to page 3, opens a product and presses Back. They land on page 1. What is the root cause most likely to be?',
+      options: ['The page is not stored in the URL', 'The server is too slow', 'The page size is too big', 'The Back button is broken'],
+      answer: 0,
+      explain: 'If ?page=3 is never written to the URL, Back, refresh and shared links can only start from page 1.',
+    },
+    {
+      q: 'Which pattern makes the footer (Help, Contact) hard or impossible to reach?',
+      options: ['Numbered pages', 'Load more button', 'Infinite scroll'],
+      answer: 2,
+      explain: 'With infinite scroll, new items keep loading as you approach the bottom, pushing the footer away.',
+    },
+    {
+      q: 'You are on page 8 (20 per page, 312 items) and switch to 50 per page. What is a good result?',
+      options: ['Stay on page 8', 'Go to page 3, which contains item 141', 'Show an error', 'Go to the last page'],
+      answer: 1,
+      explain: 'Page 8 no longer exists (there are 7 pages). Jumping to the page with the item the user was looking at keeps their place. Page 1 is also acceptable.',
+    },
+    {
+      q: 'Which attribute tells screen reader users which page they are on?',
+      options: ['aria-selected="true"', 'aria-current="page"', 'aria-pressed="true"', 'role="tab"'],
+      answer: 1,
+      explain: 'aria-current="page" marks the current item in a set of navigation links, like a pager.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- Pagination is **math, state and boundaries**. Always compare the last item of one page with the first of the next.
+- Test **page 1, page 2, the last page, page 0, page 999** and invalid values like `abc`.
+- The page belongs in the **URL** so Back, refresh and shared links work. In apps, the list must keep its place after going back.
+- Changing the **page size, sort or filters** must never leave the user on a page that doesn't exist.
+- Data that changes between page loads causes **duplicates and gaps** with offset paging.
+- Choose the pattern on purpose: **numbered pages** to find and return, **Load more** for mobile lists, **infinite scroll** for feeds only.
+- Accessibility: a **nav landmark**, `aria-current="page"`, real links or buttons, and **44 pt / 48 dp** touch targets.
+
+</KeyTakeaways>

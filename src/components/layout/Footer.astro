@@ -1,0 +1,47 @@
+---
+import Logo from './Logo.astro';
+import NewsletterForm from '@/components/islands/NewsletterForm';
+import { newsletter, sections, site } from '@/data/site';
+import { href } from '@/lib/url';
+---
+
+<footer class="mt-24 border-t border-line bg-subtle/60">
+  <div class="container-page grid gap-10 py-14 md:grid-cols-[1.3fr_2fr]">
+    <div class="max-w-sm space-y-3">
+      <Logo />
+      <p class="text-sm leading-relaxed text-muted">{site.description}</p>
+      {
+        newsletter.kitFormId && (
+          <div class="space-y-2 pt-3">
+            <h3 class="text-sm font-semibold">Get new lessons by email</h3>
+            <p class="text-sm text-muted">New lessons, interview tips and early access to the upcoming Automation track. About once a month.</p>
+            <NewsletterForm client:visible formId={newsletter.kitFormId} compact />
+          </div>
+        )
+      }
+    </div>
+    <div class="grid grid-cols-2 gap-8 sm:grid-cols-3">
+      <div>
+        <h3 class="mb-3 text-xs font-semibold tracking-wider text-faint uppercase">Learn</h3>
+        <ul class="space-y-2 text-sm">
+          {sections.slice(0, 4).map((s) => <li><a class="text-muted hover:text-fg" href={href('/' + s.id)}>{s.title}</a></li>)}
+        </ul>
+      </div>
+      <div>
+        <h3 class="mb-3 text-xs font-semibold tracking-wider text-faint uppercase">Practice</h3>
+        <ul class="space-y-2 text-sm">
+          {sections.slice(4).map((s) => <li><a class="text-muted hover:text-fg" href={href('/' + s.id)}>{s.title}</a></li>)}
+        </ul>
+      </div>
+      <div>
+        <h3 class="mb-3 text-xs font-semibold tracking-wider text-faint uppercase">About</h3>
+        <ul class="space-y-2 text-sm">
+          <li><a class="text-muted hover:text-fg" href={href('/about')}>About Bugwise</a></li>
+          <li><a class="text-muted hover:text-fg" href={href('/bites')}>Bites: quick review</a></li>
+          <li><a class="text-muted hover:text-fg" href={href('/capstone')}>Capstone project</a></li>
+          <li><a class="text-muted hover:text-fg" href={href('/progress')}>Your progress</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</footer>

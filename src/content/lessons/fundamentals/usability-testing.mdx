@@ -1,0 +1,352 @@
+---
+title: Usability Testing Basics
+description: What usability is (and how it differs from accessibility and UX), Nielsen's 10 usability heuristics, moderated and unmoderated tests, think-aloud, the five-user guideline, SUS, and how to report usability problems with evidence so they get fixed.
+order: 10.4
+level: beginner
+minutes: { short: 11, long: 15 }
+platform: both
+tags: [fundamentals, usability, ux, non-functional, heuristics]
+---
+
+import HeuristicEvaluation from '@/components/demos/usability-testing/HeuristicEvaluation';
+
+A fitness app redesigns its Account screen. Every test case passes: the name saves, the units switch, the account can be deleted. Two weeks after release, support tickets pile up: "How do I get out of this screen?", "Did my changes save?", and, worst of all, "I deleted my account by accident and lost three years of workouts."
+
+Nothing was *broken*. The app did exactly what the spec said. It was just **hard to use**, and a tester who knew what to look for could have flagged every one of those problems before release.
+
+## What is usability?
+
+<Term id="usability-testing">Usability</Term> is how **easily, quickly and pleasantly** the intended people can reach their goals with a product. The ISO 9241-11 standard puts it in three words: **effectiveness** (can they do it?), **efficiency** (how much effort does it take?) and **satisfaction** (how does it feel?), for specific users, goals and situations.
+
+<Callout type="example" title="An everyday analogy">
+
+Think of a hotel shower. It works: water comes out, it gets hot. But the knob has no markings, turning it left makes it hotter on one floor and colder on another, and the shampoo shelf is out of reach. Nothing is broken, yet every guest struggles. That's a usability problem, and you only notice it by watching people use the thing.
+
+</Callout>
+
+### Usability, accessibility and UX
+
+These three overlap, and people mix them up:
+
+| | Question | Example problem |
+| --- | --- | --- |
+| **Usability** | Can people reach their goal easily? | "Save" gives no feedback, users tap it five times |
+| **Accessibility** | Can people with disabilities use it at all? | A screen reader can't name an icon button |
+| **UX** (user experience) | How does the whole experience feel, before, during and after use? | The onboarding email, the app and the support chat feel like three different companies |
+
+Accessibility is a large topic with its own standard (WCAG), covered in [Accessibility Basics](/web/accessibility-basics). UX is the broadest: usability is one important part of it. This lesson focuses on usability.
+
+<Short>
+
+## The quick version
+
+### Nielsen's 10 usability heuristics
+
+<Term id="usability-heuristics" /> are rules of thumb for good interaction design. The best known are Jakob Nielsen's 10 heuristics from Nielsen Norman Group:
+
+1. **Visibility of system status**: always show what's going on.
+2. **Match between the system and the real world**: use the users' words, not internal jargon.
+3. **User control and freedom**: offer Back, Cancel and Undo.
+4. **Consistency and standards**: same action, same look and wording; follow platform conventions.
+5. **Error prevention**: stop mistakes before they happen (for example, confirm destructive actions).
+6. **Recognition rather than recall**: show options instead of making people remember them.
+7. **Flexibility and efficiency of use**: shortcuts for experienced users that don't confuse new ones.
+8. **Aesthetic and minimalist design**: no clutter competing with what matters.
+9. **Help users recognize, diagnose, and recover from errors**: plain-language error messages with a way forward.
+10. **Help and documentation**: easy-to-find, task-focused help when it's needed.
+
+### Two ways to find usability problems
+
+- **Heuristic evaluation:** testers or designers review the screens against the heuristics. Fast, no users needed.
+- **Usability testing with users:** real people try realistic tasks while you watch, often thinking aloud. Slower, but shows real behavior. Testing with **about 5 users per round** is a well-known guideline from Jakob Nielsen for small, repeated rounds, not a law.
+
+### Report it like a bug, with evidence
+
+A usability report says **what you observed**, **who it affects and how**, which **heuristic or guideline** it breaks, and a **severity**. "4 of 5 participants couldn't find the way back" gets fixed; "I don't like this screen" doesn't.
+
+<Callout type="tip">
+
+Switch to **Detailed** for each heuristic with mobile and web examples, moderated vs unmoderated tests, think-aloud, the five-user guideline and its limits, the System Usability Scale, and a full reporting template with severity levels.
+
+</Callout>
+
+</Short>
+
+<Long>
+
+## Nielsen's 10 usability heuristics, with examples
+
+Jakob Nielsen developed his heuristics with Rolf Molich in 1990 and refined them into the list of 10 in 1994. Nielsen Norman Group still publishes them, with lightly updated wording, and they remain the most widely used checklist for interface reviews. A <Term id="heuristic" /> is a rule of thumb: breaking one doesn't automatically mean a bug, but it's a strong hint.
+
+| # | Heuristic | A typical violation in an app |
+| --- | --- | --- |
+| 1 | Visibility of system status | Tapping Pay shows nothing for 4 seconds |
+| 2 | Match between the system and the real world | A toggle labeled "Enable telemetry payload" |
+| 3 | User control and freedom | A full-screen promo with no close button |
+| 4 | Consistency and standards | "Save" on one screen, "Apply" and "Update" on others for the same action |
+| 5 | Error prevention | "Delete all workouts" runs with one tap |
+| 6 | Recognition rather than recall | "Enter your plan code from the welcome email" instead of a list of plans |
+| 7 | Flexibility and efficiency of use | No way to reorder a favorite meal; frequent users rebuild it every time |
+| 8 | Aesthetic and minimalist design | Checkout buries the total under six banners |
+| 9 | Help users recognize, diagnose, and recover from errors | "Error 422" instead of "Weight must be more than 0" |
+| 10 | Help and documentation | Help center only reachable from the website footer |
+
+Two of them deserve extra attention from testers, because they overlap with things you already check:
+
+- **Heuristic 1** is behind every [loading state](/glossary/loading-state), progress bar and [toast](/components/toast) you test.
+- **Heuristic 9** is about [error messages](/glossary/error-message): what went wrong, in plain words, and how to fix it.
+
+## Heuristic evaluation
+
+In a <Term id="heuristic-evaluation" />, evaluators walk through the product and note every place that breaks a heuristic. Nielsen recommends **three to five evaluators** working **separately** first, because each person spots different problems, then merging their lists and rating severity together.
+
+<Steps>
+
+1. **Agree on the scope and the users.** "New customers ordering for the first time, on a phone."
+2. **Walk through realistic tasks**, not just screens: "change your delivery address", "cancel your subscription".
+3. **Note each problem** with the screen, what happens, and the heuristic it breaks.
+4. **Merge and rate severity** as a group.
+5. **Report** the important ones with evidence (see below).
+
+</Steps>
+
+It's cheap and fast, and testers do a light version of it every day without calling it that. Its weakness: it **predicts** problems. Real users may stumble on things no evaluator expected, and shrug at things evaluators worried about.
+
+## Usability testing with real users
+
+### Moderated and unmoderated
+
+| | Moderated | Unmoderated |
+| --- | --- | --- |
+| Setup | A facilitator runs the session, in person or on a video call | Participants do tasks alone, guided by a tool that records the screen and voice |
+| Strength | You can ask follow-up questions and see hesitation | Cheaper, faster, more participants, natural environment |
+| Weakness | Takes time; the facilitator can influence people | No follow-up questions; unclear tasks can't be fixed mid-session |
+
+### Think-aloud
+
+The <Term id="think-aloud">think-aloud protocol</Term> asks participants to say what they're thinking: "I'm looking for the address… I'd expect it under Profile… no, maybe Settings?" That running commentary explains **why** people struggle, not just where.
+
+Good facilitation is mostly about **not helping**:
+
+- Give **realistic tasks**, not instructions: "You're moving next week. Make sure your next order goes to the new address." Not: "Tap Profile, then Addresses."
+- Stay **neutral**: "What are you thinking?" rather than "Did you see the button at the top?"
+- **Watch what people do**, not only what they say. People often succeed while saying it was hard, or fail while saying it was fine.
+
+### How many users? The five-user guideline
+
+Jakob Nielsen's well-known guideline (from his 2000 article "Why You Only Need to Test with 5 Users", based on earlier research with Tom Landauer) says that **about 5 participants usually reveal most of the usability problems** in a small qualitative test. His model estimated around 85%, under the assumption that a typical problem affects roughly a third of users.
+
+Read it as a guideline, not a law:
+
+- It's meant for **iterative** testing: test with 5, fix what you found, test again with 5. Several small rounds beat one big one.
+- It applies **per distinct user group**. Testing both shoppers and restaurant owners means about 5 of each.
+- It's for **qualitative** tests (finding problems). Measuring things like success rates or timings precisely needs many more participants.
+- **Rare problems** that affect few users can easily be missed by 5 people.
+
+### The System Usability Scale (SUS)
+
+The <Term id="sus">System Usability Scale</Term> is a short questionnaire created by John Brooke in 1986. Participants rate 10 statements (like "I found the system unnecessarily complex") from "strongly disagree" to "strongly agree". The answers convert to a score from **0 to 100**. It's not a percentage: a score of around 68 is often quoted as average. SUS is useful for **comparing** versions or products over time, not for finding specific problems.
+
+## Testing usability without real users
+
+Most testers can't run formal studies every sprint. You can still find a lot:
+
+- **Heuristic walkthroughs** of new screens, like the one in the practice below.
+- **Platform guidelines:** Apple's Human Interface Guidelines and Google's Material Design describe expected patterns, like where Back lives and how destructive actions are confirmed. Breaking them violates heuristic 4.
+- **Hallway tests:** ask a colleague who has never seen the feature to try one task while you watch quietly. Five minutes, often eye-opening.
+- **Real-world signals:** support tickets, app store reviews and analytics (where do people drop out of a flow?).
+- **Fresh eyes:** your own first impression of a feature is valuable data. Write it down before you get used to it.
+
+## Reporting usability problems so they get fixed
+
+This is where many testers struggle. "This is confusing" sounds like an opinion, and opinions are easy to dismiss. A good usability report is built from **evidence** and **impact**.
+
+<Compare>
+<Do title="Evidence and impact">
+
+**Title:** Account screen has no way back; users get stuck
+
+**Observed:** The Account screen has no Back or Close control (iOS 18, iPhone 15). In a hallway test, 3 of 5 colleagues tried tapping the title, then asked how to leave.
+
+**Impact:** Users who open Account by mistake can only escape by guessing the edge swipe. Likely support tickets.
+
+**Heuristic:** 3, User control and freedom. Also differs from every other screen in the app (4).
+
+**Severity:** 3, major.
+
+</Do>
+<Dont title="Opinion">
+
+**Title:** Account screen is bad
+
+**Description:** I don't like the new Account screen, it's confusing and the design is weird. Please make it better.
+
+</Dont>
+</Compare>
+
+### What to include
+
+- **What you observed**, as facts: the screen, the steps, what happened. Screenshots or a short screen recording.
+- **Who and how many:** "3 of 5 participants", "new users", "on small phones". Quotes from think-aloud are powerful.
+- **User impact:** time lost, errors made, tasks abandoned, money or data at risk.
+- **The heuristic or guideline** it breaks, as a shared reference, not as a weapon.
+- **A severity rating.**
+- **A suggestion is optional.** Describe the problem first; the designer owns the solution.
+
+If the screen matches the spec but still causes problems, say so clearly ("works as specified, but users can't find it"): that's a [validation](/fundamentals/verification-vs-validation) finding, and it's just as valuable.
+
+### Severity for usability problems
+
+Nielsen suggests rating usability problems on a 0 to 4 scale, judged by three factors: **frequency** (how many users hit it), **impact** (how hard it is to overcome) and **persistence** (once, or every time).
+
+| Rating | Meaning | Example |
+| --- | --- | --- |
+| 0 | Not a usability problem | A reviewer's personal taste |
+| 1 | Cosmetic, fix if there's time | Slightly uneven spacing in a list |
+| 2 | Minor, low priority | Jargon in a rarely used setting |
+| 3 | Major, important to fix | Save gives no feedback, users repeat it |
+| 4 | Catastrophe, fix before release | One tap deletes the account with no confirmation |
+
+Your team's bug tracker probably uses its own severity levels (critical, major, minor…). Map honestly: a usability catastrophe can be just as severe as a crash. See [severity vs priority](/fundamentals/severity-vs-priority) and [writing bug reports](/tutorials/writing-bug-reports).
+
+</Long>
+
+## Practice: evaluate a confusing screen
+
+First **use** the screen: try to change your name, fix the goal weight, switch plans and leave. Then switch to **Evaluate**, tap each area that bothered you and tag the heuristic it breaks. Some areas are fine. When you get one right, you'll see how a tester would report it.
+
+<HeuristicEvaluation client:visible />
+
+## Example test cases
+
+Usability checks can be written as test cases too, as long as the expected result is observable.
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-UX-01',
+      title: 'Saving profile changes gives visible feedback',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open Account', 'Change the name to "Mia Chen-Park"', 'Tap Save'],
+      expected: 'A confirmation such as a toast "Changes saved" appears within 1 second, and the Save control shows it is done or disabled until the next change.',
+    },
+    {
+      id: 'TC-UX-02',
+      title: 'Deleting the account asks for confirmation',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Open Account', 'Tap Delete account'],
+      expected: 'A confirmation explains that workouts and history will be deleted permanently, with Cancel as the safe default; nothing is deleted until the user confirms.',
+    },
+    {
+      id: 'TC-UX-03',
+      title: 'Goal weight error says what is wrong and how to fix it',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Open Account', 'Enter -5 in Goal weight'],
+      data: 'goal weight: -5',
+      expected: 'A message in plain language, such as "Goal weight must be more than 0 kg", appears next to the field.',
+    },
+    {
+      id: 'TC-UX-04',
+      title: 'Account screen can be left with a visible Back control',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Open Account from the Profile tab', 'Look for a way back'],
+      expected: 'A Back (or Close) control is visible in the top bar and returns to Profile, matching the other screens.',
+    },
+  ]}
+/>
+
+## Checklist
+
+<Checklist
+  title="Usability quick check for a new screen"
+  storageKey="usability-testing"
+  items={[
+    'Every action shows feedback: loading, success or failure',
+    'Labels and messages use the users’ words, not internal terms or codes',
+    'There is a visible way back, cancel or undo',
+    'Same actions look and read the same as on other screens and follow platform conventions',
+    'Destructive actions ask for confirmation or can be undone',
+    'Options are shown, not remembered from somewhere else',
+    'Error messages say what went wrong and how to fix it',
+    'I did a 5-minute hallway test with someone new to the feature',
+    'My reports include evidence, impact, heuristic and severity',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "Which statement best describes the difference between usability and accessibility?",
+      options: [
+        "They are the same thing",
+        "Usability is about how easily people reach their goals; accessibility is about whether people with disabilities can use the product at all",
+        "Accessibility is only about colors",
+        "Usability is only tested by designers",
+      ],
+      answer: 1,
+      explain: "They overlap, but accessibility focuses on people with disabilities (WCAG), while usability covers how easy, efficient and pleasant the product is for its intended users.",
+    },
+    {
+      q: "Tapping Save shows no toast, no checkmark and no change. Which heuristic is broken?",
+      options: ["Help and documentation", "Visibility of system status", "Aesthetic and minimalist design", "Flexibility and efficiency of use"],
+      answer: 1,
+      explain: "Users should always know what's going on. Without feedback they can't tell if their changes were saved.",
+    },
+    {
+      q: "'Delete account' runs immediately on one tap. Which heuristic does that violate most directly?",
+      options: ["Error prevention", "Recognition rather than recall", "Match between the system and the real world", "Help and documentation"],
+      answer: 0,
+      explain: "A destructive, permanent action needs a confirmation or undo to prevent accidental mistakes.",
+    },
+    {
+      q: "What does the 'about 5 users' guideline actually say?",
+      options: [
+        "Every usability study needs exactly 5 participants",
+        "About 5 users per round usually reveal most problems in small qualitative tests, best repeated in several rounds",
+        "5 users find 100% of problems",
+        "Quantitative studies need only 5 users",
+      ],
+      answer: 1,
+      explain: "It's Jakob Nielsen's guideline for iterative, qualitative testing per user group, not a law. Rare problems and precise measurements need more participants.",
+    },
+    {
+      q: "Which usability report is most likely to get fixed?",
+      options: [
+        "'The settings screen is ugly'",
+        "'I would never design it like this'",
+        "'3 of 5 participants couldn’t find the way back from Account; no Back control (heuristic 3); severity 3'",
+        "'Users will hate this'",
+      ],
+      answer: 2,
+      explain: "Evidence (what was observed, how many), impact, a shared reference (the heuristic) and a severity turn an opinion into an actionable finding.",
+    },
+    {
+      q: "What is the System Usability Scale (SUS)?",
+      options: [
+        "A list of 10 design rules",
+        "A 10-question questionnaire that gives a score from 0 to 100",
+        "A percentage of tasks completed",
+        "A tool that finds usability bugs automatically",
+      ],
+      answer: 1,
+      explain: "SUS turns 10 agree/disagree ratings into a 0–100 score. It's good for comparing versions, but it doesn't tell you what the problems are.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- **Usability** = how easily, efficiently and pleasantly users reach their goals. **Accessibility** is about people with disabilities; **UX** is the whole experience.
+- **Nielsen's 10 heuristics** are a shared checklist for spotting problems: status, real-world language, control, consistency, error prevention, recognition, efficiency, minimalism, error recovery, help.
+- **Heuristic evaluation** predicts problems quickly; **testing with users** (moderated or unmoderated, often **think-aloud**) shows real behavior.
+- **About 5 users per round** is a guideline for small, repeated qualitative tests, not a law.
+- **SUS** gives a 0–100 score to compare versions; it doesn't find specific problems.
+- Report usability problems with **evidence, user impact, the heuristic and a severity**, never just an opinion.
+
+</KeyTakeaways>

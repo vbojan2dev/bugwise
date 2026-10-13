@@ -1,0 +1,439 @@
+---
+title: Bottom Sheet
+description: A panel that slides up from the bottom of the screen. Learn modal and standard sheets, detents and drag handles, every way to dismiss one, and the scroll, keyboard and lost-choice bugs testers find in them.
+category: feedback
+aka: [Sheet, Drawer (bottom), Action sheet (iOS)]
+platforms: [ios, android, web]
+minutes: 35
+order: 3
+---
+
+import Anatomy from '@/components/demos/bottom-sheet/Anatomy';
+import VariantsGallery from '@/components/demos/bottom-sheet/VariantsGallery';
+import Playground from '@/components/demos/bottom-sheet/Playground';
+import { BuggyDeliveryApp } from '@/components/demos/bottom-sheet/BuggyDeliveryApp';
+import { StaticSheet, Rows, Field } from '@/components/demos/bottom-sheet/Static';
+
+You're about to order dinner and tap **Delivery time**. A panel slides up from the bottom with time slots. You pick 19:30, scroll to see later slots... and the whole panel slides away. Did it save 19:30 or not? You can't tell. That panel is a **bottom sheet**, and that moment of doubt is a bug.
+
+Bottom sheets are everywhere on phones: sort and filter options, share menus, maps, music players, checkout choices. They feel natural because they sit where your thumb is. But they mix **two gestures in one place** (scroll the content, drag the sheet), they have **many exits**, and they often hold **unsaved choices**. Let's learn them properly.
+
+## What is a bottom sheet?
+
+A bottom sheet is a **surface that slides up from the bottom edge and shows extra content or options** related to the current screen. It can usually be **dragged** to different heights and **swiped down** to close.
+
+There are two kinds, and testers must know which one they're looking at:
+
+- **Modal bottom sheet**: sits on top of the page behind a dim **scrim**, blocks everything else and must be closed before you continue. It's a <Term id="modal" /> that happens to come from the bottom. Example: *Sort by*, *Share*, *Choose delivery time*.
+- **Standard (persistent) bottom sheet**: lives **next to** the main content, without a scrim. You can still use the page behind it. Example: the list of places under a map, the mini player in a music app.
+
+### Anatomy
+
+<Anatomy />
+
+### How it differs from similar components
+
+| Component | Blocks the page? | Can resize? | Typical use |
+| --- | --- | --- | --- |
+| **Modal bottom sheet** | Yes (scrim) | Often (detents) | Options, filters, a short task |
+| **Standard bottom sheet** | No | Yes (peek / half / full) | Results under a map, a mini player |
+| **iOS action sheet** | Yes | No | A few actions about one item, plus Cancel |
+| **Dialog** | Yes | No | A short decision in the middle of the screen |
+| **Full-screen page** | Replaces it | No | Long forms and multi-step tasks |
+
+<Callout type="dev" title="Platform names">
+Apple calls them **sheets**. They can stop at heights called **detents** (*medium* is about half the screen, *large* is almost full), and the little bar on top is the **grabber**. The short list of actions with a separate Cancel is an **action sheet** (now built as a *confirmation dialog*). Material Design says **bottom sheet** (*modal* or *standard*) and **drag handle**. On the web you'll hear **bottom sheet**, **drawer** or **bottom drawer**. In bug reports, use your team's name and say which kind it is.
+</Callout>
+
+## Designs & variants
+
+Each demo below is fully working. Open it, drag it, and close it every way you can.
+
+<VariantsGallery client:visible />
+
+### Modal or standard?
+
+Ask one question: **can I still use the page behind it?**
+
+- If **no**, it's modal: there must be a scrim, taps must not reach the page, focus must stay inside, and there must be a clear way out.
+- If **yes**, it's standard: there's no scrim, the page behind must keep working (zoom the map, tap a pin), and it usually can't be dismissed, only collapsed to a "peek" height.
+
+A sheet that dims the page but still lets taps through, or that blocks the page without dimming it, is mixing the two. That's a bug, or at least a design finding.
+
+## When to use it
+
+A bottom sheet is a good choice when:
+
+- The task is **short and related to the current screen**: pick a sort order, choose a time slot, share a link.
+- The user benefits from **seeing the screen behind** (a map, a product) while choosing.
+- There are **a few options or one small form** that fit comfortably at the first height.
+- The content should be **within thumb reach** on a phone.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Short, focused choice">
+
+<div class="not-prose demo-screen my-3"><StaticSheet label="A sheet titled Sort by with four options and a check on Recommended" title="Sort by" left="Cancel"><Rows items={['Recommended', 'Most popular', 'Price: low to high', 'Name A–Z']} checked={0} /></StaticSheet></div>
+
+One decision, all options visible, and Cancel in reach.
+
+</Do>
+<Dont title="A long form in a sheet">
+
+<div class="not-prose demo-screen my-3"><StaticSheet label="A sheet titled Add card with many form fields cut off at the bottom" title="Add card" left="Cancel" right="Save" sheetHeight={82}><Field label="Name on card" /><Field label="Card number" /><Field label="Expiry date" /><Field label="CVC" /><Field label="Billing address" /><Field label="Postcode" /></StaticSheet></div>
+
+Fields are cut off, the keyboard will cover half of them, and one accidental swipe throws everything away. Use a full screen.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="A visible way out">
+
+<div class="not-prose demo-screen my-3"><StaticSheet label="A sheet titled Delivery time with Cancel on the left and Done on the right" title="Delivery time" left="Cancel" right="Done"><Rows items={['ASAP · 25–35 min', '12:00 – 12:15', '12:15 – 12:30']} checked={1} /></StaticSheet></div>
+
+Swipe down works, but so do **Cancel** and **Done**, for anyone who can't swipe.
+
+</Do>
+<Dont title="Gestures only">
+
+<div class="not-prose demo-screen my-3"><StaticSheet label="A sheet titled Delivery time with no buttons in the header" title="Delivery time"><Rows items={['ASAP · 25–35 min', '12:00 – 12:15', '12:15 – 12:30']} checked={1} /></StaticSheet></div>
+
+No buttons at all. Is the choice saved? How do switch control or keyboard users close it?
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Tester mindset">
+Watch for **sheets on top of sheets** (*Filters* → *Choose brand* → *Confirm*). Each one adds exits, heights and lost-data risks. If a flow stacks more than one sheet, or a sheet holds a long form, raise it as a **usability** finding early.
+</Callout>
+
+## How a good bottom sheet behaves
+
+### Heights and dragging
+
+A sheet opens at a **defined height** (often medium, or just tall enough for its content) and can snap between a few heights, called **detents**. Dragging the grabber up expands it; dragging down collapses it to the next height, or closes it from the lowest one. When you let go between heights, it should **snap** to the nearest one. A fast flick should go one step in the flick's direction.
+
+It should also **reopen at its default height** every time, and never show up cut off, empty, or taller than the screen.
+
+### Scroll vs drag
+
+This is where most sheet bugs live. A sheet with a long list has two things that move with the same finger movement. The rule real apps follow:
+
+<Steps>
+
+1. **Dragging up** on the content first expands the sheet to its largest height, then scrolls the list.
+2. **Dragging down** on the content scrolls the list back up. Only when the list is **at the very top** does a downward drag start moving the sheet down.
+3. **The grabber and header** always move the sheet, never the list.
+
+</Steps>
+
+If dragging the list moves the sheet even when it's scrolled down, users can't scroll, and they close the sheet when they only wanted to see earlier items.
+
+### Every way to close a modal sheet
+
+| Exit | Where | What must happen |
+| --- | --- | --- |
+| **Cancel / X / Close** | Everywhere | Closes, changes nothing |
+| **Swipe down** | iOS, Android, often mobile web | Same as Cancel |
+| **Tap the scrim** | Everywhere | Same as Cancel. The tap must **not** reach the page behind |
+| **System Back** | Android (button or gesture) | Closes the sheet first, not the screen behind |
+| **Esc key** | Web; hardware keyboards on phones and tablets | Same as Cancel |
+| **Screen reader escape** | VoiceOver two-finger Z, TalkBack Back | Same as Cancel |
+| **Done / Apply / Confirm** | Everywhere | The **only** exit that saves the choice |
+
+<Callout type="warning" title="The golden rule">
+Every exit except the confirm button means **"cancel"**. A swipe must never **save** a choice the user didn't confirm, and must never **silently throw away** a half-filled form either. If there are unsaved changes, block the swipe and ask *"Discard changes?"*, which is what iOS apps do when they disable interactive dismissal. Some sheets apply each choice instantly (a sort order) and have no Confirm at all; that's fine, as long as it's consistent and clear.
+</Callout>
+
+### The keyboard
+
+When a field inside the sheet gets focus, the keyboard takes up **about 40% of the screen**. The sheet must move up so the **focused field and the main button stay visible**. If the sheet is tall, its content should shrink and scroll rather than push the header off the top of the screen. Test in portrait **and** landscape, where very little space is left.
+
+### Small screens, landscape and large text
+
+Test on the **smallest supported phone**, in **landscape**, and at the **largest text size** (<Term id="dynamic-type" /> on iOS, Font size on Android). The header and the main button must stay reachable, the content must scroll, and the sheet must respect the <Term id="safe-area" /> so the home indicator doesn't cover the last button.
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Scroll fights drag** | Dragging the list moves the sheet; you can't scroll, or you close it by accident | High |
+| 2 | **Keyboard covers the field** | The text field or Save button is hidden behind the keyboard | High |
+| 3 | **Dismiss loses or saves silently** | A swipe throws away a half-filled form, or applies a choice you never confirmed | High |
+| 4 | **Taps go through the scrim** | Tapping the dimmed area also presses a button on the page behind | Medium–High |
+| 5 | **Gesture-only closing** | No Cancel or X; Esc, Back and screen reader escape don't work | High (for affected users) |
+| 6 | **Wrong height** | Reopens half-collapsed, cut off, or taller than the screen on small phones | Medium |
+| 7 | **Page behind scrolls** | Scrolling inside the sheet also scrolls the page under it | Medium |
+| 8 | **Focus stays behind** | The screen reader keeps reading the page, not the sheet | High (for affected users) |
+| 9 | **Stuck or jumpy animation** | The sheet stops between heights or bounces after a fast flick | Low |
+| 10 | **Double sheets** | A double tap opens two sheets, or the sheet reopens after closing | Medium |
+
+<Callout type="bug" title="Why #1 happens">
+The sheet and the list inside it both listen for a vertical drag. The app has to decide, at the start of each gesture, **who gets it**: the list (if it can still scroll in that direction) or the sheet. This hand-off is called nested scrolling, and custom-built sheets often skip it. To catch it, **scroll the list down a bit first**, then drag down on the list and watch what moves.
+</Callout>
+
+## Try it: the sheet lab
+
+Open the sheet, change the option, then try to get out every way. Drag on the **list**, not only on the grabber. Tap the note field to bring up the keyboard. Then switch one good behavior off at a time and repeat.
+
+<Playground client:visible />
+
+## Find the bug
+
+This iOS food delivery checkout has a **Delivery time** sheet with **six bugs**. Explore it like a tester:
+
+- Open the sheet and **drag the list** of time slots (with the mouse or your finger).
+- Pick a slot, then close the sheet in **different ways** and check the checkout row each time.
+- Tap the **dimmed area** over the buttons behind the sheet.
+- Tap the note field. Try to close it with **Esc** or the device panel buttons.
+
+<BugHunt
+  title="Delivery time sheet"
+  bugs={[
+    {
+      title: 'Dragging the list drags the sheet instead of scrolling',
+      hint: 'Try to scroll the time slots by dragging them.',
+      detail: 'Every drag on the list moves the whole sheet: up expands it, down closes it. You can never scroll to later slots by dragging. Expected: the list scrolls first, and only a downward drag at the very top moves the sheet (<em>nested scrolling</em>).',
+    },
+    {
+      title: 'The keyboard covers the courier note',
+      hint: 'Tap “Note for the courier”.',
+      detail: 'The keyboard slides up over the note field and the <strong>Confirm</strong> button. The user types blind and can’t confirm without closing the keyboard. Expected: the sheet moves up so the focused field and the main button stay visible.',
+    },
+    {
+      title: 'Swiping down applies a slot you never confirmed',
+      hint: 'Pick a different slot, then swipe the sheet down. Check the checkout row. Then do the same but tap outside.',
+      detail: 'After a swipe-down, the checkout shows the new slot although the user never pressed <strong>Confirm</strong>. Tapping outside, on the other hand, discards it. Expected: every exit except Confirm cancels (or the app asks first).',
+    },
+    {
+      title: 'Taps on the scrim reach the page behind',
+      hint: 'With the sheet open, tap the dimmed + next to an item.',
+      detail: 'The sheet closes, but the tap also lands on the <strong>+</strong> button behind it and adds another burger to the order (and the total goes up). Expected: the scrim blocks the page; a tap on it only closes the sheet.',
+    },
+    {
+      title: 'No way to close the sheet without a swipe',
+      hint: 'Look for a Cancel or close button. Try Esc and the VoiceOver escape gesture in the device panel.',
+      detail: 'There is no Cancel or X, and Esc and the VoiceOver two-finger Z do nothing. Users who can’t swipe, or who use a keyboard or switch control, can only escape by choosing a slot. Expected: a visible Cancel / close button, and Esc and the escape gesture close the sheet.',
+    },
+    {
+      title: 'After a swipe-down, the sheet reopens cut off',
+      hint: 'Swipe the sheet down to close it, then open it again.',
+      detail: 'The sheet comes back at the height where you let go, showing little more than its title. The drag offset is never reset. Expected: the sheet always reopens at its default (medium) height.',
+    },
+  ]}
+>
+  <BuggyDeliveryApp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #3?">
+
+**Title:** Delivery time sheet: swiping down applies the selected slot without tapping Confirm
+
+**Steps:** 1. Checkout › tap **Delivery time** (shows "ASAP"). 2. Tap **12:30 – 12:45**. 3. Swipe the sheet down to close it.
+
+**Expected:** The sheet closes and Delivery time still shows "ASAP" (swipe down = cancel), consistent with tapping outside.
+**Actual:** Delivery time shows "12:30 – 12:45". Tapping outside instead keeps "ASAP".
+
+**Severity:** High (users can place an order for a time they didn't choose) · **Reproducible:** 10/10
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Bottom sheet test checklist"
+  storageKey="bottom-sheet"
+  items={[
+    'The sheet opens at its default height every time, fully visible, never cut off',
+    'Dragging the grabber snaps to each height, and a flick moves one step',
+    'Dragging the content scrolls it first; the sheet only moves from the top of the list',
+    'Cancel / X, swipe down, tap outside, Back and Esc all close without saving',
+    'Only Done / Confirm / Apply saves; unsaved form input triggers “Discard changes?”',
+    'Taps on the scrim never reach the page behind, and the page behind does not scroll',
+    'A standard (non-modal) sheet leaves the page behind fully usable',
+    'Fields and the main button stay visible with the keyboard open, in portrait and landscape',
+    'The sheet fits the smallest phone, landscape and the largest text size; content scrolls',
+    'The last button is not covered by the home indicator or navigation bar (safe area)',
+    'Focus moves into the sheet, stays inside, and returns to the trigger on close',
+    'The screen reader announces the sheet and its title, and can close it without gestures',
+    'A double tap on the trigger opens only one sheet',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-BS-001',
+      title: 'Confirming a delivery slot',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open Checkout', 'Tap "Delivery time"', 'Tap "12:30 – 12:45"', 'Tap "Confirm"'],
+      expected: 'The sheet closes and the checkout row shows "12:30 – 12:45". Focus returns to the Delivery time row.',
+    },
+    {
+      id: 'TC-BS-002',
+      title: 'Every dismissal path cancels',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Delivery time is "ASAP"'],
+      steps: ['Open the sheet and tap "12:30 – 12:45"', 'Close it with: swipe down, tap outside, Cancel, Esc (hardware keyboard), System Back (Android)', 'Check the checkout row after each attempt'],
+      expected: 'After every path the checkout still shows "ASAP".',
+    },
+    {
+      id: 'TC-BS-003',
+      title: 'Scrolling the list does not move the sheet',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open the sheet and drag it to the large height', 'Drag up on the list to scroll to "15:00"', 'Drag down on the list a little'],
+      expected: 'The list scrolls in both directions and the sheet stays at the large height. Only when the list is back at the top does a further downward drag collapse the sheet.',
+    },
+    {
+      id: 'TC-BS-004',
+      title: 'Keyboard does not cover the note field',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Smallest supported phone (e.g. iPhone SE)', 'Portrait, then landscape'],
+      steps: ['Open the sheet', 'Tap "Note for the courier" and type "Ring twice"'],
+      expected: 'The field and the Confirm button stay visible above the keyboard in both orientations, and the typed text is readable.',
+    },
+    {
+      id: 'TC-BS-005',
+      title: 'Tapping the scrim does not trigger the page behind',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Open the sheet', 'Tap the dimmed area exactly over the "+" button of an item', 'Tap the dimmed area over "Place order" (if visible)'],
+      expected: 'The sheet closes. The quantity, the total and the order are unchanged.',
+    },
+    {
+      id: 'TC-BS-006',
+      title: 'Unsaved form input is protected',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Open a sheet with a form (e.g. "Add a note")', 'Type some text', 'Swipe the sheet down'],
+      expected: 'The sheet stays open and asks "Discard changes?". "Keep editing" keeps the text; "Discard" closes it.',
+    },
+    {
+      id: 'TC-BS-007',
+      title: 'Reopening starts at the default height',
+      priority: 'medium',
+      type: 'edge',
+      steps: ['Open the sheet', 'Drag it down slowly until it closes', 'Open it again', 'Repeat after dragging to the large height and tapping outside'],
+      expected: 'Each time, the sheet reopens fully visible at the medium height.',
+    },
+    {
+      id: 'TC-BS-008',
+      title: 'Screen reader can use and close the sheet',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['VoiceOver (or TalkBack) is on'],
+      steps: ['Activate "Delivery time"', 'Swipe right through the sheet', 'Perform the escape gesture (VoiceOver: two-finger Z; TalkBack: Back)'],
+      expected: 'Focus starts in the sheet, the title is read, swiping never reaches the page behind, and the escape gesture closes it without changes.',
+    },
+  ]}
+/>
+
+### Tools
+
+- **iOS Simulator:** *I/O › Keyboard › Toggle Software Keyboard* (<kbd>Cmd</kbd>+<kbd>K</kbd>) shows the on-screen keyboard. With *Connect Hardware Keyboard* on, the software keyboard may never appear, so you'd miss bug #2. Turn on VoiceOver in *Settings › Accessibility* or use the Accessibility Inspector.
+- **Android Emulator:** test **Back** with the button and with gesture navigation, rotate with the toolbar, and raise *Font size* and *Display size* in Settings. Turn on TalkBack from Settings › Accessibility.
+- **Web:** use the device toolbar in [DevTools](/web/devtools-for-testers) for small viewports, but test the keyboard on a **real phone**: desktop emulation doesn't show the virtual keyboard. Check `role="dialog"`, `aria-modal` and focus in the Accessibility pane.
+
+## Accessibility
+
+- **Announce it.** A modal sheet is a dialog: the <Term id="screen-reader" /> should say its title and that it's a dialog when it opens. See [Modal](/components/modal) for the full set of dialog rules.
+  <DevNote>On the web, use `role="dialog"` with `aria-modal="true"` and `aria-labelledby` (or a native `<dialog>`).</DevNote>
+- **Focus moves in, stays in, comes back.** Focus goes to the sheet when it opens, a <Term id="focus-trap" /> keeps <kbd>Tab</kbd> inside a modal sheet, and focus returns to the trigger when it closes.
+- **Never gesture-only.** Every <Term id="gesture" /> needs a non-gesture alternative (see [Gestures](/mobile/gestures)): a visible **Cancel** or **Close** button, **Esc**, Android **Back** and the **VoiceOver escape** gesture. <Term id="wcag">WCAG</Term> 2.2 asks that anything done by **dragging** can also be done with a simple tap or click (success criterion 2.5.7, Dragging Movements), so resizing should also work by tapping or activating the grabber.
+- **Grabber with a name.** If the grabber is focusable, it needs a label and action, e.g. "Sheet grabber, double-tap to expand". iOS and Material's drag handles provide this; custom ones often don't.
+- **<Term id="touch-target">Touch targets</Term>:** Cancel, X and every option at least 44×44 pt (iOS) / 48×48 dp (Android). A thin grabber alone is hard to hit, so the whole header should be draggable.
+- **Large text and contrast:** content scrolls rather than clips at the biggest text size, text has 4.5:1 contrast and the sheet's edge stands out from the page (3:1, or a clear scrim).
+
+<Callout type="tip">
+Try the gallery with only your keyboard: <kbd>Tab</kbd> to a trigger, <kbd>Enter</kbd> to open, <kbd>Tab</kbd> around (focus should stay in the sheet), activate the grabber to change height, and press <kbd>Esc</kbd>. Where does focus land afterwards?
+</Callout>
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- **Sheets**: rounded card with an optional **grabber**, swipe down to close.
+  <DevNote>`UISheetPresentationController` / SwiftUI `.sheet` with `.presentationDetents([.medium, .large])`.</DevNote>
+- Apps can block swipe-to-dismiss when there are unsaved changes and ask first. Test that it's on where it should be.
+  <DevNote>`.interactiveDismissDisabled()` / `isModalInPresentation`.</DevNote>
+- A sheet can leave the page behind usable at smaller heights (like Maps). Then it behaves like a standard sheet: no dimming, page still works.
+- **Action sheets** (confirmation dialogs) are not draggable and always have Cancel. On iPad, sheets and action sheets look different (centered or as a popover), so test both.
+
+</Tab>
+<Tab>
+
+- Material 3 **modal bottom sheets** have a scrim, rounded 28 dp top corners and a **drag handle**. They can open partially expanded, then expand fully.
+- **Standard bottom sheets** stay on screen next to the content, often with a peek height.
+  <DevNote>Compose: `ModalBottomSheet` and `BottomSheetScaffold`.</DevNote>
+- **System Back** (button or gesture) must close a modal sheet first. With predictive back, the sheet should animate along with the Back swipe and only close when you release.
+- Test **rotation** and **process death**: the sheet may vanish, duplicate or lose its selection. Test **TalkBack**, Font size and Display size.
+
+</Tab>
+<Tab>
+
+- On desktop the sheet is often a side drawer or centered dialog. Test **both breakpoints**.
+  <DevNote>There's no native "bottom sheet" element. It's a `<dialog>` or a custom `div` styled as a sheet.</DevNote>
+- Check **Esc**, the **close button**, **click outside**, the **focus trap** and **scroll lock** (the page behind must not scroll, especially on iOS Safari).
+- On a real phone, check the **virtual keyboard**: mobile browsers don't always resize the page, so a sheet stuck to the bottom can end up behind it.
+- Decide what **browser Back** does while the sheet is open. Either way, it must not lose the user's input.
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'You picked a new delivery slot in a sheet, then swiped the sheet down without tapping Confirm. What should happen?',
+      options: ['The new slot is saved', 'The sheet closes and the old slot stays (or the app asks first)', 'The sheet expands to full height', 'The app goes back to the previous screen'],
+      answer: 1,
+      explain: 'Every exit except the confirm button means cancel. A swipe must not save a choice the user never confirmed.',
+    },
+    {
+      q: 'The list in a sheet is scrolled halfway down. You drag down on the list. What should move?',
+      options: ['The sheet, down towards closing', 'The list, scrolling back up', 'Nothing', 'The page behind the sheet'],
+      answer: 1,
+      explain: 'Content scrolls first. Only when the list is at the very top does a downward drag move the sheet.',
+    },
+    {
+      q: 'Which one is a standard (persistent) bottom sheet?',
+      options: ['A "Sort by" sheet with a scrim', 'A list of cafés under a map that you can still pan and zoom', 'An iOS "Delete photo?" action sheet', 'A full-screen "Add card" form'],
+      answer: 1,
+      explain: 'A standard sheet lives next to the main content without a scrim, and the page behind keeps working.',
+    },
+    {
+      q: 'A sheet can only be closed by swiping down. Why is that a problem?',
+      options: ['It looks old-fashioned', 'Some users can\'t swipe: keyboard, switch control and many screen reader users need a button or Esc', 'Swiping is slower than tapping', 'It isn\'t a problem'],
+      answer: 1,
+      explain: 'Every gesture needs a non-gesture alternative: a visible Cancel or Close, Esc, Back and the screen reader escape gesture.',
+    },
+    {
+      q: 'Which test is MOST likely to show that the keyboard covers a field in a sheet?',
+      options: ['Desktop browser at full width', 'Smallest phone in landscape with the software keyboard on', 'Tablet in portrait with a hardware keyboard', 'Checking the sheet\'s colors'],
+      answer: 1,
+      explain: 'Little height plus a software keyboard leaves the least space. With a hardware keyboard, the on-screen keyboard may never appear.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- A **modal** sheet blocks the page with a scrim; a **standard** sheet sits beside the content and keeps the page usable. Know which one you're testing.
+- Sheets snap between **detents**. They should always **reopen at their default height**, fully visible.
+- **Scroll before drag:** the content scrolls first, and the sheet moves only from the top of the list.
+- Every exit except Confirm means **cancel**. Swipes must never silently save a choice or silently throw away a form.
+- Always test **the keyboard**, **small screens and landscape**, **taps on the scrim**, and **closing without gestures** (Cancel, Esc, Back, screen reader).
+
+</KeyTakeaways>

@@ -1,0 +1,450 @@
+---
+title: Accordion
+description: Stacked sections that open and close to show more detail. Learn single vs multiple open, deep links, find-in-page, scroll jumps and the screen reader states that testers check on every FAQ and order page.
+category: content
+aka: [Expandable section, Collapsible, Disclosure, FAQ]
+platforms: [ios, android, web]
+minutes: 35
+order: 3
+---
+
+import Anatomy from '@/components/demos/accordion/Anatomy';
+import VariantsGallery from '@/components/demos/accordion/VariantsGallery';
+import Playground from '@/components/demos/accordion/Playground';
+import { BuggyOrderHelp } from '@/components/demos/accordion/BuggyOrderHelp';
+import { StaticAccordion } from '@/components/demos/accordion/Examples';
+
+You click the "Track your return" link in an email. The shop opens the order page, scrolls down a bit... and shows a closed section called **Returns**. You click the title. Nothing. You click it again. Nothing. Finally you spot the tiny arrow on the right, click it, and the section opens, while the arrow keeps pointing down.
+
+That's four bugs in ten seconds, all in one of the "simplest" components on the web. Accordions hide content, and **hidden content is where bugs hide too**: in the state, the scroll position, links, search and screen readers. Let's learn to find them.
+
+## What is an accordion?
+
+An accordion is a **vertical stack of sections, each with a header that opens or closes its content**. Closed, you only see the headers, so a long page becomes a short, scannable list. Open, a section pushes the content below it down, like the bellows of an accordion.
+
+One single open/close section is often called a **disclosure** (or "collapsible", "expandable section"). An accordion is a group of them.
+
+You'll usually see accordions in:
+
+- **FAQ and help pages**: *How do I return an item? Can I change my address?*
+- **Order and booking details**: *Delivery · Items · Payment · Returns*.
+- **Product pages on mobile**: *Description · Size & fit · Shipping*.
+- **Settings and filters**: *Price, Brand, Size* in a shop's filter panel; advanced options in a form.
+
+### Anatomy
+
+<Anatomy />
+
+### How it differs from similar components
+
+| Component | What it does | Typical use |
+| --- | --- | --- |
+| **Accordion** | Shows or hides sections **in place**; several can be visible | FAQ, order details |
+| **[Tabs](/components/tabs)** | Shows **exactly one** section at a time, labels side by side | Overview / Specs / Reviews |
+| **"Show more" link** | Reveals the rest of **one** text block | Long product description |
+| **[Dropdown](/components/dropdown)** | Opens a list to **pick a value** | Country, size |
+| **[Modal](/components/modal)** / sheet | Opens content **on top of** the page | Confirmations, forms |
+
+<Callout type="dev" title="Names differ by platform">
+Designers say *accordion*, the HTML standard has **`<details>` and `<summary>`**, the WAI-ARIA guide calls one section a **disclosure**, SwiftUI calls it a **`DisclosureGroup`**, and Android developers talk about **expandable list items**. It's the same idea: a header that shows or hides content.
+</Callout>
+
+## Designs & variants
+
+The look differs a lot between platforms, but every variant has a header, a state indicator and a panel. Try them all, with the mouse and with the keyboard (<kbd>Tab</kbd>, then <kbd>Enter</kbd> or <kbd>Space</kbd>).
+
+<VariantsGallery client:visible />
+
+### Single or multiple open?
+
+- **Multiple open** (the default on most platforms): each section opens and closes on its own. Best when users may want to **compare** sections or keep several open, like filters or order details.
+- **Single open** (an "exclusive" accordion): opening one closes the others. It keeps the page short, but users can't see two answers at once, and closing a long section above can **move** the section you just opened (more on that below).
+
+Neither is wrong. The bug is when the product says one thing and the app does another, or when the two modes are mixed on similar pages.
+
+### Default open state
+
+Decide, document and test which sections start open:
+
+- **All closed** is common for FAQs: the questions are the content.
+- **First section open** (or the most important one) helps users see that the sections open at all, and answers the most common question without a tap. On an order page, *Delivery* is often open.
+- **Remember the user's choice** only if the product asks for it. Then test that it really comes back after a reload, Back navigation and an app restart (<Term id="state-persistence" />).
+
+## When to use it
+
+Accordions work well when:
+
+- The page has **many sections** and users only need **one or two** of them (FAQs, help, order details).
+- Each section has a **clear, predictable title**, so users can tell what's inside without opening it.
+- The content is **secondary** or reference material, and the screen is small.
+- Users don't need to **compare** content across sections at the same time.
+
+## Good and bad uses
+
+<Compare>
+<Do title="Lots of optional detail">
+
+<div class="not-prose demo-screen my-3"><StaticAccordion heading="Help · Orders" label="An FAQ with five closed questions: When will my order arrive? Can I change my address? How do I return an item? Do you ship abroad? How do I use a voucher?" sections={[{ title: 'When will my order arrive?' }, { title: 'Can I change my address?' }, { title: 'How do I return an item?' }, { title: 'Do you ship abroad?' }, { title: 'How do I use a voucher?' }]} /></div>
+
+Users scan the questions and open the one they care about.
+
+</Do>
+<Dont title="Hiding what everyone must see">
+
+<div class="not-prose demo-screen my-3"><StaticAccordion heading="Flight Berlin → Rome · €79" label="A booking page where Baggage rules, Cancellation fees and Total price incl. taxes are all hidden in closed sections." sections={[{ title: 'Baggage rules' }, { title: 'Cancellation fees', highlight: true }, { title: 'Total price incl. taxes', highlight: true }]} /></div>
+
+The real price and the fees are hidden behind taps. Critical information belongs on the page, not in a closed section.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="One level of sections">
+
+<div class="not-prose demo-screen my-3"><StaticAccordion label="An accordion with one level: Delivery open showing text, Items and Payment closed." sections={[{ title: 'Delivery', sub: 'Delivered 6 Oct', open: true, body: 'Delivered to parcel locker Hauptbahnhof 3, compartment 41.' }, { title: 'Items (6)' }, { title: 'Payment' }]} /></div>
+
+Flat and predictable.
+
+</Do>
+<Dont title="Accordions inside accordions">
+
+<div class="not-prose demo-screen my-3"><StaticAccordion label="A nested accordion: Help opens to show Orders, which opens to show Returns, which opens to show Refunds. Users lose track of where they are." sections={[{ title: 'Help', open: true, nested: [{ title: 'Orders', open: true, nested: [{ title: 'Returns', open: true, nested: [{ title: 'Refunds' }, { title: 'Exchanges' }] }, { title: 'Delivery' }] }, { title: 'Account' }] }]} /></div>
+
+Three levels deep, users lose track of where they are and which arrow belongs to which header. Use separate pages or a list with headings.
+
+</Dont>
+</Compare>
+
+<Callout type="tip" title="Tester mindset">
+Ask "would a user be surprised that this is hidden?" Prices, fees, deadlines, legal terms and error messages shouldn't sit in a closed section. Also ask the opposite: if the page has only **one or two short sections**, the accordion adds taps without saving space. Raise both as design findings.
+</Callout>
+
+## How good accordions behave
+
+Most accordion bugs are not about colors. They are about **state, focus and scrolling**. These are the rules to test against.
+
+### The indicator tells the truth
+
+The chevron points **down when closed and up when open** (on iOS: **right when closed, down when open**). Whatever opens or closes a section (a tap, the keyboard, "Expand all", a link, the default state on load) the chevron, the panel and the screen reader state must **agree**. A chevron that's driven by its own variable instead of the real open state drifts out of sync quickly.
+
+### The whole header is the button
+
+Users tap the **title**, not the arrow. The entire header row must react, with a <Term id="touch-target" /> of at least 44×44 pt on iOS and 48×48 dp on Android. A tiny chevron that's the only clickable part fails users with shaky hands, and feels broken to everyone else.
+
+### Opening doesn't lose your place
+
+Opening and closing changes the height of the page, so things move. Test with **long content**:
+
+- In **single-open** mode, opening a section **below** a long open section closes the long one. Everything moves up, and the header you just tapped can **jump out of view**. Good implementations keep the tapped header where it was.
+- Code that "scrolls the new content into view" must scroll to the **header**, not to the end of the panel. Otherwise long panels push their own header off-screen.
+- Closing a long section while you're scrolled inside it should leave you **on its header**, not somewhere random further down the page.
+- On the web, check that the page height update doesn't make the browser's **scroll anchoring** jump in odd ways, and on phones check rotation (<Term id="reflow" />).
+
+### Animation respects "Reduce motion"
+
+A short height animation (about 200–300 ms) helps users see where the content came from. But users who turn on **Reduce motion** (iOS), **Remove animations** (Android) or `prefers-reduced-motion` (web) should get an **instant** change or a simple fade. Also check that fast double taps during the animation don't leave the section half-open or out of sync with the chevron.
+
+### Deep links open the section
+
+FAQ and help pages are full of links like `shop.example.com/help#returns`, and apps get <Term id="deep-link">deep links</Term> like `shop://orders/4821/returns`. The link must **open** the target section and scroll its **header** into view, both when the page loads and when the user clicks an in-page link. Scrolling to a closed header, or opening the section without scrolling to it, are both bugs.
+
+### Find in page and hidden content
+
+Press <kbd>Ctrl</kbd>+<kbd>F</kbd> (<kbd>Cmd</kbd>+<kbd>F</kbd> on a Mac) and search for a word that's inside a closed section. On most custom accordions, the browser finds **nothing**, because closed content is hidden. Users then think the answer doesn't exist.
+
+<DevNote>Closed content is hidden with `display: none`.</DevNote>
+
+Two web features help:
+
+- **Native `<details>`**: Chrome, Edge and recent Firefox versions search inside closed `<details>` elements and **open** the one with the match. Safari added this later, so check it there too.
+- **`hidden="until-found"`**: a custom accordion can hide its panel this way. The browser can still search it and reveals the section (the page should then update its chevron). Chromium browsers and recent Firefox support it; Safari support is newer and partial at the time of writing, so test in your target browsers.
+  <DevNote>The browser fires a `beforematch` event; the page should also update `aria-expanded`.</DevNote>
+
+<Callout type="info" title="SEO and discoverability">
+Search engines can only index text that is **in the page**. Content that is in the HTML but collapsed is generally indexed (Google has said it treats hidden-for-design content in accordions and tabs normally on mobile). Content that's **fetched from the server only when a section opens** may never be seen by a crawler, and it isn't found by <kbd>Ctrl</kbd>+<kbd>F</kbd> either. If an FAQ is meant to bring visitors from Google, ask how the answers are loaded.
+</Callout>
+
+## Common bugs
+
+| # | Bug | What you see | Severity |
+| --- | --- | --- | --- |
+| 1 | **Chevron out of sync** | Arrow points down while the section is open, or doesn't turn after "Expand all" | Low–Medium |
+| 2 | **Only the arrow is clickable** | Clicking the title does nothing | Medium |
+| 3 | **Scroll jump** | After opening a section, its header is off-screen | Medium |
+| 4 | **Wrong screen reader state** | VoiceOver says "collapsed" for an open section | High (for affected users) |
+| 5 | **Deep link lands on a closed section** | `#returns` scrolls there but doesn't open it | Medium |
+| 6 | **"Expand all" out of sync** | The button says "Expand all" while everything is open | Low |
+| 7 | **Hidden content not searchable** | <kbd>Ctrl</kbd>+<kbd>F</kbd> finds nothing that's inside a closed section | Low–Medium |
+| 8 | **Content cut off** | Long text, large fonts or a late image are clipped at a fixed height | Medium–High |
+| 9 | **Focus lost or trapped** | After closing, focus jumps to the top; or links in a closed panel are still Tab stops | Medium |
+| 10 | **Double tap breaks it** | Fast taps during the animation leave a half-open section | Low |
+
+<Callout type="bug" title="Why #8 happens">
+To animate the height, developers sometimes give the open panel a **fixed max-height** (like 300 px). It works with the sample text, but a long answer, a translated one, a bigger font size or an image that loads late gets **cut off** with no scrollbar. Always test the **longest** section, at the **largest text size** (<Term id="dynamic-type" /> on iOS, Font size on Android, 200% zoom on the web).
+</Callout>
+
+## Stress-test it
+
+This is a correct accordion on a banking help page. Change the settings and watch what happens. Use the mouse, then only the keyboard.
+
+<Playground client:visible />
+
+<Callout type="info" title="Why the screen reader panel matters">
+The panel above reads the **real** attributes from the page: the role (*button*), the name, the state (*expanded* / *collapsed*) and the heading level. That's what VoiceOver, TalkBack or NVDA work with. If the visual state and the announced state disagree, a blind user gets the wrong information, even though the page "looks fine".
+</Callout>
+
+## Find the bug
+
+This order page in a web shop has an accordion with **six bugs**. Explore it like a tester:
+
+- Click the **titles**, not just the arrows, and watch the arrows.
+- Open the long **Items** section and look at where its header went.
+- Use **Expand all**, then open and close sections by hand.
+- Use the **email link** and the "See returns" link inside *Delivery*.
+- Tab through the page and read the **screen reader** panel.
+
+<BugHunt
+  title="Order #4821"
+  bugs={[
+    {
+      title: 'The chevron points the wrong way',
+      hint: 'Look at the Delivery section when the page loads. Then try Expand all.',
+      detail: '<strong>Delivery</strong> is open on load, but its arrow points down, and after a click it is closed with the arrow pointing up. <strong>Expand all</strong> opens every section without turning any arrow. The arrow is driven by its own variable instead of the real open state. Expected: down when closed, up when open, always.',
+    },
+    {
+      title: 'Only the small arrow opens a section',
+      hint: 'Click a section title.',
+      detail: 'The header row is a plain <code>div</code>; only the 32 px chevron is a button. Clicking the title or the empty space does nothing. Expected: the whole header is the button, with a touch target of at least 44×44 pt / 48×48 dp.',
+    },
+    {
+      title: 'Opening Items scrolls its header out of view',
+      hint: 'Open the long Items section and look for its title.',
+      detail: 'After opening, the page scrolls so the <em>end</em> of the panel is visible. For a long panel that pushes the header you just clicked off the top, so users lose their place. Expected: the header stays where it was (or is scrolled to the top), and the content opens below it.',
+    },
+    {
+      title: 'Screen reader always says “collapsed”',
+      hint: 'Open a section, then Tab to its arrow and read the screen reader panel.',
+      detail: '<code>aria-expanded</code> is hard-coded to <code>false</code>, so a screen reader announces “collapsed” for open sections too. The button is also outside the <code>h3</code>, so it isn’t read as a heading. Expected: <code>aria-expanded</code> follows the real state, and the button sits inside the heading.',
+    },
+    {
+      title: 'The #returns link doesn’t open Returns',
+      hint: 'Use the email link, or “See returns” inside Delivery.',
+      detail: 'The URL changes to <code>#returns</code> and the page scrolls to the Returns header, but the section stays closed. Users who came for the return label see nothing. Expected: a deep link opens the target section and shows its header.',
+    },
+    {
+      title: '“Expand all” shows the wrong label',
+      hint: 'Open every section by hand, then look at the button. Or use Expand all and close them by hand.',
+      detail: 'The label is a separate true/false value that only the button itself flips. After opening all five sections manually it still says “Expand all”, and clicking it does nothing visible except change the label. Expected: the label is derived from the sections: “Collapse all” when all are open.',
+    },
+  ]}
+>
+  <BuggyOrderHelp client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #5?">
+
+**Title:** Link to `/orders/4821#returns` scrolls to the Returns section but doesn't open it
+
+**Steps:** 1. Open the "Your order was delivered" email. 2. Click "Start a return" (links to `shop.example.com/orders/4821#returns`).
+
+**Expected:** The order page opens with the **Returns** section expanded and its header at the top of the view.
+**Actual:** The page scrolls to the Returns header, but the section stays **closed**. The same happens with the "See returns" link inside *Delivery*.
+
+**Severity:** Medium (users can't find how to start a return) · **Reproducible:** 10/10 · **Tested on:** Chrome 141, Safari 26, iPhone 16 Safari
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Accordion test checklist"
+  storageKey="accordion"
+  items={[
+    'The right sections are open on first load, as the design says',
+    'Clicking or tapping anywhere on the header opens and closes the section',
+    'The chevron always matches the state: on load, after taps, keyboard, Expand all and links',
+    'Single vs multiple open works as specified, consistently across similar pages',
+    '"Expand all / Collapse all" opens and closes everything, and its label matches the real state',
+    'Opening and closing long sections keeps the tapped header in view (no scroll jumps)',
+    'Long text, translations and the largest text size are never cut off inside a panel',
+    'Deep links and in-page links (#returns) open the right section and scroll to its header',
+    'Ctrl+F / Cmd+F finds text in closed sections (or the team has decided it does not need to)',
+    'Animation is short, and instant with Reduce motion; fast double taps leave a clean state',
+    'Keyboard: Tab reaches every header, Enter and Space toggle it, closed content is not a Tab stop',
+    'Screen reader announces button, title, expanded / collapsed, and the heading level',
+    'Open state survives Back navigation and rotation (if the product requires it)',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-ACC-001',
+      title: 'Default state on load',
+      priority: 'medium',
+      type: 'positive',
+      preconditions: ['Delivered order #4821 exists'],
+      steps: ['Open My orders › #4821'],
+      expected: 'Only "Delivery" is open, its chevron points up; all other sections are closed with chevrons pointing down.',
+    },
+    {
+      id: 'TC-ACC-002',
+      title: 'Whole header toggles the section',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Click the "Payment" title text', 'Click the empty space in the middle of the header', 'Click the chevron'],
+      expected: 'Each click toggles the section (open, closed, open). The chevron turns every time.',
+    },
+    {
+      id: 'TC-ACC-003',
+      title: 'Opening a long section keeps its header visible',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Order with 6+ items', 'Phone-sized viewport (360 × 640)'],
+      steps: ['Scroll until "Items (6)" is near the bottom of the screen', 'Tap "Items (6)"'],
+      expected: 'The header "Items (6)" stays visible and the list opens below it. The page does not jump past the header.',
+    },
+    {
+      id: 'TC-ACC-004',
+      title: 'Deep link opens the target section',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Open shop.example.com/orders/4821#returns in a new tab', 'Click "See returns" in the Delivery section'],
+      expected: 'In both cases "Returns" is expanded and its header is at the top of the view.',
+    },
+    {
+      id: 'TC-ACC-005',
+      title: '"Expand all" label after manual changes',
+      priority: 'low',
+      type: 'edge',
+      steps: ['Open every section one by one', 'Look at the button', 'Click it', 'Close one section by hand'],
+      expected: 'After step 1 the button says "Collapse all". Clicking it closes all and it says "Expand all". After step 4 it still says "Expand all".',
+    },
+    {
+      id: 'TC-ACC-006',
+      title: 'Screen reader announces the state',
+      priority: 'high',
+      type: 'positive',
+      preconditions: ['VoiceOver (macOS / iOS) or NVDA (Windows) on'],
+      steps: ['Move to the "Payment" header', 'Press Enter (or double-tap)', 'Press Enter again'],
+      expected: 'Announced as "Payment, button, collapsed, heading level 3", then "expanded", then "collapsed".',
+    },
+    {
+      id: 'TC-ACC-007',
+      title: 'Find in page reaches closed content',
+      priority: 'low',
+      type: 'edge',
+      preconditions: ['Chrome or Edge', 'All FAQ sections closed'],
+      steps: ['Press Ctrl+F / Cmd+F', 'Search for "parcel locker" (text inside a closed answer)'],
+      expected: 'The match is found and its section opens automatically (if the team uses details or hidden="until-found"). Otherwise, log it as an improvement.',
+    },
+    {
+      id: 'TC-ACC-008',
+      title: 'Reduce motion',
+      priority: 'low',
+      type: 'positive',
+      preconditions: ['iOS: Settings › Accessibility › Motion › Reduce Motion on (or the OS equivalent)'],
+      steps: ['Open and close each section', 'Double-tap a header quickly'],
+      expected: 'Sections open and close without a sliding animation (or with a simple fade). After the double tap the section and chevron agree.',
+    },
+  ]}
+/>
+
+### Tools
+
+- **Elements panel in [DevTools](/web/devtools-for-testers):** click a header and watch `aria-expanded` change live in the DOM. If it never changes, you've found bug #4 without a screen reader.
+- **Accessibility pane / Lighthouse:** shows the computed role, name and state of each header.
+- **Reduced motion on the web:** DevTools › <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> › "Emulate CSS prefers-reduced-motion".
+- **Deep links:** paste URLs with `#section` into a new tab; on Android use `adb shell am start -a android.intent.action.VIEW -d "shop://orders/4821/returns"`, on the iOS Simulator `xcrun simctl openurl booted "shop://orders/4821/returns"`.
+
+## Accessibility
+
+- **Button inside a heading (web).** The heading lets <Term id="screen-reader" /> users jump between sections; the button makes it focusable and clickable.
+  <DevNote>The ARIA accordion pattern puts a real `<button>` inside a heading (`<h3><button aria-expanded="false" aria-controls="panel-id">Returns</button></h3>`); <Term id="aria" /> attributes carry the state.</DevNote>
+- **`aria-expanded` must follow the state.** `true` when open, `false` when closed. Put it on the **button**, not on the panel or a wrapper `div`.
+  <DevNote>`aria-controls` points to the panel's id. Panels can be a `role="region"` labeled by their header, but with many panels that creates noise, so it's optional.</DevNote>
+- **Native `<details>` / `<summary>`** gets all of this for free: focusable, <kbd>Enter</kbd>/<kbd>Space</kbd> to toggle, state announced. Check that custom styling didn't remove the focus ring.
+- **<Term id="keyboard-navigation">Keyboard</Term>.** <kbd>Tab</kbd> moves between headers and into open panels, <kbd>Enter</kbd> or <kbd>Space</kbd> toggles. Links inside **closed** panels must not be reachable with <kbd>Tab</kbd>. After closing, focus stays on the header (<Term id="focus-order" />).
+- **Mobile.** On iOS, VoiceOver should announce the expanded or collapsed state; on Android, TalkBack announces "expanded" / "collapsed" and offers expand / collapse actions when the app sets them. Custom rows that only change an icon announce nothing.
+- **Don't rely on the arrow alone.** The open section should also be visible from its content, and the chevron needs 3:1 contrast against its background.
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- The chevron points **right** when closed and turns **down** when open.
+  <DevNote>SwiftUI has **`DisclosureGroup`** (and `OutlineGroup` / lists with children for trees); UIKit lists use an **outline disclosure** accessory.</DevNote>
+- Common in Settings-style lists, sidebars and forms. Multiple sections can be open.
+- Test **VoiceOver** (state and hint), **Reduce Motion**, the largest **Dynamic Type** size (long titles must wrap, not truncate) and the iPad sidebar.
+
+</Tab>
+<Tab>
+
+- Material 3 has **no official accordion component**. Apps build expandable list items or cards.
+  <DevNote>With an `expand_more` icon; older apps use `ExpandableListView`.</DevNote>
+- Test that **TalkBack** says "expanded" / "collapsed".
+  <DevNote>In Jetpack Compose, the expanded state should be exposed to TalkBack (state description and expand / collapse actions).</DevNote>
+- Check **rotation** and **process death**: does the open section survive? Test **Remove animations** in Accessibility settings and the largest **font size** and **display size**.
+
+</Tab>
+<Tab>
+
+- Inspect the headers in DevTools.
+  <DevNote>Prefer **`<details>`/`<summary>`** or the ARIA accordion pattern (heading + button + `aria-expanded`).</DevNote>
+- Test **#anchors** and deep links, **Ctrl+F**, browser **Back** after following a link, and **200% zoom**.
+- Check what happens when JavaScript is slow or fails: is the content still reachable, or stuck closed? And for SEO pages, is the content in the HTML or fetched on open?
+
+</Tab>
+</Tabs>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A section is open, but VoiceOver says "Payment, button, collapsed". What is the most likely cause?',
+      options: ['The animation is too slow', 'aria-expanded is not updated', 'The heading level is wrong', 'The chevron icon is missing'],
+      answer: 1,
+      explain: 'Screen readers announce the state from aria-expanded on the button. If the code never updates it, the announcement is wrong even though the page looks right.',
+    },
+    {
+      q: 'Which is the best place for an accordion?',
+      options: ['The total price on a checkout page', 'A help page with 15 questions', 'Two short sentences of text', 'An error message after saving'],
+      answer: 1,
+      explain: 'Many sections where users only need one or two of them. Prices, errors and short content should be visible without a tap.',
+    },
+    {
+      q: 'A link to /help#returns scrolls to the Returns header, but the section stays closed. Is this a bug?',
+      options: ['Yes, a deep link should open the section it points to', 'No, the user can open it', 'Only on mobile', 'Only if the page is slow'],
+      answer: 0,
+      explain: 'The user followed the link to see that content. Scrolling to a closed header makes them do extra work, or think the content is missing.',
+    },
+    {
+      q: 'In single-open mode, you tap a section below a long open section and the tapped header disappears off the top. Why?',
+      options: ['The section was cut off by a max-height', 'The long section above closed and the page moved up', 'The browser cache was full', 'The chevron rotated the wrong way'],
+      answer: 1,
+      explain: 'Closing the long section removes its height, so everything below moves up. Good implementations keep the tapped header in place.',
+    },
+    {
+      q: 'What does hidden="until-found" do?',
+      options: ['Hides content from screen readers forever', 'Lets find-in-page search hidden content and open it', 'Lazy-loads the content from the server', 'Animates the panel height'],
+      answer: 1,
+      explain: 'The content stays hidden, but the browser can still find it with Ctrl+F / Cmd+F. It fires beforematch so the page can open the section.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- An accordion is a stack of **headers that show or hide content** in place. Use it for lots of optional detail, never to hide prices, fees or errors.
+- The **whole header** is the button, and the **chevron, panel and `aria-expanded`** must always agree.
+- Test **long content**: scroll jumps in single-open mode, panels scrolled to the end, text cut off at a fixed height.
+- **Deep links** must open the section they point to, and closed content should still be **findable** (`<details>`, `hidden="until-found"`).
+- Always test with the **keyboard**, a **screen reader**, **Reduce motion** and the **largest text size**.
+
+</KeyTakeaways>

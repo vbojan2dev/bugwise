@@ -1,0 +1,42 @@
+teaser: "A run tracker passed every test on the iOS Simulator, then got hundreds of one-star reviews on launch day. What can't a simulator fake?"
+cards:
+  - type: flip
+    front: "iOS Simulator vs Android Emulator: the key difference?"
+    back: "The Simulator runs the app compiled for the Mac and imitates iOS behavior. The Emulator runs a full Android system image on virtual hardware."
+  - type: flip
+    front: "The rule of thumb for virtual vs real devices?"
+    back: "Virtual for layout, flows, logic and anything you can fake. Real for hardware, performance, the physical world and final sign-off."
+  - type: thisorthat
+    prompt: "You need to check if a long product feed scrolls smoothly on a budget Android phone."
+    left: "Emulator, less RAM"
+    right: "Real low-end phone"
+    answer: right
+    explain: "Virtual devices borrow your computer's CPU and GPU, so performance results are misleading."
+  - type: thisorthat
+    prompt: "You need to check the checkout layout on the smallest supported iPhone, in German, with large text."
+    left: "Simulator is fine"
+    right: "Needs real device"
+    answer: left
+    explain: "Layout, languages and text size are fake-able system settings. Virtual devices handle them well, for free, in seconds."
+  - type: quiz
+    q: "Which test can the Android Emulator do but the iOS Simulator cannot?"
+    options: ["Switch to dark mode", "Open a deep link", "Simulate an incoming phone call"]
+    answer: 2
+    explain: "Extended controls › Phone can call the emulator or send an SMS. The iOS Simulator has no phone."
+  - type: quiz
+    q: "A developer sends you a TestFlight link. Can you test that build on the iOS Simulator?"
+    options: ["No, you need a simulator build", "Yes, just drag it in", "Only on an iPad simulator"]
+    answer: 0
+    explain: "TestFlight and .ipa builds are made for real iPhones. The Simulator needs a .app built for the simulator, or a run from Xcode."
+  - type: truefalse
+    statement: "The iOS Simulator can never receive push notifications."
+    answer: false
+    explain: "That's outdated. You can drag an .apns file onto it or use xcrun simctl push. Delivery timing and lock-screen behavior still need a real iPhone."
+  - type: spotbug
+    screen: ["iOS Simulator · Checkout", "Card number: [ tapped ]", "(no on-screen keyboard shown)", "[ Pay €49.99 ]"]
+    question: "What's the testing trap here?"
+    bug: "The software keyboard is hidden, so it can't cover Pay."
+    explain: "With the Mac keyboard connected, the on-screen keyboard often stays hidden. On a real iPhone it may cover Pay. Press ⌘K to show it."
+  - type: tip
+    title: "Build a small device zoo"
+    text: "Create at least three emulators: a small phone on the oldest supported Android, a large phone on the newest, and a tablet or foldable."

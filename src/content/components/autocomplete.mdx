@@ -1,0 +1,426 @@
+---
+title: Autocomplete
+description: A text field that suggests options while you type. Learn the combobox pattern, list vs inline completion, free text vs must-pick fields, and the timing, matching and keyboard bugs testers find in address and city pickers.
+category: input
+aka: [Typeahead, Combo box, Suggestions, Autosuggest]
+platforms: [ios, android, web]
+minutes: 35
+order: 13
+---
+
+import Anatomy from '@/components/demos/autocomplete/Anatomy';
+import VariantsGallery from '@/components/demos/autocomplete/VariantsGallery';
+import Playground from '@/components/demos/autocomplete/Playground';
+import { BuggyAddressForm } from '@/components/demos/autocomplete/BuggyAddressForm';
+
+Type "Lon" in a travel app and London Heathrow appears. Type the first letters of your street at checkout and the full address is offered. Type "@gm" in an email field and "gmail.com" is filled in. That's <Term id="autocomplete" />: a text field that **guesses what you mean** while you type.
+
+It feels simple, but it's a [text field](/components/text-field), a [dropdown](/components/dropdown) and a small search engine glued together, with a network request on every pause. Bugs hide in the glue: what's typed vs what's selected, which response arrives last, which keys do what. This page is about the **autocomplete field**. The search results page behind a [search bar](/components/search-bar) and the timing of search requests in general are covered in [Search, filters & sorting](/features/search-filters-and-sorting).
+
+## What is autocomplete?
+
+An autocomplete field is a **text input that shows matching suggestions as you type, so you can pick one instead of typing it all**. In code (on the web and in accessibility specs) it's called a **combobox**: a combination of an editable box and a list of options.
+
+There are two important questions for every autocomplete, and testers should know the answer before starting:
+
+- **Must the user pick from the list, or is free text allowed?** A city for delivery, an airport, a country or a product variant must be **one of the options** (it has an id behind it). A search query, a tag or a town that might not be in the list can be **anything**.
+- **Where do suggestions come from?** A **local** list (200 countries, built into the app) is instant. A **server** search (millions of addresses) is slow, can fail, and answers in an unpredictable order.
+
+### Anatomy
+
+<Anatomy />
+
+### List, inline, or both
+
+| Style | What happens | Typical use |
+| --- | --- | --- |
+| **List** | A list of matching options opens under the field | Cities, addresses, products, people |
+| **Inline** | The rest of the word is filled in and selected; typing on replaces it | Browser address bar, email domains |
+| **List + inline** | The list opens and the first match is also completed in the field | Some address bars and code editors |
+
+<DevNote>In ARIA terms these are `aria-autocomplete="list"`, `"inline"` and `"both"`. You'll see these values in <Term id="devtools" /> when you inspect the field.</DevNote>
+
+### How it differs from similar components
+
+| Component | You type… | You get… |
+| --- | --- | --- |
+| **Autocomplete / combo box** | Part of a name | Suggestions; one becomes the value (or free text) |
+| **[Dropdown / select](/components/dropdown)** | Nothing (or one letter to jump) | One option from a fixed list |
+| **[Search bar](/components/search-bar)** | A query | A results page; suggestions are only shortcuts |
+| **[Chips](/components/chips) / token field** | Part of a name, many times | Several selected values shown as chips |
+| **Browser autofill** | Nothing | Saved personal data filled into a form (see [Text field](/components/text-field)) |
+
+<Callout type="info" title="Same word, different things">
+"Autocomplete" also names the HTML attribute `autocomplete="email"`, which controls **browser autofill**, not suggestions from the app. Many teams use "autocomplete", "typeahead" and "combo box" for the same component. In bug reports, say exactly which field and which list you mean.
+</Callout>
+
+## Designs & variants
+
+<VariantsGallery client:visible />
+
+### How a good autocomplete behaves
+
+**It waits for enough input.** One letter matches half the list and wastes a server call. Most fields start after 2–3 characters (local lists can start at 1) and say so: "Type at least 2 letters".
+
+**It waits for a pause, and ignores old answers.** Requests are sent after a short <Term id="debounce" /> (around 200–300 ms). Responses can arrive in any order, so the app must only show the answer to the **latest** query. Otherwise the slow answer for "no" overwrites the fast answer for "novi": a <Term id="race-condition" />. The [Search, filters & sorting](/features/search-filters-and-sorting) page shows this with a live demo.
+
+**It matches the way people type.** Case and accents are ignored (<Term id="diacritics" />: "sabac" finds Šabac), and words in the middle count ("sad" finds Novi Sad). The [Dropdown](/components/dropdown) page has a matching lab for this.
+
+**It highlights the matched part,** using the **same** matching rules. If the search ignores accents but the highlighting doesn't, users see options with nothing bold and wonder why they're there.
+
+**It shows the empty and the loading state.** "No cities match 'nobi'. Check the spelling." is an <Term id="empty-state" />; a spinner or "Searching…" covers slow networks. Silence (no list at all) looks like a broken field.
+
+**It keeps typed text and selected value apart.** The text in the field is just text until the user **chooses** an option. If they edit the text afterwards, the selection must be cleared. And if they leave the field without choosing, a must-pick field shows an error (or accepts an exact match), but never saves "novi" as a city.
+
+**It obeys the keyboard.** Arrows move through the options, Enter chooses, Esc closes the list (a second Esc may clear the field), Tab moves on. More in [Accessibility](#accessibility).
+
+**It closes when it should:** after choosing, on Esc, when focus leaves the field, and when the user taps outside.
+
+<Callout type="tip" title="Ask early: what is the value?">
+Before testing, find out what the form actually **sends**: the text, or an id (city id, place id, airport code)? Then test every way to leave the field (Tab, tap outside, Enter, Back, submit) and check the request in the network tab. Most serious autocomplete bugs are a mismatch between what the user **sees** and what the form **saves**.
+</Callout>
+
+## When to use it
+
+Autocomplete is a good choice when:
+
+- The list is **long** (cities, airports, addresses, medicines, products), too long to scroll in a [dropdown](/components/dropdown).
+- Users **know what they want** and can type the first letters.
+- **Typing it fully is error-prone**: long names, accents, exact spellings needed for delivery.
+- You want to **suggest** but still allow free text (search queries, tags, small towns).
+
+## Good and bad uses
+
+<Compare>
+<Do title="Short list: just show it">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><p class="mb-1 text-[13px] font-medium text-[#111827]">Delivery time</p><div class="flex flex-wrap gap-2 text-[13px] text-[#111827]"><span class="rounded-full border-2 border-[#2563eb] bg-[#eff6ff] px-3 py-1.5">8–10 am</span><span class="rounded-full border border-[#d1d5db] bg-white px-3 py-1.5">12–2 pm</span><span class="rounded-full border border-[#d1d5db] bg-white px-3 py-1.5">6–8 pm</span></div></div>
+
+Three options, all visible, one tap.
+
+</Do>
+<Dont title="Typing to find one of three">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><p class="mb-1 text-[13px] font-medium text-[#111827]">Delivery time</p><div class="flex h-11 items-center rounded-lg border border-[#d1d5db] bg-white px-3 text-[15px] text-[#9ca3af]">Start typing…</div></div>
+
+Type *what*? Users have to guess the options before they can see them.
+
+</Dont>
+</Compare>
+
+<Compare>
+<Do title="Must pick: show what was chosen">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><p class="mb-1 text-[13px] font-medium text-[#111827]">City</p><div class="flex h-11 items-center rounded-lg border border-[#d1d5db] bg-white px-3 text-[15px] text-[#111827]">Novi Sad <span class="ml-auto text-[12px] text-[#6b7280]">21000</span></div><p class="mt-1 text-[12px] text-[#15803d]">✓ Postcode filled in</p></div>
+
+The chosen option fills related fields, so it's obvious a real city was picked.
+
+</Do>
+<Dont title="Must pick, but free text slips through">
+
+<div class="not-prose demo-screen my-3" style="color-scheme: light"><p class="mb-1 text-[13px] font-medium text-[#111827]">City</p><div class="flex h-11 items-center rounded-lg border border-[#d1d5db] bg-white px-3 text-[15px] text-[#111827]">novi</div><p class="mt-1 text-[12px] text-[#6b7280]">Postcode: (empty) · Continue ›</p></div>
+
+"novi" isn't a city. The order is saved anyway and the courier can't find the address.
+
+</Dont>
+</Compare>
+
+Also skip autocomplete when users need to **compare** options (show a list with details), and be careful with it for **sensitive** data: suggestions based on other users' searches can leak private information.
+
+## Common bugs
+
+| # | Bug | What you see | Typical severity |
+| --- | --- | --- | --- |
+| 1 | **Typed text saved, nothing chosen** | "novi" is saved as the city; no postcode, no id | High |
+| 2 | **Stale results** | The list shows results for an older query | Medium–High |
+| 3 | **No keyboard support** | Arrows do nothing; Enter submits the form | High (for affected users) |
+| 4 | **Esc clears the field** | Instead of closing the list, Esc wipes what you typed | Medium |
+| 5 | **List won't close** | It stays open after Tab or a tap outside and covers the form | Medium |
+| 6 | **Edited after choosing** | Change "Novi Sad" to "Novi Pazar" by typing: the old id is still sent | High |
+| 7 | **Accents and case** | "sabac" finds nothing, or finds Šabac but highlights nothing | Medium |
+| 8 | **No empty or loading state** | Nothing appears, so users think the field is broken | Medium |
+| 9 | **Request on every keystroke** | Ten requests for ten letters; flicker and rate limits | Medium |
+| 10 | **Hidden by the keyboard** | On a phone, the list opens behind the on-screen keyboard | High |
+| 11 | **Silent for screen readers** | No result count, options not announced | High (for affected users) |
+| 12 | **Special characters** | `&`, `'` or `%` break the request ("O'Hare", "Ivo & Co") | Medium |
+
+<Callout type="bug" title="Why #1 and #6 are so sneaky">
+On screen everything looks right: the field says "novi" or "Novi Pazar". The problem is in the **data** behind it, which the screen doesn't show. Always check the request with <Term id="devtools" /> or a [proxy tool](/mobile/proxy-tools), or check the saved record afterwards (order details, confirmation email). Ask: does the saved id belong to the text the user sees?
+</Callout>
+
+## Stress-test it
+
+Timing and matching are where autocomplete breaks. This lab answers short queries slowly, like a real server searching more rows. Use the **auto-type** buttons to type fast, then change one setting at a time.
+
+<Playground client:visible />
+
+<Callout type="info" title="Test on a slow network">
+Timing bugs are rare on office Wi-Fi and common on a train. Use Chrome DevTools' "Slow 4G" or "3G" presets, or your phone's network conditioner, then type quickly and watch the order of responses. See [Network conditions](/mobile/network-conditions).
+</Callout>
+
+## Find the bug
+
+FreshBasket's checkout asks for a delivery address. The **City** field is an autocomplete with **six bugs**. Explore it like a real tester:
+
+- Type a city **quickly** (e.g. `novi`) and watch the list and the **network log**.
+- Type a city **without accents** (`sabac`, `cacak`) and **with** one the city doesn't have (`nóvi`). Look at the bold part.
+- Use only the **keyboard**: arrows, Enter, Esc, Tab.
+- Click or Tab **away** while the list is open.
+- Type part of a city and press **Continue to payment** without choosing.
+
+<BugHunt
+  title="FreshBasket delivery address"
+  bugs={[
+    {
+      title: 'Typed text is saved without choosing a city',
+      hint: 'Type "novi", don\'t pick anything, and press Continue to payment. Read the network log.',
+      detail: 'The form sends <code>{"city":"novi","cityId":null,"postcode":""}</code> and the server answers 201. The confirmation shows an address with no postcode in a city that doesn\'t exist. Expected: a must-pick field accepts only a chosen option (or an exact match like "Novi Sad"), otherwise shows "Choose a city from the list" and blocks Continue.',
+    },
+    {
+      title: 'Arrow keys don\'t move through the options',
+      hint: 'Type "kra" and press the Down arrow, then Enter.',
+      detail: 'Nothing gets highlighted, and Enter submits the whole form with the half-typed city. Keyboard and screen reader users can\'t choose a city at all. Expected (ARIA combobox pattern): Down/Up move the active option (<code>aria-activedescendant</code>), Enter chooses it, the list closes.',
+    },
+    {
+      title: 'Results for an older query overwrite the current one',
+      hint: 'Type "novi" quickly (or paste "no" and then type "vi"). Compare the list with the field and the order of responses in the log.',
+      detail: 'Every keystroke sends a request, and shorter queries answer slower. The response for <strong>"no"</strong> arrives last and replaces the results for "novi", so <strong>Nova Varoš</strong> and <strong>Nova Pazova</strong> appear for "novi". Expected: debounce the input and ignore responses that don\'t belong to the latest query.',
+    },
+    {
+      title: 'Esc clears the field instead of closing the list',
+      hint: 'Type "subo" so the list opens, then press Esc.',
+      detail: 'Everything you typed disappears. Users press Esc to get the list out of the way, not to start again. Expected: the first Esc only closes the list and keeps the text; clearing is a separate action (the × button, or a second Esc).',
+    },
+    {
+      title: 'The list doesn\'t close when you leave the field',
+      hint: 'Type "kr", then click the Full name field or press Tab.',
+      detail: 'The suggestion list stays open on top of the form, covering the Postcode field and the Continue button. Expected: the list closes on blur, on a tap outside, after choosing and on Esc.',
+    },
+    {
+      title: 'Highlighting breaks with accents',
+      hint: 'Type "sabac" and "cacak", then "nóvi". Then type "kra" and compare.',
+      detail: 'The search ignores accents, so <strong>Šabac</strong>, <strong>Čačak</strong> and <strong>Novi Sad</strong> are found, but none of them gets a bold part, while "kra" highlights <strong>Kra</strong>ljevo correctly. The highlighter compares raw letters ("s" ≠ "š", "ó" ≠ "o"). Expected: highlighting uses the same accent-insensitive matching as the search.',
+    },
+  ]}
+>
+  <BuggyAddressForm client:visible />
+</BugHunt>
+
+<Callout type="example" title="How would you report bug #1?">
+
+**Title:** Checkout address: City accepts typed text without choosing a city; address saved with cityId null and no postcode
+
+**Steps:** 1. Go to checkout, step 1. 2. Type "novi" in City; suggestions appear. 3. Don't choose one. 4. Press "Continue to payment".
+
+**Expected:** An error "Choose a city from the list" appears and the step isn't completed (or "Novi Sad" is accepted only if typed in full and matched).
+**Actual:** The address is saved: `POST /api/address {"city":"novi","cityId":null,"postcode":""}` → 201. The confirmation shows "— novi".
+
+**Severity:** High (orders can't be delivered) · **Reproducible:** 10/10 · **Note:** same happens after Esc or Tab
+
+</Callout>
+
+## How to test it
+
+### Checklist
+
+<Checklist
+  title="Autocomplete test checklist"
+  storageKey="autocomplete"
+  items={[
+    'Suggestions start after the agreed number of characters, and the field says so',
+    'Matching ignores case and accents and finds words in the middle (spec permitting)',
+    'The matched part is highlighted correctly, also for names with accents',
+    'Typing fast never shows results for an older query (debounce + stale responses ignored)',
+    'Loading, no-results and error states are shown (try a typo, Slow 4G, offline)',
+    'Choosing an option (tap, click, Enter) fills the field and related fields, and closes the list',
+    'Must-pick fields: leaving with unmatched text shows an error; the form never saves text without an option',
+    'Editing the text after choosing clears the old selection (and related fields)',
+    'Free-text fields: what the user typed can be kept exactly',
+    'Keyboard: Down/Up move, Enter chooses, Esc closes (keeps the text), Tab moves on',
+    'The list closes on blur and on a tap outside, and is never cut off or hidden by the keyboard',
+    'Screen readers announce the field as a combo box, the result count and the active option',
+    'Special characters (&, \', %, emoji) and very long input don\'t break the request or the layout',
+    'Re-opening the form (edit address, Back) shows the chosen option, not the half-typed text',
+  ]}
+/>
+
+### Example test cases
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-AC-001',
+      title: 'Choose a city with the keyboard',
+      priority: 'high',
+      type: 'positive',
+      steps: ['Tab to City', 'Type "kra"', 'Press Down twice', 'Press Enter'],
+      expected: 'The second option is highlighted after step 3; after Enter the field shows it, the postcode is filled, the list closes and focus stays in City.',
+    },
+    {
+      id: 'TC-AC-002',
+      title: 'Unchosen text is not saved',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Type "novi" in City', 'Press Tab', 'Press Continue to payment'],
+      expected: 'An error "Choose a city from the list" is shown and the address is not saved. No request with cityId null is sent.',
+    },
+    {
+      id: 'TC-AC-003',
+      title: 'Fast typing shows results for the latest query',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['DevTools network throttling set to Slow 4G'],
+      steps: ['Type "novi" as fast as possible', 'Wait 3 seconds', 'Compare the list with the field'],
+      expected: 'Only cities matching "novi" are listed. Older responses are ignored (or never sent thanks to the debounce).',
+    },
+    {
+      id: 'TC-AC-004',
+      title: 'Accent-insensitive search and highlighting',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Type "sabac"', 'Clear and type "Šab"', 'Clear and type "nis"'],
+      data: 'Expected matches: Šabac, Šabac, Niš',
+      expected: 'Each query finds the city, and the matching letters (Šab, Šab, Niš) are shown in bold.',
+    },
+    {
+      id: 'TC-AC-005',
+      title: 'Esc closes the list and keeps the text',
+      priority: 'medium',
+      type: 'positive',
+      steps: ['Type "subo"', 'Press Esc', 'Press Esc again'],
+      expected: 'After the first Esc the list closes and "subo" stays. The second Esc may clear the field, if that\'s the spec.',
+    },
+    {
+      id: 'TC-AC-006',
+      title: 'Editing after choosing clears the selection',
+      priority: 'high',
+      type: 'negative',
+      steps: ['Choose "Novi Sad"', 'Delete "Sad" and type "Pazar" without choosing', 'Submit'],
+      expected: 'The postcode is cleared when the text changes; submitting shows an error, or "Novi Pazar" (36300) is used only if chosen or matched exactly.',
+    },
+    {
+      id: 'TC-AC-007',
+      title: 'No results state',
+      priority: 'low',
+      type: 'negative',
+      steps: ['Type "xyzq"'],
+      expected: 'The list shows a helpful no-results message; screen readers hear "No results".',
+    },
+    {
+      id: 'TC-AC-008',
+      title: 'Suggestions visible above the keyboard on a phone',
+      priority: 'high',
+      type: 'edge',
+      preconditions: ['Small phone (e.g. iPhone SE) in portrait'],
+      steps: ['Scroll the form so City is near the bottom', 'Tap City and type "no"'],
+      expected: 'The page scrolls or the list opens upwards / full screen so all options can be seen and tapped above the keyboard.',
+    },
+  ]}
+/>
+
+## Accessibility
+
+Autocomplete is one of the hardest components to make accessible, and custom ones often fail. Check these (the <Term id="aria" /> combobox pattern):
+
+| Key | What it should do |
+| --- | --- |
+| <kbd>↓</kbd> / <kbd>↑</kbd> | Open the list / move the active option |
+| <kbd>Enter</kbd> | Choose the active option and close the list |
+| <kbd>Esc</kbd> | Close the list (keep the text); a second Esc may clear |
+| <kbd>Tab</kbd> | Leave the field (and close the list) |
+
+- **The active option** is announced: focus stays in the input (so typing still works) while the screen reader reads "Novi Pazar, 2 of 4".
+  <DevNote title="Roles and states">The input has `role="combobox"`, `aria-expanded`, `aria-controls` (pointing to the list) and `aria-autocomplete`. The list has `role="listbox"`, each option `role="option"`. The active option is announced via `aria-activedescendant`.</DevNote>
+- **Result count:** a polite live region says "4 results available" or "No results" after typing stops. Without it, <Term id="screen-reader" /> users don't know a list appeared.
+- **Visible focus** on the field and a clear style for the active option, different from hover. Text 4.5:1, the active-option background and field border 3:1 (WCAG 1.4.3 / 1.4.11).
+- **<Term id="touch-target">Touch targets</Term>:** options at least 44×44 pt on iOS and 48×48 dp on Android. On the web, WCAG 2.5.8 (AA) asks for at least 24×24 CSS px; 44×44 px (2.5.5, AAA) is the comfortable target.
+- **No surprise changes:** suggestions must not move focus or submit the form on their own (WCAG 3.2.2 On Input, Level A).
+- **Zoom and small screens:** at 200 % zoom and 320 px width, the list fits and scrolls (WCAG 1.4.10 Reflow, Level AA).
+
+Read more in [Accessibility basics](/web/accessibility-basics).
+
+## Mobile vs web
+
+<Tabs labels={['iOS', 'Android', 'Web']}>
+<Tab>
+
+- There's **no standard autocomplete control** on iOS.
+  <DevNote>Not in UIKit. Apps build one from a text field and a table, or use SwiftUI's `.searchable` with `.searchSuggestions`.</DevNote>
+- Test address suggestions with real addresses in different countries.
+  <DevNote>Address suggestions often come from MapKit's `MKLocalSearchCompleter` or a third-party places API.</DevNote>
+- The **keyboard covers half the screen**: lists usually open full screen or right below a field moved to the top. Check on the smallest iPhone you support.
+- **Autocorrect** can change what users type ("Nis" → "Mis"). Address and city fields usually turn it off.
+- Test **VoiceOver** (is the number of results announced?) and **Dynamic Type** (do long names wrap or truncate?).
+
+</Tab>
+<Tab>
+
+<DevNote>Views: `AutoCompleteTextView` / `MaterialAutoCompleteTextView`, often inside a `TextInputLayout` (Material **exposed dropdown menu**). Compose: an editable `ExposedDropdownMenuBox`.</DevNote>
+
+- The popup can open **above** the field when there's no room below. Test near the bottom of the screen with the keyboard open.
+- **Back** should close the suggestions first, then the keyboard, then the screen.
+- Test **TalkBack**, **font scale**, **landscape** (very little room above the keyboard) and a **slow network**.
+
+</Tab>
+<Tab>
+
+<DevNote>Native: `<input list="…">` with a `<datalist>`. It allows free text, needs no JavaScript, but looks and behaves differently in each browser and offers little control over matching.</DevNote>
+
+- Custom components (React, Vue, UI libraries) must follow the ARIA combobox pattern; check roles and `aria-activedescendant` in <Term id="devtools" /> (Elements and Accessibility panes).
+- Check the **Network** tab for debouncing and the order of responses; use the "Slow 4G" and "3G" presets.
+- Browser **autofill** can pop up on top of the app's own suggestions; check that the two never overlap.
+  <DevNote>Teams often set `autocomplete="off"` on the combobox for that reason.</DevNote>
+- Test in Chrome, Safari and Firefox, with **zoom**, and at narrow widths.
+
+</Tab>
+</Tabs>
+
+Related pages: matching with accents and long lists on [Dropdown](/components/dropdown), the search field itself on [Search bar](/components/search-bar), and debounce and race conditions in [Search, filters & sorting](/features/search-filters-and-sorting).
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: 'A delivery form saves the city "novi" with no postcode. What went wrong?',
+      options: ['The server is slow', 'Typed text was accepted although no option was chosen', 'The list was too short', 'Autocorrect'],
+      answer: 1,
+      explain: 'In a must-pick field the text is not the value. The form must only save a chosen option (or an exact match), otherwise show an error.',
+    },
+    {
+      q: 'You type "novi" quickly and the list shows "Nova Varoš". What is the most likely cause?',
+      options: ['A spelling mistake in the data', 'A slower response for an older query arrived last', 'The highlighting is wrong', 'The list is sorted incorrectly'],
+      answer: 1,
+      explain: 'Requests can return in any order. The app must debounce and ignore responses that don\'t belong to the latest query.',
+    },
+    {
+      q: 'The suggestion list is open. What should Esc do?',
+      options: ['Clear the field', 'Submit the form', 'Close the list and keep the text', 'Choose the first option'],
+      answer: 2,
+      explain: 'Esc dismisses the list. Clearing is a separate action, for example the × button or a second Esc.',
+    },
+    {
+      q: 'Which attribute lets a screen reader announce the highlighted option while focus stays in the input?',
+      options: ['aria-activedescendant', 'aria-label', 'aria-hidden', 'tabindex="-1"'],
+      answer: 0,
+      explain: 'aria-activedescendant points to the active option\'s id, so users can keep typing and still hear which option is highlighted.',
+    },
+    {
+      q: 'Search finds Šabac for "sabac", but no letters are bold. What kind of bug is this?',
+      options: ['Not a bug', 'Highlighting doesn\'t use the same accent-insensitive matching as the search', 'A race condition', 'A missing debounce'],
+      answer: 1,
+      explain: 'Search and highlighting must follow the same rules, otherwise users can\'t see why an option is there.',
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- An autocomplete is a **combobox**: a text field plus a list of suggestions. Know whether it's **must-pick** or **free text** before testing.
+- The text in the field is **not** the value until the user chooses. Check what the form **sends**, especially after editing, Tab, Esc and Back.
+- **Debounce** and **ignore stale responses**; test by typing fast on a slow network.
+- Matching and **highlighting** must ignore case and accents the **same way**.
+- Keyboard: **arrows, Enter, Esc (close, keep text), Tab**; the list closes on blur and outside taps; screen readers hear the **result count**.
+- On phones, make sure the list isn't **hidden by the keyboard**.
+
+</KeyTakeaways>

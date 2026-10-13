@@ -1,0 +1,13 @@
+---
+import Icon from '@/components/ui/Icon.astro';
+interface Props { title?: string }
+const { title = 'Do' } = Astro.props;
+---
+
+<div class="compare-card min-w-0 rounded-2xl border border-ok/25 bg-surface p-5">
+  <p class="mb-3 flex items-center gap-2 text-sm font-semibold text-ok">
+    <span class="grid size-6 place-items-center rounded-full bg-ok-soft"><Icon name="check" size={14} strokeWidth={3} /></span>
+    {title}
+  </p>
+  <div class="prose text-[0.97rem]"><slot /></div>
+</div>

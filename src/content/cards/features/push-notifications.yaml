@@ -1,0 +1,45 @@
+teaser: "Tapping a push opens the right order from the background, but the Home screen when the app was closed. Why do push bugs depend on app state?"
+cards:
+  - type: flip
+    front: "Who actually delivers a push notification to a phone?"
+    back: "Apple's APNs for iPhone, Google's FCM for Android. Your server sends the message to them with the device token, and they deliver it."
+  - type: quiz
+    q: "On iOS, the user tapped Don't Allow on the notification dialog. What can the app do?"
+    options: ["Show the dialog again next launch", "Explain and link to Settings", "Nothing, ever"]
+    answer: 1
+    explain: "iOS shows the system dialog only once. The only way back is the app's page in Settings, so a good app explains why and links there."
+  - type: spotbug
+    screen: ["App open on Order #4821", "Status: On the way", "Server log: 'Arriving' push sent", "No banner, status unchanged"]
+    bug: "The foreground push is ignored and the screen doesn't update."
+    explain: "In the foreground, the app itself must show an in-app banner and refresh. The system banner usually doesn't appear there."
+  - type: thisorthat
+    prompt: "You force quit the app, a push arrives, you tap it. The app opens on Home instead of the order."
+    left: "Expected behavior"
+    right: "Bug"
+    answer: right
+    explain: "Tapping must open the right screen in every app state. A cold start uses a different code path, which is why this bug is so common."
+  - type: truefalse
+    statement: "Turning off Offers in the app's settings only needs to change the switch on the phone."
+    answer: false
+    explain: "The server decides who gets a push. If the setting never reaches the server, offers keep coming and users lose trust."
+  - type: spotbug
+    screen: ["Bestellung bestätigt", "{{restaurant}} bereitet dein Essen zu."]
+    bug: "The placeholder wasn't filled in for German."
+    explain: "Push text is often built on the server. Test every supported language and check that names are filled in and nothing is cut off."
+  - type: quiz
+    q: "After reinstalling the app, every notification arrives twice. What's the most likely cause?"
+    options: ["Do Not Disturb is on", "The phone is too slow", "The server stores the device twice"]
+    answer: 2
+    explain: "Duplicates usually mean duplicate device tokens: the server added a new row instead of updating the existing one."
+  - type: flip
+    front: "What do quiet hours like 21:00–08:00 need to respect?"
+    back: "The user's own time zone, not the server's. Otherwise a promo sent at noon in Europe wakes people in New York at 6 am."
+  - type: thisorthat
+    prompt: "You need to check a push's text and deep link today, but no real order exists."
+    left: "Staging console or simctl"
+    right: "Wait for a real order"
+    answer: left
+    explain: "Testers trigger pushes themselves: a staging admin panel, a Firebase test message, or xcrun simctl push in the iOS Simulator."
+  - type: tip
+    title: "Test all three app states"
+    text: "Send every push with the app in the foreground, in the background and killed, and tap it each time."

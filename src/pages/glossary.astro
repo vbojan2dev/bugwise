@@ -1,0 +1,138 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import SectionHero from '@/components/ui/SectionHero.astro';
+import Icon from '@/components/ui/Icon.astro';
+import { getSection } from '@/data/site';
+import { glossaryCategories } from '@/data/labels';
+import { href } from '@/lib/url';
+
+const section = getSection('glossary');
+const terms = (await getCollection('glossary')).sort((a, b) => a.data.term.localeCompare(b.data.term));
+const names = Object.fromEntries(terms.map((t) => [t.id, t.data.term]));
+
+const categories = glossaryCategories;
+
+const letters = [...new Set(terms.map((t) => t.data.term[0].toUpperCase()))];
+const groups = letters.map((l) => ({ letter: l, items: terms.filter((t) => t.data.term[0].toUpperCase() === l) }));
+---
+
+<BaseLayout title="Glossary" description={section.description}>
+  <SectionHero section={section} stats={[`${terms.length} terms`]} />
+
+  <div class="sticky top-16 z-30 border-b border-line bg-bg/85 backdrop-blur-xl">
+    <div class="container-page flex flex-col gap-3 py-3 md:flex-row md:items-center">
+      <label class="relative md:w-72">
+        <Icon name="search" size={16} class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-faint" />
+        <input
+          type="search"
+          data-gl-search
+          placeholder="Filter terms…"
+          class="h-10 w-full rounded-xl border border-line bg-surface pr-3 pl-9 text-sm outline-none focus:border-brand"
+          aria-label="Filter glossary terms"
+        />
+      </label>
+      <div class="flex gap-1.5 overflow-x-auto pb-1 md:pb-0" role="group" aria-label="Filter by category">
+        <button type="button" data-gl-cat="" aria-pressed="true" class="gl-chip">All</button>
+        {Object.entries(categories).map(([k, v]) => <button type="button" data-gl-cat={k} aria-pressed="false" class="gl-chip">{v}</button>)}
+      </div>
+    </div>
+  </div>
+
+  <div class="container-page grid gap-10 py-10 lg:grid-cols-[3rem_minmax(0,1fr)]">
+    <nav class="hidden lg:block" aria-label="Alphabet">
+      <ul class="sticky top-40 space-y-0.5 text-center text-xs font-semibold">
+        {letters.map((l) => <li><a href={`#letter-${l}`} class="block rounded py-0.5 text-faint hover:bg-subtle hover:text-fg">{l}</a></li>)}
+      </ul>
+    </nav>
+
+    <div data-pagefind-body>
+      <span hidden data-pagefind-meta="section:Glossary"></span>
+      <p data-gl-empty hidden class="py-16 text-center text-muted">No terms match your filter.</p>
+      {
+        groups.map((g) => (
+          <section data-gl-group class="mb-10">
+            <h2 id={`letter-${g.letter}`} class="mb-4 text-3xl font-bold text-gradient">{g.letter}</h2>
+            <div class="grid gap-4 md:grid-cols-2">
+              {g.items.map((t) => (
+                <article
+                  id={t.id}
+                  data-gl-term
+                  data-cat={t.data.category}
+                  data-text={`${t.data.term} ${t.data.aka.join(' ')} ${t.data.short}`.toLowerCase()}
+                  class="card scroll-mt-40 p-5 transition-shadow target:ring-2 target:ring-brand"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <h3 class="text-lg font-semibold tracking-tight">
+                      <a href={href(`/glossary/${t.id}`)} class="hover:text-brand">{t.data.term}</a>
+                    </h3>
+                    <span class="shrink-0 rounded-full bg-subtle px-2 py-0.5 text-[11px] font-medium text-muted">{categories[t.data.category]}</span>
+                  </div>
+                  {t.data.aka.length > 0 && <p class="mt-0.5 text-xs text-faint">Also: {t.data.aka.join(', ')}</p>}
+                  <p class="mt-3 leading-relaxed text-fg/90">{t.data.definition}</p>
+                  {t.data.example && (
+                    <p class="mt-3 rounded-xl bg-subtle px-3.5 py-2.5 text-sm leading-relaxed text-muted">
+                      <span class="font-semibold text-fg">In practice: </span>
+                      {t.data.example}
+                    </p>
+                  )}
+                  {t.data.related.length > 0 && (
+                    <p class="mt-3 flex flex-wrap gap-1.5 text-xs">
+                      <span class="py-0.5 text-faint">Related:</span>
+                      {t.data.related.filter((r) => names[r]).map((r) => (
+                        <a href={`#${r}`} class="rounded-full border border-line px-2 py-0.5 text-muted hover:border-brand hover:text-brand">{names[r]}</a>
+                      ))}
+                    </p>
+                  )}
+                </article>
+              ))}
+            </div>
+          </section>
+        ))
+      }
+    </div>
+  </div>
+</BaseLayout>
+
+<style is:global>
+  .gl-chip {
+    flex-shrink: 0;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    padding: 0.3rem 0.8rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+  .gl-chip:hover { color: var(--fg); }
+  .gl-chip[aria-pressed='true'] {
+    background: var(--fg);
+    border-color: var(--fg);
+    color: var(--bg);
+  }
+</style>
+
+<script>
+  const input = document.querySelector<HTMLInputElement>('[data-gl-search]')!;
+  const chips = [...document.querySelectorAll<HTMLButtonElement>('[data-gl-cat]')];
+  const terms = [...document.querySelectorAll<HTMLElement>('[data-gl-term]')];
+  const groups = [...document.querySelectorAll<HTMLElement>('[data-gl-group]')];
+  const empty = document.querySelector<HTMLElement>('[data-gl-empty]')!;
+  let cat = '';
+
+  const apply = () => {
+    const q = input.value.trim().toLowerCase();
+    terms.forEach((t) => (t.hidden = !((!cat || t.dataset.cat === cat) && (!q || t.dataset.text!.includes(q)))));
+    groups.forEach((g) => (g.hidden = !g.querySelector('[data-gl-term]:not([hidden])')));
+    empty.hidden = groups.some((g) => !g.hidden);
+  };
+  input.addEventListener('input', apply);
+  chips.forEach((c) =>
+    c.addEventListener('click', () => {
+      cat = c.dataset.glCat!;
+      chips.forEach((x) => x.setAttribute('aria-pressed', String(x === c)));
+      apply();
+    }),
+  );
+</script>

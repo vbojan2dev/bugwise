@@ -1,0 +1,46 @@
+teaser: "Three little lines hide a whole menu. Does anyone actually open it?"
+cards:
+  - type: flip
+    front: "Modal vs standard drawer?"
+    back: "A modal drawer slides over the page with a scrim and must be closed. A standard drawer sits next to the content on wide screens."
+  - type: thisorthat
+    prompt: "A shopping app has Home, Search, Cart and Account, used all day. Where should they go?"
+    left: "Hamburger menu"
+    right: "Bottom bar"
+    answer: right
+    explain: "Hidden navigation gets used less. Keep the main destinations visible; put secondary or many destinations behind the menu."
+  - type: spotbug
+    screen: ["URL: shop.example.com/women", "Page: Women", "Menu: still open over the page"]
+    bug: "The menu didn't close after navigating."
+    explain: "Choosing a destination should navigate and close the drawer. Single-page apps often forget to close it on route change."
+  - type: quiz
+    q: "The drawer is open. What should pressing Tab do?"
+    options: ["Move focus inside the drawer", "Reach links behind the scrim", "Close the drawer"]
+    answer: 0
+    explain: "A modal drawer traps focus until it closes. Then focus returns to the menu button."
+  - type: quiz
+    q: "On iOS, where may a left edge swipe safely open a drawer?"
+    options: ["On every screen", "Only on the app's first screen", "Never on the left"]
+    answer: 1
+    explain: "The left edge swipe means Back on iOS. On deeper screens it must go back, not pull out the drawer."
+  - type: truefalse
+    statement: "On a website, the hamburger button's aria-expanded should change to true when the menu opens."
+    answer: true
+    explain: "Screen readers announce collapsed or expanded from aria-expanded. If it never changes, users don't know the menu opened."
+  - type: spotbug
+    screen: ["Page: Sale", "Menu highlight: Home", "aria-current on: Home"]
+    bug: "The wrong page is highlighted."
+    explain: "Matching URLs with starts-with makes / match every page. The current page must be marked on every page."
+  - type: truefalse
+    statement: "Scrolling inside an open menu may also scroll the page behind it."
+    answer: false
+    explain: "While a modal drawer is open, the page behind must stay still. That's scroll lock."
+  - type: thisorthat
+    prompt: "Android, drawer open. The user presses system Back."
+    left: "Close the drawer"
+    right: "Leave the screen"
+    answer: left
+    explain: "Back closes the top-most layer first: keyboard, dialog, sheet or drawer. Only then does it leave the screen."
+  - type: tip
+    title: "Close it every way"
+    text: "Test scrim tap, swipe, close button, Esc, Android Back and choosing a page. Then check where focus landed."

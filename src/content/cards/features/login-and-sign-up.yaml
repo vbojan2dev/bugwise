@@ -1,0 +1,46 @@
+teaser: "Your app says 'Wrong password' for one email and 'No account found' for another. Why is that a security bug?"
+cards:
+  - type: flip
+    front: "Authentication vs authorization?"
+    back: "Authentication proves who you are (logging in). Authorization decides what you're allowed to do once you're in, like only admins issuing refunds."
+  - type: spotbug
+    screen: ["Email: anna@test.com", "Password: ••••••••", "[ Log in ]", "Error: No account with this email"]
+    question: "What's risky about this message?"
+    bug: "The error reveals whether the email has an account."
+    explain: "That's account enumeration: attackers test a list of emails to find real customers. Use one generic message like 'Email or password is incorrect.'"
+  - type: quiz
+    q: "Login works with anna@test.com but fails with Anna@test.com. What's the bug?"
+    options: ["Expected, emails are case-sensitive", "Email isn't compared case-insensitively", "A cosmetic bug only"]
+    answer: 1
+    explain: "Phone keyboards often capitalize the first letter, and autofill can add a trailing space. Real users get locked out of their own accounts."
+  - type: thisorthat
+    prompt: "In DevTools you see the login request: GET /api/login?email=anna%40test.com&password=Secret123!"
+    left: "Fine over HTTPS"
+    right: "Critical bug"
+    answer: right
+    explain: "URLs end up in server logs, proxies, analytics and browser history. Credentials belong in the body of a POST request."
+  - type: quiz
+    q: "The rule is 'at least 8 characters'. Which password lengths make the best boundary test?"
+    options: ["1, 50 and 100", "8 only", "7, 8 and 9"]
+    answer: 2
+    explain: "Test just below, on and just above the limit. Off-by-one bugs hide right there, like a check that accepts 4 characters."
+  - type: truefalse
+    statement: "After logout, pressing Back and seeing the account screen is just a minor UI glitch."
+    answer: false
+    explain: "Anyone who picks up the phone could see personal data. Logout must reset navigation, clear cached data and invalidate the token."
+  - type: flip
+    front: "What is a session token?"
+    back: "A long random string the server sends after login. Like a festival wristband, it proves who you are on every next request."
+  - type: truefalse
+    statement: "Face ID sends your face to the server to log you in."
+    answer: false
+    explain: "Biometrics happen on the device. The phone confirms it's you, then releases a saved token or password. That's why a password fallback must always exist."
+  - type: thisorthat
+    prompt: "You tap Log in twice quickly on a slow network. The account screen now lists two active sessions."
+    left: "Report a bug"
+    right: "Expected behavior"
+    answer: left
+    explain: "That's a double submit. The button should be disabled while the request runs, so only one session is created."
+  - type: tip
+    title: "Lockout must live on the server"
+    text: "After 5 wrong passwords, reload, restart or reinstall the app and try again. If the counter resets, attackers get unlimited guesses."

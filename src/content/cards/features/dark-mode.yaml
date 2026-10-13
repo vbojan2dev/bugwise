@@ -1,0 +1,45 @@
+teaser: "The phone is in dark mode, the app is dark, and one line of text just vanished. Where do dark mode bugs hide?"
+cards:
+  - type: flip
+    front: "Phone is Dark, in-app Appearance is Light. What should the user see?"
+    back: "Light. 'System' follows the phone, but an explicit Light or Dark choice in the app wins, and must still apply after a restart."
+  - type: spotbug
+    screen: ["Theme: Dark", "Card background: #1C1C1E", "Card text: #1A1A1A", "Status: (blank line)"]
+    bug: "The card text is hard-coded near-black on a dark card."
+    explain: "The background follows the theme but the text doesn't. Semantic colors like 'label' flip together with the background."
+  - type: quiz
+    q: "On Android, typed text disappears when you switch to dark mode. Why is this common?"
+    options: ["Dark mode clears drafts", "The keyboard resets", "The screen is recreated"]
+    answer: 2
+    explain: "A theme change is a configuration change, like rotation. The screen is recreated by default, and unsaved state is lost."
+  - type: truefalse
+    statement: "A grey that passes 4.5:1 on white automatically passes on black too."
+    answer: false
+    explain: "Contrast depends on both colors. A mid grey can score about 4.8:1 on white and only about 4.3:1 on black, which fails for normal text."
+  - type: thisorthat
+    prompt: "The company logo disappears in dark mode, only the colored icon part is left."
+    left: "Transparent dark logo"
+    right: "Image failed to load"
+    answer: left
+    explain: "A black wordmark on a transparent background shows the dark screen through it. The fix is a light version of the logo."
+  - type: quiz
+    q: "Which minimum contrast does WCAG AA ask for icons and field borders?"
+    options: ["3:1", "4.5:1", "7:1"]
+    answer: 0
+    explain: "Normal text needs 4.5:1. Icons, borders and other UI parts people need to see need at least 3:1, in every theme."
+  - type: spotbug
+    screen: ["Settings > Appearance: Light (selected)", "Phone: Dark", "App restarted", "App shows: Dark theme"]
+    bug: "The saved in-app setting is ignored after a restart."
+    explain: "The choice was saved but never read on launch. Always test the in-app setting after force closing and reopening the app."
+  - type: flip
+    front: "Why does a website flash white before going dark?"
+    back: "The dark theme is applied by JavaScript after the page renders. It should be set before first paint, e.g. with prefers-color-scheme in CSS."
+  - type: thisorthat
+    prompt: "In dark mode, the Today, Week and Month chips all look identical. Only the numbers change."
+    left: "Cosmetic, ignore"
+    right: "Report it"
+    answer: right
+    explain: "Users can't tell which range they're looking at. Selected states must be clearly visible in both themes."
+  - type: tip
+    title: "Switch at the worst moment"
+    text: "Don't just test each theme. Flip it while typing, with a sheet open or mid-scroll. That's where lost state and stale colors show up."

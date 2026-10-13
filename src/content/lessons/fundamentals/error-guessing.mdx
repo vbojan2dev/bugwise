@@ -1,0 +1,344 @@
+---
+title: Error Guessing and Checklists
+description: How experienced testers predict where software breaks, the classic list of inputs and conditions to try, fault attacks, and how to build and maintain your own checklist next to systematic techniques.
+order: 10.3
+level: beginner
+minutes: { short: 11, long: 15 }
+platform: both
+tags: [fundamentals, test design, techniques, experience-based, checklists]
+---
+
+import GuessWhereItBreaks from '@/components/demos/error-guessing/GuessWhereItBreaks';
+
+A smoothie bar app launches birthday rewards. The test cases are solid: valid dates, invalid dates, the first and last day of each month. Everything passes. Then the support inbox fills up with messages from members born on **29 February**: three years in a row, no free smoothie. And members abroad get their "Happy birthday!" voucher at six in the evening, after they already paid.
+
+No requirement mentioned leap days or time zones. An experienced tester would have tried both in the first five minutes, simply because **dates break the same way in almost every app**. That instinct has a name: error guessing.
+
+## What is error guessing?
+
+<Term id="error-guessing">Error guessing</Term> means choosing tests based on what you know about **typical mistakes**: the inputs, situations and timings that have broken software before. Instead of deriving tests from the spec, you ask: "Where do developers usually slip up in a feature like this?"
+
+<Callout type="example" title="An everyday analogy">
+
+Parents who childproof a home don't analyze every square meter. They go straight to the power outlets, the stairs, the cleaning products under the sink and the hot oven door, because that's where toddlers get hurt. Error guessing is childproofing in reverse: you go straight to the places where software usually gets hurt.
+
+</Callout>
+
+Error guessing is one of the <Term id="experience-based-testing">experience-based techniques</Term>, together with [exploratory testing](/tutorials/exploratory-testing) and checklist-based testing. They don't replace systematic techniques like [equivalence partitioning](/fundamentals/equivalence-partitioning) or [boundary value analysis](/fundamentals/boundary-value-analysis); they catch what those techniques can't see, because nobody wrote it down.
+
+<Short>
+
+## The quick version
+
+### The classic things to try
+
+| Area | Try | Why it breaks |
+| --- | --- | --- |
+| Text | Empty, spaces only, very long | Checks count characters but forget to trim or limit |
+| Text | `O'Neil`, `<b>`, emoji 🏃‍♂️ | Special characters get escaped, rendered or cut in half |
+| Numbers | 0, negative, 0.001, `1e3` | Code assumes "a normal positive amount" |
+| Dates and time | 29 February, time zones, 23:59 → 00:00 | Calendars are full of exceptions |
+| Duplicates | The same item, name or request twice | Code assumes things are unique |
+| Interruptions | Lock the phone, a call, leave mid-action | Half-finished work is rarely handled |
+| Permissions | Deny camera, location, notifications | Developers test with everything allowed |
+| Network | Slow, flaky, lost mid-request | Office Wi-Fi hides timeouts |
+
+### Fault attacks: guessing with a plan
+
+A <Term id="fault-attack" /> is error guessing done systematically: start from a **list** of likely failures and design a test to provoke each one on purpose. "List upload failures → deny permission, kill the network mid-upload, pick a huge file."
+
+### Your own checklist
+
+Keep the list. Every bug that escapes to production, every bug a teammate finds, every weird input that broke something goes on it. Before testing a feature, scan the list and pick the items that fit. This turns personal experience into something a whole team (and a beginner) can use.
+
+### Where it fits
+
+Use systematic techniques first, so the spec is covered and you can measure it. Then spend some time on error guessing for the bugs **no spec mentions**. The two together find far more than either alone.
+
+<Callout type="tip">
+
+Switch to **Detailed** for the full defect list with examples, how fault attacks work, how to build and prune a checklist, and how to report "weird input" bugs so they get fixed.
+
+</Callout>
+
+</Short>
+
+<Long>
+
+## Why error guessing works
+
+Developers are smart, but they build features under time pressure, usually testing with "normal" data on a fast connection with every permission granted. The same blind spots appear again and again:
+
+- **Assumptions about input:** a name has letters, an amount is positive, a date exists every year.
+- **Assumptions about the environment:** the network is fast, the user said yes to permissions, the app stays in the foreground.
+- **Assumptions about order:** the user does step 1, then step 2, once, and doesn't come back later.
+
+Every one of these assumptions is a place to guess. And because the blind spots are so common, a short list of guesses finds a surprising number of real bugs.
+
+## The typical defect list, in detail
+
+### Text input
+
+- **Empty:** nothing at all. Does Save stay disabled? Is there a clear message?
+- **Whitespace only:** five spaces look empty to people but not to a character count. Leading and trailing spaces (`"Mia "`) break logins and comparisons.
+- **Very long:** a 500-character name, a pasted paragraph. Is it limited, or does it overflow layouts and databases?
+- **Special characters:** apostrophes (`O'Neil`), quotes, ampersands, slashes, `<` and `>`. They can be shown as `O\'Neil`, break searches, or reveal that input is treated as code (a hint of [XSS or SQL injection](/web/security-basics)).
+- **Emoji and other scripts:** many emoji are made of several characters joined together. Shortening text can cut them in half and leave a `�` box. Also try right-to-left text, like Arabic.
+
+<Callout type="dev" title="Why emoji get cut in half">
+
+JavaScript and many other languages measure string length in UTF-16 code units. "🏃‍♂️" is one visible symbol but several code units, so code like `name.slice(0, 10)` can split it. Correct handling counts grapheme clusters (for example with `Intl.Segmenter`).
+
+</Callout>
+
+### Numbers and amounts
+
+- **Zero:** a €0 transfer, 0 items, 0 minutes. Often allowed by accident.
+- **Negative:** `-50` in an amount field can make money flow the wrong way.
+- **Decimals:** too many (`0.001`), none where expected, and the user's own format (`1.250,50` in Germany means one thousand two hundred fifty euros and fifty cents).
+- **Odd notation:** `1e3`, `+5`, `٣` (an Arabic-Indic digit). Generic parsers accept surprising things.
+- **Huge values:** 999999999, which may overflow or break the layout.
+
+<Callout type="dev" title="Why 1e3 can turn into 1,000">
+
+Functions like JavaScript's `parseFloat` and `Number()` accept scientific notation, so `"1e3"` becomes `1000`. Forms that rely on them without a stricter pattern check accept input no user meant.
+
+</Callout>
+
+### Dates and time
+
+- **Leap day:** 29 February exists only in leap years. Birthdays, anniversaries and "same day next year" logic often break.
+- **Time zones:** the server's time vs the user's time. A voucher "at 9:00" might arrive at 18:00 abroad. See <Term id="time-zone" />.
+- **Daylight saving time:** one night has 23 hours, another 25. Recurring alarms and "every 24 hours" logic drift. See <Term id="daylight-saving-time" />.
+- **Midnight and month ends:** 23:59 → 00:00, 31 January + 1 month, 31 December → 1 January.
+- **Formats:** 03/04 is 3 April in most of Europe and March 4 in the US.
+
+### Duplicates
+
+Do the same thing twice and see if the app assumes uniqueness: register with an email that already exists, add the same address twice, upload the same photo again, invite a friend who's already a member. Sometimes duplicates should be allowed (two people named Sam), sometimes not. Either way, the app should behave on purpose.
+
+### Interrupted actions
+
+Start something and don't finish it normally: lock the phone halfway through an upload, take a call during payment, switch to your email app to copy a code, close the browser tab, lose the connection mid-request. Then come back. Is the action finished, safely canceled, or stuck in between? See [interruptions](/mobile/interruptions).
+
+### Permissions denied
+
+Developers almost always test with permissions granted. Deny the camera, photos, location, notifications or contacts, and also **revoke** a permission later in the system Settings. Does the app explain why it needs it and offer a way to Settings, or does it show a black screen? See [app permissions](/features/app-permissions).
+
+### Slow and flaky networks
+
+Throttle the connection (Chrome DevTools presets "Fast 4G", "Slow 4G" and "3G", or the iOS Network Link Conditioner), switch from Wi-Fi to mobile data, or lose the signal in the middle. Look for misleading messages ("File too large" for a timeout), missing loading states and actions that never finish. See [network conditions](/mobile/network-conditions).
+
+## Fault attacks
+
+A <Term id="fault-attack" /> turns guessing into a method:
+
+<Steps>
+
+1. **Make a list of possible defects or failures** for this kind of feature: from your experience, old bug reports, and published lists.
+2. **For each item, design a test that would expose it if it existed.** "Upload stops silently when interrupted" → lock the phone at 50%.
+3. **Run the attacks, note what happened**, and add new failure ideas to the list as you discover them.
+
+</Steps>
+
+The idea was popularized by James Whittaker's book *How to Break Software* (2002), which describes "attacks" through the user interface (inputs, outputs, stored data, calculations) and through the system's other interfaces, like the file system and the network. ISTQB describes fault attacks as a methodical approach to error guessing.
+
+The difference from plain guessing is small but important: an attack list is **written down**, so it can be reviewed, shared and improved, and you can tell what you did and didn't try.
+
+## Building and maintaining your own checklist
+
+A checklist is the memory of error guessing. Here's how to build a useful one.
+
+<Steps>
+
+1. **Start from a list like the one above.** Group items by area: text, numbers, dates, actions, environment.
+2. **Feed it with real bugs.** Every bug that escaped to production, every bug found late, every "how did nobody try that?" moment becomes an item. Your team's bug tracker is a gold mine: search for recurring causes.
+3. **Write items as actions, not topics.** "Paste a 500-character name" is better than "long input".
+4. **Add the platform.** Mobile items (permissions, interruptions, background) and web items (Back button, refresh, two tabs) differ.
+5. **Prune it.** Remove items that never find anything any more (maybe a shared component now handles them), and merge duplicates. A 300-item list nobody reads helps no one.
+6. **Share it.** A team checklist turns one senior tester's instincts into everyone's starting point. Keep it next to your [test cases and scenarios](/tutorials/scenarios-cases-checklists).
+
+</Steps>
+
+<Callout type="tip" title="Pick by risk, not by habit">
+
+You won't run every item on every feature. For a payment amount, numbers and network items matter most. For a profile name, text items. For a reminder, dates and time zones. Scan the list, pick the five or ten that fit, and spend your time there.
+
+</Callout>
+
+Public lists help too. The "Big List of Naughty Strings" on GitHub, for example, collects text inputs that have broken real software. Use such lists as inspiration, then keep only what fits your product.
+
+## How it complements systematic techniques
+
+| | Systematic (EP, BVA, decision tables) | Error guessing and checklists |
+| --- | --- | --- |
+| Based on | The spec | Experience and past bugs |
+| Coverage | Measurable | Hard to measure |
+| Finds | Wrong behavior the spec describes | Bugs nobody thought to describe |
+| Weakness | Blind to what the spec forgot | Depends on the tester's experience |
+
+A typical order: cover the spec systematically first, so you know the basics work and can report coverage. Then run a timeboxed error-guessing session, often as part of an [exploratory session](/tutorials/exploratory-testing). Don't skip the systematic part because guessing "feels" more productive: guessing alone leaves holes nobody can see.
+
+## Reporting bugs found by guessing
+
+Developers sometimes push back: "Nobody would type `1e3`." Make the report about **impact**, not the trick:
+
+- **Show a realistic user.** "A customer in Germany types 1.250,50 and the app sends €1.25" is more convincing than "comma input not supported".
+- **Name the risk.** Money moving the wrong way, data lost, a security hint (input rendered as HTML).
+- **Give severity honestly.** An emoji split in a leaderboard is minor. A negative transfer that increases the sender's balance is critical.
+
+See [writing bug reports](/tutorials/writing-bug-reports) and [severity vs priority](/fundamentals/severity-vs-priority).
+
+</Long>
+
+## Play: guess where it breaks
+
+Four builds, each hiding a few bugs. You can only afford a handful of tests per round. Pick what your instincts say, run them, then read why each idea did or didn't find something.
+
+<GuessWhereItBreaks client:visible />
+
+## Example test cases
+
+Error guessing ideas become normal test cases once you've written them down. Here are a few from the game.
+
+<TestCases
+  cases={[
+    {
+      id: 'TC-EG-01',
+      title: 'Display name with spaces only is rejected',
+      priority: 'medium',
+      type: 'negative',
+      steps: ['Open Edit profile', 'Enter five spaces as the display name', 'Tap Save'],
+      expected: 'Save stays disabled or shows "Enter a display name"; the old name is kept.',
+    },
+    {
+      id: 'TC-EG-02',
+      title: 'Negative transfer amount is rejected',
+      priority: 'high',
+      type: 'negative',
+      preconditions: ['Logged in, balance €200.00'],
+      steps: ['Open Send money', 'Enter -50 as the amount', 'Tap Continue'],
+      data: 'amount: -50',
+      expected: 'A clear message like "Enter an amount from €0.01 to €5,000"; nothing is sent; the balance stays €200.00.',
+    },
+    {
+      id: 'TC-EG-03',
+      title: 'Camera permission denied shows a way forward',
+      priority: 'medium',
+      type: 'negative',
+      preconditions: ['Camera permission denied for the app in system Settings'],
+      steps: ['Open Edit profile', 'Tap Take photo'],
+      expected: 'A message explains that camera access is off, with a button that opens the app’s settings; no black screen.',
+    },
+    {
+      id: 'TC-EG-04',
+      title: 'Birthday on 29 February gets a voucher in non-leap years',
+      priority: 'medium',
+      type: 'edge',
+      preconditions: ['Member with birthday 29 February', 'Device date set to 28 February 2027, 08:59'],
+      steps: ['Wait until 9:00, or trigger the daily reward job in the test environment'],
+      expected: 'The voucher arrives on the date the team agreed for non-leap years (for example 28 February).',
+    },
+  ]}
+/>
+
+## A starter checklist
+
+Use this as the seed of your own list. Tick what you tried on the current feature.
+
+<Checklist
+  title="Error guessing starter list"
+  storageKey="error-guessing"
+  items={[
+    'Empty, spaces only, and leading or trailing spaces',
+    'Very long text and pasted text',
+    'Apostrophes, quotes, < > and & characters',
+    'Emoji and a right-to-left script',
+    'Zero, negative, too many decimals and other number formats',
+    '29 February, midnight, month and year ends',
+    'A different time zone and a daylight saving change',
+    'The same item, name or request twice',
+    'Interrupt the action: lock, call, switch apps, close the tab',
+    'Deny or revoke each permission the feature uses',
+    'Slow, flaky and lost network in the middle of the action',
+  ]}
+/>
+
+## Check your understanding
+
+<Quiz
+  questions={[
+    {
+      q: "What is error guessing?",
+      options: [
+        "Testing every possible input",
+        "Choosing tests based on experience of where software typically breaks",
+        "Guessing the expected result when the spec is unclear",
+        "Fixing errors without reporting them",
+      ],
+      answer: 1,
+      explain: "Error guessing uses knowledge of typical mistakes (empty input, leap days, denied permissions…) to pick tests that are likely to find bugs.",
+    },
+    {
+      q: "Which of these is NOT an experience-based technique?",
+      options: ["Exploratory testing", "Checklist-based testing", "Boundary value analysis", "Error guessing"],
+      answer: 2,
+      explain: "Boundary value analysis is a systematic black-box technique derived from the spec. The other three rely on the tester's experience.",
+    },
+    {
+      q: "What makes a fault attack different from casual error guessing?",
+      options: [
+        "It needs access to the code",
+        "It starts from a written list of likely failures and designs a test to provoke each one",
+        "It is only done by developers",
+        "It is always automated",
+      ],
+      answer: 1,
+      explain: "A fault attack is a methodical form of error guessing: list possible failures, then attack the software to see if they exist.",
+    },
+    {
+      q: "Your checklist has 300 items and nobody reads it any more. What helps most?",
+      options: [
+        "Add more items so nothing is missed",
+        "Prune items that never find bugs, merge duplicates and pick by risk per feature",
+        "Delete the checklist",
+        "Run all 300 items on every feature",
+      ],
+      answer: 1,
+      explain: "A checklist must stay usable. Remove dead items, merge duplicates and choose the ones that fit the feature's risks.",
+    },
+    {
+      q: "Why shouldn't you rely on error guessing alone?",
+      options: [
+        "It never finds real bugs",
+        "Its coverage is hard to measure and it depends on the tester's experience, so systematic techniques are still needed",
+        "It is forbidden by ISTQB",
+        "It only works on websites",
+      ],
+      answer: 1,
+      explain: "Error guessing finds what the spec forgot, but you can't show what it covered. Combine it with systematic techniques that cover the spec measurably.",
+    },
+    {
+      q: "A developer says nobody would type 1.250,50 into an amount field. What is the strongest reply?",
+      options: [
+        "Insist it's a bug because you found it",
+        "Lower the severity to trivial",
+        "Describe a realistic user: a customer in Germany types it and the app sends €1.25 instead of €1,250.50",
+        "Close the bug",
+      ],
+      answer: 2,
+      explain: "Make the report about real users and impact. In Germany that format is normal, and sending the wrong amount is serious.",
+    },
+  ]}
+/>
+
+<KeyTakeaways>
+
+- **Error guessing** picks tests from experience of typical mistakes; it's an **experience-based** technique, like exploratory and checklist-based testing.
+- The classic list: **empty, whitespace, long, special characters and emoji, zero, negative, decimals, leap days, time zones, duplicates, interruptions, denied permissions, slow networks**.
+- A **fault attack** is the methodical version: list likely failures, then design a test to provoke each one.
+- Keep your own **checklist**: feed it with real bugs, write actions, prune it, share it, and pick items by risk.
+- It **complements** systematic techniques: cover the spec measurably first, then guess where the spec is silent.
+- Report guessed bugs with a **realistic user and impact**, not as a trick.
+
+</KeyTakeaways>

@@ -1,0 +1,46 @@
+teaser: "A customer canceled her shoe order after wearing the shoes, and got her money back. Nobody coded that on purpose. What went wrong?"
+cards:
+  - type: flip
+    front: "State, event, transition: what's what in a music player?"
+    back: "States: Stopped, Playing, Paused. Event: the user taps Pause. Transition: the move from Playing to Paused."
+  - type: flip
+    front: "What is a guard in a state diagram?"
+    back: "A yes/no condition in square brackets on an arrow, like refund [within 30 days]. The same event can go different ways depending on it."
+  - type: quiz
+    q: "A music player is Paused. Which event is an invalid transition?"
+    options: ["Play", "Pause", "Stop"]
+    answer: 1
+    explain: "There's no Pause arrow out of Paused. The event must be ignored and the state must not change. Play and Stop are valid moves."
+  - type: quiz
+    q: "Refunds are allowed up to 30 days after delivery. Which days should you test for this guard?"
+    options: ["Day 5 and day 60", "Day 30 and day 31", "Day 1 only"]
+    answer: 1
+    explain: "Guards meet boundary value analysis. Day 30 should allow the refund, day 31 should refuse it with 'The return window has closed'."
+  - type: thisorthat
+    prompt: "You want to find every 'what if Cancel is tapped while Shipped?' case. Which is better?"
+    left: "State diagram"
+    right: "State table"
+    answer: right
+    explain: "A diagram only shows the arrows that exist. A table lists every state and event combination, so each missing arrow becomes a question."
+  - type: thisorthat
+    prompt: "Login locks after 3 wrong passwords. The account is Locked and the user now enters the right password."
+    left: "Log them in"
+    right: "Stay Locked"
+    answer: right
+    explain: "Right password while Locked has no arrow in the model. Letting it through would defeat the protection against brute-force attacks."
+  - type: truefalse
+    statement: "Visiting every state at least once is the strongest coverage level."
+    answer: false
+    explain: "It's the weakest. You can visit all six order states without ever canceling a paid order, and miss that it forgets the refund."
+  - type: truefalse
+    statement: "A final state, like a Canceled order, should reject every event."
+    answer: true
+    explain: "Final states are dead ends. If an old payment link moves a canceled order back to Paid, a final state has come back to life."
+  - type: spotbug
+    screen: ["Order #1042 · Paid", "You tapped Pay again", "Toast: Payment successful", "Payments: $84.00, $84.00"]
+    bug: "The order was charged twice."
+    explain: "Paid + Pay is invalid. The status still looks right, so testers who only check the status miss it. Always check the action too."
+  - type: spotbug
+    screen: ["Order #2210 · Delivered", "[ Cancel order ]", "Tap: 'Order canceled'", "Refund: $84.00"]
+    bug: "A delivered order can be canceled and refunded."
+    explain: "Delivered + Cancel is an invalid transition. It should be rejected and a return offered, otherwise customers keep the goods for free."
